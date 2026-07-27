@@ -123,6 +123,17 @@ export async function POST(req: Request) {
       }
     }
 
+    // SC (Service Center) businesses are single-login, single-screen by
+    // spec -- collapse the sidebar to just the workorder screen for
+    // everyone but a super admin (who needs full nav to administer every
+    // business, same exemption as the login redirect in
+    // api/auth/login/route.ts). Applied last, after every other filter, so
+    // it always wins regardless of what permissions/business-module
+    // config would otherwise have shown.
+    if (business?.operatingMode === "SC" && !session.isSuperAdmin) {
+      visibleModules = visibleModules.filter((m: any) => m.key === "crm_jobsheets");
+    }
+
     if (visibleModules.length === 0 && !session.isSuperAdmin) {
       // No visible modules at all — treat the same as the old "access
       // denied" case rather than silently showing an empty sidebar, since
