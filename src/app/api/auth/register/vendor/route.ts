@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
       gstNumber,
       panNumber,
       category,
+      appliedAs,
       city,
       state,
       pincode,
@@ -164,6 +165,7 @@ export async function POST(req: NextRequest) {
       gstNumber: gstNumber?.toUpperCase().trim() || undefined,
       panNumber: panNumber?.toUpperCase().trim() || undefined,
       category: category || undefined,
+      appliedAs: ["BRAND", "SC", "POS"].includes(appliedAs) ? appliedAs : undefined,
       address: {
         city: city?.trim() || undefined,
         state: state?.trim() || undefined,

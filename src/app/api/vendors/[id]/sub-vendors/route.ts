@@ -3,19 +3,21 @@
  * POST /api/vendors/[id]/sub-vendors — a vendor creates a sub-vendor under
  *      itself. Per explicit direction ("For every vendor they can create
  *      sub vendors under them and for every sub vendor they add we need to
- *      charge them ... AN group should consider them as vendors only and
- *      number must be assigned accordingly"):
+ *      charge them ... this Activation and their purchase verification
+ *      confirmation ... an autonomous system required"):
  *
  *      - A sub-vendor is a full VendorProfile (its own login, its own
  *        vendorId from the SAME global numbering sequence every vendor
  *        uses -- see core/numbering -- not a second-class record).
  *      - Gated on the parent's subVendorBilling.subVendorPlan: "BLOCKED"
- *        refuses outright, anything else (including the "NONE" default)
- *        is currently ALLOWED to proceed -- the real charge/plan gate is
- *        a placeholder (see VendorProfile.ts's field comment) until
- *        pricing is decided; subVendorCount/lastChargedAt are still
- *        tracked now so the eventual billing pass has real usage data to
- *        work from instead of starting at zero.
+ *        refuses outright.
+ *      - REQUIRES a verified, unconsumed Subscription addon charge
+ *        (subVendorOf = this parent vendor, status ACTIVE, consumedAt
+ *        unset) passed as `subscriptionId` in the request body -- see
+ *        api/subscriptions/create-order + verify for how that charge gets
+ *        created and paid via Razorpay before this call. The subscription
+ *        is marked consumed atomically with vendor creation so the same
+ *        paid charge can never be reused for a second sub-vendor.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -24,6 +26,7 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import VendorProfile from "@/models/VendorProfile";
+import Subscription from "@/models/Subscription";
 import { generateGlobalDocumentNumber } from "@/core/numbering/numberingService";
 import { generateUniqueUserId } from "@/lib/auth/generateUserId";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
@@ -86,7 +89,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const body = await req.json();
-    const { companyName, contactPerson, email, password, phone, gstNumber, panNumber } = body;
+    const { companyName, contactPerson, email, password, phone, gstNumber, panNumber, subscriptionId } = body;
 
     if (!companyName?.trim() || !contactPerson?.trim() || !email?.trim() || !password) {
       return NextResponse.json(
@@ -96,6 +99,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
     if (password.length < 8) {
       return NextResponse.json({ success: false, message: "Password must be at least 8 characters" }, { status: 400 });
+    }
+
+    // Require a verified, unconsumed payment before this sub-vendor can be
+    // created -- see this file's top comment.
+    if (!subscriptionId || !mongoose.Types.ObjectId.isValid(subscriptionId)) {
+      return NextResponse.json(
+        { success: false, message: "A verified payment (subscriptionId) is required to add a sub-vendor" },
+        { status: 402 }
+      );
+    }
+    const charge = await Subscription.findOne({
+      _id: subscriptionId,
+      subVendorOf: parent._id,
+      status: "ACTIVE",
+      consumedAt: null,
+    });
+    if (!charge) {
+      return NextResponse.json(
+        { success: false, message: "No verified, unused payment found for this sub-vendor addition" },
+        { status: 402 }
+      );
     }
 
     const existing = await User.findOne({ email: email.toLowerCase().trim(), isDeleted: false });
@@ -136,6 +160,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     parent.subVendorBilling!.subVendorCount = (parent.subVendorBilling?.subVendorCount || 0) + 1;
     parent.subVendorBilling!.lastChargedAt = new Date();
     await parent.save();
+
+    charge.consumedAt = new Date();
+    await charge.save();
 
     logAction({
       action: "CREATE",

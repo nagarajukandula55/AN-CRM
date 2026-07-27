@@ -129,6 +129,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-modules", label: "Modules", route: "/admin/modules", icon: "Box" },
       { key: "admin-document-templates", label: "Document Templates", route: "/admin/document-templates", icon: "FileText" },
       { key: "admin-settings", label: "Settings", route: "/admin/settings", icon: "Settings" },
+      { key: "admin-plan", label: "Plan & Billing", route: "/admin/plan", icon: "Receipt" },
       { key: "admin-pincode-data", label: "Pincode Data", route: "/admin/pincode-data", icon: "MapPin" },
       { key: "admin-invoice-templates", label: "Invoice Branding", route: "/admin/invoice-templates", icon: "FileText" },
       { key: "admin-gst", label: "GST", route: "/admin/gst", icon: "FileText" },

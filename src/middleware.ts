@@ -165,6 +165,19 @@ const PUBLIC_PREFIXES = [
   // instead of bouncing to /login for a session type this portal doesn't use.
   "/b2b/",
   "/api/b2b/",
+  // Vercel Cron invocations carry no an_token session -- every route under
+  // here does its own CRON_SECRET check internally (standard Vercel Cron
+  // convention). Was missing here entirely, so every cron route (this one
+  // included) 401'd on its actual scheduled invocation, not just ad-hoc
+  // requests -- found while wiring the new subscription-expiry cron.
+  "/api/cron/",
+  // Cross-app service call from ANgroup's admin maintenance page -- gated
+  // internally by x-service-token, not session cookie, since ANgroup
+  // calls this without one. Deliberately a DISTINCT path from
+  // /api/admin/subscriptions (which stays session-gated, not public) so
+  // making this one public doesn't also skip JWT/header injection for a
+  // real super-admin browsing there directly -- see that route's comment.
+  "/api/admin/subscriptions/service",
   "/_next",
   "/public",
 ];
