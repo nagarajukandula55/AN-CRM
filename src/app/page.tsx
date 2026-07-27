@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import HomePage from '@/components/marketing/HomePage'
+import HomePage from '@/components/marketing/CrmHomePage'
 
 /**
  * Root page — for an authenticated visitor this resolves the same
