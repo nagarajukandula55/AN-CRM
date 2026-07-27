@@ -657,7 +657,7 @@ const BusinessSchema = new mongoose.Schema(
       default: false,
     },
 
-    // Whether newly created BOM/Material entries (ServiceCenterBOM -- see
+    // Whether newly created BOM/Material entries (BOM -- see
     // that model's header comment; it's the canonical Material/BOM list
     // shared by SC, Brand and POS) get a server-generated code or a
     // manually typed one. AUTO (default) preserves existing behaviour
@@ -685,7 +685,7 @@ const BusinessSchema = new mongoose.Schema(
     // Default rate for the workorder detail page's one-click "Add Labour
     // Charge" line, set by the vendor's Owner/Manager (Settings > Business
     // Settings) -- used whenever the vendor has no LABOUR-type
-    // ServiceCenterBOM entry of its own to pull a rate from instead.
+    // BOM entry of its own to pull a rate from instead.
     defaultLabourCharge: {
       type: Number,
       default: 0,

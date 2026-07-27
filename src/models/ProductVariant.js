@@ -116,7 +116,7 @@ const ProductVariantSchema =
 
       bomId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "BOM",
+        ref: "ManufacturingBOM",
       },
 
       images: [String],

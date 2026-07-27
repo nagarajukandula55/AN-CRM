@@ -67,9 +67,14 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "products",   label: "Products",     route: "/admin/products",   icon: "Box" },
     { key: "warehouses", label: "Warehouses",   route: "/admin/warehouses", icon: "Building2" },
     { key: "materials",  label: "Materials",    route: "/admin/materials",  icon: "Box" },
-    // Canonical Material/BOM entry (Material Code/Description/Mode/SN/HSN/
-    // Rate/Tax%), shared by Brand/SC/POS -- see models/ServiceCenterBOM.ts.
-    { key: "bom",        label: "Bill of Materials", route: "/admin/bom",   icon: "Box" },
+    // NOT linked to /admin/bom -- that page/API still serves the OLD
+    // manufacturing BOM (now models/ManufacturingBOM.js, productVariantId/
+    // cost-rollup shape), not the canonical Material/BOM model
+    // (models/BOM.ts: Material Code/Description/Mode/SN/HSN/Rate/Tax%)
+    // shared by Brand/SC/POS/Sales. A real admin-facing canonical-BOM page
+    // (only /vendor/service-bom exists today, vendor-role-gated) is the
+    // next concrete task -- deliberately not linking a nav entry to the
+    // wrong data in the meantime.
     { key: "masters-units",    label: "Units",              route: "/admin/masters/units",              icon: "Ruler" },
     { key: "masters-brands",   label: "Brands & Models",    route: "/admin/masters/brands",              icon: "Tags" },
     { key: "masters-catalog-requests", label: "Catalog Change Requests", route: "/admin/masters/catalog-requests", icon: "ClipboardCheck" },

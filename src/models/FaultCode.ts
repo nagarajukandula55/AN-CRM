@@ -69,7 +69,7 @@ FaultCodeSchema.index({ businessId: 1, isActive: 1 });
 // own private list. Now unique per (businessId, vendorId, code); vendorId
 // null (business-wide/global entries) is unaffected since Mongo treats
 // null as an equal value within a compound unique index, same reasoning
-// as ServiceCenterBOM's own vendorId-optional unique index.
+// as BOM's own vendorId-optional unique index.
 FaultCodeSchema.index({ businessId: 1, vendorId: 1, code: 1 }, { unique: true });
 FaultCodeSchema.index({ businessId: 1, deviceCategory: 1, category: 1 });
 

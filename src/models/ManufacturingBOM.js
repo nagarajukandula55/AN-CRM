@@ -1,3 +1,15 @@
+/**
+ * Manufacturing production BOM (multi-level, cost-rollup) -- renamed from
+ * the plain "BOM" model name to "ManufacturingBOM" so that name is free
+ * for the canonical Material/BOM model every operating mode (Brand/SC/
+ * POS/Sales) shares -- see models/BOM.ts (formerly ServiceCenterBOM.ts).
+ * Explicit `collection: "boms"` keeps this pinned to its original
+ * collection so existing manufacturing BOM data is untouched by the
+ * rename -- only the JS-level model registration name changed, not the
+ * physical data. AN-CRM doesn't surface manufacturing/production in its
+ * nav (that stays in ANgroup) but this model is kept as-is for any
+ * remaining direct callers.
+ */
 import mongoose from "mongoose";
 
 const BOMItemSchema = new mongoose.Schema(
@@ -100,6 +112,7 @@ const BOMSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    collection: "boms",
   }
 );
 
@@ -108,5 +121,5 @@ BOMSchema.index({
   versionNumber: 1,
 });
 
-export default mongoose.models.BOM ||
-  mongoose.model("BOM", BOMSchema);
+export default mongoose.models.ManufacturingBOM ||
+  mongoose.model("ManufacturingBOM", BOMSchema);

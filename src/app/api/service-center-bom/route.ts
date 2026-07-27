@@ -20,7 +20,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import mongoose from "mongoose";
-import ServiceCenterBOM from "@/models/ServiceCenterBOM";
+import BOM from "@/models/BOM";
 import VendorProfile from "@/models/VendorProfile";
 import Business from "@/models/Business";
 import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
@@ -148,7 +148,7 @@ export async function GET(req: NextRequest) {
       query.$and = query.$and ? [...(query.$and as any[]), modelOr] : [modelOr];
     }
 
-    const parts = await ServiceCenterBOM.find(query)
+    const parts = await BOM.find(query)
       .populate("brandId", "name")
       .populate("deviceModelId", "name")
       .sort({ partName: 1 })
@@ -218,14 +218,14 @@ export async function POST(req: NextRequest) {
 
     // Whenever deviceModelId is set, seriesId is auto-populated from that
     // model's own seriesId so the two denormalized fields never disagree
-    // (see the seriesId field comment on ServiceCenterBOM).
+    // (see the seriesId field comment on BOM).
     let resolvedSeriesId: mongoose.Types.ObjectId | undefined;
     if (deviceModelId && mongoose.Types.ObjectId.isValid(deviceModelId)) {
       const modelDoc = await DeviceModelModel.findById(deviceModelId).select("seriesId").lean<any>();
       if (modelDoc?.seriesId) resolvedSeriesId = modelDoc.seriesId;
     }
 
-    const part = await ServiceCenterBOM.create({
+    const part = await BOM.create({
       businessId: resolved.businessId,
       vendorId: resolved.vendorId,
       brandId: brandId && mongoose.Types.ObjectId.isValid(brandId) ? brandId : undefined,
@@ -246,7 +246,7 @@ export async function POST(req: NextRequest) {
 
     logAction({
       action: "CREATE",
-      entity: "ServiceCenterBOM",
+      entity: "BOM",
       entityId: part?._id?.toString(),
       after: body,
       req,

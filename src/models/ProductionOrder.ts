@@ -26,7 +26,7 @@ const ProductionOrderSchema = new Schema<IProductionOrder>(
   {
     orderNumber: { type: String },
     businessId: { type: Schema.Types.ObjectId, required: true, index: true },
-    bomId: { type: Schema.Types.ObjectId, ref: "BOM" },
+    bomId: { type: Schema.Types.ObjectId, ref: "ManufacturingBOM" },
     productName: { type: String, required: true },
     productSku: { type: String },
     plannedQuantity: { type: Number, required: true, min: 1 },

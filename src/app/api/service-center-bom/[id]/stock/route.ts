@@ -1,7 +1,7 @@
 /**
  * GET /api/service-center-bom/[id]/stock?warehouseId=... — real Inventory
  * stock check for a BOM part, only meaningful when the part has a linked
- * materialId (see ServiceCenterBOM.materialId) and the business has
+ * materialId (see BOM.materialId) and the business has
  * Business.inventorySerialized = true. Used by the workorder repair flow
  * to warn before adding a part with insufficient stock -- the close route
  * re-checks and actually deducts, this endpoint is read-only/advisory.
@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import mongoose from "mongoose";
-import ServiceCenterBOM from "@/models/ServiceCenterBOM";
+import BOM from "@/models/BOM";
 import Inventory from "@/models/Inventory";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     await connectDB();
 
-    const part = await ServiceCenterBOM.findById(id).select("materialId").lean();
+    const part = await BOM.findById(id).select("materialId").lean();
     if (!part) {
       return NextResponse.json({ success: false, error: "Part not found" }, { status: 404 });
     }

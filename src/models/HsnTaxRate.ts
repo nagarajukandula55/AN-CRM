@@ -1,7 +1,7 @@
 /**
  * HsnTaxRate — simple HSN-code -> GST-rate lookup used to auto-fill the
  * tax% on a CrmJobSheet line item when a part is picked from
- * ServiceCenterBOM by its hsnCode. businessId-scoped, with a null
+ * BOM by its hsnCode. businessId-scoped, with a null
  * businessId meaning a global/platform default (falls back to these if a
  * business hasn't defined its own override for a given HSN code).
  *

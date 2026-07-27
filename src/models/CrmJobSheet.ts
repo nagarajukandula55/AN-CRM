@@ -49,8 +49,8 @@ export interface ICrmJobSheetLineItem {
   unit: string;
   unitPrice: number;
   taxRate: number;
-  hsnCode?: string; // set when the line was picked from ServiceCenterBOM
-  // Snapshot of the source ServiceCenterBOM entry's Material Code
+  hsnCode?: string; // set when the line was picked from BOM
+  // Snapshot of the source BOM entry's Material Code
   // (partCode), per the standard line-item field set: "Solution,
   // Description, Material Code, Qty, Rate, Tax%, Cost". Set alongside
   // serviceCenterBOMId when a line is picked from the BOM; stays legible
@@ -62,7 +62,7 @@ export interface ICrmJobSheetLineItem {
   // reporting on it stay stable even if quantity/unitPrice display
   // formatting changes later.
   cost?: number;
-  serviceCenterBOMId?: Types.ObjectId; // ref ServiceCenterBOM, if picked from BOM
+  serviceCenterBOMId?: Types.ObjectId; // ref BOM, if picked from BOM
   // Per-line diagnosis fields, per explicit direction: each item on the
   // repair table gets its own Fault Phenomenon/Symptom/Solution rather than
   // one shared set for the whole job sheet (moved off the job-sheet-level
@@ -209,7 +209,7 @@ const CrmJobSheetLineItemSchema = new Schema<ICrmJobSheetLineItem>(
     hsnCode: { type: String },
     materialCode: { type: String, trim: true, default: "" },
     cost: { type: Number, default: 0 },
-    serviceCenterBOMId: { type: Schema.Types.ObjectId, ref: "ServiceCenterBOM" },
+    serviceCenterBOMId: { type: Schema.Types.ObjectId, ref: "BOM" },
     faultCodeId: { type: Schema.Types.ObjectId, ref: "FaultCode" },
     symptomCodeId: { type: Schema.Types.ObjectId, ref: "SymptomCode" },
     solutionId: { type: Schema.Types.ObjectId, ref: "Solution" },

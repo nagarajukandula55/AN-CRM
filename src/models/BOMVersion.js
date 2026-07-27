@@ -5,7 +5,7 @@ const BOMVersionSchema =
     {
       bomId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "BOM",
+        ref: "ManufacturingBOM",
         required: true,
       },
 
