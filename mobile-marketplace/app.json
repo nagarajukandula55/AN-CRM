@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "ServiceFlow",
+    "slug": "serviceflow-mobile",
+    "scheme": "serviceflow",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFF8EF"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.angroup.serviceflow",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.angroup.serviceflow",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFF8EF"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": ["expo-router"],
+    "extra": {
+      "anApiUrl": "https://YOUR-ANGROUP-DEPLOYMENT-URL",
+      "eas": {
+        "projectId": "YOUR-EAS-PROJECT-ID"
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+export const ORDER_STATUS = {
+  CREATED: "CREATED",
+
+  PENDING_PAYMENT:
+    "PENDING_PAYMENT",
+
+  PAID: "PAID",
+
+  PROCESSING:
+    "PROCESSING",
+
+  PACKED: "PACKED",
+
+  DISPATCHED:
+    "DISPATCHED",
+
+  DELIVERED:
+    "DELIVERED",
+
+  CANCELLED:
+    "CANCELLED",
+} as const;

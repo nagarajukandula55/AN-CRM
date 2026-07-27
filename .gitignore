@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Environment variables — never commit real secrets
+.env
+.env.local
+.env.*.local
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Vercel
+.vercel
+
+# Scratch files generated to help paste CFA-blocked source past Windows
+# Controlled Folder Access — not real source, never meant to be committed.
+_manual_sync/
+
+# Mobile app (Expo/React Native) build artifacts
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/

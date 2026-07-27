@@ -1,0 +1,428 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================
+   AN GROUP — DESIGN TOKENS
+
+   One accent, chosen deliberately: a deep petrol
+   teal ("ledger" blue-green) rather than the
+   generic indigo/blue every SaaS dashboard reaches
+   for -- distinct, and reads as trustworthy/
+   financial without being cold. Neutrals lean
+   warm (a hair of ochre in the paper tone, not
+   pure grey) so the ground feels chosen, not
+   inherited. Semantic colors (success/warning/
+   critical) are a DIFFERENT hue family from the
+   accent on purpose -- state meaning shouldn't be
+   confused with brand identity.
+
+   Every page should consume these variables (or
+   the Tailwind tokens in tailwind.config.ts that
+   map to them) instead of hardcoding gray-900/
+   indigo-600/rounded-xl-vs-2xl per file -- that
+   drift is exactly what the UI audit flagged.
+========================================== */
+
+:root {
+  /* Type */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Manrope', var(--font-sans);
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Radius -- exactly two tiers, everywhere */
+  --radius-control: 10px;  /* buttons, inputs, badges, chips */
+  --radius-card: 16px;     /* cards, panels, modals */
+
+  /* Ground */
+  --bg: #FAF9F6;
+  --surface: #ffffff;
+  --surface-2: #F4F2ED;
+  --surface-3: #EDEAE3;
+
+  --border: rgba(30, 27, 20, 0.10);
+  --border-strong: rgba(30, 27, 20, 0.18);
+
+  --text: #16181C;
+  --text-2: #52565C;
+  --text-3: #8B8F94;
+  --muted: #6B6F75;
+
+  /* Brand accent -- petrol teal */
+  --accent: #0B5D6B;
+  --accent-hover: #094C58;
+  --accent-soft: rgba(11, 93, 107, 0.10);
+  --accent-fg: #ffffff;
+
+  /* Kept for existing call sites during migration -- primary now maps to
+     the accent instead of flat black, so buttons/links pick up the brand
+     color automatically without every page needing an edit. */
+  --primary: var(--accent);
+  --primary-hover: var(--accent-hover);
+  --primary-fg: var(--accent-fg);
+
+  /* Semantic -- a different hue family from the accent, on purpose */
+  --success: #15803D;
+  --success-soft: rgba(21, 128, 61, 0.10);
+  --danger: #B91C1C;
+  --danger-soft: rgba(185, 28, 28, 0.10);
+  --warning: #B45309;
+  --warning-soft: rgba(180, 83, 9, 0.10);
+  --info: #1D4ED8;
+  --info-soft: rgba(29, 78, 216, 0.10);
+
+  --shadow: 0 4px 24px rgba(22, 24, 28, 0.06);
+  --shadow-lg: 0 8px 40px rgba(22, 24, 28, 0.10);
+}
+
+/* ==========================================
+   BASE
+========================================== */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+
+  background: var(--bg);
+  color: var(--text);
+
+  font-family: var(--font-sans);
+
+  min-height: 100vh;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==========================================
+   RESET
+========================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+/* ==========================================
+   SELECTION
+========================================== */
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* ==========================================
+   TYPE SCALE -- one heading face, one scale.
+   Use these instead of ad hoc text-lg/xl/2xl +
+   font-semibold/bold combos per page.
+========================================== */
+
+.h-page {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.h-section {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.125rem;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ==========================================
+   COMMON UTILITIES
+========================================== */
+
+.container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+
+/* ==========================================
+   AN DESIGN SYSTEM COMPONENTS
+========================================== */
+
+/* Glass panel (light, subtle) */
+.glass {
+  background: rgba(0,0,0,0.02);
+  border: 1px solid rgba(0,0,0,0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Status badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.badge-active { background: var(--success-soft); color: var(--success); border: 1px solid rgba(21,128,61,0.25); }
+.badge-inactive { background: var(--danger-soft); color: var(--danger); border: 1px solid rgba(185,28,28,0.2); }
+.badge-pending { background: var(--warning-soft); color: var(--warning); border: 1px solid rgba(180,83,9,0.2); }
+.badge-info { background: var(--info-soft); color: var(--info); border: 1px solid rgba(29,78,216,0.2); }
+
+/* Interactive table rows */
+.table-row-hover {
+  transition: background 0.15s ease;
+}
+.table-row-hover:hover {
+  background: rgba(0,0,0,0.02);
+}
+
+.section {
+  padding: 60px 20px;
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+.border-default {
+  border: 1px solid var(--border);
+}
+
+/* ==========================================
+   SCROLLBAR
+========================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.25);
+}
+
+/* ==========================================
+   FORM ELEMENTS
+========================================== */
+
+input,
+textarea,
+select {
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 10px;
+  outline: none;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: rgba(0,0,0,0.3);
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.05);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(0,0,0,0.35);
+}
+
+/* ==========================================
+   BUTTONS
+========================================== */
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: none;
+  border-radius: var(--radius-control);
+  padding: 10px 18px;
+  font-weight: 500;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  padding: 10px 18px;
+  font-weight: 500;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--surface-2);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-success {
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid rgba(21,128,61,0.25);
+  border-radius: var(--radius-control);
+  padding: 10px 18px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.btn-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid rgba(185,28,28,0.2);
+  border-radius: var(--radius-control);
+  padding: 10px 18px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+/* ==========================================
+   TABLES
+========================================== */
+
+table {
+  border-collapse: collapse;
+}
+
+th {
+  background: rgba(0,0,0,0.03);
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 10px 16px;
+}
+
+td {
+  padding: 12px 16px;
+  color: #1f2937;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+td,
+th {
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+/* Remove double borders */
+table { border-collapse: collapse; }
+tr:last-child td { border-bottom: none; }
+
+/* ==========================================
+   PRINT
+========================================== */
+
+@media print {
+  body {
+    background: white !important;
+  }
+}
+
+/* ==========================================
+   ANu — idle "alive" motion for the launcher
+   bubble (bottom-right, fixed). Gentle bob +
+   occasional small hop, so it reads as a
+   present being in the system, not a static
+   icon -- deliberately subtle, never covers
+   the button's own hover/press transform.
+========================================== */
+@keyframes anu-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes anu-hop {
+  0%, 92%, 100% { transform: translateX(0) rotate(0deg); }
+  94% { transform: translateX(-3px) rotate(-4deg); }
+  96% { transform: translateX(3px) rotate(4deg); }
+  98% { transform: translateX(-2px) rotate(-2deg); }
+}
+.anu-avatar-idle {
+  animation: anu-bob 3.2s ease-in-out infinite, anu-hop 6s ease-in-out infinite;
+}
+.anu-avatar-idle:hover {
+  animation-play-state: paused;
+}
