@@ -162,6 +162,12 @@ export async function POST(req: Request) {
       const activeBusiness = await Business.findById(activeBusinessId).select("operatingMode").lean<any>();
       if (activeBusiness?.operatingMode === "SC") {
         homeRoute = "/admin/crm/jobsheets";
+      } else if (activeBusiness?.operatingMode === "POS" && !homeRoute) {
+        // POS scales small store -> enterprise, so (unlike SC) it keeps
+        // full nav -- this only sets a convenience default landing page
+        // when no role-specific homeRoute is already configured, never
+        // overrides one the way SC's redirect does above.
+        homeRoute = "/admin/pos";
       }
     }
 

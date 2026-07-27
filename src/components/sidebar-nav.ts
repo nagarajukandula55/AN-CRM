@@ -56,6 +56,8 @@ export const NAV_GROUPS: NavGroup[] = [
     ]},
   ]},
   { label: "Sales / POS", items: [
+    // Quick-sale billing screen -- see admin/pos/page.tsx's top comment.
+    { key: "pos",      label: "Point of Sale", route: "/admin/pos",       icon: "ShoppingCart" },
     { key: "orders",   label: "Orders",       route: "/admin/orders",     icon: "ShoppingBag" },
     { key: "sales",    label: "Sales",        route: "/admin/sales",      icon: "TrendingUp" },
     { key: "coupons",  label: "Coupons",      route: "/admin/coupons",    icon: "Hash" },

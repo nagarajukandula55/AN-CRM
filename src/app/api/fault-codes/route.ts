@@ -78,15 +78,19 @@ export async function GET(req: NextRequest) {
       query.deviceCategory = deviceCategory;
     }
     // Vendor self-managed lists: a caller resolved to a specific vendor
-    // (Owner/Manager or any other team member) sees their own private
-    // entries plus every business-wide/global (vendorId unset) entry --
-    // never another vendor's private list. A caller with no resolvable
-    // vendor (business-level staff/admin) is unaffected -- sees everything
-    // the businessId scope above already allows.
+    // (Owner/Manager or any other team member) sees ONLY their own private
+    // entries -- never another vendor's, and never the business-wide/
+    // global (vendorId unset) fallback either, per explicit direction
+    // ("no other vendor should see any of global data apart from one with
+    // god mode access ... everything added and maintained is totally that
+    // particular SC or vendor ... personal only"). A caller with no
+    // resolvable vendor (business-level staff/admin/super-admin -- "god
+    // mode") is unaffected -- sees everything the businessId scope above
+    // already allows, global entries included.
     const ownerOrManager = await resolveOwnerOrManagerVendor(session.user.id).catch(() => null);
     const teamMembership = ownerOrManager || (await resolveVendorTeamMembership(session.user.id).catch(() => null));
-    if (teamMembership) {
-      andClauses.push({ $or: [{ vendorId: (teamMembership as any)._id }, { vendorId: null }, { vendorId: { $exists: false } }] });
+    if (teamMembership && !session.isSuperAdmin) {
+      andClauses.push({ vendorId: (teamMembership as any)._id });
     }
     if (search) {
       andClauses.push({

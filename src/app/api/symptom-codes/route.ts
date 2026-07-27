@@ -67,12 +67,13 @@ export async function GET(req: NextRequest) {
     if (deviceCategory) {
       query.deviceCategory = deviceCategory;
     }
-    // Vendor self-managed lists -- see fault-codes/route.ts's matching
-    // comment for the full rationale.
+    // Vendor self-managed lists, strictly private -- see fault-codes/
+    // route.ts's matching comment for the full rationale. Super admin
+    // ("god mode") is the only account that sees across vendors.
     const ownerOrManager = await resolveOwnerOrManagerVendor(session.user.id).catch(() => null);
     const teamMembership = ownerOrManager || (await resolveVendorTeamMembership(session.user.id).catch(() => null));
-    if (teamMembership) {
-      andClauses.push({ $or: [{ vendorId: (teamMembership as any)._id }, { vendorId: null }, { vendorId: { $exists: false } }] });
+    if (teamMembership && !session.isSuperAdmin) {
+      andClauses.push({ vendorId: (teamMembership as any)._id });
     }
     if (search) {
       andClauses.push({
