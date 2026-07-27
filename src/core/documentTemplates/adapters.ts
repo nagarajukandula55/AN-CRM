@@ -109,7 +109,7 @@ export function jobSheetToRenderData(
 export function serviceRecordToRenderData(
   jobSheet: any,
   company: DocumentRenderData["company"],
-  extra: { technicalConsultant?: string; hours?: string; hotline?: string }
+  extra: { technicalConsultant?: string; ccoName?: string; hours?: string; hotline?: string }
 ): DocumentRenderData {
   const lineItems = (jobSheet.lineItems || []).filter((l: any) => l.description?.trim());
   const materialTotal = lineItems.reduce((s: number, l: any) => s + (l.quantity || 0) * (l.unitPrice || 0), 0);
@@ -148,6 +148,7 @@ export function serviceRecordToRenderData(
     ],
     totals: { subtotal: materialTotal + serviceCharge, tax, grandTotal },
     notes: [
+      extra.ccoName && `Logged By (CCO): ${extra.ccoName}`,
       extra.technicalConsultant && `Technical Consultant: ${extra.technicalConsultant}`,
       extra.hours && `Service Hours: ${extra.hours}`,
       extra.hotline && `Official Hotline: ${extra.hotline}`,

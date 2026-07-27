@@ -86,6 +86,13 @@ export interface ISalesInvoice extends Document {
   businessId?: mongoose.Types.ObjectId;
   warehouseId?: mongoose.Types.ObjectId;
   createdBy?: mongoose.Types.ObjectId;
+  // POS: snapshot of the logged-in Sales Executive's registered account
+  // name at the moment of sale -- per explicit direction ("for POS Sales
+  // Executive name should be there"). Always sourced from the real User
+  // account (session.user.name), never free text -- distinct from SC's
+  // engineer-name textbox, which exists specifically because SC has no
+  // per-person login. Unset for non-POS-originated invoices.
+  salesExecutiveName?: string;
   /** B2B = vendor → business (purchase side); B2C = business → end customer */
   invoiceType?: "B2B" | "B2C" | "STANDARD";
   vendorId?: mongoose.Types.ObjectId;
@@ -171,6 +178,7 @@ const InvoiceSchema = new Schema<ISalesInvoice>(
     // invoice. See core/documentTemplates/resolve.ts.
     warehouseId: { type: Schema.Types.ObjectId, ref: "Warehouse", default: null },
     createdBy: { type: Schema.Types.ObjectId },
+    salesExecutiveName: { type: String, trim: true, default: "" },
     invoiceType: {
       type: String,
       enum: ["B2B", "B2C", "STANDARD"],

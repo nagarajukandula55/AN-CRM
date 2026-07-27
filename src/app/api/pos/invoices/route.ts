@@ -153,6 +153,9 @@ export async function POST(req: NextRequest) {
       invoiceNumber,
       businessId,
       createdBy: new mongoose.Types.ObjectId(session.user.id),
+      // Sales Executive name -- always the logged-in account's registered
+      // name, never free text. See SalesInvoice.ts's field comment.
+      salesExecutiveName: session.user.name || "",
       invoiceType: isB2B ? "B2B" : "B2C",
       sourceOrderId: `POS:${invoiceNumber}`,
       customer: {

@@ -195,6 +195,14 @@ export interface ICrmJobSheet extends Document {
 
   isDeleted: boolean;
   createdBy: Types.ObjectId;
+  // Snapshot of the CCO's name -- copied from the originating CrmCall's
+  // createdByName when this job sheet was converted from a call, or the
+  // creating user's own name for a standalone job sheet. Per explicit
+  // direction ("CCO name should be taken and same should come on Job
+  // sheet"). Stored as plain text for the same reasons as
+  // assignedToName -- survives account changes, no populate needed to
+  // print.
+  ccoName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -300,6 +308,7 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
 
     isDeleted: { type: Boolean, default: false, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    ccoName: { type: String, trim: true, default: "" },
   },
   { timestamps: true }
 );
