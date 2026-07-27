@@ -17,6 +17,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { logAction } from "@/lib/audit/logAction";
+import { resolveOwnerOrManagerVendor, resolveVendorTeamMembership } from "@/core/access/vendorAccess.service";
 
 function permissionErrorResponse(err: any) {
   return NextResponse.json(
@@ -56,8 +57,9 @@ export async function GET(req: NextRequest) {
     await ensureSeeded();
 
     const query: Record<string, unknown> = {};
+    const andClauses: Record<string, unknown>[] = [];
     if (businessId && Types.ObjectId.isValid(businessId)) {
-      query.$or = buildBusinessScopeQuery(businessId, { includeNullFallback: true }).$or;
+      andClauses.push({ $or: buildBusinessScopeQuery(businessId, { includeNullFallback: true }).$or });
     }
     if (isActive !== null) {
       query.isActive = isActive === "true";
@@ -65,15 +67,24 @@ export async function GET(req: NextRequest) {
     if (deviceCategory) {
       query.deviceCategory = deviceCategory;
     }
+    // Vendor self-managed lists -- see fault-codes/route.ts's matching
+    // comment for the full rationale.
+    const ownerOrManager = await resolveOwnerOrManagerVendor(session.user.id).catch(() => null);
+    const teamMembership = ownerOrManager || (await resolveVendorTeamMembership(session.user.id).catch(() => null));
+    if (teamMembership) {
+      andClauses.push({ $or: [{ vendorId: (teamMembership as any)._id }, { vendorId: null }, { vendorId: { $exists: false } }] });
+    }
     if (search) {
-      const searchOr = [
-        { code: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { category: { $regex: search, $options: "i" } },
-      ];
-      query.$and = query.$or ? [{ $or: query.$or }, { $or: searchOr }] : undefined;
-      if (!query.$and) query.$or = searchOr;
-      else delete query.$or;
+      andClauses.push({
+        $or: [
+          { code: { $regex: search, $options: "i" } },
+          { description: { $regex: search, $options: "i" } },
+          { category: { $regex: search, $options: "i" } },
+        ],
+      });
+    }
+    if (andClauses.length > 0) {
+      (query as any).$and = andClauses;
     }
 
     const symptomCodes = await SymptomCode.find(query).sort({ category: 1, code: 1 }).lean();
@@ -109,12 +120,15 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
+    const ownerOrManagerVendor = await resolveOwnerOrManagerVendor(session.user.id).catch(() => null);
+
     const symptomCode = await SymptomCode.create({
       code: code.trim(),
       description: description.trim(),
       category: category?.trim(),
       deviceCategory: deviceCategory || null,
       businessId: businessId && Types.ObjectId.isValid(businessId) ? new Types.ObjectId(businessId) : null,
+      vendorId: ownerOrManagerVendor ? (ownerOrManagerVendor as any)._id : null,
       businessScope: businessScope || "SINGLE",
       businessIds: Array.isArray(businessIds) ? businessIds : [],
       parentId: parentId && Types.ObjectId.isValid(parentId) ? new Types.ObjectId(parentId) : null,

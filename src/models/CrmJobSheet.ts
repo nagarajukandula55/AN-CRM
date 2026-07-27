@@ -50,6 +50,18 @@ export interface ICrmJobSheetLineItem {
   unitPrice: number;
   taxRate: number;
   hsnCode?: string; // set when the line was picked from ServiceCenterBOM
+  // Snapshot of the source ServiceCenterBOM entry's Material Code
+  // (partCode), per the standard line-item field set: "Solution,
+  // Description, Material Code, Qty, Rate, Tax%, Cost". Set alongside
+  // serviceCenterBOMId when a line is picked from the BOM; stays legible
+  // on the printed job sheet even if that BOM entry is later edited/
+  // deactivated.
+  materialCode?: string;
+  // Pre-tax line cost (quantity * unitPrice), stored rather than only
+  // derived client-side so the printed job sheet's "Cost" column and any
+  // reporting on it stay stable even if quantity/unitPrice display
+  // formatting changes later.
+  cost?: number;
   serviceCenterBOMId?: Types.ObjectId; // ref ServiceCenterBOM, if picked from BOM
   // Per-line diagnosis fields, per explicit direction: each item on the
   // repair table gets its own Fault Phenomenon/Symptom/Solution rather than
@@ -138,6 +150,13 @@ export interface ICrmJobSheet extends Document {
   completedAt?: Date;
 
   assignedTo?: Types.ObjectId; // engineer performing the job
+  // Snapshot of the assigned engineer's name -- per explicit direction
+  // ("Also Engineer name while closing the call"), captured at assignment
+  // time (see assign-engineer/route.ts) and again refreshed at close time
+  // so the printed job sheet/invoice always shows a readable engineer
+  // name without needing a populate, and survives that user account
+  // being renamed or deleted later.
+  assignedToName?: string;
   assignedBy?: Types.ObjectId; // CCO who made the assignment
   engineerAssignedAt?: Date;
   status: CrmJobSheetStatus;
@@ -188,6 +207,8 @@ const CrmJobSheetLineItemSchema = new Schema<ICrmJobSheetLineItem>(
     unitPrice: { type: Number, default: 0 },
     taxRate: { type: Number, default: 0 },
     hsnCode: { type: String },
+    materialCode: { type: String, trim: true, default: "" },
+    cost: { type: Number, default: 0 },
     serviceCenterBOMId: { type: Schema.Types.ObjectId, ref: "ServiceCenterBOM" },
     faultCodeId: { type: Schema.Types.ObjectId, ref: "FaultCode" },
     symptomCodeId: { type: Schema.Types.ObjectId, ref: "SymptomCode" },
@@ -246,6 +267,7 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
     completedAt: { type: Date },
 
     assignedTo: { type: Schema.Types.ObjectId, ref: "User" },
+    assignedToName: { type: String, trim: true, default: "" },
     assignedBy: { type: Schema.Types.ObjectId, ref: "User" },
     engineerAssignedAt: { type: Date },
     status: {
