@@ -59,6 +59,7 @@ const PUBLIC_EXACT = new Set([
   "/",
   "/login",
   "/register",
+  "/pricing",
   "/forgot-password",
   "/reset-password",
   "/favicon.ico",

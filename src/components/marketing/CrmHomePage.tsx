@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import {
   PhoneCall, ClipboardList, ShoppingCart, ShieldCheck, Zap, BarChart3,
-  ArrowRight, CheckCircle2, Building2, Users, Sparkles,
+  ArrowRight, CheckCircle2, Building2, Users, Sparkles, Smartphone, Tablet,
 } from 'lucide-react'
 
 /**
@@ -61,6 +61,9 @@ export default function CrmHomePage() {
             AN-CRM
           </div>
           <div className="flex items-center gap-3">
+            <Link href="/pricing" className="text-sm text-ink-2 hover:text-ink transition-colors hidden sm:block">
+              Pricing
+            </Link>
             <Link href="/track-workorder" className="text-sm text-ink-2 hover:text-ink transition-colors hidden sm:block">
               Track a Repair
             </Link>
@@ -169,6 +172,40 @@ export default function CrmHomePage() {
             >
               <CheckCircle2 className="h-4 w-4" /> Book a Service
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* App downloads -- placeholders, per explicit direction ("add
+          placeholders for these applications downloads in home page").
+          Mobile/tablet apps themselves are a separate, not-yet-started
+          build (see PROGRESS.md) -- these links are inert until then. */}
+      <section className="max-w-6xl mx-auto px-6 pb-16">
+        <div className="text-center mb-6">
+          <div className="eyebrow">Coming soon</div>
+          <h3 className="h-section mt-1">Take AN-CRM anywhere</h3>
+        </div>
+        <div className="flex items-center justify-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3 rounded-control border border-border bg-surface px-5 py-3 opacity-60 cursor-not-allowed">
+            <Smartphone className="h-6 w-6 text-ink-3" />
+            <div>
+              <div className="text-[10px] text-ink-3">GET IT ON</div>
+              <div className="text-sm font-medium">Google Play</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-control border border-border bg-surface px-5 py-3 opacity-60 cursor-not-allowed">
+            <Smartphone className="h-6 w-6 text-ink-3" />
+            <div>
+              <div className="text-[10px] text-ink-3">DOWNLOAD ON THE</div>
+              <div className="text-sm font-medium">App Store</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-control border border-border bg-surface px-5 py-3 opacity-60 cursor-not-allowed">
+            <Tablet className="h-6 w-6 text-ink-3" />
+            <div>
+              <div className="text-[10px] text-ink-3">OPTIMIZED FOR</div>
+              <div className="text-sm font-medium">Tablet</div>
+            </div>
           </div>
         </div>
       </section>
