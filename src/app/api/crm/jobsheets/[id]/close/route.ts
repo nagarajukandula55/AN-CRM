@@ -51,7 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const body = await req.json().catch(() => ({}));
-    const { supplyType = "INTRASTATE", placeOfSupply, discountAmount = 0, workPerformed, materialsUsed } = body;
+    const { supplyType = "INTRASTATE", placeOfSupply, discountAmount = 0, workPerformed, materialsUsed, engineerName } = body;
 
     await connectDB();
 
@@ -264,6 +264,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     jobSheet.invoiceNumber = invoice.invoiceNumber;
     if (workPerformed !== undefined) jobSheet.workPerformed = workPerformed;
     if (materialsUsed !== undefined) jobSheet.materialsUsed = materialsUsed;
+    // SC's single-login flow has no formal "assign engineer" step (that's
+    // Brand-only -- see assign-engineer/route.ts) -- so the engineer's name
+    // is captured as free text right here at close/submit time instead.
+    // Only fills in when not already set, so it never clobbers a name
+    // already captured via the Brand assign-engineer flow.
+    if (engineerName?.trim() && !jobSheet.assignedToName) {
+      jobSheet.assignedToName = engineerName.trim();
+    }
     await jobSheet.save();
 
     // Deduct stock now that the invoice is confirmed created -- every

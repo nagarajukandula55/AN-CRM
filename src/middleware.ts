@@ -147,6 +147,10 @@ const PUBLIC_PREFIXES = [
   "/api/newsletter/subscribe",
   "/api/appointment-requests",   // public appointment-request submission
   "/appointment-request",        // public appointment-request form page
+  // Public workorder-status lookup (by jobSheetNumber or phone) -- see
+  // api/public/workorder-status/route.ts's own comment.
+  "/api/public/workorder-status",
+  "/track-workorder",
   // Native storefront: public blog listing (read-only; create/delete stay
   // behind the admin UI, which isn't reachable without a session anyway).
   // The public contact-form submission endpoint ("/api/contact") is listed

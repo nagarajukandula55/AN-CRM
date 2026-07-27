@@ -72,6 +72,35 @@ export interface IVendorProfile extends Document {
    */
   requestNumber?: string;
   vendorId:     string;
+  /**
+   * Sub-vendor hierarchy: a vendor can create sub-vendors under itself, per
+   * explicit direction ("For every vendor they can create sub vendors
+   * under them ... AN group should consider them as vendors only and
+   * number must be assigned accordingly"). A sub-vendor IS a full
+   * VendorProfile in its own right -- same model, same global vendorId
+   * numbering sequence (generateGlobalDocumentNumber("VENDOR", ...), see
+   * api/auth/register/vendor/route.ts) -- distinguished only by this
+   * optional self-reference to its parent. Unset (the default) means a
+   * top-level/main vendor. Self-referencing rather than a separate
+   * SubVendor model, same pattern as ProductCategory/FaultCode's parentId.
+   */
+  parentVendorId?: mongoose.Types.ObjectId;
+  /**
+   * Placeholder billing/charge fields for sub-vendor creation -- per
+   * explicit direction ("for every sub vendor they add we need to charge
+   * them so, either they have to allow them to have another vendor or
+   * they can have sub vendor"). Not wired to any real payment/billing
+   * flow yet -- arranged here so the data model doesn't need another
+   * migration once pricing is decided; `subVendorPlan` gates whether this
+   * vendor is currently allowed to create sub-vendors at all.
+   */
+  subVendorBilling?: {
+    subVendorPlan?: "NONE" | "ALLOWED" | "BLOCKED";
+    subVendorCount?: number;
+    subVendorChargePerAdd?: number;
+    subVendorChargeCurrency?: string;
+    lastChargedAt?: Date;
+  };
   companyName:  string;
   contactPerson?: string;
   email?:       string;
@@ -215,6 +244,14 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     // until approved.
     businessId:   { type: Schema.Types.ObjectId, ref: 'Business', default: null },
     vendorId:     { type: String, unique: true },
+    parentVendorId: { type: Schema.Types.ObjectId, ref: 'VendorProfile', default: null, index: true },
+    subVendorBilling: {
+      subVendorPlan: { type: String, enum: ["NONE", "ALLOWED", "BLOCKED"], default: "NONE" },
+      subVendorCount: { type: Number, default: 0 },
+      subVendorChargePerAdd: { type: Number, default: 0 },
+      subVendorChargeCurrency: { type: String, default: "INR" },
+      lastChargedAt: { type: Date, default: null },
+    },
     requestNumber: { type: String, unique: true, sparse: true },
     companyName:  { type: String, required: true },
     contactPerson: { type: String },
@@ -325,6 +362,8 @@ VendorProfileSchema.index({ businessId: 1, email: 1 });
 VendorProfileSchema.index({ businessId: 1, status: 1 });
 // Hot path for the vendor list page (filter by business, newest first)
 VendorProfileSchema.index({ businessId: 1, isDeleted: 1, createdAt: -1 });
+// Sub-vendor lookup: "which sub-vendors does this vendor have"
+VendorProfileSchema.index({ parentVendorId: 1, isDeleted: 1 });
 
 const VendorProfile: Model<IVendorProfile> =
   mongoose.models.VendorProfile ||
