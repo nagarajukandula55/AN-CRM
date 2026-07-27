@@ -691,6 +691,16 @@ const BusinessSchema = new mongoose.Schema(
       default: 0,
     },
 
+    // UPI VPA (Virtual Payment Address, e.g. "business@okhdfcbank") used
+    // to generate a scannable payment QR code on printed invoices -- see
+    // core/payments/upiQr.ts. Blank (the default) means no QR prints;
+    // never a hardcoded/shared VPA, always this business's own.
+    upiId: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     // Shown on the printed Intake Receipt/Workorder in place of the
     // device brand's own logo -- per explicit direction, that document
     // should never show the device manufacturer's branding or name.

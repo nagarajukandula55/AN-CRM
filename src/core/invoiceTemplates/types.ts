@@ -85,6 +85,10 @@ export interface InvoiceRenderData {
     showSignature?: boolean;
     signatureImageUrl?: string;
     signatoryLabel?: string;
+    // UPI payment QR code (data: URL, PNG) -- generated from the issuing
+    // Business's upiId (see core/payments/upiQr.ts), only when that
+    // business has one configured. Unset means no QR renders at all.
+    paymentQrUrl?: string;
   };
 }
 

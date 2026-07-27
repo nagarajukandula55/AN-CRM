@@ -6,6 +6,7 @@ import Business from "@/models/Business";
 import { connectDB } from "@/lib/mongodb";
 import { getDefaultTemplate } from "@/core/invoiceTemplates/service";
 import { getStateCode } from "@/core/gst/stateCodes";
+import { generateUpiQrDataUrl } from "@/core/payments/upiQr";
 
 export const runtime = "nodejs";
 
@@ -94,6 +95,18 @@ export async function GET(
       ? await getDefaultTemplate(String(invoice.businessId)).catch(() => null)
       : null;
 
+    // UPI payment QR -- only generated when this business has a VPA
+    // configured (Settings > Operations). See core/payments/upiQr.ts.
+    const upiId = (business as any)?.upiId?.trim();
+    const paymentQrUrl = upiId
+      ? await generateUpiQrDataUrl({
+          vpa: upiId,
+          payeeName: (business as any)?.legalName || (business as any)?.name || "Business",
+          amount: invoice.grandTotal || 0,
+          invoiceNumber: invoice.invoiceNumber,
+        }).catch(() => undefined)
+      : undefined;
+
     return NextResponse.json({
       success: true,
 
@@ -176,15 +189,16 @@ export async function GET(
       signatureUrl: (business as any)?.documentSignatureUrl || "",
 
       templateLayoutKey: savedTemplate?.layoutKey || undefined,
-      templateConfig: savedTemplate
+      templateConfig: savedTemplate || paymentQrUrl
         ? {
-            accentColor: savedTemplate.branding?.accentColor,
-            footerNote: savedTemplate.text?.footerNote,
-            declaration: savedTemplate.text?.declaration,
-            termsAndConditions: savedTemplate.text?.termsAndConditions,
-            showSignature: savedTemplate.text?.showSignature,
-            signatureImageUrl: savedTemplate.text?.signatureImageUrl,
-            signatoryLabel: savedTemplate.text?.signatoryLabel,
+            accentColor: savedTemplate?.branding?.accentColor,
+            footerNote: savedTemplate?.text?.footerNote,
+            declaration: savedTemplate?.text?.declaration,
+            termsAndConditions: savedTemplate?.text?.termsAndConditions,
+            showSignature: savedTemplate?.text?.showSignature,
+            signatureImageUrl: savedTemplate?.text?.signatureImageUrl,
+            signatoryLabel: savedTemplate?.text?.signatoryLabel,
+            paymentQrUrl,
           }
         : undefined,
 
