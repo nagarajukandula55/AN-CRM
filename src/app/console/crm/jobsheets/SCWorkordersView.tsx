@@ -17,6 +17,10 @@ import { STATUSES, STATUS_TONE, OPEN_STATUSES, ageingDays, fmtDate, type JobShee
  * running this: whoever's logged in) -- ageing is the thing that matters
  * instead, since a workorder sitting past day 7 with nobody looking at it
  * is the real risk here. Distinct from BrandWorkordersView on purpose.
+ *
+ * "New Job Sheet" and every row both go to /console/crm/jobsheets/sc[...] --
+ * NOT a modal, per explicit direction. That route is one single screen
+ * covering intake through closure (see its own top comment).
  */
 export function SCWorkordersView() {
   const router = useRouter()
@@ -41,7 +45,7 @@ export function SCWorkordersView() {
         actions={
           <>
             <Button variant="secondary" size="sm" onClick={() => router.push('/console/crm')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
-            <Button onClick={() => router.push('/console/crm/jobsheets/new')} icon={<Plus className="w-4 h-4" />}>New Job Sheet</Button>
+            <Button onClick={() => router.push('/console/crm/jobsheets/sc')} icon={<Plus className="w-4 h-4" />}>New Job Sheet</Button>
           </>
         }
       />
@@ -63,14 +67,14 @@ export function SCWorkordersView() {
       </div>
 
       <div className={`rounded-card border border-border bg-surface overflow-hidden overflow-x-auto transition-opacity ${loading ? 'opacity-60' : 'opacity-100'}`}>
-        <table className="w-full text-sm min-w-[760px]">
+        <table className="w-full text-base min-w-[760px]">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left px-6 py-3 text-ink-3 font-medium">Workorder #</th>
-              <th className="text-left px-6 py-3 text-ink-3 font-medium">Customer</th>
-              <th className="text-left px-6 py-3 text-ink-3 font-medium">Device / Issue</th>
-              <th className="text-center px-6 py-3 text-ink-3 font-medium">Ageing</th>
-              <th className="text-center px-6 py-3 text-ink-3 font-medium">Status</th>
+              <th className="text-left px-6 py-3 text-sm text-ink-3 font-medium">Workorder #</th>
+              <th className="text-left px-6 py-3 text-sm text-ink-3 font-medium">Customer</th>
+              <th className="text-left px-6 py-3 text-sm text-ink-3 font-medium">Device / Issue</th>
+              <th className="text-center px-6 py-3 text-sm text-ink-3 font-medium">Ageing</th>
+              <th className="text-center px-6 py-3 text-sm text-ink-3 font-medium">Status</th>
               <th className="px-6 py-3" />
             </tr>
           </thead>
@@ -82,19 +86,19 @@ export function SCWorkordersView() {
                 const days = ageingDays(js.createdAt)
                 const isOverdue = OPEN_STATUSES.has(js.status) && days >= 7
                 return (
-                  <tr key={js._id} className="hover:bg-surface-2 transition-colors cursor-pointer" onClick={() => router.push(`/console/crm/jobsheets/${js._id}`)}>
-                    <td className="px-6 py-3 tabular text-xs text-ink-3">{js.jobSheetNumber}</td>
-                    <td className="px-6 py-3 font-medium text-ink">{js.customerName}</td>
-                    <td className="px-6 py-3 text-ink-3 text-xs">
+                  <tr key={js._id} className="hover:bg-surface-2 transition-colors cursor-pointer" onClick={() => router.push(`/console/crm/jobsheets/sc/${js._id}`)}>
+                    <td className="px-6 py-4 tabular text-sm text-ink-3">{js.jobSheetNumber}</td>
+                    <td className="px-6 py-4 font-medium text-ink">{js.customerName}</td>
+                    <td className="px-6 py-4 text-ink-2 text-sm">
                       {[js.product, js.deviceModel].filter(Boolean).join(' · ') || '—'}{js.title ? ` — ${js.title}` : ''}
                     </td>
-                    <td className="px-6 py-3 text-center">
+                    <td className="px-6 py-4 text-center">
                       {OPEN_STATUSES.has(js.status) ? <Badge tone={isOverdue ? 'danger' : 'neutral'}>{days}d</Badge> : <span className="text-ink-3 text-xs">—</span>}
                     </td>
-                    <td className="px-6 py-3 text-center">
+                    <td className="px-6 py-4 text-center">
                       <Badge tone={STATUS_TONE[js.status] ?? 'neutral'}>{js.status.replace(/_/g, ' ')}</Badge>
                     </td>
-                    <td className="px-6 py-3 text-right">
+                    <td className="px-6 py-4 text-right">
                       <button
                         onClick={(e) => { e.stopPropagation(); router.push(`/print/jobsheets/${js._id}`) }}
                         className="text-ink-3 hover:text-ink"
