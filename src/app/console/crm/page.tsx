@@ -5,7 +5,6 @@ import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  ArrowLeft,
   Loader2,
   Plus,
   X,
@@ -21,6 +20,13 @@ import {
   IndianRupee,
   Wallet,
 } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { Field, Input, Textarea } from '@/components/ui/Input'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { LoadingPanel } from '@/components/ui/Spinner'
 
 interface Appointment {
   _id: string
@@ -57,12 +63,12 @@ interface Lead {
   createdAt: string
 }
 
-const statusColors: Record<string, string> = {
-  NEW: 'bg-blue-500/20 text-blue-400',
-  CONTACTED: 'bg-yellow-500/20 text-yellow-400',
-  QUALIFIED: 'bg-purple-500/20 text-purple-400',
-  WON: 'bg-green-500/20 text-green-400',
-  LOST: 'bg-red-500/20 text-red-400',
+const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+  NEW: 'info',
+  CONTACTED: 'warning',
+  QUALIFIED: 'info',
+  WON: 'success',
+  LOST: 'danger',
 }
 
 const STATUSES = ['ALL', 'NEW', 'CONTACTED', 'QUALIFIED', 'WON', 'LOST']
@@ -184,319 +190,275 @@ export default function CRMPage() {
   const filtered = leads.filter((l) => statusFilter === 'ALL' || l.status === statusFilter)
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
-      </div>
-    )
+    return <LoadingPanel label="Loading CRM overview…" />
   }
 
   if (gateChecked && !crmEnabled) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-3 text-center px-6">
-        <AlertCircle className="w-10 h-10 text-gray-300" />
-        <h2 className="text-lg font-medium text-gray-900">CRM isn't enabled for this business</h2>
-        <p className="text-sm text-gray-500 max-w-sm">Ask a Super Admin to enable the CRM module for this business from Businesses &gt; Modules.</p>
-        <button onClick={() => router.push('/console')} className="mt-2 px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition">
-          Go to Dashboard
-        </button>
+      <div className="min-h-screen bg-bg flex flex-col items-center justify-center gap-3 text-center px-6">
+        <AlertCircle className="w-10 h-10 text-ink-3" />
+        <h2 className="h-section">CRM isn't enabled for this business</h2>
+        <p className="text-sm text-ink-2 max-w-sm">Ask a Super Admin to enable the CRM module for this business from Businesses &gt; Modules.</p>
+        <Button variant="secondary" className="mt-2" onClick={() => router.push('/console')}>Go to Dashboard</Button>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
-      <div className="px-6 py-10">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => router.push('/console')}
-            className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-100 transition"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-semibold">CRM Overview</h1>
-            <p className="text-sm text-gray-400">Appointments, workorders, revenue and analytics in one place</p>
-          </div>
-          <button
-            onClick={() => setShowForm(true)}
-            className="ml-auto flex items-center gap-2 bg-gray-900 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-gray-800 transition"
-          >
-            <Plus className="w-4 h-4" /> New Lead
-          </button>
-        </div>
+    <div className="min-h-screen bg-bg text-ink p-6">
+      <PageHeader
+        title="CRM Overview"
+        description="Appointments, workorders, revenue and analytics in one place"
+        actions={<Button onClick={() => setShowForm(true)} icon={<Plus className="w-4 h-4" />}>New Lead</Button>}
+      />
 
-        {/* Real dashboard KPIs, sourced from Appointments + Workorders (not
-            the legacy leads list below), only shown once the module-gate
-            check confirms CRM is actually enabled for this business. */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {[
-            { icon: PhoneCall, label: 'Open Appointments', value: String(openAppointments) },
-            { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
-            { icon: AlertCircle, label: 'Overdue (7d+)', value: String(overdueWorkorders) },
-            { icon: CheckCircle2, label: 'Closed This Month', value: String(closedThisMonth) },
-          ].map(({ icon: Icon, label, value }) => (
-            <div key={label} className="rounded-2xl border border-gray-200 bg-white p-6">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-gray-500 text-sm">{label}</span>
-                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <Icon className="w-4 h-4 text-gray-700" />
-                </div>
+      {/* Real dashboard KPIs, sourced from Appointments + Workorders (not
+          the legacy leads list below), only shown once the module-gate
+          check confirms CRM is actually enabled for this business. */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {[
+          { icon: PhoneCall, label: 'Open Appointments', value: String(openAppointments) },
+          { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
+          { icon: AlertCircle, label: 'Overdue (7d+)', value: String(overdueWorkorders) },
+          { icon: CheckCircle2, label: 'Closed This Month', value: String(closedThisMonth) },
+        ].map(({ icon: Icon, label, value }) => (
+          <Card key={label} className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-ink-3 text-sm">{label}</span>
+              <div className="w-8 h-8 rounded-control bg-surface-2 flex items-center justify-center">
+                <Icon className="w-4 h-4 text-ink-2" />
               </div>
-              <p className="text-2xl font-semibold text-gray-900">{value}</p>
             </div>
-          ))}
-        </div>
+            <p className="text-2xl font-semibold text-ink tabular">{value}</p>
+          </Card>
+        ))}
+      </div>
 
-        {/* Revenue, sourced from SalesInvoices generated by CRM job-sheet
-            closures (see /api/crm/revenue) -- the billing figures live
-            alongside the operational ones so this page doubles as the
-            official CRM-module dashboard. */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          {[
-            { icon: IndianRupee, label: 'Revenue This Month', value: fmtCurrency(revenue.revenueThisMonth) },
-            { icon: TrendingUp, label: 'Total Revenue', value: fmtCurrency(revenue.totalRevenue) },
-            { icon: Wallet, label: 'Outstanding', value: fmtCurrency(revenue.outstanding) },
-          ].map(({ icon: Icon, label, value }) => (
-            <div key={label} className="rounded-2xl border border-gray-200 bg-white p-6">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-gray-500 text-sm">{label}</span>
-                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <Icon className="w-4 h-4 text-gray-700" />
-                </div>
+      {/* Revenue, sourced from SalesInvoices generated by CRM job-sheet
+          closures (see /api/crm/revenue) -- the billing figures live
+          alongside the operational ones so this page doubles as the
+          official CRM-module dashboard. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        {[
+          { icon: IndianRupee, label: 'Revenue This Month', value: fmtCurrency(revenue.revenueThisMonth) },
+          { icon: TrendingUp, label: 'Total Revenue', value: fmtCurrency(revenue.totalRevenue) },
+          { icon: Wallet, label: 'Outstanding', value: fmtCurrency(revenue.outstanding) },
+        ].map(({ icon: Icon, label, value }) => (
+          <Card key={label} className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-ink-3 text-sm">{label}</span>
+              <div className="w-8 h-8 rounded-control bg-surface-2 flex items-center justify-center">
+                <Icon className="w-4 h-4 text-ink-2" />
               </div>
-              <p className="text-2xl font-semibold text-gray-900">{value}</p>
             </div>
-          ))}
-        </div>
+            <p className="text-2xl font-semibold text-ink tabular">{value}</p>
+          </Card>
+        ))}
+      </div>
 
-        {/* Lightweight analytics -- status breakdown bars for appointments
-            and workorders, computed client-side from the same data already
-            fetched above, no chart library needed. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          {[
-            { title: 'Appointments by Status', data: appointmentStatusBreakdown, total: appointments.length },
-            { title: 'Workorders by Status', data: workorderStatusBreakdown, total: workorders.length },
-          ].map(({ title, data, total }) => (
-            <div key={title} className="rounded-2xl border border-gray-200 bg-white p-6">
-              <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400 mb-4">{title}</p>
-              {Object.keys(data).length === 0 ? (
-                <p className="text-sm text-gray-400">No data yet</p>
-              ) : (
-                <div className="space-y-3">
-                  {Object.entries(data).map(([status, count]) => (
-                    <div key={status}>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-gray-600">{status}</span>
-                        <span className="text-gray-400">{count}</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                        <div
-                          className="h-full bg-gray-900 rounded-full"
-                          style={{ width: `${total ? Math.round((count / total) * 100) : 0}%` }}
-                        />
-                      </div>
+      {/* Lightweight analytics -- status breakdown bars for appointments
+          and workorders, computed client-side from the same data already
+          fetched above, no chart library needed. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        {[
+          { title: 'Appointments by Status', data: appointmentStatusBreakdown, total: appointments.length },
+          { title: 'Workorders by Status', data: workorderStatusBreakdown, total: workorders.length },
+        ].map(({ title, data, total }) => (
+          <Card key={title} className="p-6">
+            <p className="eyebrow mb-4">{title}</p>
+            {Object.keys(data).length === 0 ? (
+              <p className="text-sm text-ink-3">No data yet</p>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(data).map(([status, count]) => (
+                  <div key={status}>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-ink-2">{status}</span>
+                      <span className="text-ink-3 tabular">{count}</span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {recentActivity.length > 0 && (
-          <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden mb-8">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400">Recent Activity</p>
-            </div>
-            <div className="divide-y divide-gray-100">
-              {recentActivity.map(item => (
-                <button
-                  key={`${item.kind}-${item.id}`}
-                  onClick={() => router.push(item.href)}
-                  className="w-full flex items-center justify-between px-6 py-3 text-left hover:bg-gray-50 transition"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${item.kind === 'Appointment' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                      {item.kind}
-                    </span>
-                    <span className="text-sm font-medium text-gray-900">{item.title}</span>
-                    <span className="text-sm text-gray-400">{item.sub}</span>
+                    <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                      <div
+                        className="h-full bg-accent rounded-full"
+                        style={{ width: `${total ? Math.round((count / total) * 100) : 0}%` }}
+                      />
+                    </div>
                   </div>
-                  <span className="text-xs text-gray-400">{fmtDate(item.date)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+                ))}
+              </div>
+            )}
+          </Card>
+        ))}
+      </div>
 
-        {/* Full call-entry -> job sheet -> invoice -> closure lifecycle
-            lives under these two sections — the lead list above is kept for
-            backward compatibility (existing /api/crm/leads data) but new
-            work should flow through Appointments -> Workorders. */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <Link
-            href="/console/crm/appointments"
-            className="rounded-2xl border border-gray-200 bg-white p-6 hover:shadow-sm hover:border-gray-300 transition group flex items-center gap-4"
-          >
-            <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+      {recentActivity.length > 0 && (
+        <Card className="overflow-hidden mb-8">
+          <div className="px-6 py-4 border-b border-border">
+            <p className="eyebrow">Recent Activity</p>
+          </div>
+          <div className="divide-y divide-border">
+            {recentActivity.map(item => (
+              <button
+                key={`${item.kind}-${item.id}`}
+                onClick={() => router.push(item.href)}
+                className="w-full flex items-center justify-between px-6 py-3 text-left hover:bg-surface-2 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <Badge tone={item.kind === 'Appointment' ? 'info' : 'success'}>{item.kind}</Badge>
+                  <span className="text-sm font-medium text-ink">{item.title}</span>
+                  <span className="text-sm text-ink-3">{item.sub}</span>
+                </div>
+                <span className="text-xs text-ink-3">{fmtDate(item.date)}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Full call-entry -> job sheet -> invoice -> closure lifecycle
+          lives under these two sections — the lead list above is kept for
+          backward compatibility (existing /api/crm/leads data) but new
+          work should flow through Appointments -> Workorders. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <Link href="/console/crm/appointments">
+          <Card className="p-6 hover:shadow-card-lg hover:border-border-strong transition group flex items-center gap-4">
+            <div className="w-11 h-11 rounded-control bg-warning-soft text-warning flex items-center justify-center">
               <PhoneCall className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-gray-900">Appointment Requests</h3>
-              <p className="text-sm text-gray-500">Public website bookings, pincode routing &amp; vendor assignment</p>
+              <h3 className="font-semibold text-ink">Appointment Requests</h3>
+              <p className="text-sm text-ink-3">Public website bookings, pincode routing &amp; vendor assignment</p>
             </div>
-            <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition" />
-          </Link>
-          <Link
-            href="/console/crm/calls"
-            className="rounded-2xl border border-gray-200 bg-white p-6 hover:shadow-sm hover:border-gray-300 transition group flex items-center gap-4"
-          >
-            <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <ArrowRight className="w-4 h-4 text-ink-3 group-hover:text-ink-2 transition" />
+          </Card>
+        </Link>
+        <Link href="/console/crm/calls">
+          <Card className="p-6 hover:shadow-card-lg hover:border-border-strong transition group flex items-center gap-4">
+            <div className="w-11 h-11 rounded-control bg-info-soft text-info flex items-center justify-center">
               <PhoneCall className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-gray-900">Appointments</h3>
-              <p className="text-sm text-gray-500">Appointment entry, disposition, and follow-ups</p>
+              <h3 className="font-semibold text-ink">Appointments</h3>
+              <p className="text-sm text-ink-3">Appointment entry, disposition, and follow-ups</p>
             </div>
-            <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition" />
-          </Link>
-          <Link
-            href="/console/crm/jobsheets"
-            className="rounded-2xl border border-gray-200 bg-white p-6 hover:shadow-sm hover:border-gray-300 transition group flex items-center gap-4"
-          >
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <ArrowRight className="w-4 h-4 text-ink-3 group-hover:text-ink-2 transition" />
+          </Card>
+        </Link>
+        <Link href="/console/crm/jobsheets">
+          <Card className="p-6 hover:shadow-card-lg hover:border-border-strong transition group flex items-center gap-4">
+            <div className="w-11 h-11 rounded-control bg-success-soft text-success flex items-center justify-center">
               <ClipboardList className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-gray-900">Workorders</h3>
-              <p className="text-sm text-gray-500">Scheduled work through invoicing</p>
+              <h3 className="font-semibold text-ink">Workorders</h3>
+              <p className="text-sm text-ink-3">Scheduled work through invoicing</p>
             </div>
-            <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition" />
-          </Link>
+            <ArrowRight className="w-4 h-4 text-ink-3 group-hover:text-ink-2 transition" />
+          </Card>
+        </Link>
+      </div>
+
+      {error && (
+        <div className="mb-6 text-sm text-danger bg-danger-soft border border-danger/20 rounded-control px-4 py-3">
+          {error}
         </div>
+      )}
 
-        {error && (
-          <div className="mb-6 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
-            {error}
-          </div>
-        )}
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[
-            { icon: Users, label: 'Total Leads', value: String(total), filterValue: null },
-            { icon: TrendingUp, label: 'Won', value: String(won), filterValue: 'WON' },
-            { icon: TrendingDown, label: 'Lost', value: String(lost), filterValue: 'LOST' },
-            { icon: BarChart3, label: 'Conversion Rate', value: `${conversionRate}%`, filterValue: null },
-          ].map(({ icon: Icon, label, value, filterValue }) => {
-            const isActive = filterValue !== null && statusFilter === filterValue;
-            return (
-              <button
-                key={label}
-                type="button"
-                disabled={filterValue === null}
-                onClick={() =>
-                  filterValue &&
-                  setStatusFilter(statusFilter === filterValue ? 'ALL' : filterValue)
-                }
-                className={`text-left rounded-2xl border bg-white p-6 transition-colors ${
-                  filterValue === null ? 'cursor-default' : ''
-                } ${
-                  isActive
-                    ? 'border-gray-900 ring-2 ring-gray-900'
-                    : 'border-gray-200 hover:border-gray-400'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-gray-500 text-sm">{label}</span>
-                  <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                    <Icon className="w-4 h-4 text-gray-700" />
-                  </div>
-                </div>
-                <p className="text-2xl font-semibold text-gray-900">{value}</p>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Status Filter */}
-        <div className="flex gap-1 flex-wrap mb-6">
-          {STATUSES.map((s) => (
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {[
+          { icon: Users, label: 'Total Leads', value: String(total), filterValue: null },
+          { icon: TrendingUp, label: 'Won', value: String(won), filterValue: 'WON' },
+          { icon: TrendingDown, label: 'Lost', value: String(lost), filterValue: 'LOST' },
+          { icon: BarChart3, label: 'Conversion Rate', value: `${conversionRate}%`, filterValue: null },
+        ].map(({ icon: Icon, label, value, filterValue }) => {
+          const isActive = filterValue !== null && statusFilter === filterValue;
+          return (
             <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                statusFilter === s
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-white text-gray-500 hover:text-gray-900 border border-gray-200'
+              key={label}
+              type="button"
+              disabled={filterValue === null}
+              onClick={() =>
+                filterValue &&
+                setStatusFilter(statusFilter === filterValue ? 'ALL' : filterValue)
+              }
+              className={`text-left rounded-card border bg-surface p-6 transition-colors ${
+                filterValue === null ? 'cursor-default' : ''
+              } ${
+                isActive ? 'border-accent ring-2 ring-accent/30' : 'border-border hover:border-border-strong'
               }`}
             >
-              {s}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-ink-3 text-sm">{label}</span>
+                <div className="w-8 h-8 rounded-control bg-surface-2 flex items-center justify-center">
+                  <Icon className="w-4 h-4 text-ink-2" />
+                </div>
+              </div>
+              <p className="text-2xl font-semibold text-ink tabular">{value}</p>
             </button>
-          ))}
-        </div>
-
-        {/* Leads Table */}
-        <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left px-6 py-3 text-gray-400 font-medium">Name</th>
-                <th className="text-left px-6 py-3 text-gray-400 font-medium">Contact</th>
-                <th className="text-left px-6 py-3 text-gray-400 font-medium">Source</th>
-                <th className="text-center px-6 py-3 text-gray-400 font-medium">Status</th>
-                <th className="text-left px-6 py-3 text-gray-400 font-medium">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-gray-400">
-                    No leads found
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((lead) => (
-                  <tr key={lead._id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-3 font-medium text-gray-900">{lead.name}</td>
-                    <td className="px-6 py-3 text-gray-500">
-                      <p>{lead.email}</p>
-                      {lead.phone && <p className="text-gray-400 text-xs">{lead.phone}</p>}
-                    </td>
-                    <td className="px-6 py-3 text-gray-500">{lead.source ?? '—'}</td>
-                    <td className="px-6 py-3 text-center">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[lead.status] ?? 'bg-gray-100 text-gray-500'}`}>
-                        {lead.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-gray-400">{fmtDate(lead.createdAt)}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+          );
+        })}
       </div>
+
+      {/* Status Filter */}
+      <div className="flex gap-1 flex-wrap mb-6">
+        {STATUSES.map((s) => (
+          <Button key={s} variant={statusFilter === s ? 'primary' : 'secondary'} size="sm" onClick={() => setStatusFilter(s)}>
+            {s}
+          </Button>
+        ))}
+      </div>
+
+      {/* Leads Table */}
+      <Card className="overflow-hidden overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left px-6 py-3 text-ink-3 font-medium">Name</th>
+              <th className="text-left px-6 py-3 text-ink-3 font-medium">Contact</th>
+              <th className="text-left px-6 py-3 text-ink-3 font-medium">Source</th>
+              <th className="text-center px-6 py-3 text-ink-3 font-medium">Status</th>
+              <th className="text-left px-6 py-3 text-ink-3 font-medium">Date</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {filtered.length === 0 ? (
+              <tr><td colSpan={5}><EmptyState kind="empty" title="No leads found" /></td></tr>
+            ) : (
+              filtered.map((lead) => (
+                <tr key={lead._id} className="hover:bg-surface-2 transition">
+                  <td className="px-6 py-3 font-medium text-ink">{lead.name}</td>
+                  <td className="px-6 py-3 text-ink-2">
+                    <p>{lead.email}</p>
+                    {lead.phone && <p className="text-ink-3 text-xs">{lead.phone}</p>}
+                  </td>
+                  <td className="px-6 py-3 text-ink-2">{lead.source ?? '—'}</td>
+                  <td className="px-6 py-3 text-center">
+                    <Badge tone={STATUS_TONE[lead.status] ?? 'neutral'}>{lead.status}</Badge>
+                  </td>
+                  <td className="px-6 py-3 text-ink-3">{fmtDate(lead.createdAt)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </Card>
 
       {/* Slide-over: New Lead */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="flex-1 bg-gray-50/60 backdrop-blur-sm" onClick={() => setShowForm(false)} />
-          <div className="relative w-full max-w-3xl max-h-[90vh] bg-gray-50 border border-gray-200 rounded-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200">
-              <h2 className="font-semibold text-gray-900">New Lead</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="relative w-full max-w-3xl max-h-[90vh] bg-surface border border-border rounded-card flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+              <h2 className="h-section">New Lead</h2>
               <button
                 onClick={() => setShowForm(false)}
-                className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100"
+                className="w-8 h-8 rounded-control bg-surface-2 border border-border flex items-center justify-center hover:bg-surface-3"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
               {formError && (
-                <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+                <div className="text-sm text-danger bg-danger-soft border border-danger/20 rounded-control px-4 py-3">
                   {formError}
                 </div>
               )}
@@ -506,43 +468,35 @@ export default function CRMPage() {
                 { field: 'phone', label: 'Phone', required: false, type: 'tel' },
                 { field: 'source', label: 'Source', required: false, type: 'text' },
               ] as const).map(({ field, label, required, type }) => (
-                <div key={field}>
-                  <label className="block text-xs text-gray-500 mb-1.5">{label}</label>
-                  <input
+                <Field key={field} label={label}>
+                  <Input
                     type={type}
                     required={required}
                     value={form[field]}
                     onChange={(e) => setForm((p) => ({ ...p, [field]: e.target.value }))}
-                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-white/20"
                   />
-                </div>
+                </Field>
               ))}
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5">Notes</label>
-                <textarea
+              <Field label="Notes">
+                <Textarea
                   value={form.notes}
                   onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
                   rows={3}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-white/20 resize-none"
                 />
-              </div>
+              </Field>
             </form>
-            <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-500 hover:text-gray-900 transition"
-              >
+            <div className="px-6 py-4 border-t border-border flex gap-3">
+              <Button variant="secondary" className="flex-1" onClick={() => setShowForm(false)}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                className="flex-1"
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                icon={submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}
               >
-                {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 Create Lead
-              </button>
+              </Button>
             </div>
           </div>
         </div>
