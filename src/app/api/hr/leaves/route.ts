@@ -1,5 +1,5 @@
 /**
- * HR Leave Requests API — backs src/app/admin/hr/leave/page.tsx.
+ * HR Leave Requests API — backs src/app/console/hr/leave/page.tsx.
  * GET  /api/hr/leaves?businessId=
  * POST /api/hr/leaves
  */
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       title: "Leave request submitted",
       message: `${employeeName}'s ${leave.leaveType} request (${leave.days} day${leave.days > 1 ? "s" : ""}) is pending approval.`,
       type: "info",
-      link: "/admin/hr/leave",
+      link: "/console/hr/leave",
     });
 
     return NextResponse.json({ success: true, leave }, { status: 201 });

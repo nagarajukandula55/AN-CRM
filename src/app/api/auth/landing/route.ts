@@ -4,7 +4,7 @@
  * land, using the exact same rule api/auth/login/route.ts applies right
  * after a fresh login. Used by the root "/" page, which can't recompute
  * this itself (it's a client component with no user context of its own)
- * and previously just hardcoded '/admin' for everyone -- see
+ * and previously just hardcoded '/console' for everyone -- see
  * resolveLandingPath's own comment for why that went stale.
  */
 import { NextResponse } from "next/server";

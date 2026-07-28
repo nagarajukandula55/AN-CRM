@@ -53,7 +53,7 @@ async function resolveVendorAndBusiness(userId: string, explicitVendorId?: strin
     const v = await VendorProfile.findOne({ _id: explicitVendorId, isDeleted: { $ne: true } }).lean();
     if (v) return { vendorId: (v as any)._id, businessId: (v as any).businessId };
   }
-  // Business-wide fallback for write access too -- a Brand/Sales/admin
+  // Business-wide fallback for write access too -- a Brand/Sales/console
   // staff member (no vendor context) can create a business-wide material
   // entry (vendorId unset), per explicit direction ("we have to give the
   // same [BOM] to Sales team also"). Requires the caller to actually hold
@@ -88,7 +88,7 @@ async function resolveVendorForRead(userId: string, explicitVendorId?: string | 
     if (v) return { vendorId: (v as any)._id, businessId: (v as any).businessId };
   }
   // Business-wide fallback: a caller with no vendor context at all (Brand/
-  // Sales/admin staff, not a vendor team member) still gets business-wide
+  // Sales/console staff, not a vendor team member) still gets business-wide
   // read access to the canonical Material/BOM list -- vendorId left unset
   // so the query below returns every vendor's entries for this business,
   // not just one. This is what makes the material list actually usable

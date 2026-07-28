@@ -7,7 +7,7 @@ import mongoose, { Schema, Model, Document } from "mongoose";
  * the exact same shape (a party, line items, totals, a status) and none of
  * them warranted their own model/API/page trio — that would just be the
  * same code times five. `docType` is what a page filters/creates against;
- * see app/admin/quotations, delivery-challans, credit-notes, debit-notes,
+ * see app/console/quotations, delivery-challans, credit-notes, debit-notes,
  * proforma-invoices (thin wrappers around one shared list/create/print
  * implementation, src/components/admin/SalesDocumentManager.tsx).
  *

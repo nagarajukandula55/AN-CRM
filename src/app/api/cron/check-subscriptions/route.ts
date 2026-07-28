@@ -9,7 +9,7 @@
  *
  * This route only flips the STATUS -- actually blocking usage happens
  * client-side (AdminShell checks /api/subscriptions/status and redirects
- * to /admin/plan when blocked) plus should be added as a hard server-side
+ * to /console/plan when blocked) plus should be added as a hard server-side
  * gate on write routes in a follow-up pass; flagged, not yet done
  * everywhere.
  */

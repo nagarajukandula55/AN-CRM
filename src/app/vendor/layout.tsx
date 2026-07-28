@@ -50,7 +50,7 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   // Service-center staff (CCO/Engineer/Centre Manager) already get
   // crm_calls/crm_jobsheets permissions via MEMBER_TYPE_IMPLIED_MODULES
   // (see vendor/staff/create/route.ts) but had no vendor-side page to use
-  // them on -- only /admin/crm existed, which isn't theirs to navigate
+  // them on -- only /console/crm existed, which isn't theirs to navigate
   // into. These reuse the exact same /api/crm/calls, /api/crm/jobsheets
   // endpoints, just scoped to this vendor's own team.
   { href: '/vendor/crm/calls', label: 'Appointments', icon: Phone, modules: ['crm_calls', 'crm'] },

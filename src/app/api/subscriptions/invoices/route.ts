@@ -1,7 +1,7 @@
 /**
  * GET /api/subscriptions/invoices — this business's own AN-CRM plan-
  * payment invoices (SubscriptionInvoice), newest first. Backs the invoice
- * history list on /admin/plan.
+ * history list on /console/plan.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";

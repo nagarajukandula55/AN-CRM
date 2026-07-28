@@ -26,10 +26,10 @@ const DEFAULT_BUSINESS_ID = "6a4abddcf35feedb2392f556";
  *  - Native's storefront widget (lib/an-sdk/contact.ts) posts
  *    { name, email?, phone?, message, businessId? } with no `subject` —
  *    that flow is UNCHANGED below, still writes to Feedback so it keeps
- *    surfacing in /admin/feedback exactly as before.
+ *    surfacing in /console/feedback exactly as before.
  *  - AN Group's own public "Contact Us" page (app/contact/page.tsx) posts
  *    { name, email, phone?, subject, message } — routed to the new
- *    ContactMessage model / /admin/contact-messages inbox instead, since
+ *    ContactMessage model / /console/contact-messages inbox instead, since
  *    it's a genuinely different, site-wide (non-business-scoped) inbox.
  *
  * Kept on one path rather than splitting into two routes because this

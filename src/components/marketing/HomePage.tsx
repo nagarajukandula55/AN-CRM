@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  ShoppingBag,
+  Building2,
   Wrench,
-  Warehouse,
-  Palette,
-  Factory,
+  ShoppingCart,
   ArrowRight,
   Menu,
   X,
@@ -27,46 +25,38 @@ import {
 /* Data                                                                  */
 /* -------------------------------------------------------------------- */
 
+// AN-CRM's three real operating modes -- not AN Group's conglomerate
+// business lines (ecommerce/B2B wholesale/design studio/manufacturing),
+// which this marketing page used to list wholesale, unrelated to this
+// product entirely.
 const VERTICALS = [
   {
-    icon: ShoppingBag,
-    title: "Retail & E-Commerce",
+    icon: Building2,
+    title: "Brand",
     description:
-      "A native storefront and marketplace experience for brands that want to sell directly to customers online.",
-    href: "/solutions/ecommerce",
-  },
-  {
-    icon: Wrench,
-    title: "Repair & Service Centers",
-    description:
-      "End-to-end job-sheet, appointment and CRM tooling for service-driven businesses managing repairs at scale.",
+      "Multi-role call center, appointment booking, and a shared, verified device catalog across every service center under your brand.",
     href: "/solutions/crm",
   },
   {
-    icon: Warehouse,
-    title: "B2B Wholesale & Distribution",
+    icon: Wrench,
+    title: "Service Center",
     description:
-      "A dedicated partner portal for distributors and retailers to browse catalogs, place orders and track fulfillment.",
+      "Single-login workorder shop with your own self-managed fault/symptom/solution library — no approval queue, just add and go.",
+    href: "/solutions/crm",
   },
   {
-    icon: Palette,
-    title: "Design & Branding Studio",
+    icon: ShoppingCart,
+    title: "POS",
     description:
-      "Creative and brand-identity services for businesses that need professional design without an in-house team.",
-  },
-  {
-    icon: Factory,
-    title: "Manufacturing & Warehouse",
-    description:
-      "Inventory, production and warehouse management modules built for businesses that make and move physical goods.",
+      "Fast GST billing counter for retail stores and enterprise chains, with inventory and stock tracking built in.",
   },
 ];
 
 // Placeholder figures — replace with real, verified numbers before launch.
 const STATS = [
-  { value: "5+", label: "Business Verticals" },
+  { value: "3", label: "Operating Modes" },
   { value: "100+", label: "Businesses Powered" },
-  { value: "1,000+", label: "Products Managed" },
+  { value: "1,000+", label: "Workorders Tracked" },
   { value: "24/7", label: "Platform Availability" },
 ];
 

@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 /**
- * Persistent, per-user notification feed backing /admin/notifications and
+ * Persistent, per-user notification feed backing /console/notifications and
  * the sidebar's unread-count badge. Distinct from AuditLog (an immutable
  * system-wide trail of what happened) -- this is user-facing, mutable
  * (isRead), and deletable, and always addressed to a specific recipient.

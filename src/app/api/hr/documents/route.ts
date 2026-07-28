@@ -1,7 +1,7 @@
 /**
- * HR Documents API — backs src/app/admin/hr/documents/page.tsx, which
+ * HR Documents API — backs src/app/console/hr/documents/page.tsx, which
  * previously called these routes with no matching backend at all (same
- * gap pattern found and fixed for /admin/notifications).
+ * gap pattern found and fixed for /console/notifications).
  * GET  /api/hr/documents?businessId=
  * POST /api/hr/documents
  */

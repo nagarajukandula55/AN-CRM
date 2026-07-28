@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 /**
  * Single-document collection tracking the last pincode dataset upload —
  * powers the "last updated on X by Y, N pincodes loaded" status shown on
- * /admin/pincode-data so admins can see whether the data is stale without
+ * /console/pincode-data so admins can see whether the data is stale without
  * having to query the full PincodeEntry collection themselves.
  */
 export interface IPincodeDatasetMeta extends Document {

@@ -48,7 +48,7 @@ export async function GET(req: Request, context: any) {
 }
 
 // PATCH /api/businesses/[id] — update editable business-profile fields.
-// Added to back the new admin Settings hub (src/app/admin/settings)'s
+// Added to back the new admin Settings hub (src/app/console/settings)'s
 // "Business Profile" tab — this endpoint didn't exist before (only GET
 // did). Deliberately allow-lists which fields can be edited here (name/
 // legalName/brandName/financial/compliance) rather than accepting an

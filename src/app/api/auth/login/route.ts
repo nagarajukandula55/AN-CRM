@@ -10,7 +10,7 @@ import { signToken } from "@/lib/auth/jwt";
 import { resolveOwnerOrManagerVendor } from "@/core/access/vendorAccess.service";
 
 // Anyone holding ONLY these floor roles has no admin-panel business at
-// all -- they should never see the /admin shell, just their own storefront
+// all -- they should never see the /console shell, just their own storefront
 // account (shopnative.in for now; angroup.in has no customer-facing UI of
 // its own yet, so it also lands there).
 const MINIMAL_FLOOR_ROLE_CODES = ["CUSTOMER_SHOPNATIVE", "CUSTOMER_ANGROUP"];
@@ -164,13 +164,13 @@ export async function POST(req: Request) {
         // Lands on the CRM Overview (summary + quick links), not straight
         // into the workorder list -- "SC : Overview page should be there"
         // per explicit direction. Overview links into Workorders itself.
-        homeRoute = "/admin/crm";
+        homeRoute = "/console/crm";
       } else if (activeBusiness?.operatingMode === "POS" && !homeRoute) {
         // POS scales small store -> enterprise, so (unlike SC) it keeps
         // full nav -- this only sets a convenience default landing page
         // when no role-specific homeRoute is already configured, never
         // overrides one the way SC's redirect does above.
-        homeRoute = "/admin/pos";
+        homeRoute = "/console/pos";
       }
     }
 
@@ -180,13 +180,13 @@ export async function POST(req: Request) {
     // vendorId set, same test vendor/layout.tsx's own access guard uses)
     // -- belongs on /vendor no matter what a business-wide role they ALSO
     // happen to hold sets as its own homeRoute -- e.g. manager@vendor.com
-    // holds the business-wide "MANAGER" role (homeRoute "/admin/crm",
+    // holds the business-wide "MANAGER" role (homeRoute "/console/crm",
     // configured for a completely unrelated business-employee use case)
     // purely to get Manager-equivalent vendor access, and was landing on
-    // /admin/crm instead of their own vendor portal every time they
+    // /console/crm instead of their own vendor portal every time they
     // logged in. Previously only Owner/Manager were covered here, so an
     // Engineer/CCO with a homeRoute-bearing business role still landed on
-    // /admin despite /vendor/crm/calls + /vendor/crm/jobsheets existing
+    // /console despite /vendor/crm/calls + /vendor/crm/jobsheets existing
     // specifically for them (see vendor/layout.tsx's own comment).
     const hasVendorAccess =
       memberships.some((m) => !!m.vendorId) ||

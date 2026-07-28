@@ -123,7 +123,7 @@ export default function PurchaseOrderForm() {
       alert("Purchase Order Created");
 
       window.location.href =
-        "/admin/purchase-orders";
+        "/console/purchase-orders";
     } catch (err: any) {
       alert(err.message);
     }

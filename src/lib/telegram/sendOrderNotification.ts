@@ -1,7 +1,7 @@
 export async function sendOrderNotification(order: any) {
   try {
     // Prefer the per-business Telegram config set via
-    // /admin/integrations (backed by the Integration model, provider
+    // /console/integrations (backed by the Integration model, provider
     // 'TELEGRAM') so each business's orders notify their own bot/chat —
     // falls back to the global TELEGRAM_BOT_TOKEN/TELEGRAM_GROUP_ID env
     // vars for businesses that haven't configured one yet.

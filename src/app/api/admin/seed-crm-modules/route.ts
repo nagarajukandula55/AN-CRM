@@ -39,7 +39,7 @@ const CRM_SYSTEM_MODULES = [
     pluralLabel: "CRM Overview",
     description: "CRM summary dashboard — leads, calls, and job sheets at a glance.",
     icon: "UserPlus",
-    route: "/admin/crm",
+    route: "/console/crm",
     // Read-only landing page — no create/edit/delete/approve action makes
     // sense for a dashboard, so this module only ever needs VIEW. Without
     // applicableActions restricted here, syncPermissionsForModule would
@@ -54,7 +54,7 @@ const CRM_SYSTEM_MODULES = [
     pluralLabel: "Appointments",
     description: "Appointment entry, disposition tracking, and follow-up pipeline.",
     icon: "PhoneCall",
-    route: "/admin/crm/calls",
+    route: "/console/crm/calls",
     sortOrder: 200,
   },
   {
@@ -63,7 +63,7 @@ const CRM_SYSTEM_MODULES = [
     pluralLabel: "Workorders",
     description: "Work performed for a customer, from scheduling through invoicing.",
     icon: "ClipboardList",
-    route: "/admin/crm/jobsheets",
+    route: "/console/crm/jobsheets",
     sortOrder: 201,
   },
   {
@@ -72,7 +72,7 @@ const CRM_SYSTEM_MODULES = [
     pluralLabel: "Reports & Downloads",
     description: "Cross-module reports (CRM, sales, inventory, finance) with downloadable exports.",
     icon: "BarChart3",
-    route: "/admin/reports",
+    route: "/console/reports",
     // Reports are read/export only — same reasoning as the "crm" overview
     // module above (no create/edit/delete/approve action applies to a
     // report-viewing screen).

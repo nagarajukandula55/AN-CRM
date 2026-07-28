@@ -8,7 +8,7 @@
  *
  * sourceAssetId (optional) points back at the original full upload this
  * component was cropped FROM, purely for traceability in the "Split into
- * Components" tool (src/app/admin/design-studio/assets/page.tsx) — it is
+ * Components" tool (src/app/console/design-studio/assets/page.tsx) — it is
  * never required, since a component can also be created directly (e.g. a
  * plain logo upload with no cropping involved).
  */

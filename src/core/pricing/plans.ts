@@ -12,7 +12,7 @@
  * ULTIMATE tier, per explicit direction ("value added services like
  * Emails, Whatsapp messages push ... we can use in ultimate packs").
  *
- * Single source of truth for /pricing and /admin/plan -- when real pricing
+ * Single source of truth for /pricing and /console/plan -- when real pricing
  * is decided, only this file needs to change.
  */
 

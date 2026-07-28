@@ -21,7 +21,7 @@ const FALLBACK_SOURCE_LABEL = 'shopnative'
 /**
  * Best-effort SSO source detection: match the request's Origin/Referer
  * host against the admin-editable SsoSourceMapping list (managed at
- * /admin/sso, not hardcoded) so a new storefront can be added without a
+ * /console/sso, not hardcoded) so a new storefront can be added without a
  * code change. Falls back to the most restrictive default role/label if
  * nothing matches or the mapping is inactive.
  */

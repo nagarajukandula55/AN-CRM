@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
     // ("no other vendor should see any of global data apart from one with
     // god mode access ... everything added and maintained is totally that
     // particular SC or vendor ... personal only"). A caller with no
-    // resolvable vendor (business-level staff/admin/super-admin -- "god
+    // resolvable vendor (business-level staff/console/super-admin -- "god
     // mode") is unaffected -- sees everything the businessId scope above
     // already allows, global entries included.
     const ownerOrManager = await resolveOwnerOrManagerVendor(session.user.id).catch(() => null);

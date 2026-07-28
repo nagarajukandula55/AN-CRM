@@ -62,7 +62,7 @@ export interface ModuleDefinition {
   pluralLabel: string;           // e.g. "Inventory Items"
   description?: string;
   icon?: string;                 // lucide-react icon name, matches existing sidebar.tsx convention
-  route: string;                 // e.g. "/admin/inventory" — matches existing sidebar route pattern
+  route: string;                 // e.g. "/console/inventory" — matches existing sidebar route pattern
   isSystem: boolean;              // true for built-in modules (inventory, sales, ...) — cannot be deleted from UI
   businessId: string | null;      // null = platform-wide/system module available to all businesses;
                                    // set = a business-specific custom module created by that business's admin
