@@ -1,16 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft, Loader2, Plus, X, Building2, CheckCircle,
-  Clock, Star, ChevronRight, ChevronLeft, Truck,
+  Loader2, Plus, X, Building2, CheckCircle,
+  Clock, Star, ChevronRight, ChevronLeft, ChevronDown, Truck, Users, Network,
 } from 'lucide-react'
 import { StateSelect, CitySelect, PincodeInput } from '@/components/shared/LocationSelect'
 import { validateGSTINAgainstState } from '@/lib/validation/gst'
 import { VendorDetailModal, VendorDetailData } from '@/components/shared/VendorDetailModal'
 import { getComplianceDocsForIndustry, getVendorDocRequirements, type ComplianceDocRequirement } from '@/core/vendorCompliance'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { LoadingPanel } from '@/components/ui/Spinner'
 
 type Vendor = VendorDetailData
 
@@ -25,13 +31,25 @@ const PAYMENT_TERMS = [
   'Immediate','Net 7','Net 15','Net 30','Net 45','Net 60','Net 90',
 ]
 
-const STATUS_STYLES: Record<string, string> = {
-  APPROVED: 'bg-green-100 text-green-700',
-  PENDING:  'bg-yellow-100 text-yellow-700',
-  ACTIVE:   'bg-blue-100 text-blue-700',
-  INACTIVE: 'bg-gray-100 text-gray-500',
-  REJECTED: 'bg-red-100 text-red-700',
+const STATUS_TONE: Record<string, 'success' | 'warning' | 'info' | 'neutral' | 'danger'> = {
+  APPROVED: 'success',
+  PENDING:  'warning',
+  ACTIVE:   'info',
+  INACTIVE: 'neutral',
+  REJECTED: 'danger',
 }
+
+// Vendor type -- Brand (multi-role call center + appointments), SC
+// (single-login work-order shop), POS (billing counter) -- the same three
+// operating modes as pricing/plans.ts, set on VendorProfile.appliedAs.
+// Never shown on this page before, even though every vendor already has
+// this field: the page had no Type column and no hierarchy display at all.
+const TYPE_TONE: Record<string, 'success' | 'warning' | 'info' | 'neutral'> = {
+  BRAND: 'info',
+  SC: 'warning',
+  POS: 'neutral',
+}
+const TYPE_LABEL: Record<string, string> = { BRAND: 'Brand', SC: 'Service Center', POS: 'POS' }
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -45,6 +63,59 @@ function StarRating({ rating }: { rating: number }) {
 
 const TABS = ['Basic Info', 'Address', 'Bank Details', 'Compliance', 'Additional'] as const
 type Tab = typeof TABS[number]
+
+interface SubVendorRow {
+  _id: string; vendorId?: string; companyName: string; contactPerson?: string
+  email?: string; phone?: string; isApproved?: boolean; createdAt: string
+}
+
+/** Expandable sub-vendor tree under a parent vendor row -- fetched lazily
+ * (only once a row is expanded) from the already-existing
+ * /api/vendors/[id]/sub-vendors endpoint, which until now had no UI
+ * anywhere in the app. */
+function SubVendorRows({ parentId, onOpen }: { parentId: string; onOpen: (id: string) => void }) {
+  const { data, isLoading } = useSWR(`/api/vendors/${parentId}/sub-vendors`, { revalidateOnFocus: false })
+  const subVendors: SubVendorRow[] = data?.success ? (data.subVendors || []) : []
+
+  if (isLoading) {
+    return (
+      <tr>
+        <td colSpan={9} className="px-6 py-3 pl-14 text-xs text-ink-3">Loading sub-vendors…</td>
+      </tr>
+    )
+  }
+  if (subVendors.length === 0) {
+    return (
+      <tr>
+        <td colSpan={9} className="px-6 py-3 pl-14 text-xs text-ink-3">No sub-vendors under this vendor yet.</td>
+      </tr>
+    )
+  }
+  return (
+    <>
+      {subVendors.map((sv) => (
+        <tr key={sv._id} onClick={() => onOpen(sv._id)} className="bg-surface-2 hover:bg-surface-3 transition cursor-pointer">
+          <td className="px-6 py-2.5 pl-14">
+            <div className="flex items-center gap-2">
+              <span className="text-ink-3">└</span>
+              <div>
+                <p className="text-sm font-medium text-ink">{sv.companyName}</p>
+                <p className="text-xs text-ink-3">{sv.vendorId}</p>
+              </div>
+            </div>
+          </td>
+          <td className="px-6 py-2.5 text-sm text-ink-2">{sv.contactPerson ?? '—'}</td>
+          <td className="px-6 py-2.5 text-sm text-ink-3" colSpan={2}>{sv.email || sv.phone || '—'}</td>
+          <td className="px-6 py-2.5" colSpan={3} />
+          <td className="px-6 py-2.5 text-center">
+            <Badge tone={sv.isApproved ? 'success' : 'warning'}>{sv.isApproved ? 'Active' : 'Pending'}</Badge>
+          </td>
+          <td className="px-6 py-2.5" />
+        </tr>
+      ))}
+    </>
+  )
+}
 
 const emptyForm = {
   onboardingBusinessId: '',
@@ -67,6 +138,7 @@ export default function VendorsPage() {
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null)
   const [complianceUploads, setComplianceUploads] = useState<Record<string, { url?: string; number?: string; uploading?: boolean }>>({})
   const [showRequests, setShowRequests] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   // Owner account search -- explicitly links this vendor entity to an
   // already-registered user (by id, resolved from a search) rather than
@@ -310,132 +382,120 @@ export default function VendorsPage() {
     )
   }
 
+  // Only top-level vendors get their own row; sub-vendors (parentVendorId
+  // set) appear nested under their parent via SubVendorRows instead of as
+  // a second flat row for the same entity.
+  const topLevelVendors = vendors.filter(v => !v.parentVendorId)
+
   const stats = [
     { icon: Building2, label: 'Total Vendors',    value: vendors.length },
+    { icon: Network,     label: 'With Sub-Vendors', value: vendors.filter(v => (v.subVendorBilling?.subVendorCount || 0) > 0).length },
     { icon: CheckCircle, label: 'Approved',        value: vendors.filter(v => v.isApproved || v.status === 'APPROVED').length },
     { icon: Clock,       label: 'Pending',          value: vendors.filter(v => !v.isApproved && v.status !== 'APPROVED').length },
-    { icon: Star,        label: 'Active',           value: vendors.filter(v => v.status === 'ACTIVE').length },
   ]
 
-  if (loading && vendors.length === 0) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
-    </div>
-  )
+  if (loading && vendors.length === 0) return <LoadingPanel label="Loading vendors…" />
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
-      <div className="px-6 py-10">
+    <div className="min-h-screen bg-bg text-ink">
+      <div className="max-w-[1800px] mx-auto px-6 py-10">
 
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => router.push('/admin')}
-            className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-100 transition">
-            <ArrowLeft className="w-4 h-4 text-gray-600" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Vendors</h1>
-            <p className="text-sm text-gray-400 mt-0.5">Vendor onboarding and management</p>
-          </div>
-          <button onClick={() => { setShowForm(true); setActiveTab('Basic Info') }}
-            className="ml-auto flex items-center gap-2 bg-gray-900 text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-gray-800 transition">
-            <Plus className="w-4 h-4" /> Onboard Vendor
-          </button>
-        </div>
+        <PageHeader
+          title="Vendors"
+          description="Every vendor is a paying tenant of a type — Brand, Service Center, or POS — that can create sub-vendors under itself for an added charge per plan."
+          actions={
+            <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setShowForm(true); setActiveTab('Basic Info') }}>
+              Onboard Vendor
+            </Button>
+          }
+        />
 
         {error && (
-          <div className="mb-6 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</div>
+          <div className="mb-6 text-sm text-danger bg-danger-soft border border-danger/20 rounded-control px-4 py-3">{error}</div>
         )}
 
         {/* Unassigned signup requests — vendors who applied via the general
             /vendor-apply flow without choosing a business. Super-admin only,
             since these aren't scoped to any business yet. */}
         {isSuperAdmin && unassignedRequests.length > 0 && (
-          <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50 overflow-hidden">
+          <Card className="mb-8 border-warning/30 bg-warning-soft overflow-hidden">
             <button
               onClick={() => setShowRequests(s => !s)}
               className="w-full flex items-center justify-between px-6 py-4"
             >
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-600" />
-                <span className="text-sm font-medium text-amber-900">
+                <Clock className="w-4 h-4 text-warning" />
+                <span className="text-sm font-medium text-ink">
                   {unassignedRequests.length} unassigned vendor signup {unassignedRequests.length === 1 ? 'request' : 'requests'}
                 </span>
               </div>
-              <span className="text-xs text-amber-700 underline">{showRequests ? 'Hide' : 'Review'}</span>
+              <span className="text-xs text-warning underline">{showRequests ? 'Hide' : 'Review'}</span>
             </button>
             {showRequests && (
-              <div className="border-t border-amber-200 divide-y divide-amber-100 bg-white">
+              <div className="border-t border-warning/20 divide-y divide-border bg-surface">
                 {unassignedRequests.map(v => (
                   <div
                     key={v._id}
                     onClick={() => setSelectedVendor(v)}
-                    className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition"
+                    className="px-6 py-3 flex items-center justify-between hover:bg-surface-2 cursor-pointer transition"
                   >
                     <div>
-                      <p className="font-medium text-gray-900">{v.companyName}</p>
-                      <p className="text-xs text-gray-400">
+                      <p className="font-medium text-ink">{v.companyName}</p>
+                      <p className="text-xs text-ink-3">
                         {v.requestNumber || v.vendorId} · {v.contactPerson} · {v.email}
                       </p>
                     </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setSelectedVendor(v) }}
-                      className="px-3 py-1 rounded-lg bg-gray-50 text-gray-700 border border-gray-200 text-xs font-medium hover:bg-gray-100 transition"
-                    >
+                    <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); setSelectedVendor(v) }}>
                       Review
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {stats.map(({ icon: Icon, label, value }) => (
-            <div key={label} className="rounded-2xl border border-gray-200 bg-white p-6">
+            <Card key={label} className="p-6">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-gray-500">{label}</span>
-                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <Icon className="w-4 h-4 text-gray-600" />
+                <span className="text-sm text-ink-3">{label}</span>
+                <div className="w-8 h-8 rounded-control bg-surface-2 flex items-center justify-center">
+                  <Icon className="w-4 h-4 text-ink-2" />
                 </div>
               </div>
-              <p className="text-2xl font-semibold text-gray-900">{value}</p>
-            </div>
+              <p className="text-2xl font-semibold text-ink">{value}</p>
+            </Card>
           ))}
         </div>
 
         {/* Table */}
-        <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-            <Truck className="w-4 h-4 text-gray-400" />
-            <h2 className="font-medium text-gray-700 text-sm">All Vendors</h2>
+        <Card className="overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center gap-2">
+            <Truck className="w-4 h-4 text-ink-3" />
+            <h2 className="h-section">All Vendors</h2>
           </div>
+          {topLevelVendors.length === 0 ? (
+            <EmptyState kind="empty" title="No vendors yet" description="Onboard your first vendor to get started." action={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setShowForm(true)}>Onboard Vendor</Button>} />
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium">Company</th>
-                  {isSuperAdmin && <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium">Business</th>}
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium">Contact</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium">Category</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium">GST</th>
-                  <th className="text-left px-6 py-3 text-xs text-gray-400 font-medium">Payment Terms</th>
-                  <th className="text-center px-6 py-3 text-xs text-gray-400 font-medium">Rating</th>
-                  <th className="text-center px-6 py-3 text-xs text-gray-400 font-medium">Status</th>
+                <tr className="border-b border-border">
+                  <th className="text-left px-6 py-3 text-xs text-ink-3 font-medium">Company</th>
+                  <th className="text-left px-6 py-3 text-xs text-ink-3 font-medium">Type</th>
+                  {isSuperAdmin && <th className="text-left px-6 py-3 text-xs text-ink-3 font-medium">Business</th>}
+                  <th className="text-left px-6 py-3 text-xs text-ink-3 font-medium">Contact</th>
+                  <th className="text-left px-6 py-3 text-xs text-ink-3 font-medium">GST</th>
+                  <th className="text-left px-6 py-3 text-xs text-ink-3 font-medium">Sub-Vendors</th>
+                  <th className="text-center px-6 py-3 text-xs text-ink-3 font-medium">Rating</th>
+                  <th className="text-center px-6 py-3 text-xs text-ink-3 font-medium">Status</th>
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {vendors.length === 0 ? (
-                  <tr>
-                    <td colSpan={isSuperAdmin ? 9 : 8} className="px-6 py-12 text-center">
-                      <Truck className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-sm text-gray-400">No vendors yet. Onboard your first vendor.</p>
-                    </td>
-                  </tr>
-                ) : vendors.map(v => {
+              <tbody className="divide-y divide-border">
+                {topLevelVendors.map(v => {
                   const isApproved = v.isApproved || v.status === 'APPROVED'
                   const statusKey  = isApproved ? 'APPROVED' : (v.status ?? 'PENDING')
                   // A vendor still going through review (APPLIED/PENDING) or
@@ -444,66 +504,86 @@ export default function VendorsPage() {
                   // opens the full detail page instead.
                   const needsReviewModal = ['APPLIED', 'PENDING', 'AGREEMENT_SIGNED', 'AGREEMENT_CANCELLED'].includes(v.status || '')
                   const openVendor = () => needsReviewModal ? setSelectedVendor(v) : router.push(`/admin/vendors/${v._id}`)
+                  const subCount = v.subVendorBilling?.subVendorCount || 0
+                  const isExpanded = expandedId === v._id
                   return (
-                    <tr key={v._id} onClick={openVendor} className="hover:bg-gray-50 transition cursor-pointer">
+                    <Fragment key={v._id}>
+                    <tr onClick={openVendor} className="hover:bg-surface-2 transition cursor-pointer">
                       <td className="px-6 py-3">
-                        <p className="font-medium text-gray-900">{v.companyName}</p>
-                        {v.address?.city && <p className="text-xs text-gray-400">{v.address.city}{v.address.state ? `, ${v.address.state}` : ''}</p>}
+                        <div className="flex items-center gap-2">
+                          {subCount > 0 && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : v._id) }}
+                              className="w-5 h-5 rounded-control bg-surface-2 flex items-center justify-center hover:bg-surface-3 shrink-0"
+                            >
+                              <ChevronDown className={`w-3.5 h-3.5 text-ink-3 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                            </button>
+                          )}
+                          <div>
+                            <p className="font-medium text-ink">{v.companyName}</p>
+                            {v.address?.city && <p className="text-xs text-ink-3">{v.address.city}{v.address.state ? `, ${v.address.state}` : ''}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3">
+                        {v.appliedAs ? <Badge tone={TYPE_TONE[v.appliedAs]}>{TYPE_LABEL[v.appliedAs]}</Badge> : <span className="text-ink-3">—</span>}
                       </td>
                       {isSuperAdmin && (
-                        <td className="px-6 py-3 text-sm text-gray-600">
+                        <td className="px-6 py-3 text-sm text-ink-2">
                           {typeof v.businessId === 'object' && v.businessId
                             ? (v.businessId as any).brandName || (v.businessId as any).name || '—'
                             : '—'}
                         </td>
                       )}
                       <td className="px-6 py-3">
-                        <p className="text-gray-700">{v.contactPerson ?? '—'}</p>
-                        {v.phone && <p className="text-xs text-gray-400">{v.phone}</p>}
+                        <p className="text-ink-2">{v.contactPerson ?? '—'}</p>
+                        {v.phone && <p className="text-xs text-ink-3">{v.phone}</p>}
                       </td>
-                      <td className="px-6 py-3 text-gray-500">{v.category ?? '—'}</td>
-                      <td className="px-6 py-3 font-mono text-xs text-gray-500">{v.gstNumber ?? '—'}</td>
-                      <td className="px-6 py-3 text-gray-500">{v.paymentTerms ?? '—'}</td>
+                      <td className="px-6 py-3 font-mono text-xs text-ink-3">{v.gstNumber ?? '—'}</td>
+                      <td className="px-6 py-3">
+                        {subCount > 0 ? (
+                          <span className="inline-flex items-center gap-1.5 text-sm text-ink-2">
+                            <Users className="w-3.5 h-3.5 text-ink-3" /> {subCount}
+                          </span>
+                        ) : <span className="text-ink-3 text-sm">—</span>}
+                      </td>
                       <td className="px-6 py-3">
                         <div className="flex justify-center"><StarRating rating={v.rating ?? 0} /></div>
                       </td>
                       <td className="px-6 py-3 text-center">
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[statusKey] ?? 'bg-gray-100 text-gray-500'}`}>
-                          {statusKey}
-                        </span>
+                        <Badge tone={STATUS_TONE[statusKey] ?? 'neutral'}>{statusKey}</Badge>
                       </td>
                       <td className="px-6 py-3 text-right">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openVendor() }}
-                          className="px-3 py-1 rounded-lg bg-gray-50 text-gray-700 border border-gray-200 text-xs font-medium hover:bg-gray-100 transition"
-                        >
-                          View
-                        </button>
+                        <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); openVendor() }}>View</Button>
                       </td>
                     </tr>
+                    {isExpanded && (
+                      <SubVendorRows parentId={v._id} onOpen={(id) => router.push(`/admin/vendors/${id}`)} />
+                    )}
+                    </Fragment>
                   )
                 })}
               </tbody>
             </table>
           </div>
-        </div>
+          )}
+        </Card>
       </div>
 
       {/* Centered modal (was a right-side slide-over) */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setShowForm(false)} />
-          <div className="relative w-full max-w-2xl max-h-[90vh] bg-white border border-gray-200 rounded-2xl flex flex-col overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="relative w-full max-w-2xl max-h-[90vh] bg-surface border border-border rounded-card flex flex-col overflow-hidden shadow-card-lg">
 
             {/* Form header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border">
               <div>
-                <h2 className="font-semibold text-gray-900">Onboard Vendor</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Fill in vendor details to add them to your business</p>
+                <h2 className="h-section">Onboard Vendor</h2>
+                <p className="text-xs text-ink-3 mt-0.5">Fill in vendor details to add them to your business</p>
               </div>
               <button onClick={() => setShowForm(false)}
-                className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition">
-                <X className="w-4 h-4 text-gray-500" />
+                className="w-8 h-8 rounded-control bg-surface-2 border border-border flex items-center justify-center hover:bg-surface-3 transition">
+                <X className="w-4 h-4 text-ink-2" />
               </button>
             </div>
 
