@@ -157,6 +157,29 @@ export default function SalesPage() {
   const businessId: string | null = meData?.activeBusinessId ?? meData?.user?.activeBusinessId ?? null
   const businessName: string = meData?.activeBusiness?.name ?? meData?.user?.activeBusiness?.name ?? meData?.businessName ?? 'Your Business'
 
+  // Centralized customer lookup -- typing 3+ chars into Name or Phone
+  // searches the shared Customer directory (/api/customers, matched
+  // against name/phone/email server-side) so a returning customer's
+  // details prefill instead of being retyped, and partners across the
+  // business can find someone by contact number instead of hunting
+  // through past invoices. Selecting a result also stops handleSubmit
+  // from creating a duplicate Customer record for someone who already
+  // has one -- see selectedCustomerId below.
+  const [customerQuery, setCustomerQuery] = useState('')
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
+  const [showCustomerResults, setShowCustomerResults] = useState(false)
+  const { data: customerSearchData } = useSWR(
+    businessId && customerQuery.trim().length >= 3 ? `/api/customers?businessId=${businessId}&search=${encodeURIComponent(customerQuery.trim())}` : null
+  )
+  const customerResults: Array<{ _id: string; name: string; phone?: string; email?: string; address?: string }> =
+    customerSearchData?.success !== false ? (customerSearchData?.customers ?? []) : []
+
+  function selectCustomer(c: { _id: string; name: string; phone?: string; email?: string; address?: string }) {
+    setCustomer(p => ({ ...p, name: c.name, phone: c.phone || '', email: c.email || '', address: c.address || p.address }))
+    setSelectedCustomerId(c._id)
+    setShowCustomerResults(false)
+  }
+
   const { data: invData, isLoading: invLoading, error: invErr, mutate: refetchInvoices } = useSWR('/api/sales/invoices')
   const invoices: Invoice[] = invData ? (Array.isArray(invData) ? invData : (invData.invoices ?? [])) : []
 
@@ -228,6 +251,17 @@ export default function SalesPage() {
         const d = await res.json().catch(() => ({}))
         throw new Error(d.error ?? d.message ?? 'Failed to create invoice')
       }
+      // Keep the shared Customer directory centralized: only create a new
+      // record for someone who wasn't picked from the search results above
+      // (picking one means they already have a record) -- best-effort, a
+      // failure here shouldn't block an invoice that already succeeded.
+      if (!selectedCustomerId && customer.name.trim()) {
+        fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ businessId, name: customer.name, phone: customer.phone, email: customer.email, address: customer.address, source: 'sales_invoice' }),
+        }).catch(() => {})
+      }
       setShowForm(false)
       resetForm()
       fetchData()
@@ -239,6 +273,9 @@ export default function SalesPage() {
   function resetForm() {
     setInvoiceType('GST')
     setCustomer({ name: '', email: '', phone: '', address: '', gstin: '' })
+    setCustomerQuery('')
+    setSelectedCustomerId(null)
+    setShowCustomerResults(false)
     setItems([{ description: '', hsnCode: '', qty: 1, unit: 'Nos', price: 0, taxPct: 18 }])
     setNotes(''); setTerms('Payment due within 30 days.')
     setIssueDate(todayStr()); setDueDate(''); setDiscount(0); setSupplyType('INTRASTATE')
@@ -507,12 +544,37 @@ export default function SalesPage() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-3 uppercase tracking-wider">Bill To</label>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2">
+                    <div className="col-span-2 relative">
                       <label className="block text-xs text-gray-500 mb-1">Company / Customer Name *</label>
                       <input required value={customer.name}
-                        onChange={e => setCustomer(p => ({ ...p, name: e.target.value }))}
+                        onChange={e => {
+                          setCustomer(p => ({ ...p, name: e.target.value }))
+                          setCustomerQuery(e.target.value)
+                          setSelectedCustomerId(null)
+                          setShowCustomerResults(true)
+                        }}
+                        onFocus={() => setShowCustomerResults(true)}
+                        onBlur={() => setTimeout(() => setShowCustomerResults(false), 150)}
                         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-400"
-                        placeholder="Acme Pvt Ltd" />
+                        placeholder="Acme Pvt Ltd, or search by name/phone" />
+                      {showCustomerResults && customerResults.length > 0 && (
+                        <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                          {customerResults.map(c => (
+                            <button
+                              type="button"
+                              key={c._id}
+                              onMouseDown={() => selectCustomer(c)}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                            >
+                              <p className="text-gray-900 font-medium">{c.name}</p>
+                              <p className="text-gray-400 text-xs">{c.phone || '—'}{c.email ? ` · ${c.email}` : ''}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {selectedCustomerId && (
+                        <p className="text-[11px] text-emerald-600 mt-1">Existing customer — details prefilled from directory.</p>
+                      )}
                     </div>
                     {invoiceType === 'GST' && (
                       <div>
@@ -524,12 +586,34 @@ export default function SalesPage() {
                           placeholder="22AAAAA0000A1Z5" />
                       </div>
                     )}
-                    <div>
+                    <div className="relative">
                       <label className="block text-xs text-gray-500 mb-1">Phone</label>
                       <input value={customer.phone}
-                        onChange={e => setCustomer(p => ({ ...p, phone: e.target.value }))}
+                        onChange={e => {
+                          setCustomer(p => ({ ...p, phone: e.target.value }))
+                          setCustomerQuery(e.target.value)
+                          setSelectedCustomerId(null)
+                          setShowCustomerResults(true)
+                        }}
+                        onFocus={() => setShowCustomerResults(true)}
+                        onBlur={() => setTimeout(() => setShowCustomerResults(false), 150)}
                         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-                        placeholder="+91 98765 43210" />
+                        placeholder="+91 98765 43210 — search existing" />
+                      {showCustomerResults && customerResults.length > 0 && (
+                        <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                          {customerResults.map(c => (
+                            <button
+                              type="button"
+                              key={c._id}
+                              onMouseDown={() => selectCustomer(c)}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                            >
+                              <p className="text-gray-900 font-medium">{c.name}</p>
+                              <p className="text-gray-400 text-xs">{c.phone || '—'}{c.email ? ` · ${c.email}` : ''}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Email</label>
