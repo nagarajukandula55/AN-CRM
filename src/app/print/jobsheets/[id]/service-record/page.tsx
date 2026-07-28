@@ -78,7 +78,7 @@ export default function ServiceRecordPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
         <p className="text-sm text-red-600">{error}</p>
-        <button onClick={() => router.push('/vendor/crm/jobsheets')} className="text-sm text-gray-500 underline">
+        <button onClick={() => router.back()} className="text-sm text-gray-500 underline">
           Back to Workorders
         </button>
       </div>
@@ -96,7 +96,7 @@ export default function ServiceRecordPage() {
   return (
     <div className="min-h-screen bg-gray-100 py-8 print:bg-white print:py-0">
       <div className="max-w-3xl mx-auto mb-4 flex items-center gap-4 print:hidden">
-        <button onClick={() => router.push('/vendor/crm/jobsheets')} className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-100 transition">
+        <button onClick={() => router.back()} className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-100 transition">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <h1 className="text-2xl font-semibold flex-1">Service Record</h1>

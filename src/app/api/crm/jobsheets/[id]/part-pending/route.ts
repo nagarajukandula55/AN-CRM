@@ -57,6 +57,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     jobSheet.status = "PART_PENDING";
+    jobSheet.partPendingAt = new Date();
     if (brandJobNoForPartOrder !== undefined) {
       jobSheet.brandJobNoForPartOrder = brandJobNoForPartOrder || undefined;
     }

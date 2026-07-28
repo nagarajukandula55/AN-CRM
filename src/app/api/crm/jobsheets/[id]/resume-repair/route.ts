@@ -52,6 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     jobSheet.status = "REPAIR_IN_PROGRESS";
+    jobSheet.repairResumedAt = new Date();
     await jobSheet.save();
 
     logAction({

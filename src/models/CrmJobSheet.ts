@@ -167,6 +167,15 @@ export interface ICrmJobSheet extends Document {
   engineerAssignedAt?: Date;
   status: CrmJobSheetStatus;
 
+  // Milestone timestamps -- one per status transition, for the milestone
+  // stepper's date/time display and TAT (createdAt -> repairCompletedAt)
+  // on the Workorders list. engineerAssignedAt above already covers
+  // CREATED -> REPAIR_STARTED; completedAt/handedOverAt below already
+  // cover REPAIR_COMPLETED/CLOSED -- these three fill the remaining gaps.
+  repairInProgressAt?: Date; // REPAIR_STARTED -> REPAIR_IN_PROGRESS (start-repair)
+  partPendingAt?: Date; // -> PART_PENDING
+  repairResumedAt?: Date; // PART_PENDING -> REPAIR_IN_PROGRESS (resume-repair)
+
   lineItems: ICrmJobSheetLineItem[];
   materialsUsed?: string;
   workPerformed?: string;
@@ -285,6 +294,9 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
     assignedToName: { type: String, trim: true, default: "" },
     assignedBy: { type: Schema.Types.ObjectId, ref: "User" },
     engineerAssignedAt: { type: Date },
+    repairInProgressAt: { type: Date },
+    partPendingAt: { type: Date },
+    repairResumedAt: { type: Date },
     status: {
       type: String,
       enum: ["CREATED", "REPAIR_STARTED", "REPAIR_IN_PROGRESS", "PART_PENDING", "REPAIR_COMPLETED", "CLOSED", "CANCELLED"],
