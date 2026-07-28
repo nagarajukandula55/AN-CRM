@@ -34,7 +34,7 @@ import { Building2, Plug, Sparkles, Save, User, ChevronRight, Receipt, Globe2, P
  */
 
 type View = 'business' | 'platform'
-type Tab = 'integrations' | 'ai' | 'invoicing' | 'operations'
+type Tab = 'integrations' | 'ai' | 'invoicing' | 'operations' | 'communication'
 
 interface SsoMapping {
   _id: string
@@ -122,6 +122,11 @@ export default function AdminSettingsPage() {
       })
     }
   }, [operationsRes])
+
+  const { data: quotaRes, isLoading: loadingQuota } = useSWR(
+    view === 'business' && tab === 'communication' ? '/api/admin/communication-quota' : null
+  )
+  const quota = quotaRes?.success ? quotaRes.quota : null
 
   const { data: integrationsRes, isLoading: loadingIntegrations } = useSWR(
     businessId && view === 'business' && tab === 'integrations' ? `/api/integrations?businessId=${businessId}` : null
@@ -227,6 +232,7 @@ export default function AdminSettingsPage() {
     { key: 'operations', label: 'Operations', icon: <Building2 size={14} /> },
     { key: 'invoicing', label: 'Invoicing Rules', icon: <Receipt size={14} /> },
     { key: 'integrations', label: 'Integrations', icon: <Plug size={14} /> },
+    { key: 'communication', label: 'Communication Quota', icon: <Globe2 size={14} /> },
     { key: 'ai', label: 'AI / ANu', icon: <Sparkles size={14} /> },
   ]
 
@@ -510,6 +516,54 @@ export default function AdminSettingsPage() {
                 <Save size={13} /> {savingInvoicing ? 'Saving…' : 'Save Invoicing Rules'}
               </button>
             </form>
+          </div>
+        )}
+
+        {tab === 'communication' && (
+          <div className="rounded-card border border-border bg-surface p-6">
+            <h3 className="h-section mb-1">Communication Quota</h3>
+            <p className="text-xs text-ink-3 mb-5">
+              Platform-sent email (via our Resend account, on your behalf) and WhatsApp (centrally
+              subscribed) — a monthly allowance set by AN Group. Contact us to change your quota.
+            </p>
+            {loadingQuota ? (
+              <p className="text-sm text-ink-3">Loading…</p>
+            ) : quota ? (
+              <div className="space-y-5">
+                <div>
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="font-medium text-ink">Email</span>
+                    <span className={`text-xs ${quota.emailEnabled ? 'text-success' : 'text-ink-3'}`}>
+                      {quota.emailEnabled ? 'Enabled' : 'Not enabled'}
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-control bg-surface-2 overflow-hidden">
+                    <div
+                      className="h-full bg-accent"
+                      style={{ width: `${Math.min(100, (quota.emailUsed / (quota.emailQuota || 1)) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-ink-3 mt-1">{quota.emailUsed} / {quota.emailQuota} sent this month</div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="font-medium text-ink">WhatsApp</span>
+                    <span className={`text-xs ${quota.whatsappEnabled ? 'text-success' : 'text-ink-3'}`}>
+                      {quota.whatsappEnabled ? 'Enabled' : 'Not enabled'}
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-control bg-surface-2 overflow-hidden">
+                    <div
+                      className="h-full bg-accent"
+                      style={{ width: `${Math.min(100, (quota.whatsappUsed / (quota.whatsappQuota || 1)) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-ink-3 mt-1">{quota.whatsappUsed} / {quota.whatsappQuota} sent this month</div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-ink-3">No quota configured yet.</p>
+            )}
           </div>
         )}
 
