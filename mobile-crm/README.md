@@ -65,21 +65,53 @@ comment) — zero backend changes were needed to support this client.
   name/phone/subject), backed by `/api/crm/calls`, the same
   call-entry-that-becomes-a-workorder lifecycle the Brand web admin uses.
 - **Workorders** (`app/(app)/workorders/index.tsx` +
-  `app/(app)/workorders/[id].tsx`) — list with status filter chips
+  `app/(app)/workorders/[id]/index.tsx`) — list with status filter chips
   (backed by `/api/crm/jobsheets`), detail view, and a single-tap
   "Start Repair" action for the one milestone transition
   (`CREATED` → `REPAIR_IN_PROGRESS`) that needs no additional form input.
-  Every other milestone (close, part-pending, handover — see
-  `api/crm/jobsheets/[id]/route.ts`'s `ALLOWED_FIELDS` comment for why
-  these are separate dedicated routes) needs the line-item/payment form
-  the full web admin already has and is intentionally left there for this
-  pass, rather than half-building a form-heavy flow on a phone screen.
+  Once in progress, "Continue Repair" opens the engineer repair screen.
+- **Engineer Repair screen** (`app/(app)/workorders/[id]/repair.tsx`) —
+  the piece previously only sketched as a design proposal, now built:
+  parts added by searching the same Material/BOM catalog
+  `/api/service-center-bom` serves (never free-typed — `materialCode`/
+  `hsnCode`/`rate` come straight from the catalog record), a work-
+  performed note, and a typed customer-name confirmation. "Save Progress"
+  PATCHes the job sheet's `lineItems`/`workPerformed`/
+  `customerSignatureUrl` (plain field update, not a status transition —
+  see `ALLOWED_FIELDS`'s comment on why those are separate); "Mark Repair
+  Completed" saves once more then calls `POST .../close`, which generates
+  the SalesInvoice from those line items server-side, same as the web
+  admin's close flow. Part-pending and handover (separate dedicated
+  routes) stay web-admin only for this pass.
+- **Catalog** (`app/(app)/catalog.tsx`) — the Material/BOM catalog,
+  browsable read-only with search: part code, description, HSN, rate,
+  GST%, serial-tracked flag. Backed by the same `/api/service-center-bom`
+  the web Material Catalog page and the repair screen's part search both
+  use, so a part code means the same thing everywhere. Shown for Brand &
+  SC (same modes as Workorders), since POS billing doesn't go through the
+  BOM.
 - **POS quick sale** (`app/(app)/pos.tsx`) — customer + line items +
   live totals, posts to `/api/pos/invoices` (the same endpoint the web
   POS quick-sale screen uses), shows the generated invoice number/total on
   success.
+
 ## What's NOT built yet (next phases)
 
+- **Live inventory (stock quantities)** — Catalog above is the
+  price/spec BOM catalog (part code, HSN, rate, tax); it does not yet
+  show on-hand stock quantity or warehouse location. That's a separate
+  system in this codebase (`InventoryItem`, `/api/inventory/items`,
+  stock movements/lots) that isn't wired into mobile — the close-repair
+  flow's server-side stock deduction (see
+  `api/crm/jobsheets/[id]/close/route.ts`, serialized-inventory path)
+  still works correctly without it; only a mobile *view* of stock levels
+  is missing.
+- **Drawn signature capture** — the repair screen's customer
+  confirmation is currently a typed name into `customerSignatureUrl`, not
+  an actual drawn signature. A real signature pad needs a canvas-capable
+  native module (e.g. `react-native-signature-canvas`); left as typed
+  confirmation for this pass rather than adding a new native dependency
+  that can't be verified without a real device build.
 - **Appointment booking/calendar** — call intake is now covered (see
   Calls above); the appointment scheduling calendar itself is web-admin
   only for now.

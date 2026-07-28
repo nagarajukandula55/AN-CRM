@@ -53,9 +53,11 @@ export default function AppLayout() {
       <Tabs.Screen name="calls" options={{ title: "Calls", href: showCalls ? undefined : null, tabBarIcon: ({ focused }) => <TabIcon symbol="📞" focused={focused} /> }} />
       <Tabs.Screen name="workorders/index" options={{ title: "Workorders", href: showWorkorders ? undefined : null, tabBarIcon: ({ focused }) => <TabIcon symbol="🛠️" focused={focused} /> }} />
       <Tabs.Screen name="pos" options={{ title: "POS", href: showPos ? undefined : null, tabBarIcon: ({ focused }) => <TabIcon symbol="🧾" focused={focused} /> }} />
+      <Tabs.Screen name="catalog" options={{ title: "Catalog", href: showWorkorders ? undefined : null, tabBarIcon: ({ focused }) => <TabIcon symbol="📦" focused={focused} /> }} />
       <Tabs.Screen name="services" options={{ title: "Services", tabBarIcon: ({ focused }) => <TabIcon symbol="✨" focused={focused} /> }} />
       <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ({ focused }) => <TabIcon symbol="👤" focused={focused} /> }} />
-      <Tabs.Screen name="workorders/[id]" options={{ href: null }} />
+      <Tabs.Screen name="workorders/[id]/index" options={{ href: null }} />
+      <Tabs.Screen name="workorders/[id]/repair" options={{ href: null }} />
     </Tabs>
   );
 }

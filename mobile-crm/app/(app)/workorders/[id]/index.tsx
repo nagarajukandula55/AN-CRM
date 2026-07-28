@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from "react-native";
-import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
+import { useLocalSearchParams, useFocusEffect, useRouter, Link } from "expo-router";
 import { getJobSheet, advanceJobSheet, nextActionFor, type JobSheet } from "@/api/crm";
 import { ApiError } from "@/api/client";
 
@@ -75,12 +75,22 @@ export default function WorkorderDetailScreen() {
         <Row label="Assigned To" value={job.assignedToName || job.ccoName} />
       </View>
 
-      {action ? (
+      {action && (
         <TouchableOpacity style={styles.actionButton} onPress={handleAdvance} disabled={acting}>
           <Text style={styles.actionButtonText}>{acting ? "Updating…" : action.label}</Text>
         </TouchableOpacity>
-      ) : (
-        <Text style={styles.hint}>Further updates (closing, part-pending, handover) require the full admin app.</Text>
+      )}
+
+      {(job.status === "REPAIR_STARTED" || job.status === "REPAIR_IN_PROGRESS") && (
+        <Link href={`/(app)/workorders/${job._id}/repair`} asChild>
+          <TouchableOpacity style={styles.actionButton}>
+            <Text style={styles.actionButtonText}>Continue Repair</Text>
+          </TouchableOpacity>
+        </Link>
+      )}
+
+      {["PART_PENDING", "REPAIR_COMPLETED", "CLOSED", "CANCELLED"].includes(job.status) && (
+        <Text style={styles.hint}>Further updates (part-pending, handover, re-open) require the full admin app.</Text>
       )}
     </ScrollView>
   );
