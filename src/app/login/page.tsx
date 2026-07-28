@@ -101,19 +101,20 @@ function LoginForm() {
 
       <div className="relative w-full max-w-md">
         <div className="rounded-card border border-border bg-surface shadow-card p-8 md:p-10">
-          {/* Logo / Brand — this login is a shared identity provider across
-              every AN Group app/device, so it brands itself as the SSO
-              gateway rather than any one product's name. */}
+          {/* AN-CRM is its own standalone product -- this used to carry
+              over ANgroup's "shared identity across every AN Group app"
+              SSO framing verbatim, which made AN-CRM's own login page
+              read as ANgroup's. Branded as AN-CRM's own sign-in instead. */}
           <div className="mb-8">
             <div className="inline-flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent-soft px-3 py-1">
               <ShieldCheck className="h-3.5 w-3.5 text-accent" />
               <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
-                Single Sign-On
+                AN-CRM
               </span>
             </div>
             <h1 className="mt-4 text-3xl font-semibold text-ink tracking-tight">Sign in</h1>
             <p className="mt-2 text-sm text-ink-3">
-              One account, every AN Group app and device.
+              Brand · Service Center · POS, in one account.
             </p>
           </div>
 
@@ -196,7 +197,7 @@ function LoginForm() {
 
           <div className="mt-6 pt-6 border-t border-border">
             <p className="text-xs text-ink-3 text-center">
-              Secured by AN Group Single Sign-On
+              Secured by AN-CRM
             </p>
           </div>
         </div>

@@ -10,7 +10,7 @@ export default function Logo({ className = "" }: { className?: string }) {
     <span
       className={`text-xl font-bold tracking-tight text-[var(--text)] ${className}`}
     >
-      AN Group
+      AN-CRM
     </span>
   );
 }

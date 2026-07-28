@@ -45,11 +45,7 @@ import {
 // theirs regardless of module grants). null = visible to every team member.
 const navItems: { href: string; label: string; icon: any; modules: string[] | null; managerOnly?: boolean }[] = [
   { href: '/vendor', label: 'Dashboard', icon: LayoutDashboard, modules: null },
-  { href: '/vendor/products', label: 'My Products', icon: Package, modules: ['vendor_products', 'products'] },
-  { href: '/vendor/inventory', label: 'Inventory', icon: Boxes, modules: ['inventory'] },
   { href: '/vendor/materials', label: 'Materials', icon: Layers, modules: ['materials'] },
-  { href: '/vendor/orders', label: 'My Orders', icon: ShoppingCart, modules: ['sales'] },
-  { href: '/vendor/offline-sales', label: 'Offline Sales', icon: ShoppingBag, modules: ['sales'] },
   { href: '/vendor/warehouses', label: 'Warehouses', icon: Warehouse, modules: ['warehouses'] },
   // Service-center staff (CCO/Engineer/Centre Manager) already get
   // crm_calls/crm_jobsheets permissions via MEMBER_TYPE_IMPLIED_MODULES
@@ -60,16 +56,10 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   { href: '/vendor/crm/calls', label: 'Appointments', icon: Phone, modules: ['crm_calls', 'crm'] },
   { href: '/vendor/crm/jobsheets', label: 'Workorders', icon: ClipboardList, modules: ['crm_jobsheets', 'crm'] },
   { href: '/vendor/service-bom', label: 'Service Center BOM', icon: Wrench, modules: ['crm_jobsheets', 'crm'] },
-  // Read-only vendor views of business-initiated procurement documents --
-  // the business places/approves these, a vendor's role is to see and
-  // fulfill them, not author them (see each page's own top comment).
-  { href: '/vendor/purchase', label: 'Purchase Orders', icon: ShoppingCart, modules: ['purchase'] },
-  { href: '/vendor/grn', label: 'Goods Receipts', icon: PackageCheck, modules: ['grn'] },
   { href: '/vendor/stock-transfers', label: 'Stock Transfers', icon: ArrowLeftRight, modules: ['stock_transfers'] },
   { href: '/vendor/staff', label: 'Staff', icon: Users, modules: ['staff'], managerOnly: true },
   { href: '/vendor/invoices', label: 'Invoices & Payments', icon: FileText, modules: ['finance'] },
   { href: '/vendor/credits', label: 'Credit Accounts', icon: HandCoins, modules: ['finance'] },
-  { href: '/vendor/b2b-orders', label: 'B2B Orders', icon: Store, modules: ['sales'] },
   { href: '/vendor/payouts', label: 'Payout Settings', icon: Wallet, modules: ['finance'], managerOnly: true },
   // Was labeled only "My Profile" -- this IS the vendor's settings page
   // (backed by /api/vendor/settings), already fully accessible to every

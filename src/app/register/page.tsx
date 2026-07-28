@@ -281,7 +281,7 @@ function RegisterForm() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Create an account</h1>
           <p className="text-gray-500 text-sm mt-1">
-            Join the AN Group platform
+            Join AN-CRM
           </p>
         </div>
 
@@ -416,7 +416,7 @@ function RegisterForm() {
             // application record either way.
             <div className="space-y-4">
               <div className="rounded-xl bg-violet-50 border border-violet-200 px-4 py-4 space-y-2">
-                <p className="text-sm text-gray-800 font-medium">Become an AN Group Partner</p>
+                <p className="text-sm text-gray-800 font-medium">Become an AN-CRM Partner</p>
                 <p className="text-xs text-gray-600">
                   One guided form creates your account and submits your business application together.
                 </p>

@@ -12,10 +12,13 @@
 // (transactional storefront billing) -- so only CRM/Sales/Service-relevant
 // nav entries are kept here. Manufacturing (Production), Purchase (supplier
 // procurement), HR/Payroll, Growth (Social/AI Studio/Design Studio),
-// Logistics, and the storefront-marketplace-specific admin screens are
-// ERP-only concerns that stay in ANgroup -- their pages/APIs are still
-// present in this codebase (not yet deleted, a later cleanup pass), just
-// not linked from nav so AN-CRM presents as a CRM product, not the full ERP.
+// Logistics, and the storefront-marketplace-specific admin screens/APIs/
+// models (ecommerce Order, NativeProduct, ManufacturingBOM, VendorProduct
+// wizard, B2B ordering, coupons, product categories, shipping) have been
+// deleted outright (not just unlinked) -- this repo no longer contains
+// that surface area at all, per explicit direction that AN-CRM be an
+// independent, purpose-built product rather than a full ANgroup clone with
+// unused modules left lying around.
 
 export interface NavItem {
   key: string; label: string; route: string; icon: string;
@@ -60,11 +63,9 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "pos",      label: "Point of Sale", route: "/admin/pos",       icon: "ShoppingCart" },
     { key: "orders",   label: "Orders",       route: "/admin/orders",     icon: "ShoppingBag" },
     { key: "sales",    label: "Sales",        route: "/admin/sales",      icon: "TrendingUp" },
-    { key: "coupons",  label: "Coupons",      route: "/admin/coupons",    icon: "Hash" },
   ]},
   { label: "Materials & Inventory", items: [
     { key: "inventory",  label: "Inventory",    route: "/admin/inventory",  icon: "Package" },
-    { key: "products",   label: "Products",     route: "/admin/products",   icon: "Box" },
     { key: "warehouses", label: "Warehouses",   route: "/admin/warehouses", icon: "Building2" },
     { key: "materials",  label: "Materials",    route: "/admin/materials",  icon: "Box" },
     // Canonical Material/BOM list (Material Code/Description/Mode/SN/HSN/
@@ -76,7 +77,6 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "masters-units",    label: "Units",              route: "/admin/masters/units",              icon: "Ruler" },
     { key: "masters-brands",   label: "Brands & Models",    route: "/admin/masters/brands",              icon: "Tags" },
     { key: "masters-catalog-requests", label: "Catalog Change Requests", route: "/admin/masters/catalog-requests", icon: "ClipboardCheck" },
-    { key: "masters-prod-cat", label: "Product Categories", route: "/admin/masters/product-categories",  icon: "Layers" },
     { key: "masters-mat-cat",  label: "Material Categories",route: "/admin/masters/material-categories", icon: "Layers" },
     { key: "masters-fault-codes", label: "Fault Codes", route: "/admin/masters/fault-codes", icon: "AlertTriangle" },
     { key: "masters-symptom-codes", label: "Symptom Codes", route: "/admin/masters/symptom-codes", icon: "AlertTriangle" },
@@ -105,7 +105,10 @@ export const NAV_GROUPS: NavGroup[] = [
   { label: "Reports", items: [
     { key: "reports",   label: "Reports & Downloads", route: "/admin/reports",   icon: "BarChart3" },
     { key: "report-builder", label: "Report Builder", route: "/admin/report-builder", icon: "BarChart3" },
+<<<<<<< HEAD
     { key: "analytics", label: "Analytics",           route: "/admin/analytics", icon: "BarChart3" },
+=======
+>>>>>>> claude/crm-modules-review-fxo5es
   ]},
   { label: "Communication", items: [
     { key: "chat", label: "Team Chat", route: "/admin/chat", icon: "MessageSquare" },
@@ -123,7 +126,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-users",  label: "User Management",      route: "/admin/users",  icon: "UserCog" },
       { key: "admin-access", label: "Access Control",       route: "/admin/access", icon: "Key" },
       { key: "admin-roles",  label: "Roles & Permissions",  route: "/admin/roles",  icon: "Shield" },
-      { key: "admin-an-group-staff", label: "AN Group Staff", route: "/admin/an-group-staff", icon: "Shield" },
+      { key: "admin-an-group-staff", label: "Platform Staff", route: "/admin/an-group-staff", icon: "Shield" },
     ]},
     { key: "adm-config", label: "Configuration", items: [
       { key: "admin-intg", label: "Integrations", route: "/admin/integrations", icon: "Plug" },
