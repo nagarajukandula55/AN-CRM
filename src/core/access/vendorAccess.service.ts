@@ -384,13 +384,13 @@ const MINIMAL_FLOOR_ROLE_CODES = ["CUSTOMER_SHOPNATIVE", "CUSTOMER_ANGROUP"];
  * e.g. the root "/" page for a user who is already authenticated via
  * cookie and never re-submits the login form). Having two separate
  * copies of this logic is exactly how the root page's hardcoded
- * `router.replace('/admin')` went stale the moment the vendor-team
+ * `router.replace('/console')` went stale the moment the vendor-team
  * redirect fix landed only in the login route -- Engineer/CCO accounts
  * that opened the app fresh (not via the login form) kept landing on
- * /admin because the root page never got the same rule.
+ * /console because the root page never got the same rule.
  */
 export async function resolveLandingPath(userId: string, isSuperAdmin: boolean): Promise<string> {
-  if (isSuperAdmin) return "/admin";
+  if (isSuperAdmin) return "/console";
 
   const memberships = await BusinessMember.find({ userId, status: "ACTIVE" })
     .select("vendorId")
@@ -418,5 +418,5 @@ export async function resolveLandingPath(userId: string, isSuperAdmin: boolean):
   if (hasVendorAccess) return "/vendor";
 
   const homeRoute = grantedRoles.find((r) => r.homeRoute && !MINIMAL_FLOOR_ROLE_CODES.includes(r.code))?.homeRoute;
-  return homeRoute || "/admin";
+  return homeRoute || "/console";
 }

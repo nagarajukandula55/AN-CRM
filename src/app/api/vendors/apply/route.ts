@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
       title: "New vendor application",
       message: `${String(companyName).trim()} applied (request ${requestNumber}) and needs review${business ? ` for ${business.brandName || business.name}` : ""}.`,
       type: "warning",
-      link: "/admin/vendors",
+      link: "/console/vendors",
     });
 
     return NextResponse.json(

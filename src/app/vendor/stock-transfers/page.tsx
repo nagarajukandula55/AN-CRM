@@ -36,7 +36,7 @@ const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
 // Vendor's own view of Stock Transfers touching their own warehouses (see
-// /admin/stock-transfers) -- reuses the exact same /api/stock/transfers
+// /console/stock-transfers) -- reuses the exact same /api/stock/transfers
 // endpoint. StockTransfer has no vendorId of its own (it's warehouse-to-
 // warehouse), so this scopes by "either side is one of MY warehouses"
 // instead, fed by the same /api/warehouses list the vendor's own

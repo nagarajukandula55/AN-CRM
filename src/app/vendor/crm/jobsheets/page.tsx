@@ -82,7 +82,7 @@ const NEXT_ACTION: Record<string, { label: string; action: string } | undefined>
 const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
-// Vendor's own view of CRM Job Sheets (see /admin/crm/jobsheets) -- reuses
+// Vendor's own view of CRM Job Sheets (see /console/crm/jobsheets) -- reuses
 // the same /api/crm/jobsheets endpoint, scoped to this vendor's own team
 // via assignedToIn instead of the whole business.
 export default function VendorCrmJobSheetsPage() {

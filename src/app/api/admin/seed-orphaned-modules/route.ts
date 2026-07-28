@@ -54,24 +54,24 @@ const ORPHANED_MODULES: Array<{
   applicableActions?: string[];
   sortOrder: number;
 }> = [
-  { key: "masters-units", label: "Unit", pluralLabel: "Units", description: "Measurement units used across products and materials.", icon: "Ruler", route: "/admin/masters/units", sortOrder: 60 },
-  { key: "masters-brands", label: "Brand", pluralLabel: "Brands", description: "Product brand master list.", icon: "Tags", route: "/admin/masters/brands", sortOrder: 61 },
-  { key: "masters-prod-cat", label: "Product Category", pluralLabel: "Product Categories", description: "Category tree for products.", icon: "Layers", route: "/admin/masters/product-categories", sortOrder: 62 },
-  { key: "masters-mat-cat", label: "Material Category", pluralLabel: "Material Categories", description: "Category tree for raw materials.", icon: "Layers", route: "/admin/masters/material-categories", sortOrder: 63 },
+  { key: "masters-units", label: "Unit", pluralLabel: "Units", description: "Measurement units used across products and materials.", icon: "Ruler", route: "/console/masters/units", sortOrder: 60 },
+  { key: "masters-brands", label: "Brand", pluralLabel: "Brands", description: "Product brand master list.", icon: "Tags", route: "/console/masters/brands", sortOrder: 61 },
+  { key: "masters-prod-cat", label: "Product Category", pluralLabel: "Product Categories", description: "Category tree for products.", icon: "Layers", route: "/console/masters/product-categories", sortOrder: 62 },
+  { key: "masters-mat-cat", label: "Material Category", pluralLabel: "Material Categories", description: "Category tree for raw materials.", icon: "Layers", route: "/console/masters/material-categories", sortOrder: 63 },
 
-  { key: "stock-transfers", label: "Stock Transfer", pluralLabel: "Stock Transfers", description: "Move stock between warehouses.", icon: "ArrowLeftRight", route: "/admin/stock-transfers", sortOrder: 70 },
-  { key: "stock-adjustments", label: "Stock Adjustment", pluralLabel: "Stock Adjustments", description: "Manual stock corrections with reason codes.", icon: "SlidersHorizontal", route: "/admin/stock-adjustments", sortOrder: 71 },
-  { key: "inventory-lots", label: "Inventory Lot", pluralLabel: "Inventory Lots", description: "Batch/lot-level inventory tracking.", icon: "Box", route: "/admin/inventory/lots", sortOrder: 72 },
+  { key: "stock-transfers", label: "Stock Transfer", pluralLabel: "Stock Transfers", description: "Move stock between warehouses.", icon: "ArrowLeftRight", route: "/console/stock-transfers", sortOrder: 70 },
+  { key: "stock-adjustments", label: "Stock Adjustment", pluralLabel: "Stock Adjustments", description: "Manual stock corrections with reason codes.", icon: "SlidersHorizontal", route: "/console/stock-adjustments", sortOrder: 71 },
+  { key: "inventory-lots", label: "Inventory Lot", pluralLabel: "Inventory Lots", description: "Batch/lot-level inventory tracking.", icon: "Box", route: "/console/inventory/lots", sortOrder: 72 },
 
-  { key: "vendor-products", label: "Vendor Product", pluralLabel: "Vendor Products", description: "Vendor-submitted product approval queue.", icon: "ShoppingCart", route: "/admin/vendor-products", applicableActions: ["view", "approve"], sortOrder: 80 },
+  { key: "vendor-products", label: "Vendor Product", pluralLabel: "Vendor Products", description: "Vendor-submitted product approval queue.", icon: "ShoppingCart", route: "/console/vendor-products", applicableActions: ["view", "approve"], sortOrder: 80 },
 
-  { key: "analytics", label: "Analytics", pluralLabel: "Analytics", description: "Cross-business performance dashboard.", icon: "BarChart3", route: "/admin/analytics", applicableActions: ["view"], sortOrder: 211 },
+  { key: "analytics", label: "Analytics", pluralLabel: "Analytics", description: "Cross-business performance dashboard.", icon: "BarChart3", route: "/console/analytics", applicableActions: ["view"], sortOrder: 211 },
 
-  { key: "ai", label: "ANu Assistant", pluralLabel: "ANu Assistant", description: "In-house AI assistant chat.", icon: "Bot", route: "/admin/ai", applicableActions: ["view"], sortOrder: 220 },
+  { key: "ai", label: "ANu Assistant", pluralLabel: "ANu Assistant", description: "In-house AI assistant chat.", icon: "Bot", route: "/console/ai", applicableActions: ["view"], sortOrder: 220 },
 
-  { key: "logistics", label: "Logistics", pluralLabel: "Logistics & Shipping", description: "Shipment tracking and delivery overview.", icon: "Truck", route: "/admin/logistics", applicableActions: ["view"], sortOrder: 230 },
+  { key: "logistics", label: "Logistics", pluralLabel: "Logistics & Shipping", description: "Shipment tracking and delivery overview.", icon: "Truck", route: "/console/logistics", applicableActions: ["view"], sortOrder: 230 },
 
-  { key: "hr-documents", label: "HR Document", pluralLabel: "HR Documents", description: "Employee document vault with expiry tracking.", icon: "FolderOpen", route: "/admin/hr/documents", sortOrder: 240 },
+  { key: "hr-documents", label: "HR Document", pluralLabel: "HR Documents", description: "Employee document vault with expiry tracking.", icon: "FolderOpen", route: "/console/hr/documents", sortOrder: 240 },
 
   // NOTE: key is "settings" (not "admin-settings") — this MUST match
   // exactly, because app/api/invoice-templates/route.ts and [id]/route.ts
@@ -82,8 +82,8 @@ const ORPHANED_MODULES: Array<{
   // super admins on those routes. The sidebar nav entry itself can still be
   // labeled/keyed "admin-settings" for its own display purposes — that's
   // a separate, cosmetic nav key, not the permission-check key.
-  { key: "settings", label: "Setting", pluralLabel: "Settings", description: "Business-wide configuration hub.", icon: "Settings", route: "/admin/settings", applicableActions: ["view", "edit", "delete", "manage_settings"], sortOrder: 250 },
-  { key: "admin-pincode-data", label: "Pincode Dataset", pluralLabel: "Pincode Data", description: "India pincode autofill dataset management.", icon: "MapPin", route: "/admin/pincode-data", applicableActions: ["view", "manage_settings"], sortOrder: 251 },
+  { key: "settings", label: "Setting", pluralLabel: "Settings", description: "Business-wide configuration hub.", icon: "Settings", route: "/console/settings", applicableActions: ["view", "edit", "delete", "manage_settings"], sortOrder: 250 },
+  { key: "admin-pincode-data", label: "Pincode Dataset", pluralLabel: "Pincode Data", description: "India pincode autofill dataset management.", icon: "MapPin", route: "/console/pincode-data", applicableActions: ["view", "manage_settings"], sortOrder: 251 },
 
   // ── The following module keys are the REAL targets of live
   // requirePermission(buildPermissionCode(key, action)) calls scattered
@@ -101,13 +101,13 @@ const ORPHANED_MODULES: Array<{
   // Inventory, and Dashboard-overview routes. The bypass fix means super
   // admins now work regardless; these seed entries are what makes it
   // POSSIBLE to grant this access to any other role via the access matrix.
-  { key: "gst", label: "GST Filing", pluralLabel: "GST", description: "GST configuration and filings.", icon: "FileText", route: "/admin/gst", applicableActions: ["view", "create", "edit", "approve"], sortOrder: 300 },
-  { key: "dashboard", label: "Dashboard", pluralLabel: "Dashboard", description: "ERP metrics overview.", icon: "LayoutDashboard", route: "/admin", applicableActions: ["view"], sortOrder: 1 },
-  { key: "businesses", label: "Business", pluralLabel: "Businesses", description: "Business/tenant records.", icon: "Building2", route: "/admin/business", applicableActions: ["view", "create", "edit", "delete"], sortOrder: 301 },
-  { key: "audit", label: "Audit Log", pluralLabel: "Audit Logs", description: "System-wide create/update/delete activity trail.", icon: "ShieldCheck", route: "/admin/reports", applicableActions: ["view", "create"], sortOrder: 302 },
-  { key: "finance", label: "Finance Record", pluralLabel: "Finance", description: "Invoices and payments.", icon: "DollarSign", route: "/admin/finance", applicableActions: ["view", "create", "edit"], sortOrder: 303 },
-  { key: "purchase", label: "Purchase Order", pluralLabel: "Purchase", description: "Purchase orders.", icon: "ShoppingCart", route: "/admin/purchase", applicableActions: ["view", "create", "approve"], sortOrder: 304 },
-  { key: "inventory", label: "Inventory Item", pluralLabel: "Inventory", description: "Inventory items, movements, and GRNs.", icon: "Package", route: "/admin/inventory", applicableActions: ["view", "edit"], sortOrder: 305 },
+  { key: "gst", label: "GST Filing", pluralLabel: "GST", description: "GST configuration and filings.", icon: "FileText", route: "/console/gst", applicableActions: ["view", "create", "edit", "approve"], sortOrder: 300 },
+  { key: "dashboard", label: "Dashboard", pluralLabel: "Dashboard", description: "ERP metrics overview.", icon: "LayoutDashboard", route: "/console", applicableActions: ["view"], sortOrder: 1 },
+  { key: "businesses", label: "Business", pluralLabel: "Businesses", description: "Business/tenant records.", icon: "Building2", route: "/console/business", applicableActions: ["view", "create", "edit", "delete"], sortOrder: 301 },
+  { key: "audit", label: "Audit Log", pluralLabel: "Audit Logs", description: "System-wide create/update/delete activity trail.", icon: "ShieldCheck", route: "/console/reports", applicableActions: ["view", "create"], sortOrder: 302 },
+  { key: "finance", label: "Finance Record", pluralLabel: "Finance", description: "Invoices and payments.", icon: "DollarSign", route: "/console/finance", applicableActions: ["view", "create", "edit"], sortOrder: 303 },
+  { key: "purchase", label: "Purchase Order", pluralLabel: "Purchase", description: "Purchase orders.", icon: "ShoppingCart", route: "/console/purchase", applicableActions: ["view", "create", "approve"], sortOrder: 304 },
+  { key: "inventory", label: "Inventory Item", pluralLabel: "Inventory", description: "Inventory items, movements, and GRNs.", icon: "Package", route: "/console/inventory", applicableActions: ["view", "edit"], sortOrder: 305 },
 ];
 
 async function seedOrphanedModules(userId: string) {

@@ -7,7 +7,7 @@ import Integration from "@/models/Integration";
  * env vars, ignoring the per-business Integration(provider: EMAIL) config
  * the admin Integrations UI already lets each business configure. Now
  * looks up that business's own Resend credentials first (set via the
- * Email tab in /admin/integrations, emailProvider: 'RESEND'), and only
+ * Email tab in /console/integrations, emailProvider: 'RESEND'), and only
  * falls back to the global env vars if the business hasn't configured its
  * own key yet — so nothing breaks for businesses that haven't set this up.
  */

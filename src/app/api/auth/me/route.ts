@@ -74,7 +74,7 @@ export async function GET(req: Request) {
       // not just after some other feature happens to create it first.
       await getOrCreateANGroupBusinessId();
       businesses = await (Business as any).find({ isActive: true })
-        .select("_id name brandName businessCode type isPlatform")
+        .select("_id name brandName businessCode type isPlatform operatingMode")
         .lean();
     } else {
       // Regular users: load via BusinessMember
@@ -91,7 +91,7 @@ export async function GET(req: Request) {
           _id: { $in: businessIds },
           isActive: true,
         })
-          .select("_id name brandName businessCode type")
+          .select("_id name brandName businessCode type operatingMode")
           .lean() as any[];
 
         // Merge membership metadata into each business

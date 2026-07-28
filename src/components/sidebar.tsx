@@ -46,7 +46,7 @@ function writeSidebarCache(snapshot: { user: UserInfo | null; businesses: Busine
   } catch { /* sessionStorage unavailable -- cache is a pure optimization */ }
 }
 
-interface Business { _id: string; name: string; brandName?: string; businessCode?: string; isPlatform?: boolean }
+interface Business { _id: string; name: string; brandName?: string; businessCode?: string; isPlatform?: boolean; operatingMode?: "BRAND" | "SC" | "POS" | "" }
 interface UserInfo {
   id: string; name: string; email: string; role: string;
   isSuperAdmin: boolean; activeBusinessId: string | null;
@@ -397,23 +397,38 @@ export default function Sidebar() {
           {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
         </button>
 
-        {/* Brand */}
+        {/* Brand -- a real mark (gradient monogram tile) instead of a bare
+            wordmark + status dot, so the console reads as its own product
+            rather than a generic admin-dashboard template. */}
         <div className="px-5 pt-5 pb-4 border-b border-border">
           {isCollapsed ? (
             <div className="flex justify-center">
-              <span className="h-2 w-2 rounded-full bg-success animate-pulse" title="AN-CRM" />
+              <div
+                title="AN-CRM"
+                className="h-8 w-8 rounded-control flex items-center justify-center text-[11px] font-bold text-accent-fg"
+                style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-hover))" }}
+              >
+                AN
+              </div>
             </div>
           ) : (
-            <>
-              <p className="text-[9px] uppercase tracking-[0.45em] text-ink-3 font-medium">AN-CRM</p>
-              <h2 className="mt-0.5 text-base font-bold tracking-tight text-ink">Console</h2>
-              <div className="mt-1.5 flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                <p className="text-[10px] text-ink-3">
-                  {user?.isSuperAdmin ? <span className="text-accent font-medium">Super Admin</span> : (user?.role || "Operational")}
-                </p>
+            <div className="flex items-center gap-2.5">
+              <div
+                className="h-9 w-9 shrink-0 rounded-control flex items-center justify-center text-xs font-bold text-accent-fg"
+                style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-hover))" }}
+              >
+                AN
               </div>
-            </>
+              <div className="min-w-0">
+                <h2 className="text-base font-bold tracking-tight text-ink leading-tight">AN-CRM</h2>
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse shrink-0" />
+                  <p className="text-[10px] text-ink-3 truncate">
+                    {user?.isSuperAdmin ? <span className="text-accent font-medium">Super Admin</span> : (user?.role || "Operational")}
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -512,7 +527,14 @@ export default function Sidebar() {
             const allItems: NavItem[] = group.items
               ? group.items
               : (group.subgroups ?? []).flatMap((sg) => sg.items);
-            const hasVisible = allItems.some((item) => isVisible(item.key));
+            // item.modes restricts a nav entry to specific operating modes
+            // (see sidebar-nav.ts) -- e.g. Workorders/Fault Codes make no
+            // sense for POS. No operatingMode set on the business yet (""
+            // or undefined) shows everything, so nothing regresses for
+            // businesses that predate this field.
+            const modeAllows = (item: NavItem) =>
+              !item.modes || !activeBiz?.operatingMode || item.modes.includes(activeBiz.operatingMode);
+            const hasVisible = allItems.some((item) => isVisible(item.key) && modeAllows(item));
             if (!hasVisible) return null;
 
             // Helper: render a single nav link
@@ -520,8 +542,8 @@ export default function Sidebar() {
               const dbMod    = modules.find((m: any) => m.key === item.key);
               const m        = { ...item, ...(dbMod || {}) };
               const active   =
-                m.route === "/admin"
-                  ? pathname === "/admin"
+                m.route === "/console"
+                  ? pathname === "/console"
                   : pathname === m.route ||
                     (m.route.length > 1 && pathname?.startsWith(m.route + "/"));
               const IconComp = ICON_MAP[m.icon] || Building2;
@@ -561,7 +583,7 @@ export default function Sidebar() {
                 {/* Flat items */}
                 {group.items && (
                   <div className="space-y-0.5">
-                    {applyModuleOrder(group.items.filter((item) => isVisible(item.key)))
+                    {applyModuleOrder(group.items.filter((item) => isVisible(item.key) && modeAllows(item)))
                       .map((item) => renderItem(item))}
                   </div>
                 )}
@@ -577,7 +599,7 @@ export default function Sidebar() {
                   // separating there.
                   <div className={isCollapsed ? "space-y-2.5" : "space-y-0.5"}>
                     {group.subgroups.map((sg, sgIndex) => {
-                      const visibleSgItems = applyModuleOrder(sg.items.filter((i) => isVisible(i.key)));
+                      const visibleSgItems = applyModuleOrder(sg.items.filter((i) => isVisible(i.key) && modeAllows(i)));
                       if (visibleSgItems.length === 0) return null;
                       const sgOpen = openSubgroups[sg.key] !== false;
 

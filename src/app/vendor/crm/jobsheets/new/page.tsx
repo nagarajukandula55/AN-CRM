@@ -15,7 +15,7 @@ interface SymptomCode { _id: string; code: string; description: string }
 interface CrmOption { _id: string; code: string; label: string }
 interface Warehouse { _id: string; warehouseName: string }
 
-// Vendor's own equivalent of /admin/crm/jobsheets/new -- a real page, not
+// Vendor's own equivalent of /console/crm/jobsheets/new -- a real page, not
 // the inline right-hand modal this used to be (which was also missing
 // Company, Email, Address/Pincode/State/City, Product Category, IMEI/
 // Serial Number, Visit type, Warehouse and Remark entirely -- this now

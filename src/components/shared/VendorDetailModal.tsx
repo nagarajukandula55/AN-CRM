@@ -69,6 +69,14 @@ export interface VendorDetailData {
   enableStoreFront?: boolean;
   enableServiceCenter?: boolean;
   enableWarehouse?: boolean;
+  appliedAs?: 'BRAND' | 'SC' | 'POS';
+  parentVendorId?: string | { _id: string; companyName?: string } | null;
+  subVendorBilling?: {
+    subVendorPlan?: 'NONE' | 'ALLOWED' | 'BLOCKED';
+    subVendorCount?: number;
+    subVendorChargePerAdd?: number;
+    subVendorChargeCurrency?: string;
+  };
 }
 
 interface VendorDetailModalProps {

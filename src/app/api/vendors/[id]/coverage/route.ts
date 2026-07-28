@@ -2,7 +2,7 @@
  * GET/PUT /api/vendors/[id]/coverage — read/update a Service Center's
  * serviceCoverage tree (state/city/pincode-level entries, separately for
  * onsite visits vs walk-in drop-offs). Used by the admin pincode-tree
- * assignment UI (/admin/vendors/[id]/coverage).
+ * assignment UI (/console/vendors/[id]/coverage).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";

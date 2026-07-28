@@ -1,7 +1,7 @@
 /**
  * "Light Neon" theme — shared visual language for the PUBLIC marketing
  * surface only (HomePage, /partner-signup, and touch-ups on
- * /appointment-request). Never imported by anything under src/app/admin
+ * /appointment-request). Never imported by anything under src/app/console
  * or src/app/vendor — those keep the app's original near-black minimal
  * theme defined in globals.css untouched.
  *

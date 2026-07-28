@@ -24,12 +24,12 @@ const NEW_MODULES = [
   // separate Zenforge project; this key is kept unchanged so businesses
   // that already have "social" saved in Business.modules[] don't lose
   // the module, see sidebar.tsx's matching comment) ──────────
-  { key: "social", label: "Zenforge", route: "/admin/zenforge", icon: "Share2", enabled: true },
+  { key: "social", label: "Zenforge", route: "/console/zenforge", icon: "Share2", enabled: true },
   // ── NEW: AI Studio ────────────────────────────────────────
   { key: "ai-image", label: "AI Studio", route: "/ai-image", icon: "Sparkles", enabled: true },
   // ── Admin ─────────────────────────────────────────────────
-  { key: "admin-integrations", label: "Integrations", route: "/admin/integrations", icon: "Plug", enabled: true },
-  { key: "admin-roles", label: "Roles & Permissions", route: "/admin/roles", icon: "Shield", enabled: true },
+  { key: "admin-integrations", label: "Integrations", route: "/console/integrations", icon: "Plug", enabled: true },
+  { key: "admin-roles", label: "Roles & Permissions", route: "/console/roles", icon: "Shield", enabled: true },
   { key: "notifications", label: "Notifications", route: "/notifications", icon: "Bell", enabled: true },
   { key: "chat", label: "Team Chat", route: "/chat", icon: "MessageSquare", enabled: true },
 ];

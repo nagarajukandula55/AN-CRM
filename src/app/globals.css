@@ -3,31 +3,33 @@
 @tailwind utilities;
 
 /* ==========================================
-   AN-CRM — DESIGN TOKENS
+   AN-CRM — DESIGN TOKENS (Round 2 revamp)
 
-   AN-CRM is its own product, not a re-skin of ANgroup -- per explicit
-   direction ("no need to keep ANgroup theme or colour code here").
-   Accent: a confident violet, distinct from ANgroup's petrol teal, chosen
-   to read as premium/modern SaaS without tipping into generic
-   indigo-600-everywhere -- the gradient hero on the homepage and every
-   button/link/focus ring in the app pick this up automatically since
-   everything routes through this one variable. Neutrals lean warm (a hair
-   of ochre in the paper tone, not pure grey) so the ground feels chosen,
-   not inherited. Semantic colors (success/warning/critical) are a
-   DIFFERENT hue family from the accent on purpose -- state meaning
-   shouldn't be confused with brand identity.
+   Round 1 picked a confident violet specifically to read as "not
+   ANgroup's petrol teal" -- but a violet-accent/rounded-corner dashboard
+   is indistinguishable from a hundred other admin SaaS products, which is
+   its own kind of un-independence. This pass grounds the palette in the
+   actual subject instead: workorders, device diagnostics, service
+   tickets -- a workshop repair-ticket/parts-manual language, not a
+   generic dashboard template. Burnt-copper accent (nothing like ANgroup's
+   petrol teal OR round 1's violet), a serif display face for section/page
+   titles the way a manual's headings would read, monospace for every
+   number that needs to line up (workorder IDs, serials, tax rates).
+   Semantic colors stay a different hue family from the accent, same
+   reasoning as before -- state meaning shouldn't be confused with brand.
 
    Every page should consume these variables (or the Tailwind tokens in
    tailwind.config.ts that map to them) instead of hardcoding gray-900/
-   indigo-600/rounded-xl-vs-2xl per file -- that drift is exactly what the
-   UI audit flagged (see admin/settings/page.tsx for a known offender
-   still needing this pass, not yet done).
+   indigo-600/rounded-xl-vs-2xl per file.
 ========================================== */
 
 :root {
-  /* Type */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: 'Manrope', var(--font-sans);
+  /* Type -- serif display (section/page titles), system sans (UI chrome),
+     monospace (IDs/serials/amounts). No webfont CDN -- these are real,
+     deliberately-paired system font stacks, not a lone font with a silent
+     fallback. */
+  --font-sans: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, var(--font-sans);
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   /* Radius -- exactly two tiers, everywhere */
@@ -48,10 +50,11 @@
   --text-3: #8B8F94;
   --muted: #6B6F75;
 
-  /* Brand accent -- confident violet, AN-CRM's own identity */
-  --accent: #5B3DF5;
-  --accent-hover: #4A2FE0;
-  --accent-soft: rgba(91, 61, 245, 0.10);
+  /* Brand accent -- burnt copper, AN-CRM's own identity (distinct from
+     both ANgroup's petrol teal AND this app's own round-1 violet) */
+  --accent: #B5541F;
+  --accent-hover: #963F14;
+  --accent-soft: rgba(181, 84, 31, 0.10);
   --accent-fg: #ffffff;
 
   /* Kept for existing call sites during migration -- primary now maps to
@@ -66,8 +69,10 @@
   --success-soft: rgba(21, 128, 61, 0.10);
   --danger: #B91C1C;
   --danger-soft: rgba(185, 28, 28, 0.10);
-  --warning: #B45309;
-  --warning-soft: rgba(180, 83, 9, 0.10);
+  /* Shifted off the old amber/copper hue now that the accent itself lives
+     there -- warning needs its own hue family, same reasoning as always. */
+  --warning: #8A7413;
+  --warning-soft: rgba(138, 116, 19, 0.10);
   --info: #1D4ED8;
   --info-soft: rgba(29, 78, 216, 0.10);
 
@@ -146,17 +151,19 @@ select {
 
 .h-page {
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.5rem;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.625rem;
   line-height: 1.25;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
   color: var(--text);
 }
 
 .h-section {
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.125rem;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.1875rem;
   line-height: 1.3;
   color: var(--text);
 }

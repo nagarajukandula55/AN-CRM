@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       title: "New ANu issue report",
       message: `${title} — ${severity}`,
       type: severity === "HIGH" ? "error" : "warning",
-      link: "/admin/anu-issues",
+      link: "/console/anu-issues",
     }).catch(() => {});
     notify({ event: "STAFF_ALERT", businessId: String(businessId), message: summary }).catch(() => {});
 

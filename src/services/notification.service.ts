@@ -5,7 +5,7 @@ import { sendPushToUser, sendPushToUsers } from "@/services/push.service";
 
 /**
  * Server-side helper for other routes/services to raise a persistent,
- * user-facing notification (shows up in /admin/notifications and the
+ * user-facing notification (shows up in /console/notifications and the
  * sidebar's unread badge) without hand-rolling Notification.create() at
  * every call site. Best-effort: a notification failing to write must never
  * break the actual operation that triggered it.

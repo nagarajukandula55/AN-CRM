@@ -59,6 +59,7 @@ const PUBLIC_EXACT = new Set([
   "/",
   "/login",
   "/register",
+  "/signup",
   "/pricing",
   "/forgot-password",
   "/reset-password",
@@ -89,6 +90,7 @@ const PUBLIC_PREFIXES = [
   "/api/health",
   "/api/ping",
   "/api/vendors/apply",          // public vendor application submission
+  "/api/vendors/self-signup",    // public one-step signup (see /signup page)
   "/api/businesses/public",      // public business name lookup for the form
   // Public appointment-request short-link resolution (?code=AB -> businessId)
   // -- was missing here, so every ?code= link 401'd before ever resolving.
