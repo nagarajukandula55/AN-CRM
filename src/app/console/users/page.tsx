@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { UserPlus, Search, UserCog, Loader2, Edit2, Eye, Trash2 } from 'lucide-react';
 
@@ -42,6 +43,7 @@ const TAB_ROLE_MAP: Record<string, string> = {
 };
 
 export default function UsersPage() {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeTab, setActiveTab]   = useState('All');
@@ -377,7 +379,7 @@ export default function UsersPage() {
                           className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
                           <Edit2 size={14} />
                         </button>
-                        <button onClick={() => { window.location.href = `/console/users/${user._id}`; }} title="View"
+                        <button onClick={() => router.push(`/console/users/${user._id}`)} title="View"
                           className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
                           <Eye size={14} />
                         </button>
