@@ -142,7 +142,7 @@ export default function DesignEditor({ designId, duplicateFromTemplateId }: Desi
             setCanvasSize({ width: data.design.canvasWidth, height: data.design.canvasHeight });
             setInitialCanvasJson(data.design.canvasJson);
             setNeedsSizePicker(false);
-            router.replace(`/admin/design-studio/editor/${data.design._id}`);
+            router.replace(`/console/design-studio/editor/${data.design._id}`);
           } else {
             showToast(data.error || "Failed to start from template.", false);
           }
@@ -542,7 +542,7 @@ export default function DesignEditor({ designId, duplicateFromTemplateId }: Desi
         }
         showToast("Design saved.");
         setExistingDesignId(data.design._id);
-        router.replace(`/admin/design-studio/editor/${data.design._id}`);
+        router.replace(`/console/design-studio/editor/${data.design._id}`);
       }
     } catch {
       showToast("Network error.", false);

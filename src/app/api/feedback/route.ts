@@ -4,7 +4,7 @@
  * (public, unauthenticated, customer-facing "contact us" for a business's
  * own storefront) -- this is in-app, tagged source: "in-app-feedback", and
  * always stamped with the submitting user's real identity + active
- * business, never anonymous. Lands in the same Feedback model/admin inbox
+ * business, never anonymous. Lands in the same Feedback model/console inbox
  * (GET /api/admin/feedback) so there's one place to review both kinds,
  * distinguishable by `source`.
  */

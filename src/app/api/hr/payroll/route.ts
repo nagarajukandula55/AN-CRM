@@ -1,5 +1,5 @@
 /**
- * HR Payroll API — backs src/app/admin/hr/payroll/page.tsx.
+ * HR Payroll API — backs src/app/console/hr/payroll/page.tsx.
  * GET /api/hr/payroll?businessId=&month=&year=
  */
 import { NextRequest, NextResponse } from "next/server";

@@ -14,7 +14,7 @@ const OPEN_CALL_STATUSES = ["NEW", "CONTACTED", "QUALIFIED", "JOB_CREATED", "IN_
 /**
  * Daily ops report: a handful of cheap countDocuments() metrics, summarized
  * into plain language via callAIWithFailover() and pushed to Telegram. Also
- * reachable via POST for manual "Send Ops Report Now" testing/admin use --
+ * reachable via POST for manual "Send Ops Report Now" testing/console use --
  * both verbs share the same gatherAndSend() logic below.
  *
  * Auth: standard Vercel Cron convention -- if CRON_SECRET is set, requires

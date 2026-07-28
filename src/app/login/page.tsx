@@ -52,10 +52,10 @@ function LoginForm() {
       localStorage.setItem('an_token', data.token)
       localStorage.setItem('an_user', JSON.stringify(data.user))
 
-      // Was always '/admin' regardless of role -- a vendor login (User.role
+      // Was always '/console' regardless of role -- a vendor login (User.role
       // === 'VENDOR') has no business being dropped onto the internal admin
       // shell; their actual portal (product wizard, orders, staff, payouts)
-      // lives under /vendor. Every other role keeps landing on /admin.
+      // lives under /vendor. Every other role keeps landing on /console.
       // A super-admin reset/temp password forces this gate first --
       // middleware itself blocks everything else until it's cleared, so
       // landing anywhere else would just bounce right back here.
@@ -79,7 +79,7 @@ function LoginForm() {
         // Per-role configurable home page (Roles & Permissions > Home Page)
         // wins over the generic role/account-type default below when set.
         : data.user?.homeRoute ? data.user.homeRoute
-        : data.user?.role === 'VENDOR' ? '/vendor' : '/admin'
+        : data.user?.role === 'VENDOR' ? '/vendor' : '/console'
 
       // Hard redirect so the browser commits the httpOnly cookie before the next request.
       // router.push() triggers an RSC fetch that races with cookie propagation → 307 loop.

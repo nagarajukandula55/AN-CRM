@@ -1,7 +1,7 @@
 /**
  * Single source of truth for Indian State -> City data, replacing the two
  * duplicated `INDIAN_STATES` arrays that used to live independently in
- * src/app/register/page.tsx and src/app/admin/vendors/page.tsx (names only,
+ * src/app/register/page.tsx and src/app/console/vendors/page.tsx (names only,
  * no cities, disconnected from the GST state-code map in
  * src/core/gst/stateCodes.ts).
  *

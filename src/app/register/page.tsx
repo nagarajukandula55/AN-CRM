@@ -17,7 +17,7 @@ import { validateGSTINAgainstState } from '@/lib/validation/gst'
 
 // Only two signup paths: a single account-creation form (covers customers
 // AND future employees — an admin grants EMPLOYEE business access to an
-// already-registered account afterward via /admin/users, rather than
+// already-registered account afterward via /console/users, rather than
 // employees self-registering against a pre-issued Employee ID), and the
 // vendor application (which genuinely needs separate company/compliance
 // documents collected up front). Vendor STAFF also use the plain signup

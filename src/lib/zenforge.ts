@@ -3,7 +3,7 @@ import Integration, { ZenforgeConfig } from '@/models/Integration';
 
 /**
  * Server-side helper for talking to a business's connected Zenforge instance.
- * The API secret never reaches the browser: every /admin/zenforge page action
+ * The API secret never reaches the browser: every /console/zenforge page action
  * hits an ANgroup API route (src/app/api/admin/zenforge/*), which calls this
  * to look up the stored baseUrl/apiSecret and forwards the request itself.
  */

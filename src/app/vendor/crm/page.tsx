@@ -3,7 +3,7 @@
 /**
  * Vendor-side CRM Overview -- the landing page for Engineer/CCO vendor-team
  * members (see src/app/login/page.tsx's redirect logic). Mirrors
- * src/app/admin/crm/page.tsx's stats/recent-activity structure, but scoped
+ * src/app/console/crm/page.tsx's stats/recent-activity structure, but scoped
  * to this vendor's own team (same `assignedToIn` teamIds pattern the
  * existing /vendor/crm/calls and /vendor/crm/jobsheets list pages already
  * use) instead of a whole business -- Engineer/CCO previously landed on

@@ -7,7 +7,7 @@ import { logAction } from "@/lib/audit/logAction";
 
 /**
  * GET /api/admin/pincode-data — dataset status for the admin upload page
- * (/admin/pincode-data): how many pincodes are loaded and when it was last
+ * (/console/pincode-data): how many pincodes are loaded and when it was last
  * updated, so admins can see at a glance whether a refresh is overdue.
  */
 export async function GET() {

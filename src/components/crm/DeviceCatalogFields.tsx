@@ -44,6 +44,20 @@ export function DeviceCatalogFields({ businessId, deviceCategory, brands, value,
   const [models, setModels] = useState<ModelOption[]>([])
   const [variants, setVariants] = useState<VariantOption[]>([])
   const [requestModal, setRequestModal] = useState<CatalogRequestKind | null>(null)
+  // SC businesses self-manage their own catalog additions instantly (see
+  // /api/catalog/requests's top comment) -- no approval queue at all, so
+  // the "pending approval" copy below is simply wrong for them. Brand
+  // stays on the real approval queue (shared, verified catalog).
+  const [selfManaged, setSelfManaged] = useState(false)
+  useEffect(() => {
+    if (!businessId) { setSelfManaged(false); return }
+    let cancelled = false
+    fetch(`/api/businesses/${businessId}`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setSelfManaged(d?.business?.operatingMode === 'SC') })
+      .catch(() => { if (!cancelled) setSelfManaged(false) })
+    return () => { cancelled = true }
+  }, [businessId])
 
   // Refetch Series whenever Brand changes.
   useEffect(() => {
@@ -91,7 +105,8 @@ export function DeviceCatalogFields({ businessId, deviceCategory, brands, value,
           {value.pendingBrandName ? (
             <div className="flex items-center justify-between gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 text-sm">
               <span className="text-amber-800">
-                <span className="font-medium">{value.pendingBrandName}</span> — pending approval, usable for this submission only
+                <span className="font-medium">{value.pendingBrandName}</span>{' '}
+                {selfManaged ? '— added to your catalog, ready to use' : '— pending approval, usable for this submission only'}
               </span>
               <button
                 type="button"
@@ -157,7 +172,7 @@ export function DeviceCatalogFields({ businessId, deviceCategory, brands, value,
           </select>
           {value.deviceModel && !value.deviceModelId && (
             <p className="mt-1 text-xs text-amber-700">
-              "{value.deviceModel}" — pending approval, usable for this submission only.
+              "{value.deviceModel}" — {selfManaged ? 'added to your catalog, ready to use.' : 'pending approval, usable for this submission only.'}
             </p>
           )}
         </div>

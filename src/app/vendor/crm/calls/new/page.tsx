@@ -14,7 +14,7 @@ interface FaultCode { _id: string; code: string; description: string }
 interface SymptomCode { _id: string; code: string; description: string }
 interface StaffMember { _id: string; userId: { _id: string; name: string; email: string } | string }
 
-// Vendor's own equivalent of /admin/crm/calls/new -- a real page, not the
+// Vendor's own equivalent of /console/crm/calls/new -- a real page, not the
 // inline right-hand modal this used to be (which was also missing Email,
 // Address/Pincode/State/City, Product Category and Fault Code entirely --
 // this now matches the admin form field-for-field). Posts to the same

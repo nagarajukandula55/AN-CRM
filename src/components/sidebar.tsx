@@ -542,8 +542,8 @@ export default function Sidebar() {
               const dbMod    = modules.find((m: any) => m.key === item.key);
               const m        = { ...item, ...(dbMod || {}) };
               const active   =
-                m.route === "/admin"
-                  ? pathname === "/admin"
+                m.route === "/console"
+                  ? pathname === "/console"
                   : pathname === m.route ||
                     (m.route.length > 1 && pathname?.startsWith(m.route + "/"));
               const IconComp = ICON_MAP[m.icon] || Building2;

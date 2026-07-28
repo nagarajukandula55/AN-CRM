@@ -32,7 +32,7 @@ export interface IRole extends Document {
   isProtected:     boolean;
   permissions:     string[];
   // Which page a user holding this role lands on right after login (e.g.
-  // "/admin/crm" or "/vendor/dashboard"). Empty/unset falls back to the
+  // "/console/crm" or "/vendor/dashboard"). Empty/unset falls back to the
   // existing default-per-account-type redirect logic.
   homeRoute?:      string;
   // Optional custom ordering of sidebar module keys for users holding this

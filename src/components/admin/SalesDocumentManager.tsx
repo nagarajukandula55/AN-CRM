@@ -191,7 +191,7 @@ export default function SalesDocumentManager({
                   <td className="px-6 py-3">
                     <div className="flex items-center justify-center gap-1">
                       <Link
-                        href={`/admin/sales-documents/${d._id}/print`}
+                        href={`/console/sales-documents/${d._id}/print`}
                         target="_blank"
                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
                         title="Print"

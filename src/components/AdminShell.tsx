@@ -10,7 +10,7 @@ import AnuWidget from '@/components/AnuWidget';
 // BUG (fixed here): AnuWidget's notification tab (bell icon, unread badge,
 // mark-read/delete -- reads real data from /api/notifications) only renders
 // when passed `showNotifications`. The vendor portal's layout.tsx already
-// passes it; this admin shell never did, so every /admin/* page rendered
+// passes it; this admin shell never did, so every /console/* page rendered
 // ANu with NO notification tab at all despite the comment above claiming
 // "everything is delivered through ANu." Also mounted the widget on the
 // full-bleed branch below (CRM call/jobsheet detail + print sub-routes),
@@ -21,8 +21,8 @@ import AnuWidget from '@/components/AnuWidget';
 // are deliberately full-screen with no sidebar -- they were being squeezed
 // into the leftover width next to the fixed sidebar ("small window within
 // window"). Matches the detail route and any sub-route under it (e.g.
-// .../print) but not the bare list pages (/admin/crm/calls, /admin/crm/jobsheets).
-const FULL_BLEED_PATTERN = /^\/admin\/crm\/(calls|jobsheets)\/[^/]+/;
+// .../print) but not the bare list pages (/console/crm/calls, /console/crm/jobsheets).
+const FULL_BLEED_PATTERN = /^\/console\/crm\/(calls|jobsheets)\/[^/]+/;
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || '';

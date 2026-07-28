@@ -63,7 +63,7 @@ const STATUSES = ['ALL', 'NEW', 'CONTACTED', 'QUALIFIED', 'JOB_CREATED', 'IN_PRO
 const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
-// Vendor's own view of the same CRM Calls feature (see /admin/crm/calls) --
+// Vendor's own view of the same CRM Calls feature (see /console/crm/calls) --
 // reuses the exact same /api/crm/calls endpoint (already permission-gated
 // on crm_calls.view/create, which a vendor's CCO/Engineer/Centre Manager
 // already holds via MEMBER_TYPE_IMPLIED_MODULES) rather than duplicating
