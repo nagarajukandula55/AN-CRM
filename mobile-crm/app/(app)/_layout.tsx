@@ -27,6 +27,7 @@ export default function AppLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Dashboard", tabBarIcon: ({ focused }) => <TabIcon symbol="🏠" focused={focused} /> }} />
+      <Tabs.Screen name="calls" options={{ title: "Calls", tabBarIcon: ({ focused }) => <TabIcon symbol="📞" focused={focused} /> }} />
       <Tabs.Screen name="workorders/index" options={{ title: "Workorders", tabBarIcon: ({ focused }) => <TabIcon symbol="🛠️" focused={focused} /> }} />
       <Tabs.Screen name="pos" options={{ title: "POS", tabBarIcon: ({ focused }) => <TabIcon symbol="🧾" focused={focused} /> }} />
       <Tabs.Screen name="plan" options={{ title: "Plan", tabBarIcon: ({ focused }) => <TabIcon symbol="💳" focused={focused} /> }} />

@@ -43,6 +43,9 @@ comment) — zero backend changes were needed to support this client.
   `/api/auth/login` endpoint the web app uses.
 - **Dashboard** (`app/(app)/index.tsx`) — greeting, plan/mode summary,
   open-workorder count, recent workorders list.
+- **Calls** (`app/(app)/calls.tsx`) — list + quick intake form (customer
+  name/phone/subject), backed by `/api/crm/calls`, the same
+  call-entry-that-becomes-a-workorder lifecycle the Brand web admin uses.
 - **Workorders** (`app/(app)/workorders/index.tsx` +
   `app/(app)/workorders/[id].tsx`) — list with status filter chips
   (backed by `/api/crm/jobsheets`), detail view, and a single-tap
@@ -66,9 +69,8 @@ comment) — zero backend changes were needed to support this client.
 
 ## What's NOT built yet (next phases)
 
-- **Brand-mode call intake / appointment booking screens** — this pass
-  covers workorders (used by both Brand and SC) and POS; the call-center
-  intake flow (`/admin/crm/calls`) and appointment calendar are web-admin
+- **Appointment booking/calendar** — call intake is now covered (see
+  Calls above); the appointment scheduling calendar itself is web-admin
   only for now.
 - **Native Razorpay checkout** for renewing/upgrading a plan from the
   phone — `/mobile`'s `app/checkout.tsx` is the exact pattern to port
