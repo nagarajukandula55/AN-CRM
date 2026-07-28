@@ -86,6 +86,12 @@
 
 html {
   scroll-behavior: smooth;
+  /* System-wide text-size decrease -- every rem-based Tailwind size
+     (text-sm, text-base, etc.) scales down proportionally from this one
+     change rather than editing font sizes per component. Chosen so more
+     of a dense CRM screen fits without feeling cramped, not so small it
+     hurts legibility. */
+  font-size: 93.75%;
 }
 
 body {
@@ -180,6 +186,26 @@ select {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
+}
+
+/* Subtle background treatment so dense screens don't read as flat white/
+   paper -- two soft accent-tinted glows plus a fine dot grid, faint
+   enough to sit behind every card without competing with content. Layered
+   onto the .bg-bg utility class itself (not just <body>) because nearly
+   every page wraps its content in its own opaque "min-h-screen bg-bg" div
+   that otherwise fully covers body's background. Placed after Tailwind's
+   generated utilities in the cascade so this background-image wins
+   without needing !important; background-color still comes from
+   Tailwind's own bg-bg rule (var(--bg)), untouched. Fixed attachment
+   keeps it steady while a page scrolls. */
+.bg-bg {
+  background-image:
+    radial-gradient(ellipse 900px 600px at 8% -10%, var(--accent-soft), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 10%, var(--accent-soft), transparent 55%),
+    radial-gradient(circle, var(--border) 1px, transparent 1px);
+  background-size: auto, auto, 22px 22px;
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-attachment: fixed, fixed, fixed;
 }
 
 /* ==========================================

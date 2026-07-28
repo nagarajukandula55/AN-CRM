@@ -585,7 +585,7 @@ export default function SCJobSheetScreen() {
           )}
           <div className="px-5 py-3 border-t border-border flex items-center justify-between bg-surface-2/40">
             <span className="text-sm text-ink-2">Total</span>
-            <span className="text-base font-semibold text-ink tabular">₹{total.toFixed(2)}</span>
+            <span className="text-sm font-semibold text-ink tabular">₹{total.toFixed(2)}</span>
           </div>
         </Card>
       )}
