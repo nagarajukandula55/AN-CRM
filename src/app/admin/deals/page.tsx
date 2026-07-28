@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
-import { Plus, X, Search, IndianRupee } from 'lucide-react'
+import { Plus, X, Search, IndianRupee, CheckCircle2, Circle, Trash2, Phone, Mail, Users2, StickyNote, ListTodo } from 'lucide-react'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -38,6 +38,152 @@ function formatINR(n: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n)
 }
 
+interface Activity {
+  _id: string
+  type: 'NOTE' | 'CALL' | 'EMAIL' | 'MEETING' | 'TASK'
+  description: string
+  dueDate?: string
+  completed: boolean
+  createdAt: string
+}
+
+const ACTIVITY_TYPES: { key: Activity['type']; label: string; icon: typeof StickyNote }[] = [
+  { key: 'NOTE', label: 'Note', icon: StickyNote },
+  { key: 'CALL', label: 'Call', icon: Phone },
+  { key: 'EMAIL', label: 'Email', icon: Mail },
+  { key: 'MEETING', label: 'Meeting', icon: Users2 },
+  { key: 'TASK', label: 'Task', icon: ListTodo },
+]
+
+/** Deal detail: activity timeline + quick-add note/call/task, opened by
+ * clicking a Kanban card. Nothing like this existed before Activity did
+ * (see models/Activity.ts) -- a deal previously had no way to log a call,
+ * leave a note, or set a follow-up task, which every CRM needs. */
+function DealDetailModal({ deal, onClose }: { deal: Deal; onClose: () => void }) {
+  const { data, mutate } = useSWR(`/api/deals/${deal._id}/activities`)
+  const activities: Activity[] = data?.success ? data.activities || [] : []
+
+  const [type, setType] = useState<Activity['type']>('NOTE')
+  const [description, setDescription] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function addActivity(e: React.FormEvent) {
+    e.preventDefault()
+    if (!description.trim()) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/deals/${deal._id}/activities`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, description, dueDate: dueDate || undefined }),
+      })
+      const d = await res.json()
+      if (!res.ok || !d.success) throw new Error(d.error || 'Failed to add activity')
+      setDescription('')
+      setDueDate('')
+      mutate()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function toggleComplete(activity: Activity) {
+    mutate(
+      (prev: any) => prev && { ...prev, activities: prev.activities.map((a: Activity) => a._id === activity._id ? { ...a, completed: !a.completed } : a) },
+      false
+    )
+    await fetch(`/api/activities/${activity._id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed: !activity.completed }),
+    })
+    mutate()
+  }
+
+  async function removeActivity(id: string) {
+    mutate((prev: any) => prev && { ...prev, activities: prev.activities.filter((a: Activity) => a._id !== id) }, false)
+    await fetch(`/api/activities/${id}`, { method: 'DELETE' })
+    mutate()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+      <div className="relative w-full max-w-lg max-h-[90vh] bg-surface border border-border rounded-card flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+          <div>
+            <h2 className="h-section">{deal.title}</h2>
+            <p className="text-xs text-ink-3 mt-0.5">
+              {deal.companyName || deal.customerId?.name || 'No company'} · {formatINR(deal.value || 0)}
+            </p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-control bg-surface-2 border border-border flex items-center justify-center hover:bg-surface-3">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={addActivity} className="px-6 py-4 border-b border-border space-y-3">
+          <div className="flex gap-2 flex-wrap">
+            {ACTIVITY_TYPES.map((t) => (
+              <button
+                type="button"
+                key={t.key}
+                onClick={() => setType(t.key)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-control text-xs font-medium border transition ${
+                  type === t.key ? 'bg-accent-soft border-accent text-accent' : 'border-border text-ink-3 hover:text-ink-2'
+                }`}
+              >
+                <t.icon className="w-3.5 h-3.5" /> {t.label}
+              </button>
+            ))}
+          </div>
+          <Textarea rows={2} placeholder="Log a note, call summary, or next step…" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <div className="flex items-center gap-3">
+            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="max-w-[160px]" />
+            <Button size="sm" type="submit" loading={submitting} disabled={!description.trim()}>Add</Button>
+          </div>
+          {error && <p className="text-xs text-danger">{error}</p>}
+        </form>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+          {activities.length === 0 ? (
+            <p className="text-sm text-ink-3 text-center py-6">No activity logged yet.</p>
+          ) : (
+            activities.map((a) => {
+              const meta = ACTIVITY_TYPES.find((t) => t.key === a.type) || ACTIVITY_TYPES[0]
+              return (
+                <div key={a._id} className="flex items-start gap-3 rounded-control border border-border p-3">
+                  {a.type === 'TASK' ? (
+                    <button onClick={() => toggleComplete(a)} className="mt-0.5 shrink-0">
+                      {a.completed ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Circle className="w-4 h-4 text-ink-3" />}
+                    </button>
+                  ) : (
+                    <meta.icon className="w-4 h-4 text-ink-3 mt-0.5 shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm ${a.completed ? 'text-ink-3 line-through' : 'text-ink'}`}>{a.description}</p>
+                    <p className="text-xs text-ink-3 mt-0.5">
+                      {meta.label} · {new Date(a.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {a.dueDate && ` · Due ${new Date(a.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`}
+                    </p>
+                  </div>
+                  <button onClick={() => removeActivity(a._id)} className="text-ink-3 hover:text-danger shrink-0">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function DealsPage() {
   const { businessId } = useActiveBusinessId()
   const [search, setSearch] = useState('')
@@ -47,6 +193,7 @@ export default function DealsPage() {
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [dragStage, setDragStage] = useState<string | null>(null)
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null)
 
   const [form, setForm] = useState({
     title: '', companyName: '', value: '', probability: '20', expectedCloseDate: '', notes: '',
@@ -190,7 +337,8 @@ export default function DealsPage() {
                         key={d._id}
                         draggable
                         onDragStart={(e) => e.dataTransfer.setData('text/deal-id', d._id)}
-                        className="rounded-control border border-border bg-surface p-3 shadow-card cursor-grab active:cursor-grabbing"
+                        onClick={() => setSelectedDeal(d)}
+                        className="rounded-control border border-border bg-surface p-3 shadow-card cursor-grab active:cursor-grabbing hover:border-border-strong"
                       >
                         <p className="text-sm font-medium text-ink truncate">{d.title}</p>
                         {d.companyName && <p className="text-xs text-ink-3 truncate">{d.companyName}</p>}
@@ -247,6 +395,8 @@ export default function DealsPage() {
           </div>
         </div>
       )}
+
+      {selectedDeal && <DealDetailModal deal={selectedDeal} onClose={() => setSelectedDeal(null)} />}
     </div>
   )
 }
