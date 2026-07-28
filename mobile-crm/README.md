@@ -106,12 +106,14 @@ comment) — zero backend changes were needed to support this client.
   `api/crm/jobsheets/[id]/close/route.ts`, serialized-inventory path)
   still works correctly without it; only a mobile *view* of stock levels
   is missing.
-- **Drawn signature capture** — the repair screen's customer
-  confirmation is currently a typed name into `customerSignatureUrl`, not
-  an actual drawn signature. A real signature pad needs a canvas-capable
-  native module (e.g. `react-native-signature-canvas`); left as typed
-  confirmation for this pass rather than adding a new native dependency
-  that can't be verified without a real device build.
+- **OTP customer confirmation** — the repair screen shows a "Send OTP" /
+  6-digit-code UI (labeled "Coming soon"), per explicit direction ("we
+  will signup for OTP just put a placeholder we will wire that by taking
+  necessary permissions and arrangements"). It's UI only: no SMS sends,
+  no code is verified, `customerSignatureUrl` stays unset. Wiring it for
+  real needs an SMS gateway account and DLT-registered sender template
+  (mandatory in India for transactional SMS) plus a backend send/verify
+  endpoint — none of which exist yet.
 - **Appointment booking/calendar** — call intake is now covered (see
   Calls above); the appointment scheduling calendar itself is web-admin
   only for now.

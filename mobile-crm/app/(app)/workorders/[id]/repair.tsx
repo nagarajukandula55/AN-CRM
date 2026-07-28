@@ -18,10 +18,18 @@ const ACCENT = "#5B3DF5";
  * previously left to the web admin entirely (see workorders/[id]/index.tsx's
  * "Continue Repair" link into this route). Parts come from the same
  * Material/BOM catalog api/service-center-bom already serves (not free
- * text), work performed is a plain note, and "signature" here is a typed
- * customer-name confirmation stored into customerSignatureUrl -- a real
- * drawn signature pad is a native-canvas addition for a later pass (see
- * README), not faked here as more than it is.
+ * text), work performed is a plain note.
+ *
+ * Customer handover confirmation is OTP-based, per explicit direction
+ * ("instead of signature we will signup for OTP just put a placeholder
+ * we will wire that by taking necessary permissions and arrangements").
+ * This is UI-only for now -- no SMS actually sends, no code is actually
+ * verified. Wiring a real send/verify pair needs an SMS gateway account
+ * and DLT/template registration (India requires DLT-registered sender
+ * templates for transactional SMS) that don't exist yet; building the
+ * client call against a backend endpoint that doesn't exist would just be
+ * a second kind of fake. customerSignatureUrl stays unset until that's
+ * real, so nothing here pretends a repair was verified when it wasn't.
  */
 export default function RepairScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -31,7 +39,6 @@ export default function RepairScreen() {
   const [loading, setLoading] = useState(true);
   const [lineItems, setLineItems] = useState<JobSheetLineItem[]>([]);
   const [workPerformed, setWorkPerformed] = useState("");
-  const [signatureName, setSignatureName] = useState("");
 
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
@@ -46,7 +53,6 @@ export default function RepairScreen() {
       setJob(data);
       setLineItems(data.lineItems || []);
       setWorkPerformed(data.workPerformed || "");
-      setSignatureName(data.customerSignatureUrl || "");
     } finally {
       setLoading(false);
     }
@@ -94,11 +100,18 @@ export default function RepairScreen() {
     setLineItems((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function handleSendOtp() {
+    Alert.alert(
+      "OTP verification — coming soon",
+      "Customer handover confirmation by OTP isn't wired up yet. It needs an SMS gateway account and a DLT-registered sender template before it can actually send anything."
+    );
+  }
+
   async function handleSaveProgress() {
     if (!job) return;
     setSaving(true);
     try {
-      await saveRepairProgress(job._id, { lineItems, workPerformed, customerSignatureUrl: signatureName });
+      await saveRepairProgress(job._id, { lineItems, workPerformed });
       Alert.alert("Saved", "Repair progress saved.");
     } catch (err) {
       Alert.alert("Couldn't save", err instanceof ApiError ? err.message : "Something went wrong");
@@ -117,13 +130,9 @@ export default function RepairScreen() {
       Alert.alert("Describe the work", "Add a short note on what was done before completing.");
       return;
     }
-    if (!signatureName.trim()) {
-      Alert.alert("Customer confirmation needed", "Enter the customer's name to confirm handover.");
-      return;
-    }
     setCompleting(true);
     try {
-      await saveRepairProgress(job._id, { lineItems, workPerformed, customerSignatureUrl: signatureName });
+      await saveRepairProgress(job._id, { lineItems, workPerformed });
       const { invoice } = await closeRepair(job._id);
       Alert.alert("Repair Completed", `Invoice ${invoice.invoiceNumber} generated — ₹${invoice.grandTotal.toLocaleString("en-IN")}`, [
         { text: "OK", onPress: () => router.replace(`/(app)/workorders/${job._id}`) },
@@ -216,14 +225,29 @@ export default function RepairScreen() {
       />
 
       <Text style={styles.subHead}>Customer Confirmation</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Customer name confirming handover"
-        placeholderTextColor="#6B6B80"
-        value={signatureName}
-        onChangeText={setSignatureName}
-      />
-      <Text style={styles.signHint}>Typed confirmation for now — a drawn signature pad is next on the roadmap.</Text>
+      <View style={styles.otpCard}>
+        <View style={styles.otpRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.otpLabel}>OTP to customer's phone</Text>
+            <Text style={styles.otpPhone}>{job.customerPhone || "—"}</Text>
+          </View>
+          <TouchableOpacity style={styles.otpSendButton} onPress={handleSendOtp}>
+            <Text style={styles.otpSendText}>Send OTP</Text>
+          </TouchableOpacity>
+        </View>
+        <TextInput
+          style={styles.otpInput}
+          placeholder="Enter 6-digit code"
+          placeholderTextColor="#6B6B80"
+          keyboardType="number-pad"
+          maxLength={6}
+          editable={false}
+        />
+        <View style={styles.comingSoonBadge}><Text style={styles.comingSoonText}>COMING SOON</Text></View>
+      </View>
+      <Text style={styles.signHint}>
+        Placeholder only — sending/verifying a real OTP needs an SMS gateway account and DLT template registration, which aren't set up yet.
+      </Text>
 
       <TouchableOpacity style={styles.secondaryButton} onPress={handleSaveProgress} disabled={saving}>
         <Text style={styles.secondaryButtonText}>{saving ? "Saving…" : "Save Progress"}</Text>
@@ -261,6 +285,15 @@ const styles = StyleSheet.create({
   partsTotal: { color: "#9A9AB0", fontSize: 11.5, textAlign: "right", marginTop: 2 },
   textarea: { backgroundColor: "#16161F", borderRadius: 10, borderWidth: 1, borderColor: "#26263A", color: "#fff", padding: 12, fontSize: 13, minHeight: 80, textAlignVertical: "top" },
   signHint: { color: "#6B6B80", fontSize: 10.5, marginTop: 6, marginBottom: 4 },
+  otpCard: { backgroundColor: "#16161F", borderRadius: 10, borderWidth: 1, borderColor: "#26263A", padding: 13, position: "relative" },
+  otpRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
+  otpLabel: { color: "#9A9AB0", fontSize: 10.5 },
+  otpPhone: { color: "#fff", fontSize: 13.5, fontWeight: "600", marginTop: 2 },
+  otpSendButton: { borderColor: ACCENT, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  otpSendText: { color: ACCENT, fontSize: 11.5, fontWeight: "700" },
+  otpInput: { backgroundColor: "#0F0F17", borderRadius: 8, borderWidth: 1, borderColor: "#26263A", color: "#6B6B80", padding: 11, fontSize: 15, letterSpacing: 4, textAlign: "center" },
+  comingSoonBadge: { position: "absolute", top: -8, right: 10, backgroundColor: "#2b2410", borderColor: "#4a3c12", borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  comingSoonText: { color: "#facc15", fontSize: 8.5, fontWeight: "700", letterSpacing: 0.4 },
   secondaryButton: { borderColor: ACCENT, borderWidth: 1, borderRadius: 10, padding: 13, alignItems: "center", marginTop: 20 },
   secondaryButtonText: { color: ACCENT, fontWeight: "700", fontSize: 13.5 },
   primaryButton: { backgroundColor: ACCENT, borderRadius: 10, padding: 15, alignItems: "center", marginTop: 10, marginBottom: 40 },
