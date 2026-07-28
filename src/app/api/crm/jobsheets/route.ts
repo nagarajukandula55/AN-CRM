@@ -12,6 +12,7 @@ import { headers } from "next/headers";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
+import { validateGSTIN } from "@/lib/validation/gst";
 import CrmCall from "@/models/CrmCall";
 import { generateDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
@@ -123,6 +124,7 @@ export async function POST(req: NextRequest) {
     const {
       customerName,
       company,
+      gstin,
       phone,
       email,
       address,
@@ -170,6 +172,12 @@ export async function POST(req: NextRequest) {
     if (!title?.trim()) {
       return NextResponse.json({ success: false, message: "Job title is required" }, { status: 400 });
     }
+    if (gstin?.trim()) {
+      const gstResult = validateGSTIN(gstin);
+      if (!gstResult.valid) {
+        return NextResponse.json({ success: false, message: `GSTIN: ${gstResult.reason}` }, { status: 400 });
+      }
+    }
     if (!effectiveBizId) {
       return NextResponse.json({ success: false, message: "businessId is required" }, { status: 400 });
     }
@@ -197,6 +205,7 @@ export async function POST(req: NextRequest) {
       callId: linkedCall?._id,
       customerName: customerName.trim(),
       company: company?.trim(),
+      gstin: gstin?.trim()?.toUpperCase(),
       phone: phone.trim(),
       email: email?.toLowerCase()?.trim(),
       address,

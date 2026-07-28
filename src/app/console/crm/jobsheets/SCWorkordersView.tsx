@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingPanel } from '@/components/ui/Spinner'
-import { STATUSES, STATUS_TONE, OPEN_STATUSES, ageingDays, fmtDate, type JobSheet } from './shared'
+import { STATUSES, STATUS_TONE, OPEN_STATUSES, ageingDays, fmtDate, tatLabel, type JobSheet } from './shared'
 
 /**
  * Service Center's Workorders view -- a single-login shop, not a
@@ -67,20 +67,21 @@ export function SCWorkordersView() {
       </div>
 
       <div className={`rounded-card border border-border bg-surface overflow-hidden overflow-x-auto transition-opacity ${loading ? 'opacity-60' : 'opacity-100'}`}>
-        <table className="w-full text-base min-w-[760px]">
+        <table className="w-full text-sm min-w-[760px]">
           <thead>
             <tr className="border-b border-border">
               <th className="text-left px-6 py-3 text-sm text-ink-3 font-medium">Workorder #</th>
               <th className="text-left px-6 py-3 text-sm text-ink-3 font-medium">Customer</th>
               <th className="text-left px-6 py-3 text-sm text-ink-3 font-medium">Device / Issue</th>
               <th className="text-center px-6 py-3 text-sm text-ink-3 font-medium">Ageing</th>
+              <th className="text-center px-6 py-3 text-sm text-ink-3 font-medium">TAT</th>
               <th className="text-center px-6 py-3 text-sm text-ink-3 font-medium">Status</th>
               <th className="px-6 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {jobSheets.length === 0 ? (
-              <tr><td colSpan={6}><EmptyState kind="empty" title="No workorders found" description="Add your first workorder to get started." /></td></tr>
+              <tr><td colSpan={7}><EmptyState kind="empty" title="No workorders found" description="Add your first workorder to get started." /></td></tr>
             ) : (
               jobSheets.map((js) => {
                 const days = ageingDays(js.createdAt)
@@ -95,6 +96,7 @@ export function SCWorkordersView() {
                     <td className="px-6 py-4 text-center">
                       {OPEN_STATUSES.has(js.status) ? <Badge tone={isOverdue ? 'danger' : 'neutral'}>{days}d</Badge> : <span className="text-ink-3 text-xs">—</span>}
                     </td>
+                    <td className="px-6 py-4 text-center text-xs text-ink-3 tabular">{tatLabel(js.createdAt, js.completedAt)}</td>
                     <td className="px-6 py-4 text-center">
                       <Badge tone={STATUS_TONE[js.status] ?? 'neutral'}>{js.status.replace(/_/g, ' ')}</Badge>
                     </td>

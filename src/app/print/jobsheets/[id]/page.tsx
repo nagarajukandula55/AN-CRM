@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
-import { Printer } from 'lucide-react'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { ArrowLeft, Printer } from 'lucide-react'
 import { DocumentRenderer, DocumentFooterText } from '@/core/documentTemplates/renderer'
 import { jobSheetToRenderData } from '@/core/documentTemplates/adapters'
 import type { DocumentRenderData } from '@/core/documentTemplates/renderData'
@@ -14,6 +14,7 @@ interface JobSheetRaw {
 }
 
 function PrintPageInner() {
+  const router = useRouter()
   const { id } = useParams<{ id: string }>()
   const searchParams = useSearchParams()
   const docType: 'WORK_ORDER' | 'ESTIMATE' = searchParams?.get('doc') === 'estimate' ? 'ESTIMATE' : 'WORK_ORDER'
@@ -56,7 +57,10 @@ function PrintPageInner() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 print:bg-white print:py-0">
-      <div className="max-w-[1800px] mx-auto mb-4 flex justify-end print:hidden">
+      <div className="max-w-[1800px] mx-auto mb-4 flex items-center justify-between print:hidden">
+        <button onClick={() => router.back()} className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-xl hover:bg-gray-100">
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
         <button onClick={() => window.print()} className="flex items-center gap-2 bg-gray-900 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-gray-800">
           <Printer className="w-4 h-4" /> Print / Save as PDF
         </button>

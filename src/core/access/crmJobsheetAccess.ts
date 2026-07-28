@@ -12,9 +12,16 @@ import { NextResponse } from "next/server";
 export function requireAssignedEngineer(
   jobSheet: { assignedTo?: unknown },
   userId: string,
-  isSuperAdmin: boolean
+  isSuperAdmin: boolean,
+  operatingMode?: string | null
 ): NextResponse | null {
   if (isSuperAdmin) return null;
+  // SC is a single-login shop with no "assign engineer" step at all (see
+  // console/crm/jobsheets/sc's own top comment) -- whoever's logged in IS
+  // the one doing the repair, so this whole gate would otherwise 409 every
+  // SC start-repair/resume-repair/part-pending call with "no engineer
+  // assigned yet" since assignedTo is never set for them.
+  if (operatingMode === "SC") return null;
   const assignedTo = jobSheet.assignedTo ? String(jobSheet.assignedTo) : null;
   if (!assignedTo) {
     return NextResponse.json(

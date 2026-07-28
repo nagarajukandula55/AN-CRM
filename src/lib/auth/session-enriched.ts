@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { connectDB } from "@/lib/mongodb";
 import { resolveMembershipForUser } from "./business-context";
 import User from "@/models/User";
 import Role from "@/models/Role";
@@ -63,6 +64,22 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
 
   // Not authenticated — middleware didn't inject headers
   if (!userId || !userEmail) return null;
+
+  // This function runs its own Mongoose queries (User.findOne, UserRole.find,
+  // etc. below) but never established a connection itself -- every call site
+  // was relied on to have already called connectDB() first, and several
+  // called this BEFORE connectDB() (see e.g. api/crm/jobsheets/route.ts).
+  // On a cold serverless instance (first request after idle -- routine on
+  // Vercel) that ordering raced the connection: the queries below either
+  // threw (silently swallowed by the .catch(() => null) guards further
+  // down) or ran against a connection still establishing, resolving to an
+  // empty user/permissions object -- which requirePermission() then
+  // legitimately reports as 401/403 even though the account really does
+  // have access. This is very likely the "sometimes even though they have
+  // access, getting forbidden errors" symptom reported in practice.
+  // connectDB() caches its connection promise (see lib/mongodb.ts), so
+  // calling it here on every request is cheap once actually connected.
+  await connectDB();
 
   const tokenSessionVersionHeader = headersList.get("x-session-version");
 

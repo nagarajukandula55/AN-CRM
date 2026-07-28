@@ -86,6 +86,13 @@ const EDITABLE_FIELDS = [
   // UPI VPA (e.g. "business@okhdfcbank") used to generate the payment QR
   // code on printed invoices -- see models/Business.ts's upiId comment.
   "upiId",
+  // Per-document-type Terms & Conditions -- see models/Business.ts's
+  // comment on these four fields.
+  "termsAndConditions",
+  "workorderTerms",
+  "serviceOrderTerms",
+  "estimateTerms",
+  "invoiceTerms",
   // Business Type / Industry enums + address fields — the edit form used
   // to only show city/state/pincode read-only (they were never actually
   // saveable), and type/industry weren't editable post-creation at all.

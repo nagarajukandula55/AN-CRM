@@ -79,6 +79,10 @@ export default function AdminSettingsPage() {
     applyTaxOnB2CBilling: true,
     defaultLabourCharge: 0,
     upiId: '',
+    workorderTerms: '',
+    serviceOrderTerms: '',
+    estimateTerms: '',
+    invoiceTerms: '',
   })
   const [savingOperations, setSavingOperations] = useState(false)
 
@@ -119,6 +123,10 @@ export default function AdminSettingsPage() {
         applyTaxOnB2CBilling: b.applyTaxOnB2CBilling !== false,
         defaultLabourCharge: b.defaultLabourCharge || 0,
         upiId: b.upiId || '',
+        workorderTerms: b.workorderTerms || '',
+        serviceOrderTerms: b.serviceOrderTerms || '',
+        estimateTerms: b.estimateTerms || '',
+        invoiceTerms: b.invoiceTerms || '',
       })
     }
   }, [operationsRes])
@@ -434,6 +442,30 @@ export default function AdminSettingsPage() {
                 <div className="text-xs text-ink-3 mt-1">
                   When set, every printed invoice shows a scannable UPI QR code for this business's own VPA.
                 </div>
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <div className="text-sm font-medium text-ink mb-1">Terms &amp; Conditions</div>
+                <div className="text-xs text-ink-3 mb-3">
+                  Set separate terms per document type. Leave one blank to fall back to whatever the others say — nothing prints blank.
+                </div>
+                {([
+                  { key: 'workorderTerms', label: 'Workorder' },
+                  { key: 'serviceOrderTerms', label: 'Service Order' },
+                  { key: 'estimateTerms', label: 'Estimate' },
+                  { key: 'invoiceTerms', label: 'Invoice' },
+                ] as const).map(({ key, label }) => (
+                  <div key={key} className="mb-3">
+                    <label className="text-xs text-ink-3 mb-1 block">{label} Terms</label>
+                    <textarea
+                      rows={3}
+                      value={operations[key]}
+                      onChange={(e) => setOperations({ ...operations, [key]: e.target.value })}
+                      placeholder="Payment due within 30 days. Goods once sold..."
+                      className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong resize-none"
+                    />
+                  </div>
+                ))}
               </div>
 
               <button type="submit" disabled={savingOperations} className="btn-primary rounded-control px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-50">

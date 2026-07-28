@@ -240,6 +240,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       customer: {
         name: jobSheet.customerName,
         company: (jobSheet as any).company,
+        gstin: (jobSheet as any).gstin,
         email: jobSheet.email,
         phone: jobSheet.phone,
         address: jobSheet.address,

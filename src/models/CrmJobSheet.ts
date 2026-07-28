@@ -85,6 +85,12 @@ export interface ICrmJobSheet extends Document {
   callId?: Types.ObjectId; // originating CrmCall -- absent for a standalone/walk-in job sheet
   customerName: string;
   company?: string;
+  // GSTIN for a B2B customer -- close/route.ts's invoice generation
+  // treats a job sheet with `company` set as B2B, but had nowhere to
+  // source the actual GST number from, so a real GST invoice could never
+  // be produced from a workorder. See jobsheets/route.ts (create) and
+  // close/route.ts (invoice generation) for where this is consumed.
+  gstin?: string;
   phone: string;
   email?: string;
   address?: string;
@@ -160,6 +166,15 @@ export interface ICrmJobSheet extends Document {
   assignedBy?: Types.ObjectId; // CCO who made the assignment
   engineerAssignedAt?: Date;
   status: CrmJobSheetStatus;
+
+  // Milestone timestamps -- one per status transition, for the milestone
+  // stepper's date/time display and TAT (createdAt -> repairCompletedAt)
+  // on the Workorders list. engineerAssignedAt above already covers
+  // CREATED -> REPAIR_STARTED; completedAt/handedOverAt below already
+  // cover REPAIR_COMPLETED/CLOSED -- these three fill the remaining gaps.
+  repairInProgressAt?: Date; // REPAIR_STARTED -> REPAIR_IN_PROGRESS (start-repair)
+  partPendingAt?: Date; // -> PART_PENDING
+  repairResumedAt?: Date; // PART_PENDING -> REPAIR_IN_PROGRESS (resume-repair)
 
   lineItems: ICrmJobSheetLineItem[];
   materialsUsed?: string;
@@ -240,6 +255,7 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
     callId: { type: Schema.Types.ObjectId, ref: "CrmCall", index: true },
     customerName: { type: String, required: true, trim: true },
     company: { type: String, trim: true },
+    gstin: { type: String, trim: true, uppercase: true },
     phone: { type: String, required: true, trim: true },
     email: { type: String, lowercase: true, trim: true },
     address: { type: String },
@@ -278,6 +294,9 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
     assignedToName: { type: String, trim: true, default: "" },
     assignedBy: { type: Schema.Types.ObjectId, ref: "User" },
     engineerAssignedAt: { type: Date },
+    repairInProgressAt: { type: Date },
+    partPendingAt: { type: Date },
+    repairResumedAt: { type: Date },
     status: {
       type: String,
       enum: ["CREATED", "REPAIR_STARTED", "REPAIR_IN_PROGRESS", "PART_PENDING", "REPAIR_COMPLETED", "CLOSED", "CANCELLED"],
