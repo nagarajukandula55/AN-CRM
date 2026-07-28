@@ -283,7 +283,7 @@ export default function Sidebar() {
           setBizDropdown(false);
           router.refresh();
         } else {
-          toast.error(data.message || "Failed to switch to AN Group");
+          toast.error(data.message || "Failed to switch to platform view");
         }
       } catch {
         toast.error("Failed to connect to server");
@@ -401,12 +401,12 @@ export default function Sidebar() {
         <div className="px-5 pt-5 pb-4 border-b border-border">
           {isCollapsed ? (
             <div className="flex justify-center">
-              <span className="h-2 w-2 rounded-full bg-success animate-pulse" title="AN Group" />
+              <span className="h-2 w-2 rounded-full bg-success animate-pulse" title="AN-CRM" />
             </div>
           ) : (
             <>
-              <p className="text-[9px] uppercase tracking-[0.45em] text-ink-3 font-medium">AN Group</p>
-              <h2 className="mt-0.5 text-base font-bold tracking-tight text-ink">Enterprise</h2>
+              <p className="text-[9px] uppercase tracking-[0.45em] text-ink-3 font-medium">AN-CRM</p>
+              <h2 className="mt-0.5 text-base font-bold tracking-tight text-ink">Console</h2>
               <div className="mt-1.5 flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
                 <p className="text-[10px] text-ink-3">
@@ -423,7 +423,7 @@ export default function Sidebar() {
             <button
               onClick={() => setBizDropdown(!bizDropdown)}
               disabled={switching}
-              title={activeBiz ? (activeBiz.isPlatform ? "AN Group" : (activeBiz.brandName || activeBiz.name)) : "Select Business"}
+              title={activeBiz ? (activeBiz.isPlatform ? "AN-CRM (Platform)" : (activeBiz.brandName || activeBiz.name)) : "Select Business"}
               className={`flex w-full items-center rounded-control border border-border bg-surface-2 py-2 text-left transition hover:bg-surface-3 disabled:opacity-60 ${
                 isCollapsed ? "justify-center px-0" : "justify-between px-3"
               }`}
@@ -432,7 +432,7 @@ export default function Sidebar() {
                 <Building2 size={12} className="shrink-0 text-ink-3" />
                 {!isCollapsed && (
                   <span className="truncate text-xs font-medium text-ink-2">
-                    {activeBiz ? (activeBiz.isPlatform ? "AN Group" : (activeBiz.brandName || activeBiz.name)) : "Select Business"}
+                    {activeBiz ? (activeBiz.isPlatform ? "AN-CRM (Platform)" : (activeBiz.brandName || activeBiz.name)) : "Select Business"}
                   </span>
                 )}
               </div>
@@ -467,7 +467,7 @@ export default function Sidebar() {
                       <div className="flex items-center gap-2 min-w-0">
                         {biz.isPlatform && <LogOut size={12} className="shrink-0 text-ink-3" />}
                         <div className="min-w-0">
-                          <p className="truncate text-xs text-ink font-medium">{biz.isPlatform ? "AN Group" : (biz.brandName || biz.name)}</p>
+                          <p className="truncate text-xs text-ink font-medium">{biz.isPlatform ? "AN-CRM (Platform)" : (biz.brandName || biz.name)}</p>
                           {!biz.isPlatform && biz.businessCode && <p className="text-[10px] text-ink-3">{biz.businessCode}</p>}
                         </div>
                       </div>
@@ -497,7 +497,7 @@ export default function Sidebar() {
                 if (anGroup) switchBusiness(anGroup);
               }}
               disabled={switching}
-              title="Return to AN Group view"
+              title="Return to platform view"
               className="shrink-0 text-[10px] font-medium text-warning underline hover:opacity-70 disabled:opacity-60"
             >
               Exit
