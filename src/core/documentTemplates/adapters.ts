@@ -90,7 +90,19 @@ export function jobSheetToRenderData(
       };
     }),
     totals: { subtotal, tax, grandTotal: subtotal + tax },
-    notes: [device && `Device: ${device}`, jobSheet.issueDescription && `Issue: ${jobSheet.issueDescription}`, jobSheet.workPerformed && `Work performed: ${jobSheet.workPerformed}`]
+    notes: [
+      device && `Device: ${device}`,
+      jobSheet.issueDescription && `Issue: ${jobSheet.issueDescription}`,
+      jobSheet.workPerformed && `Work performed: ${jobSheet.workPerformed}`,
+      // Per explicit direction: the CCO who logged the job (or the
+      // assigned engineer, once there is one) must show on the printed
+      // work order, not just the closed-job Service Record -- this is
+      // the document a customer/technician actually holds during the
+      // repair, not just at handover.
+      jobSheet.ccoName && `Logged By (CCO): ${jobSheet.ccoName}`,
+      (jobSheet.assignedToName || (typeof jobSheet.assignedTo === "object" ? jobSheet.assignedTo?.name : undefined)) &&
+        `Engineer: ${jobSheet.assignedToName || jobSheet.assignedTo?.name}`,
+    ]
       .filter(Boolean)
       .join("\n"),
     footerText:

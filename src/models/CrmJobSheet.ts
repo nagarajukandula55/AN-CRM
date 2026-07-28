@@ -85,6 +85,12 @@ export interface ICrmJobSheet extends Document {
   callId?: Types.ObjectId; // originating CrmCall -- absent for a standalone/walk-in job sheet
   customerName: string;
   company?: string;
+  // GSTIN for a B2B customer -- close/route.ts's invoice generation
+  // treats a job sheet with `company` set as B2B, but had nowhere to
+  // source the actual GST number from, so a real GST invoice could never
+  // be produced from a workorder. See jobsheets/route.ts (create) and
+  // close/route.ts (invoice generation) for where this is consumed.
+  gstin?: string;
   phone: string;
   email?: string;
   address?: string;
@@ -240,6 +246,7 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
     callId: { type: Schema.Types.ObjectId, ref: "CrmCall", index: true },
     customerName: { type: String, required: true, trim: true },
     company: { type: String, trim: true },
+    gstin: { type: String, trim: true, uppercase: true },
     phone: { type: String, required: true, trim: true },
     email: { type: String, lowercase: true, trim: true },
     address: { type: String },

@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
+import Business from "@/models/Business";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
@@ -45,7 +46,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!jobSheet) {
       return NextResponse.json({ success: false, message: "Job sheet not found" }, { status: 404 });
     }
-    const accessError = requireAssignedEngineer(jobSheet, userId, !!session.isSuperAdmin);
+    const business = await Business.findById(jobSheet.businessId).select("operatingMode").lean();
+    const accessError = requireAssignedEngineer(jobSheet, userId, !!session.isSuperAdmin, (business as any)?.operatingMode);
     if (accessError) return accessError;
     if (jobSheet.status !== "REPAIR_IN_PROGRESS" && jobSheet.status !== "REPAIR_STARTED") {
       return NextResponse.json(

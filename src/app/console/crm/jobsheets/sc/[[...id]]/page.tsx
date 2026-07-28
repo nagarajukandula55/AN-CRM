@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Loader2, Plus, Trash2, Printer } from 'lucide-react'
+import { validateGSTIN } from '@/lib/validation/gst'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 import { DEVICE_CATEGORIES, DEVICE_CATEGORY_LABELS, type DeviceCategory } from '@/core/catalog/deviceCategory'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -75,7 +76,7 @@ export default function SCJobSheetScreen() {
 
   // ---------- Intake (no job yet) ----------
   const [intake, setIntake] = useState({
-    customerName: '', phone: '',
+    customerName: '', phone: '', company: '', gstin: '',
     deviceCategory: '' as DeviceCategory | '', brandName: '', deviceModel: '', imeiOrSerialNumber: '',
     title: '', remark: '',
   })
@@ -85,6 +86,10 @@ export default function SCJobSheetScreen() {
   async function createJobSheet(e: React.FormEvent) {
     e.preventDefault()
     if (!businessId) { setIntakeError('Select a business first (top-right business switcher).'); return }
+    if (intake.gstin.trim()) {
+      const result = validateGSTIN(intake.gstin)
+      if (!result.valid) { setIntakeError(`GSTIN: ${result.reason}`); return }
+    }
     setCreating(true)
     setIntakeError(null)
     try {
@@ -92,7 +97,7 @@ export default function SCJobSheetScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: intake.customerName, phone: intake.phone,
+          customerName: intake.customerName, phone: intake.phone, company: intake.company, gstin: intake.gstin,
           deviceCategory: intake.deviceCategory, pendingBrandName: intake.brandName,
           deviceModel: intake.deviceModel, imeiOrSerialNumber: intake.imeiOrSerialNumber,
           title: intake.title, remark: intake.remark, businessId,
@@ -175,8 +180,11 @@ export default function SCJobSheetScreen() {
     }
   }
 
+  const [engineerName, setEngineerName] = useState('')
+
   async function completeAndInvoice() {
     if (!jobId) return
+    if (!engineerName.trim()) { setActionError('Engineer name is required to complete the repair.'); return }
     setSaving(true); setActionError(null)
     try {
       const saveRes = await fetch(`/api/crm/jobsheets/${jobId}`, {
@@ -189,7 +197,7 @@ export default function SCJobSheetScreen() {
       const res = await fetch(`/api/crm/jobsheets/${jobId}/close`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ remark }),
+        body: JSON.stringify({ remark, engineerName }),
       })
       const d = await res.json()
       if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to complete repair')
@@ -248,6 +256,16 @@ export default function SCJobSheetScreen() {
                 <input required type="tel" value={intake.phone} onChange={e => setIntake(p => ({ ...p, phone: e.target.value }))} className={inputCls} />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>Company <span className="text-ink-3 font-normal">(B2B customer)</span></label>
+                <input value={intake.company} onChange={e => setIntake(p => ({ ...p, company: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>GSTIN</label>
+                <input value={intake.gstin} onChange={e => setIntake(p => ({ ...p, gstin: e.target.value.toUpperCase() }))} maxLength={15} className={`${inputCls} font-mono`} placeholder="22AAAAA0000A1Z5" />
+              </div>
+            </div>
             <div>
               <label className={labelCls}>Device Category *</label>
               <select required value={intake.deviceCategory} onChange={e => setIntake(p => ({ ...p, deviceCategory: e.target.value as DeviceCategory | '' }))} className={inputCls}>
@@ -294,6 +312,11 @@ export default function SCJobSheetScreen() {
 
   const total = lineItems.reduce((sum, l) => sum + lineTotal(l), 0)
   const isOpen = job.status !== 'CLOSED' && job.status !== 'CANCELLED'
+  // Distinct from isOpen: once repair is complete and invoiced, there's
+  // nothing left in the action bar except Cancel -- which shouldn't be
+  // offered post-invoice anyway -- so it renders as an empty-looking card
+  // if left under the same isOpen check as the earlier lifecycle stages.
+  const showActionBar = isOpen && job.status !== 'REPAIR_COMPLETED'
 
   // ---------- In-progress / closure screen (same route, same component) ----------
   return (
@@ -378,25 +401,33 @@ export default function SCJobSheetScreen() {
         </Card>
       )}
 
-      {isOpen && (
-        <Card className="p-6 flex flex-wrap items-center gap-3">
-          {job.status === 'CREATED' && (
-            <Button onClick={() => transition('start-repair')} disabled={saving}>Start Repair</Button>
-          )}
-          {job.status === 'PART_PENDING' && (
-            <Button onClick={() => transition('resume-repair')} disabled={saving}>Resume Repair</Button>
-          )}
+      {showActionBar && (
+        <Card className="p-6">
           {(job.status === 'REPAIR_STARTED' || job.status === 'REPAIR_IN_PROGRESS') && (
-            <Button variant="secondary" onClick={() => transition('part-pending')} disabled={saving}>Mark Part Pending</Button>
+            <div className="mb-4 max-w-sm">
+              <label className={labelCls}>Engineer Name <span className="text-ink-3 font-normal">(prints on the closed job sheet)</span></label>
+              <input value={engineerName} onChange={e => setEngineerName(e.target.value)} className={inputCls} placeholder="Who repaired this device" />
+            </div>
           )}
-          {(job.status === 'REPAIR_STARTED' || job.status === 'REPAIR_IN_PROGRESS') && (
-            <Button onClick={completeAndInvoice} disabled={saving}>Complete Repair &amp; Generate Invoice</Button>
-          )}
-          {job.status !== 'CANCELLED' && (
-            <Button variant="secondary" onClick={() => { if (confirm('Cancel this job sheet?')) transition('cancel', { cancelReason: 'Cancelled by service center' }) }} disabled={saving} className="ml-auto text-danger">
-              Cancel Job Sheet
-            </Button>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {job.status === 'CREATED' && (
+              <Button onClick={() => transition('start-repair')} disabled={saving}>Start Repair</Button>
+            )}
+            {job.status === 'PART_PENDING' && (
+              <Button onClick={() => transition('resume-repair')} disabled={saving}>Resume Repair</Button>
+            )}
+            {(job.status === 'REPAIR_STARTED' || job.status === 'REPAIR_IN_PROGRESS') && (
+              <Button variant="secondary" onClick={() => transition('part-pending')} disabled={saving}>Mark Part Pending</Button>
+            )}
+            {(job.status === 'REPAIR_STARTED' || job.status === 'REPAIR_IN_PROGRESS') && (
+              <Button onClick={completeAndInvoice} disabled={saving}>Complete Repair &amp; Generate Invoice</Button>
+            )}
+            {job.status !== 'CANCELLED' && (
+              <Button variant="secondary" onClick={() => { if (confirm('Cancel this job sheet?')) transition('cancel', { cancelReason: 'Cancelled by service center' }) }} disabled={saving} className="ml-auto text-danger">
+                Cancel Job Sheet
+              </Button>
+            )}
+          </div>
         </Card>
       )}
 

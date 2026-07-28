@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingPanel } from '@/components/ui/Spinner'
 import { STATUSES, STATUS_TONE, fmtDate, type JobSheet } from './shared'
-import { BrandNewJobSheetModal } from './BrandNewJobSheetModal'
 
 /**
  * Brand's Workorders view -- a call-center queue across multiple centers,
@@ -23,10 +22,9 @@ import { BrandNewJobSheetModal } from './BrandNewJobSheetModal'
 export function BrandWorkordersView() {
   const router = useRouter()
   const [statusFilter, setStatusFilter] = useState('ALL')
-  const [showNew, setShowNew] = useState(false)
 
   const qs = statusFilter !== 'ALL' ? `?status=${statusFilter}` : ''
-  const { data, isLoading: loading, error: swrError, mutate } = useSWR(`/api/crm/jobsheets${qs}`, { keepPreviousData: true })
+  const { data, isLoading: loading, error: swrError } = useSWR(`/api/crm/jobsheets${qs}`, { keepPreviousData: true })
   const jobSheets: JobSheet[] = data?.success !== false ? (data?.jobSheets || []) : []
   const error = swrError ? (swrError.message || 'Could not load workorders.') : (data?.success === false ? (data.message || 'Failed to load workorders') : null)
 
@@ -44,7 +42,7 @@ export function BrandWorkordersView() {
         actions={
           <>
             <Button variant="secondary" size="sm" onClick={() => router.push('/console/crm')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
-            <Button onClick={() => setShowNew(true)} icon={<Plus className="w-4 h-4" />}>New Job Sheet</Button>
+            <Button onClick={() => router.push('/console/crm/jobsheets/new')} icon={<Plus className="w-4 h-4" />}>New Job Sheet</Button>
           </>
         }
       />
@@ -112,13 +110,6 @@ export function BrandWorkordersView() {
           </tbody>
         </table>
       </div>
-
-      {showNew && (
-        <BrandNewJobSheetModal
-          onClose={() => setShowNew(false)}
-          onCreated={(id) => { setShowNew(false); mutate(); router.push(`/console/crm/jobsheets/${id}`) }}
-        />
-      )}
     </div>
   )
 }

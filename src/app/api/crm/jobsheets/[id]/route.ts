@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
+import Business from "@/models/Business";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
@@ -206,7 +207,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // actions (see requireAssignedEngineer).
     const ENGINEER_ONLY_FIELDS = ["lineItems", "workPerformed", "remark", "solutionId", "symptomCodeId"];
     if (ENGINEER_ONLY_FIELDS.some((f) => updates[f] !== undefined)) {
-      const accessError = requireAssignedEngineer(existing, userId, !!session.isSuperAdmin);
+      const business = await Business.findById(existing.businessId).select("operatingMode").lean();
+      const accessError = requireAssignedEngineer(existing, userId, !!session.isSuperAdmin, (business as any)?.operatingMode);
       if (accessError) return accessError;
     }
 
