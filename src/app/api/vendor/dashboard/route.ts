@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { connectDB } from '@/lib/mongodb'
 import SalesInvoice from '@/models/SalesInvoice'
-import Order from '@/models/Order'
 import { resolveVendorContext } from '@/lib/auth/vendorContext'
 
 
@@ -32,14 +31,16 @@ export async function GET() {
     }
     const vendor = ctx.vendor as any
 
-    // Orders are routed per cart line (cart.vendorId); invoices carry vendorId
-    const orderFilter = { 'cart.vendorId': String(vendor._id) }
+    // AN-CRM has no separate storefront "Order" record -- every sale
+    // (CRM job-sheet closure or POS quick-sale) is already a SalesInvoice,
+    // so "orders" on this vendor dashboard are just this vendor's own
+    // invoices, not a second collection.
+    const orderFilter = { businessId: vendor.businessId }
     const invoiceFilter = { vendorId: vendor._id, invoiceType: 'B2B' }
 
     const [allOrders, recentOrders, pendingInvoices] = await Promise.all([
-      (Order as any).find(orderFilter).lean(),
-      (Order as any)
-        .find(orderFilter)
+      SalesInvoice.find(orderFilter).lean(),
+      SalesInvoice.find(orderFilter)
         .sort({ createdAt: -1 })
         .limit(5)
         .lean(),
@@ -54,13 +55,11 @@ export async function GET() {
 
     const totalOrders = allOrders.length
     const pendingOrders = allOrders.filter((o: any) =>
-      ['CREATED', 'PAID', 'PENDING_PAYMENT'].includes(o.status)
+      ['SENT', 'PARTIAL'].includes(o.status)
     ).length
     const totalRevenue = allOrders.reduce(
       (sum: number, o: any) =>
-        ['DELIVERED', 'COMPLETED'].includes(o.status)
-          ? sum + (o.pricing?.grandTotal || o.totalAmount || 0)
-          : sum,
+        ['PAID'].includes(o.status) ? sum + (o.grandTotal || 0) : sum,
       0
     )
 
