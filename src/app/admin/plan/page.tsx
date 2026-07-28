@@ -1,12 +1,12 @@
 'use client'
 import { useState } from 'react'
 import useSWR from 'swr'
-import { CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, ArrowRight, Receipt, Download } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { PLANS, BILLING_PERIODS, priceForPeriod, type PlanKey, type BillingPeriod } from '@/core/pricing/plans'
+import { PLANS_BY_MODE, BILLING_PERIODS, priceForPeriod, type PlanKey, type BillingPeriod, type OperatingMode } from '@/core/pricing/plans'
 
 declare global {
   interface Window {
@@ -36,9 +36,15 @@ export default function PlanPage() {
   const { data, mutate } = useSWR('/api/subscriptions/status', (url: string) =>
     fetch(url, { credentials: 'include' }).then((r) => r.json())
   )
+  const { data: invoiceData } = useSWR('/api/subscriptions/invoices', (url: string) =>
+    fetch(url, { credentials: 'include' }).then((r) => r.json())
+  )
   const [period, setPeriod] = useState<BillingPeriod>('YEARLY')
   const [paying, setPaying] = useState<PlanKey | null>(null)
   const [error, setError] = useState('')
+
+  const mode: OperatingMode = (data?.mode as OperatingMode) || 'SC'
+  const PLANS = PLANS_BY_MODE[mode]
 
   async function purchase(plan: PlanKey) {
     setError('')
@@ -167,6 +173,44 @@ export default function PlanPage() {
           )
         })}
       </div>
+
+      {invoiceData?.success && invoiceData.invoices?.length > 0 && (
+        <Card className="mt-8">
+          <CardBody>
+            <div className="h-section flex items-center gap-2 mb-4"><Receipt className="h-4 w-4" /> Billing History</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-ink-3 text-left border-b border-border">
+                    <th className="py-2 pr-2">Invoice</th>
+                    <th className="py-2 px-2">Plan</th>
+                    <th className="py-2 px-2">Period</th>
+                    <th className="py-2 px-2">Date</th>
+                    <th className="py-2 px-2 text-right">Amount</th>
+                    <th className="py-2 pl-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoiceData.invoices.map((inv: any) => (
+                    <tr key={inv._id} className="border-b border-border/50">
+                      <td className="py-2 pr-2 tabular font-medium">{inv.invoiceNumber}</td>
+                      <td className="py-2 px-2">{inv.plan} — {inv.billingPeriod}</td>
+                      <td className="py-2 px-2 text-ink-3">{new Date(inv.periodStart).toLocaleDateString('en-IN')} – {new Date(inv.periodEnd).toLocaleDateString('en-IN')}</td>
+                      <td className="py-2 px-2 text-ink-3">{new Date(inv.createdAt).toLocaleDateString('en-IN')}</td>
+                      <td className="py-2 px-2 text-right tabular">₹{inv.grandTotal.toLocaleString('en-IN')}</td>
+                      <td className="py-2 pl-2 text-right">
+                        <a href={`/api/subscriptions/invoices/${inv._id}/pdf`} target="_blank" rel="noreferrer" className="text-accent hover:opacity-70 inline-flex items-center gap-1 text-xs">
+                          <Download className="h-3.5 w-3.5" /> PDF
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardBody>
+        </Card>
+      )}
     </div>
   )
 }

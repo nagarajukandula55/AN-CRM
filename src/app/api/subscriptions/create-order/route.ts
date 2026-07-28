@@ -15,7 +15,8 @@ import { connectDB } from "@/lib/mongodb";
 import Subscription from "@/models/Subscription";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { getRazorpayClient } from "@/core/subscriptions/razorpayClient";
-import { PLANS, priceForPeriod, type PlanKey, type BillingPeriod } from "@/core/pricing/plans";
+import Business from "@/models/Business";
+import { findPlan, priceForPeriod, type PlanKey, type BillingPeriod, type OperatingMode } from "@/core/pricing/plans";
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,16 +31,22 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { plan, billingPeriod, subVendorOf } = body as { plan: PlanKey; billingPeriod: BillingPeriod; subVendorOf?: string };
 
-    const planDef = PLANS.find((p) => p.key === plan);
+    await connectDB();
+
+    const business = await Business.findById(session.business.businessId).select("operatingMode").lean();
+    const mode = (business as any)?.operatingMode as OperatingMode | "" | undefined;
+    if (!mode) {
+      return NextResponse.json({ success: false, message: "This business has no operating mode set — contact support" }, { status: 400 });
+    }
+
+    const planDef = findPlan(mode, plan);
     if (!planDef) {
-      return NextResponse.json({ success: false, message: "Unknown plan" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "Unknown plan for this business's operating mode" }, { status: 400 });
     }
     const { total } = priceForPeriod(planDef, billingPeriod);
     if (!total || total <= 0) {
       return NextResponse.json({ success: false, message: "Invalid amount" }, { status: 400 });
     }
-
-    await connectDB();
 
     const razorpay = getRazorpayClient();
     const razorpayOrder = await razorpay.orders.create({
@@ -52,6 +59,7 @@ export async function POST(req: NextRequest) {
     const subscription = await Subscription.create({
       businessId: new mongoose.Types.ObjectId(session.business.businessId),
       subVendorOf: subVendorOf && mongoose.Types.ObjectId.isValid(subVendorOf) ? new mongoose.Types.ObjectId(subVendorOf) : undefined,
+      mode,
       plan,
       billingPeriod,
       status: "PENDING_PAYMENT",

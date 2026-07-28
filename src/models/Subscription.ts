@@ -28,6 +28,12 @@ export interface ISubscription extends Document {
   // vendors/route.ts) -- the parent vendor being charged for adding one
   // more sub-vendor under them. Unset for a business's own primary plan.
   subVendorOf?: Types.ObjectId; // ref VendorProfile
+  // The operating mode this plan was purchased under (BRAND/SC/POS) --
+  // pricing/features are mode-specific (see core/pricing/plans.ts), so the
+  // same plan key ("PRO") means a different price/feature set per mode.
+  // Snapshotted at purchase time from the business's own operatingMode so a
+  // later business reconfiguration never reinterprets an old subscription.
+  mode: "BRAND" | "SC" | "POS";
   plan: SubscriptionPlan;
   billingPeriod: BillingPeriod;
   status: SubscriptionStatus;
@@ -52,6 +58,7 @@ const SubscriptionSchema = new Schema<ISubscription>(
   {
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true, index: true },
     subVendorOf: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
+    mode: { type: String, enum: ["BRAND", "SC", "POS"], required: true },
     plan: { type: String, enum: ["BASIC", "PRO", "ULTIMATE"], required: true },
     billingPeriod: { type: String, enum: ["MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY"], required: true },
     status: { type: String, enum: ["TRIAL", "PENDING_PAYMENT", "ACTIVE", "EXPIRED", "CANCELLED"], default: "PENDING_PAYMENT", index: true },

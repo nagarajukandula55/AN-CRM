@@ -7,9 +7,11 @@
  */
 import Subscription from "@/models/Subscription";
 import Business from "@/models/Business";
-import { PLANS } from "@/core/pricing/plans";
 
-const TRIAL_DAYS = PLANS.find((p) => p.key === "BASIC")?.freeTrialDays || 7;
+// Every mode's Basic tier gives the same 7-day free trial (see
+// core/pricing/plans.ts) -- a fixed constant here since this check runs
+// before a business necessarily has an operatingMode set.
+const TRIAL_DAYS = 7;
 
 export async function isSubscriptionBlocked(businessId: string): Promise<boolean> {
   const latest = await Subscription.findOne({

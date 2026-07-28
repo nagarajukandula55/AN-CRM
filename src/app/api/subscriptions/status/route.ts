@@ -10,9 +10,9 @@ import { connectDB } from "@/lib/mongodb";
 import Subscription from "@/models/Subscription";
 import Business from "@/models/Business";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
-import { PLANS } from "@/core/pricing/plans";
+import { PLANS_BY_MODE, type OperatingMode } from "@/core/pricing/plans";
 
-const TRIAL_DAYS = PLANS.find((p) => p.key === "BASIC")?.freeTrialDays || 7;
+const TRIAL_DAYS_DEFAULT = 7;
 
 export async function GET(req: NextRequest) {
   try {
@@ -25,6 +25,11 @@ export async function GET(req: NextRequest) {
     }
 
     await connectDB();
+
+    const business = await Business.findById(session.business.businessId).select("operatingMode createdAt").lean<any>();
+    const mode = ((business?.operatingMode || "SC") as OperatingMode);
+    const modePlans = PLANS_BY_MODE[mode] || PLANS_BY_MODE.SC;
+    const trialDays = modePlans.find((p) => p.key === "BASIC")?.freeTrialDays || TRIAL_DAYS_DEFAULT;
 
     const latest = await Subscription.findOne({
       businessId: session.business.businessId,
@@ -42,6 +47,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         success: true,
         status: blocked ? "EXPIRED" : "ACTIVE",
+        mode,
         plan: latest.plan,
         billingPeriod: latest.billingPeriod,
         expiryDate: latest.expiryDate,
@@ -51,10 +57,9 @@ export async function GET(req: NextRequest) {
     }
 
     // No paid subscription ever -- implicit trial from business creation.
-    const business = await Business.findById(session.business.businessId).select("createdAt").lean<any>();
     const createdAt = business?.createdAt ? new Date(business.createdAt) : new Date();
     const trialEndsAt = new Date(createdAt);
-    trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
+    trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
     const now = new Date();
     const daysRemaining = Math.max(0, Math.ceil((trialEndsAt.getTime() - now.getTime()) / 86400000));
     const blocked = trialEndsAt.getTime() < now.getTime();
@@ -62,6 +67,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       status: blocked ? "EXPIRED" : "TRIAL",
+      mode,
       plan: "BASIC",
       billingPeriod: null,
       expiryDate: trialEndsAt,
