@@ -37,6 +37,9 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "dashboard",  label: "Dashboard",    route: "/admin",            icon: "LayoutDashboard" },
   ]},
   { label: "CRM", subgroups: [
+    { key: "ppl-pipeline", label: "Sales Pipeline", items: [
+      { key: "deals", label: "Deals", route: "/admin/deals", icon: "TrendingUp" },
+    ]},
     { key: "ppl-crm", label: "Calls & Workorders", items: [
       { key: "crm", label: "CRM Overview", route: "/admin/crm", icon: "UserPlus" },
       // Gated on the CRM_CALLS.VIEW / CRM_JOBSHEETS.VIEW permission codes
