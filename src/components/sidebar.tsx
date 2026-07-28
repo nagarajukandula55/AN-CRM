@@ -397,23 +397,38 @@ export default function Sidebar() {
           {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
         </button>
 
-        {/* Brand */}
+        {/* Brand -- a real mark (gradient monogram tile) instead of a bare
+            wordmark + status dot, so the console reads as its own product
+            rather than a generic admin-dashboard template. */}
         <div className="px-5 pt-5 pb-4 border-b border-border">
           {isCollapsed ? (
             <div className="flex justify-center">
-              <span className="h-2 w-2 rounded-full bg-success animate-pulse" title="AN-CRM" />
+              <div
+                title="AN-CRM"
+                className="h-8 w-8 rounded-control flex items-center justify-center text-[11px] font-bold text-accent-fg"
+                style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-hover))" }}
+              >
+                AN
+              </div>
             </div>
           ) : (
-            <>
-              <p className="text-[9px] uppercase tracking-[0.45em] text-ink-3 font-medium">AN-CRM</p>
-              <h2 className="mt-0.5 text-base font-bold tracking-tight text-ink">Console</h2>
-              <div className="mt-1.5 flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                <p className="text-[10px] text-ink-3">
-                  {user?.isSuperAdmin ? <span className="text-accent font-medium">Super Admin</span> : (user?.role || "Operational")}
-                </p>
+            <div className="flex items-center gap-2.5">
+              <div
+                className="h-9 w-9 shrink-0 rounded-control flex items-center justify-center text-xs font-bold text-accent-fg"
+                style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-hover))" }}
+              >
+                AN
               </div>
-            </>
+              <div className="min-w-0">
+                <h2 className="text-base font-bold tracking-tight text-ink leading-tight">AN-CRM</h2>
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse shrink-0" />
+                  <p className="text-[10px] text-ink-3 truncate">
+                    {user?.isSuperAdmin ? <span className="text-accent font-medium">Super Admin</span> : (user?.role || "Operational")}
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 

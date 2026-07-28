@@ -126,6 +126,14 @@ export const NAV_GROUPS: NavGroup[] = [
     // ANu is the floating AnuWidget (see AdminShell.tsx), reachable from
     // every admin page, so it doesn't need a nav entry either.
   ]},
+  // Only ever visible to a Super Admin on the AN-CRM platform business
+  // itself -- a real tenant (Brand/SC/POS) never sees this group at all,
+  // since it's gated on platform-level permission codes no tenant role is
+  // ever granted. Trimmed from two lopsided subgroups (one 4-item, one
+  // 10-item catch-all) down to three purpose-named ones -- Pincode Data
+  // dropped from the nav entirely (it's reference data an import script
+  // manages, not something anyone clicks into from here; the route/page
+  // itself is untouched for anyone who still needs it directly).
   { label: "Admin", subgroups: [
     { key: "adm-users", label: "Users & Access", items: [
       { key: "admin-users",  label: "User Management",      route: "/admin/users",  icon: "UserCog" },
@@ -133,15 +141,16 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-roles",  label: "Roles & Permissions",  route: "/admin/roles",  icon: "Shield" },
       { key: "admin-an-group-staff", label: "Platform Staff", route: "/admin/an-group-staff", icon: "Shield" },
     ]},
-    { key: "adm-config", label: "Configuration", items: [
+    { key: "adm-system", label: "System", items: [
       { key: "admin-intg", label: "Integrations", route: "/admin/integrations", icon: "Plug" },
       { key: "admin-sso",  label: "SSO / Auth",   route: "/admin/sso",          icon: "Key" },
       { key: "admin-status", label: "System Status", route: "/admin/system-status", icon: "Activity" },
       { key: "admin-modules", label: "Modules", route: "/admin/modules", icon: "Box" },
-      { key: "admin-document-templates", label: "Document Templates", route: "/admin/document-templates", icon: "FileText" },
       { key: "admin-settings", label: "Settings", route: "/admin/settings", icon: "Settings" },
       { key: "admin-plan", label: "Plan & Billing", route: "/admin/plan", icon: "Receipt" },
-      { key: "admin-pincode-data", label: "Pincode Data", route: "/admin/pincode-data", icon: "MapPin" },
+    ]},
+    { key: "adm-docs", label: "Documents & Billing", items: [
+      { key: "admin-document-templates", label: "Document Templates", route: "/admin/document-templates", icon: "FileText" },
       { key: "admin-invoice-templates", label: "Invoice Branding", route: "/admin/invoice-templates", icon: "FileText" },
       { key: "admin-gst", label: "GST", route: "/admin/gst", icon: "FileText" },
       { key: "admin-feedback", label: "Feedback", route: "/admin/feedback", icon: "MessageSquare" },
