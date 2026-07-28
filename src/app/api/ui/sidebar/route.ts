@@ -142,6 +142,8 @@ export async function POST(req: Request) {
         "reports",
         "analytics",
         "admin-settings",
+        "admin-plan",
+        "send-feedback",
         ...(business?.inventorySerialized ? ["inventory", "stock-transfers", "stock-adjustments", "inventory-lots"] : []),
       ]);
       visibleModules = visibleModules.filter((m: any) => scAllowedKeys.has(m.key));

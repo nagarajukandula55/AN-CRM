@@ -110,6 +110,10 @@ export const NAV_GROUPS: NavGroup[] = [
   ]},
   { label: "Communication", items: [
     { key: "chat", label: "Team Chat", route: "/admin/chat", icon: "MessageSquare" },
+    // In-app product feedback -- any logged-in user, not admin-only (that's
+    // the separate "Feedback" inbox under Admin > Configuration, which
+    // reviews these submissions alongside customer contact-us ones).
+    { key: "send-feedback", label: "Send Feedback", route: "/admin/send-feedback", icon: "MessageSquare" },
     // Notifications is likewise no longer a page -- it's the floating
     // NotificationBell icon (top-right, every admin page).
     // ANu is the floating AnuWidget (see AdminShell.tsx), reachable from
