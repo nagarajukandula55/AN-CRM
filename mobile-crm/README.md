@@ -41,8 +41,26 @@ comment) — zero backend changes were needed to support this client.
 
 - **Login** (`app/login.tsx`) — email/username + password, same
   `/api/auth/login` endpoint the web app uses.
+- **Subscription-driven navigation** — the tab bar itself changes per
+  business: Calls/Workorders show for Brand & SC, POS's quick-sale tab
+  shows for POS, driven live by `/api/subscriptions/status`'s `mode`
+  (see `context/SubscriptionContext.tsx`, loaded once at the app shell and
+  shared by every screen) rather than a fixed tab set — per explicit
+  direction: "based on subscription the options and menu should appear."
 - **Dashboard** (`app/(app)/index.tsx`) — greeting, plan/mode summary,
-  open-workorder count, recent workorders list.
+  open-workorder count (hidden for POS), recent workorders list, and an
+  "Explore Services" card into the Services tab.
+- **Services** (`app/(app)/services.tsx`) — "services we are offering":
+  every tier (Basic/Pro/Ultimate) for this business's own operating mode,
+  with included features checked off against the current plan and
+  above-tier features shown greyed-out with an "Upgrade to X" button.
+  Upgrading itself deep-links to the web app's `/admin/plan` (Razorpay
+  Checkout stays there — see "What's NOT built yet").
+- **Profile** (`app/(app)/profile.tsx`) — name/email/role, current plan
+  status (tap-through to Services), **Services Taken** (completed/closed
+  workorders) and **Services About to Take** (open/scheduled workorders)
+  — "user should get their profile, services they have taken and about
+  to take" — plus sign out.
 - **Calls** (`app/(app)/calls.tsx`) — list + quick intake form (customer
   name/phone/subject), backed by `/api/crm/calls`, the same
   call-entry-that-becomes-a-workorder lifecycle the Brand web admin uses.
@@ -60,13 +78,6 @@ comment) — zero backend changes were needed to support this client.
   live totals, posts to `/api/pos/invoices` (the same endpoint the web
   POS quick-sale screen uses), shows the generated invoice number/total on
   success.
-- **Plan & Billing** (`app/(app)/plan.tsx`) — read-only current plan/mode/
-  days-remaining from `/api/subscriptions/status`; renewal/upgrade stays
-  on the web app's Razorpay Checkout flow for this pass (native
-  `react-native-razorpay` wiring is straightforward to add later,
-  following the exact pattern already proven in `/mobile/app/checkout.tsx`).
-- **Profile** (`app/(app)/profile.tsx`) — name/email/role, sign out.
-
 ## What's NOT built yet (next phases)
 
 - **Appointment booking/calendar** — call intake is now covered (see
