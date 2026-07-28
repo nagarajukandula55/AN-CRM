@@ -89,7 +89,7 @@ export default function MaterialCatalogPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg text-ink">
+    <div className="min-h-screen bg-bg text-ink p-6">
       <PageHeader
         title="Material Catalog"
         description="The standard Material/BOM list — Material Code, Description, Mode, HSN, Rate, Tax% — shared across every operating mode."

@@ -23,6 +23,7 @@ import UserRole from "../src/models/UserRole";
 import ModuleDefinition from "../src/core/module-registry/ModuleDefinition.model";
 import { buildPermissionCode, STANDARD_ACTIONS } from "../src/core/access/actions";
 import { STATIC_MODULES } from "../src/components/sidebar-nav";
+import { MODULE_KEY_ALIASES } from "../src/core/access/moduleKeyAliases";
 import bcrypt from "bcryptjs";
 
 const PASSWORD = process.env.DEMO_LOGIN_PASSWORD;
@@ -65,8 +66,22 @@ async function main() {
   // but the dashboard.
   const dbModuleKeys: string[] = await ModuleDefinition.find({ businessId: null }).distinct("key");
   const staticKeys = STATIC_MODULES.map((m) => m.key);
-  const allModuleKeys = Array.from(new Set([...dbModuleKeys, ...staticKeys, ...EXTRA_PERMISSION_KEYS]));
-  const permissionCodes = allModuleKeys.flatMap((m) => ALL_ACTION_KEYS.map((a) => buildPermissionCode(m, a)));
+  const baseKeys = new Set([...dbModuleKeys, ...staticKeys, ...EXTRA_PERMISSION_KEYS]);
+
+  // Apply every known sidebar-key -> real-permission-key alias (see
+  // moduleKeyAliases.ts) PLUS a blanket kebab-case -> snake_case variant of
+  // every key -- the alias table only documents mismatches someone already
+  // tracked down by hand; a demo/testing script can't afford to miss the
+  // next undiscovered one the same way (stock-adjustments/stock_adjustments
+  // and stock-transfers/stock_transfers were only just found this way).
+  const allModuleKeys = new Set<string>();
+  for (const key of baseKeys) {
+    allModuleKeys.add(key);
+    allModuleKeys.add(key.replace(/-/g, "_"));
+    const alias = MODULE_KEY_ALIASES[key];
+    if (alias) allModuleKeys.add(alias);
+  }
+  const permissionCodes = Array.from(allModuleKeys).flatMap((m) => ALL_ACTION_KEYS.map((a) => buildPermissionCode(m, a)));
 
   for (const demo of DEMOS) {
     let business = await Business.findOne({ businessCode: demo.code });

@@ -96,7 +96,7 @@ export default function PlanPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg text-ink">
+    <div className="min-h-screen bg-bg text-ink p-6">
       <PageHeader title="Plan & Billing" description="Your current license status and upgrade options." />
 
       {data?.success && (

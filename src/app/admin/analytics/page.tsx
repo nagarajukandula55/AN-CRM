@@ -39,7 +39,7 @@ export default function AnalyticsPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-bg text-ink">
+    <div className="min-h-screen bg-bg text-ink p-6">
       <PageHeader title="Analytics" description="Revenue and operations across CRM and POS, in one view." />
 
       {loading ? (

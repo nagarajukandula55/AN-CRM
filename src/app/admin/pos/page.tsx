@@ -109,7 +109,7 @@ export default function PosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg text-ink">
+    <div className="min-h-screen bg-bg text-ink p-6">
       <PageHeader
         title="Point of Sale"
         description="Quick-sale billing — add items, collect payment, generate a GST invoice in one step."

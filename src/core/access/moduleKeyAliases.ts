@@ -69,6 +69,14 @@ export const MODULE_KEY_ALIASES: Record<string, string> = {
   // "contact_messages" (underscore, per moduleHierarchy.ts) -- the sidebar
   // nav key is kebab-case "contact-messages" like every other nav leaf.
   "contact-messages": "contact_messages",
+  // Fourth batch, found while auditing why a plain business admin (not
+  // super admin) couldn't see Sales/Stock Adjustments/Stock Transfers in
+  // the sidebar at all despite being granted the equivalent module: same
+  // kebab-case-sidebar-key vs underscore-permission-code split as every
+  // other entry above. api/stock/adjustments/route.ts and
+  // api/stock/transfers/route.ts enforce the underscored codes.
+  "stock-adjustments": "stock_adjustments",
+  "stock-transfers": "stock_transfers",
 };
 
 /**

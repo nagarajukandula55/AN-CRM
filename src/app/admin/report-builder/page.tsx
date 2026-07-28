@@ -158,7 +158,7 @@ export default function ReportBuilderPage() {
   const activeReport = reports.find((r) => r._id === activeReportId)
 
   return (
-    <div className="min-h-screen bg-bg text-ink">
+    <div className="min-h-screen bg-bg text-ink p-6">
       <PageHeader
         title="Report Builder"
         description="Build, save, chart and schedule custom reports across calls, workorders, invoices, vendors and customers."
