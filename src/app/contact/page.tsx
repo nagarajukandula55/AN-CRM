@@ -118,7 +118,7 @@ export default function ContactPage() {
             Contact <span className={neonGradientText}>Us</span>
           </h1>
           <p className="mx-auto mt-3 max-w-md text-sm text-gray-500">
-            Questions about AN Group, an existing account, or becoming a partner — send us a
+            Questions about AN-CRM, an existing account, or becoming a partner — send us a
             message and our team will get back to you.
           </p>
         </div>
