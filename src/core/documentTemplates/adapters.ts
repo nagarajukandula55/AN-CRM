@@ -20,7 +20,23 @@ export function resolveCompanyLogo(business: any, warehouse: any): string | unde
  * already had this same warehouse-override behavior (see
  * resolveCompanyLogo above) -- this just extends it to the rest of the
  * "From" block instead of leaving it as the one field on its own. */
-export function businessToCompany(business: any, warehouse: any) {
+/** Per-document-type Terms & Conditions (Business.workorderTerms/
+ * serviceOrderTerms/estimateTerms/invoiceTerms), falling back to the
+ * single legacy Business.termsAndConditions when the specific one for
+ * this document type is blank -- so a business that only ever set the
+ * one field keeps seeing it everywhere, same as before these existed. */
+function termsForDocType(business: any, documentType?: string): string | undefined {
+  const perType: Record<string, string | undefined> = {
+    WORK_ORDER: business?.workorderTerms,
+    SERVICE_RECORD: business?.serviceOrderTerms,
+    ESTIMATE: business?.estimateTerms,
+    INVOICE: business?.invoiceTerms,
+  };
+  const specific = documentType ? perType[documentType] : undefined;
+  return (specific?.trim() || business?.termsAndConditions) || undefined;
+}
+
+export function businessToCompany(business: any, warehouse: any, documentType?: string) {
   const name = warehouse?.warehouseName || business?.name || business?.brandName || "";
   const address = warehouse
     ? [warehouse.address, warehouse.city, warehouse.state, warehouse.pincode].filter(Boolean).join(", ")
@@ -32,7 +48,7 @@ export function businessToCompany(business: any, warehouse: any) {
     phone,
     gstin: business?.gstNumber || undefined,
     logoUrl: resolveCompanyLogo(business, warehouse),
-    termsAndConditions: business?.termsAndConditions || undefined,
+    termsAndConditions: termsForDocType(business, documentType),
     signatureUrl: business?.documentSignatureUrl || undefined,
   };
 }

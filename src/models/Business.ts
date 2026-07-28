@@ -721,12 +721,24 @@ const BusinessSchema = new mongoose.Schema(
     },
 
     // Vendor-wide Terms & Conditions text, editable from the vendor
-    // Owner/Manager's own profile/settings page -- shown on workorder,
-    // estimate and invoice pages/prints for this business.
+    // Owner/Manager's own profile/settings page -- kept as the fallback
+    // shown on any document type below that has no terms of its own set
+    // yet, so an existing business's single terms field keeps working.
     termsAndConditions: {
       type: String,
       default: "",
     },
+
+    // Per-document-type Terms & Conditions -- per explicit direction
+    // ("allow user to setup terms and conditions as per their own which
+    // will come on workorder one set and another option for service
+    // order and another for estimate and another for Invoice"). Each
+    // falls back to termsAndConditions above when blank -- see
+    // core/documentTemplates/adapters.ts's termsForDocType().
+    workorderTerms: { type: String, default: "" },
+    serviceOrderTerms: { type: String, default: "" },
+    estimateTerms: { type: String, default: "" },
+    invoiceTerms: { type: String, default: "" },
 
     pincode: {
       type: String,

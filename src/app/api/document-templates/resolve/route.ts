@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       template,
-      company: businessToCompany(business, warehouse),
+      company: businessToCompany(business, warehouse, documentType),
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal Server Error";
