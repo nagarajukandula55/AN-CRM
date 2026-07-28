@@ -106,8 +106,14 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "reports",   label: "Reports & Downloads", route: "/admin/reports",   icon: "BarChart3" },
     { key: "report-builder", label: "Report Builder", route: "/admin/report-builder", icon: "BarChart3" },
 <<<<<<< HEAD
-    { key: "analytics", label: "Analytics",           route: "/admin/analytics", icon: "BarChart3" },
+  ]},
 =======
+    // Rebuilt on AN-CRM's own data (SalesInvoice/CrmCall/CrmJobSheet) --
+    // the old version of this page/route was ecommerce-Order-based and
+    // was removed along with the rest of the leftover ANgroup storefront
+    // surface area; this is a fresh, CRM/POS-native replacement, not a
+    // restoration of the old one.
+    { key: "analytics", label: "Analytics",           route: "/admin/analytics", icon: "BarChart3" },
 >>>>>>> claude/crm-modules-review-fxo5es
   ]},
   { label: "Communication", items: [
