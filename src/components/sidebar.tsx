@@ -46,7 +46,7 @@ function writeSidebarCache(snapshot: { user: UserInfo | null; businesses: Busine
   } catch { /* sessionStorage unavailable -- cache is a pure optimization */ }
 }
 
-interface Business { _id: string; name: string; brandName?: string; businessCode?: string; isPlatform?: boolean }
+interface Business { _id: string; name: string; brandName?: string; businessCode?: string; isPlatform?: boolean; operatingMode?: "BRAND" | "SC" | "POS" | "" }
 interface UserInfo {
   id: string; name: string; email: string; role: string;
   isSuperAdmin: boolean; activeBusinessId: string | null;
@@ -527,7 +527,14 @@ export default function Sidebar() {
             const allItems: NavItem[] = group.items
               ? group.items
               : (group.subgroups ?? []).flatMap((sg) => sg.items);
-            const hasVisible = allItems.some((item) => isVisible(item.key));
+            // item.modes restricts a nav entry to specific operating modes
+            // (see sidebar-nav.ts) -- e.g. Workorders/Fault Codes make no
+            // sense for POS. No operatingMode set on the business yet (""
+            // or undefined) shows everything, so nothing regresses for
+            // businesses that predate this field.
+            const modeAllows = (item: NavItem) =>
+              !item.modes || !activeBiz?.operatingMode || item.modes.includes(activeBiz.operatingMode);
+            const hasVisible = allItems.some((item) => isVisible(item.key) && modeAllows(item));
             if (!hasVisible) return null;
 
             // Helper: render a single nav link
@@ -576,7 +583,7 @@ export default function Sidebar() {
                 {/* Flat items */}
                 {group.items && (
                   <div className="space-y-0.5">
-                    {applyModuleOrder(group.items.filter((item) => isVisible(item.key)))
+                    {applyModuleOrder(group.items.filter((item) => isVisible(item.key) && modeAllows(item)))
                       .map((item) => renderItem(item))}
                   </div>
                 )}
@@ -592,7 +599,7 @@ export default function Sidebar() {
                   // separating there.
                   <div className={isCollapsed ? "space-y-2.5" : "space-y-0.5"}>
                     {group.subgroups.map((sg, sgIndex) => {
-                      const visibleSgItems = applyModuleOrder(sg.items.filter((i) => isVisible(i.key)));
+                      const visibleSgItems = applyModuleOrder(sg.items.filter((i) => isVisible(i.key) && modeAllows(i)));
                       if (visibleSgItems.length === 0) return null;
                       const sgOpen = openSubgroups[sg.key] !== false;
 

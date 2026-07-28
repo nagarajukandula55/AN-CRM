@@ -20,8 +20,14 @@
 // independent, purpose-built product rather than a full ANgroup clone with
 // unused modules left lying around.
 
+// Restricts a nav item to specific operating modes -- e.g. Fault/Symptom/
+// Solution masters and Workorders/Appointments make no sense for POS (pure
+// billing counter, no workorders at all). Omitted entirely = visible under
+// every mode (and for any business with no operatingMode set yet).
+export type OperatingModeKey = "BRAND" | "SC" | "POS";
+
 export interface NavItem {
-  key: string; label: string; route: string; icon: string;
+  key: string; label: string; route: string; icon: string; modes?: OperatingModeKey[];
 }
 export interface NavSubGroup {
   key: string; label: string; items: NavItem[];
@@ -48,8 +54,8 @@ export const NAV_GROUPS: NavGroup[] = [
       // comment. Keys match the ModuleDefinition.key values exactly
       // ("crm_calls", "crm_jobsheets") so isVisible()'s moduleKeys.has()
       // check lines up with what /api/ui/sidebar actually returns.
-      { key: "crm_calls",     label: "Appointments", route: "/admin/crm/calls",     icon: "PhoneCall" },
-      { key: "crm_jobsheets", label: "Workorders",   route: "/admin/crm/jobsheets", icon: "ClipboardList" },
+      { key: "crm_calls",     label: "Appointments", route: "/admin/crm/calls",     icon: "PhoneCall", modes: ["BRAND", "SC"] },
+      { key: "crm_jobsheets", label: "Workorders",   route: "/admin/crm/jobsheets", icon: "ClipboardList", modes: ["BRAND", "SC"] },
       // Shows every business's tickets by default (a filter dropdown on
       // the page itself narrows it down) rather than depending on the
       // sidebar's active-business switcher -- per explicit direction,
@@ -81,10 +87,12 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "masters-brands",   label: "Brands & Models",    route: "/admin/masters/brands",              icon: "Tags" },
     { key: "masters-catalog-requests", label: "Catalog Change Requests", route: "/admin/masters/catalog-requests", icon: "ClipboardCheck" },
     { key: "masters-mat-cat",  label: "Material Categories",route: "/admin/masters/material-categories", icon: "Layers" },
-    { key: "masters-fault-codes", label: "Fault Codes", route: "/admin/masters/fault-codes", icon: "AlertTriangle" },
-    { key: "masters-symptom-codes", label: "Symptom Codes", route: "/admin/masters/symptom-codes", icon: "AlertTriangle" },
-    { key: "masters-solutions",   label: "Solutions",   route: "/admin/masters/solutions",   icon: "CheckCircle" },
-    { key: "masters-crm-options", label: "CRM Job Sheet Options", route: "/admin/masters/crm-options", icon: "Settings" },
+    // No workorders at all for POS (pure billing counter) -- so no fault/
+    // symptom/solution diagnosis library or job-sheet options either.
+    { key: "masters-fault-codes", label: "Fault Codes", route: "/admin/masters/fault-codes", icon: "AlertTriangle", modes: ["BRAND", "SC"] },
+    { key: "masters-symptom-codes", label: "Symptom Codes", route: "/admin/masters/symptom-codes", icon: "AlertTriangle", modes: ["BRAND", "SC"] },
+    { key: "masters-solutions",   label: "Solutions",   route: "/admin/masters/solutions",   icon: "CheckCircle", modes: ["BRAND", "SC"] },
+    { key: "masters-crm-options", label: "CRM Job Sheet Options", route: "/admin/masters/crm-options", icon: "Settings", modes: ["BRAND", "SC"] },
     { key: "stock-transfers",   label: "Stock Transfers",   route: "/admin/stock-transfers",   icon: "ArrowLeftRight" },
     { key: "stock-adjustments", label: "Stock Adjustments", route: "/admin/stock-adjustments", icon: "SlidersHorizontal" },
     { key: "inventory-lots",    label: "Inventory Lots",    route: "/admin/inventory/lots",    icon: "Box" },

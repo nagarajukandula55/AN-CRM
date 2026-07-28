@@ -22,6 +22,7 @@ import Role from "../src/models/Role";
 import UserRole from "../src/models/UserRole";
 import ModuleDefinition from "../src/core/module-registry/ModuleDefinition.model";
 import { buildPermissionCode, STANDARD_ACTIONS } from "../src/core/access/actions";
+import { STATIC_MODULES } from "../src/components/sidebar-nav";
 import bcrypt from "bcryptjs";
 
 const PASSWORD = process.env.DEMO_LOGIN_PASSWORD;
@@ -41,10 +42,15 @@ async function main() {
   await connectDB();
 
   const hashedPassword = await bcrypt.hash(PASSWORD, 12);
-  // Every current module key (system + any business-custom already seeded
-  // globally) -- same source seedDefaultRoles.ts's AN_ADMIN role uses, so
-  // these demo roles don't go stale as modules are added.
-  const allModuleKeys: string[] = await ModuleDefinition.find({ businessId: null }).distinct("key");
+  // Every DB-seeded module key PLUS every static sidebar key (STATIC_MODULES
+  // -- see sidebar-nav.ts) -- most sidebar items (Settings, Customer Data,
+  // Vendors, BOM, Inventory, Finance, ...) never got a ModuleDefinition row
+  // seeded at all, only the DB-seeded ones (mirroring seedDefaultRoles.ts's
+  // AN_ADMIN role) would have left these demo logins seeing almost nothing
+  // but the dashboard.
+  const dbModuleKeys: string[] = await ModuleDefinition.find({ businessId: null }).distinct("key");
+  const staticKeys = STATIC_MODULES.map((m) => m.key);
+  const allModuleKeys = Array.from(new Set([...dbModuleKeys, ...staticKeys]));
   const permissionCodes = allModuleKeys.flatMap((m) => ALL_ACTION_KEYS.map((a) => buildPermissionCode(m, a)));
 
   for (const demo of DEMOS) {
