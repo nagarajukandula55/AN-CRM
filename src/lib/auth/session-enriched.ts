@@ -8,6 +8,7 @@ import Permission from "@/models/Permission";
 import Business from "@/models/Business";
 import { expandWithAliases } from "@/core/access/moduleKeyAliases";
 import { getOrCreateANGroupBusinessId } from "@/core/access/anGroupBusiness.service";
+import { isSubscriptionBlocked } from "@/core/subscriptions/checkAccess";
 
 /**
  * =========================================================
@@ -38,6 +39,13 @@ export interface IEnrichedSession {
   permissions: string[];
 
   isSuperAdmin: boolean;
+
+  // True when the active business's subscription/trial has expired --
+  // see core/subscriptions/checkAccess.ts. Never true for a super admin
+  // (they must always retain access to fix things). Checked by
+  // requirePermission() so this is enforced everywhere that already calls
+  // it, not just a handful of manually-updated routes.
+  subscriptionBlocked: boolean;
 }
 
 /**
@@ -252,6 +260,13 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
     }
   }
 
+  // Never blocks a super admin (must always retain access to fix things)
+  // or a request with no resolved business context at all.
+  const subscriptionBlocked =
+    !isSuperAdmin && businessContext?.businessId
+      ? await isSubscriptionBlocked(businessContext.businessId).catch(() => false)
+      : false;
+
   return {
     user: { id: userId, name: userName, email: userEmail },
     business: businessContext
@@ -264,5 +279,6 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
     roles,
     permissions,
     isSuperAdmin,
+    subscriptionBlocked,
   };
 }

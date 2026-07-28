@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "AN-CRM",
+    "slug": "an-crm-mobile",
+    "scheme": "ancrm",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#5B3DF5"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ancrm.mobile",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.ancrm.mobile",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#5B3DF5"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": ["expo-router"],
+    "extra": {
+      "anCrmApiUrl": "https://YOUR-AN-CRM-DEPLOYMENT-URL",
+      "eas": {
+        "projectId": "YOUR-EAS-PROJECT-ID"
+      }
+    }
+  }
+}

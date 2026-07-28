@@ -1,154 +1,117 @@
+/**
+ * GET /api/analytics/overview — business-wide analytics built entirely on
+ * AN-CRM's own data (SalesInvoice, CrmCall, CrmJobSheet), not the
+ * ecommerce Order collection the old (deleted) version of this route used.
+ * Covers both CRM-originated invoices (sourceOrderId "CRM_JOBSHEET:...")
+ * and POS quick-sale invoices (sourceOrderId "POS:...") -- see
+ * api/crm/revenue/route.ts for the CRM-only equivalent this supersedes
+ * for a business-wide view.
+ */
 import { NextRequest, NextResponse } from "next/server";
-import { Types } from "mongoose";
-import { connectDB } from "@/core/db/mongodb";
+import { connectDB } from "@/lib/mongodb";
+import SalesInvoice from "@/models/SalesInvoice";
+import CrmCall from "@/models/CrmCall";
+import CrmJobSheet from "@/models/CrmJobSheet";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
-import Order from "@/models/Order";
-import InventoryItem from "@/models/InventoryItem";
-import Business from "@/models/Business";
-
-/**
- * GET /api/analytics/overview?period=7d|30d|90d
- *
- * Backs src/app/admin/analytics/page.tsx. Deliberately a separate route
- * from /api/dashboard/overview (which already exists and serves a
- * different, differently-shaped payload for the main dashboard) rather
- * than reshaping that route and risking breaking its existing caller —
- * this one returns exactly the shape the Analytics page's `getMockData()`
- * fallback already expects (revenue/orders/customers with trend arrays,
- * inventory counts, topBusinesses), so the page can stop silently falling
- * back to mock data.
- *
- * Permission check uses buildPermissionCode("analytics", "view") — the
- * canonical MODULEKEY.ACTIONKEY code generator from core/access/actions.ts,
- * same as every other route after the permission-code convention migration
- * (see permission.guard.ts's top comment for the history of the old
- * lowercase-dot convention this replaced).
- */
-
-const PERIOD_DAYS: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
 
 export async function GET(req: NextRequest) {
   try {
     const session = await getEnrichedSession();
-    if (!session?.user || !session.business) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized or missing business context" },
-        { status: 401 }
-      );
+    if (!session?.user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
-
-    requirePermission(session as any, buildPermissionCode("analytics", "view"));
-
-    const { searchParams } = new URL(req.url);
-    const period = searchParams.get("period") || "30d";
-    const days = PERIOD_DAYS[period] ?? 30;
+    try {
+      requirePermission(session as any, buildPermissionCode("reports", "view"));
+    } catch (err: any) {
+      return NextResponse.json({ success: false, message: err.message }, { status: err.code === "FORBIDDEN" ? 403 : 401 });
+    }
 
     await connectDB();
 
-    const businessId = new Types.ObjectId(session.business.businessId);
-    const periodStart = new Date();
-    periodStart.setDate(periodStart.getDate() - days);
-    const prevPeriodStart = new Date();
-    prevPeriodStart.setDate(prevPeriodStart.getDate() - days * 2);
+    const { searchParams } = new URL(req.url);
+    const businessId = searchParams.get("businessId");
+    const invoiceMatch: Record<string, any> = { isDeleted: { $ne: true } };
+    if (businessId) invoiceMatch.businessId = businessId;
 
-    // ── Orders + revenue within the period, plus the prior equal-length
-    // period (for growth %), plus a per-day trend for the chart. ──────────
-    const [currentAgg, previousAgg, trendAgg, customerAgg, inventoryAgg, businesses] = await Promise.all([
-      Order.aggregate([
-        { $match: { businessId, createdAt: { $gte: periodStart } } },
-        { $group: { _id: null, totalRevenue: { $sum: "$amount" }, totalOrders: { $sum: 1 } } },
-      ]),
-      Order.aggregate([
-        { $match: { businessId, createdAt: { $gte: prevPeriodStart, $lt: periodStart } } },
-        { $group: { _id: null, totalRevenue: { $sum: "$amount" }, totalOrders: { $sum: 1 } } },
-      ]),
-      Order.aggregate([
-        { $match: { businessId, createdAt: { $gte: periodStart } } },
-        {
-          $group: {
-            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-            revenue: { $sum: "$amount" },
-            orders: { $sum: 1 },
-          },
-        },
-        { $sort: { _id: 1 } },
-      ]),
-      Order.aggregate([
-        { $match: { businessId, createdAt: { $gte: periodStart }, customerId: { $ne: null } } },
-        { $group: { _id: "$customerId" } },
-        { $count: "distinctCustomers" },
-      ]),
-      InventoryItem.aggregate([
-        { $match: { businessId } },
-        {
-          $group: {
-            _id: null,
-            totalItems: { $sum: 1 },
-            lowStock: {
-              $sum: {
-                $cond: [{ $lte: ["$availableQuantity", "$reorderLevel"] }, 1, 0],
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+    const [invoiceAgg] = await SalesInvoice.aggregate([
+      { $match: invoiceMatch },
+      {
+        $facet: {
+          totals: [
+            { $match: { status: "PAID" } },
+            { $group: { _id: null, sum: { $sum: "$grandTotal" }, count: { $sum: 1 } } },
+          ],
+          thisMonth: [
+            { $match: { status: "PAID", createdAt: { $gte: monthStart } } },
+            { $group: { _id: null, sum: { $sum: "$grandTotal" }, count: { $sum: 1 } } },
+          ],
+          bySource: [
+            {
+              $group: {
+                _id: { $cond: [{ $regexMatch: { input: { $ifNull: ["$sourceOrderId", ""] }, regex: /^POS:/ } }, "POS", "CRM"] },
+                sum: { $sum: { $cond: [{ $eq: ["$status", "PAID"] }, "$grandTotal", 0] } },
+                count: { $sum: 1 },
               },
             },
-            outOfStock: {
-              $sum: { $cond: [{ $lte: ["$availableQuantity", 0] }, 1, 0] },
+          ],
+          statusBreakdown: [
+            { $group: { _id: "$status", count: { $sum: 1 } } },
+          ],
+          monthlyTrend: [
+            { $match: { status: "PAID", createdAt: { $gte: sixMonthsAgo } } },
+            {
+              $group: {
+                _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+                revenue: { $sum: "$grandTotal" },
+              },
             },
-          },
+            { $sort: { "_id.year": 1, "_id.month": 1 } },
+          ],
         },
-      ]).catch(() => []), // defensive: InventoryItem schema fields vary by item type, don't fail the whole page over this
-      Business.find({ isActive: true }).select("name").limit(5).lean(),
+      },
     ]);
 
-    const current = currentAgg[0] || { totalRevenue: 0, totalOrders: 0 };
-    const previous = previousAgg[0] || { totalRevenue: 0, totalOrders: 0 };
-    const inv = inventoryAgg[0] || { totalItems: 0, lowStock: 0, outOfStock: 0 };
-    const distinctCustomers = customerAgg[0]?.distinctCustomers || 0;
+    const callMatch: Record<string, any> = {};
+    if (businessId) callMatch.businessId = businessId;
+    const jobsheetMatch: Record<string, any> = { isDeleted: { $ne: true } };
+    if (businessId) jobsheetMatch.businessId = businessId;
 
-    const growth = (curr: number, prev: number) =>
-      prev > 0 ? Math.round(((curr - prev) / prev) * 1000) / 10 : curr > 0 ? 100 : 0;
+    const [totalCalls, openJobsheets, closedJobsheets] = await Promise.all([
+      CrmCall.countDocuments(callMatch),
+      CrmJobSheet.countDocuments({ ...jobsheetMatch, status: { $nin: ["CLOSED", "CANCELLED"] } }),
+      CrmJobSheet.countDocuments({ ...jobsheetMatch, status: { $in: ["CLOSED", "REPAIR_COMPLETED"] } }),
+    ]);
+
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
     return NextResponse.json({
       success: true,
       revenue: {
-        total: current.totalRevenue,
-        growth: growth(current.totalRevenue, previous.totalRevenue),
-        trend: trendAgg.map((d: any) => d.revenue),
+        total: invoiceAgg?.totals?.[0]?.sum || 0,
+        totalInvoices: invoiceAgg?.totals?.[0]?.count || 0,
+        thisMonth: invoiceAgg?.thisMonth?.[0]?.sum || 0,
+        thisMonthInvoices: invoiceAgg?.thisMonth?.[0]?.count || 0,
       },
-      orders: {
-        total: current.totalOrders,
-        growth: growth(current.totalOrders, previous.totalOrders),
-        trend: trendAgg.map((d: any) => d.orders),
-      },
-      customers: {
-        total: distinctCustomers,
-        // No prior-period comparison for distinct customers yet — would need
-        // a second aggregation; left as 0 rather than a fabricated number.
-        growth: 0,
-        trend: [],
-      },
-      inventory: {
-        totalItems: inv.totalItems,
-        lowStock: inv.lowStock,
-        outOfStock: inv.outOfStock,
-      },
-      // Real business names, but revenue-per-business is NOT computed here
-      // (would require summing Orders per businessId across all businesses,
-      // which the current single-business-scoped session can't do without
-      // a platform-wide/super-admin query) — left at 0 rather than mocked.
-      // TODO: build this out properly once a super-admin cross-business
-      // reporting permission exists.
-      topBusinesses: businesses.map((b: any) => ({
-        name: b.name,
-        revenue: 0,
-        growth: 0,
+      bySource: (invoiceAgg?.bySource || []).map((s: any) => ({ source: s._id, revenue: s.sum, count: s.count })),
+      statusBreakdown: (invoiceAgg?.statusBreakdown || []).map((s: any) => ({ status: s._id, count: s.count })),
+      monthlyTrend: (invoiceAgg?.monthlyTrend || []).map((m: any) => ({
+        label: `${monthNames[m._id.month - 1]} ${m._id.year}`,
+        revenue: m.revenue,
       })),
+      operations: {
+        totalCalls,
+        openWorkorders: openJobsheets,
+        closedWorkorders: closedJobsheets,
+      },
     });
-  } catch (error: any) {
-    const status = error?.code === "UNAUTHORIZED" ? 401 : error?.code === "FORBIDDEN" ? 403 : 500;
-    return NextResponse.json(
-      { success: false, error: error?.message || "Internal Server Error" },
-      { status }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

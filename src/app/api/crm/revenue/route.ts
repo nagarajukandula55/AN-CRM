@@ -43,35 +43,43 @@ export async function GET(req: NextRequest) {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const invoices = await SalesInvoice.find(match)
-      .select("grandTotal status createdAt")
-      .lean();
+    // Summed via an aggregation pipeline rather than pulling every
+    // matching invoice into JS -- at real invoice volume, .find().lean()
+    // here would transfer every document over the wire just to add up
+    // four numbers server-side. One round trip via $facet instead.
+    const [agg] = await SalesInvoice.aggregate([
+      { $match: match },
+      {
+        $facet: {
+          paidTotal: [
+            { $match: { status: "PAID" } },
+            { $group: { _id: null, sum: { $sum: "$grandTotal" }, count: { $sum: 1 } } },
+          ],
+          paidThisMonth: [
+            { $match: { status: "PAID", createdAt: { $gte: monthStart } } },
+            { $group: { _id: null, sum: { $sum: "$grandTotal" } } },
+          ],
+          outstanding: [
+            { $match: { status: { $nin: ["PAID", "CANCELLED", "DRAFT"] } } },
+            { $group: { _id: null, sum: { $sum: "$grandTotal" } } },
+          ],
+          totalCount: [{ $count: "count" }],
+        },
+      },
+    ]);
 
-    const paidStatuses = new Set(["PAID"]);
-    let totalRevenue = 0;
-    let revenueThisMonth = 0;
-    let outstanding = 0;
-    let paidCount = 0;
-
-    for (const inv of invoices as any[]) {
-      const amount = inv.grandTotal || 0;
-      if (paidStatuses.has(inv.status)) {
-        totalRevenue += amount;
-        paidCount += 1;
-        if (new Date(inv.createdAt) >= monthStart) {
-          revenueThisMonth += amount;
-        }
-      } else if (inv.status !== "CANCELLED" && inv.status !== "DRAFT") {
-        outstanding += amount;
-      }
-    }
+    const totalRevenue = agg?.paidTotal?.[0]?.sum || 0;
+    const paidCount = agg?.paidTotal?.[0]?.count || 0;
+    const revenueThisMonth = agg?.paidThisMonth?.[0]?.sum || 0;
+    const outstanding = agg?.outstanding?.[0]?.sum || 0;
+    const invoiceCount = agg?.totalCount?.[0]?.count || 0;
 
     return NextResponse.json({
       success: true,
       totalRevenue,
       revenueThisMonth,
       outstanding,
-      invoiceCount: invoices.length,
+      invoiceCount,
       paidCount,
     });
   } catch (error: any) {

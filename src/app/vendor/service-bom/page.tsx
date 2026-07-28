@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Vendor UI for managing this vendor's ServiceCenterBOM parts -- the price
+ * Vendor UI for managing this vendor's BOM parts -- the price
  * list used both for repair-workorder part selection and for GST-correct
  * invoicing (HSN + GST% + unit + part type are all captured on the part
  * itself, not derived/guessed at billing time).

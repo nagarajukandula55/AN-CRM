@@ -18,8 +18,8 @@ const manrope = Manrope({ subsets: ["latin"], variable: "--font-display", displa
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "AN Group",
-  description: "Luxury Enterprise Platform",
+  title: "AN-CRM",
+  description: "The CRM/ERP platform for Brand, Service Center, and POS operations.",
 };
 
 export default function RootLayout({

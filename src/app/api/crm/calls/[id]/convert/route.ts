@@ -135,6 +135,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       status: "CREATED",
       lineItems: Array.isArray(lineItems) ? lineItems : [],
       createdBy: new mongoose.Types.ObjectId(userId),
+      // CCO name snapshot from the originating call -- see
+      // CrmJobSheet.ts's field comment.
+      ccoName: (call as any).createdByName || "",
     });
 
     call.jobSheetId = jobSheet._id as any;

@@ -14,10 +14,10 @@ export async function getOrCreateANGroupBusinessId(): Promise<string> {
   if (existing) return String((existing as any)._id);
 
   const created = await Business.create({
-    name: "AN Group",
-    brandName: "AN Group",
-    businessCode: "ANGROUP",
-    tenantKey: "an-group",
+    name: "AN-CRM Platform",
+    brandName: "AN-CRM",
+    businessCode: "ANCRM",
+    tenantKey: "an-crm",
     isPlatform: true,
     isActive: true,
   });

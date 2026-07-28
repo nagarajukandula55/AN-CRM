@@ -657,7 +657,7 @@ const BusinessSchema = new mongoose.Schema(
       default: false,
     },
 
-    // Whether newly created BOM/Material entries (ServiceCenterBOM -- see
+    // Whether newly created BOM/Material entries (BOM -- see
     // that model's header comment; it's the canonical Material/BOM list
     // shared by SC, Brand and POS) get a server-generated code or a
     // manually typed one. AUTO (default) preserves existing behaviour
@@ -685,10 +685,20 @@ const BusinessSchema = new mongoose.Schema(
     // Default rate for the workorder detail page's one-click "Add Labour
     // Charge" line, set by the vendor's Owner/Manager (Settings > Business
     // Settings) -- used whenever the vendor has no LABOUR-type
-    // ServiceCenterBOM entry of its own to pull a rate from instead.
+    // BOM entry of its own to pull a rate from instead.
     defaultLabourCharge: {
       type: Number,
       default: 0,
+    },
+
+    // UPI VPA (Virtual Payment Address, e.g. "business@okhdfcbank") used
+    // to generate a scannable payment QR code on printed invoices -- see
+    // core/payments/upiQr.ts. Blank (the default) means no QR prints;
+    // never a hardcoded/shared VPA, always this business's own.
+    upiId: {
+      type: String,
+      default: "",
+      trim: true,
     },
 
     // Shown on the printed Intake Receipt/Workorder in place of the

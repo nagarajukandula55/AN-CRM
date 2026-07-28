@@ -19,7 +19,7 @@ import "@/models/Brand";
 import "@/models/FaultCode";
 import "@/models/Solution";
 import "@/models/SymptomCode";
-import "@/models/ServiceCenterBOM";
+import "@/models/BOM";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";

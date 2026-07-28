@@ -22,20 +22,16 @@
 
 import { connectDB } from "../src/core/db/mongodb";
 import SalesInvoice from "../src/models/SalesInvoice";
-import PurchaseOrder from "../src/models/PurchaseOrder";
-import GoodsReceipt from "../src/models/GoodsReceipt";
-import ProductionOrder from "../src/models/ProductionOrder";
-import ProductionBatch from "../src/models/ProductionBatch";
 import StockAdjustment from "../src/models/StockAdjustment";
 import StockTransfer from "../src/models/StockTransfer";
 import EmployeeProfile from "../src/models/EmployeeProfile";
 
+// PurchaseOrder/GoodsReceipt/ProductionOrder/ProductionBatch were part of
+// ANgroup's manufacturing/procurement modules, removed when AN-CRM's
+// leftover ecommerce/manufacturing surface area was stripped out -- no
+// longer part of this repo's model set.
 const MODELS = [
   SalesInvoice,
-  PurchaseOrder,
-  GoodsReceipt,
-  ProductionOrder,
-  ProductionBatch,
   StockAdjustment,
   StockTransfer,
   EmployeeProfile,

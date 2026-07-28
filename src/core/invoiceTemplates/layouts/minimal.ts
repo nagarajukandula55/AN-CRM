@@ -35,6 +35,10 @@ function render(data: InvoiceRenderData): string {
       </div>`
     : "";
 
+  const paymentQrHtml = data.templateConfig?.paymentQrUrl
+    ? `<div style="display:flex;align-items:center;gap:8px;margin-top:10px;"><img src="${esc(data.templateConfig.paymentQrUrl)}" alt="UPI payment QR" style="width:80px;height:80px;object-fit:contain;"/><div style="font-size:10px;color:#666;">Scan to pay via UPI</div></div>`
+    : "";
+
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"/><title>Invoice ${esc(data.invoiceNumber)}</title>
 <style>
@@ -95,6 +99,7 @@ tbody td{padding:10px 6px;border-bottom:1px solid #f3f4f6;font-size:11px;vertica
   <div>CGST + SGST + IGST <span style="float:right;">₹${fmtMoney(Number(t.cgst) + Number(t.sgst) + Number(t.igst))}</span></div>
   <div class="grand">Total <span style="float:right;">₹${t.grandTotal}</span></div>
 </div>
+${paymentQrHtml}
 ${signatureHtml}
 <div class="footerNote">${safeStr(data.templateConfig?.footerNote, "Thank you for your business.")}</div>
 </div></body></html>`;

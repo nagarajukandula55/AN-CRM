@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import mongoose from "mongoose";
 import SalesInvoice from "@/models/SalesInvoice";
-import Order from "@/models/Order";
 import Business from "@/models/Business";
 import { connectDB } from "@/lib/mongodb";
 import { getDefaultTemplate } from "@/core/invoiceTemplates/service";
 import { getStateCode } from "@/core/gst/stateCodes";
+import { generateUpiQrDataUrl } from "@/core/payments/upiQr";
 
 export const runtime = "nodejs";
 
@@ -65,16 +64,12 @@ export async function GET(
 
     const stateCode = getStateCode(invoice.customer?.state);
 
-    // sourceOrderId isn't always a real Order _id -- CRM-generated invoices
-    // (see api/crm/jobsheets/[id]/close/route.ts) set it to a synthetic
-    // string like "CRM_JOBSHEET:<id>" so the invoice can still reference
-    // where it came from. Passing that straight into a Mongoose _id query
-    // threw a CastError and 500'd this entire endpoint -- meaning every
-    // CRM-originated invoice/estimate failed to render at all. Only look up
-    // a real Order when sourceOrderId is actually a valid ObjectId.
-    const order = mongoose.Types.ObjectId.isValid(invoice.sourceOrderId || "")
-      ? await Order.findOne({ _id: invoice.sourceOrderId })
-      : null;
+    // AN-CRM invoices are always CRM/POS/subscription-originated -- there's
+    // no separate storefront "Order" record to enrich this view with, so
+    // orderDate/orderId/payment-method-fallback below all just read as
+    // absent instead of being looked up from a second collection.
+    type LegacyOrderStub = { createdAt?: Date; orderId?: string; payment?: any; razorpayPaymentId?: string };
+    const order = null as LegacyOrderStub | null;
 
     // Was hardcoded to "Native" + env vars (COMPANY_ADDRESS1 etc.) here —
     // meaning every business on this multi-tenant platform would show the
@@ -93,6 +88,18 @@ export async function GET(
     const savedTemplate = invoice.businessId
       ? await getDefaultTemplate(String(invoice.businessId)).catch(() => null)
       : null;
+
+    // UPI payment QR -- only generated when this business has a VPA
+    // configured (Settings > Operations). See core/payments/upiQr.ts.
+    const upiId = (business as any)?.upiId?.trim();
+    const paymentQrUrl = upiId
+      ? await generateUpiQrDataUrl({
+          vpa: upiId,
+          payeeName: (business as any)?.legalName || (business as any)?.name || "Business",
+          amount: invoice.grandTotal || 0,
+          invoiceNumber: invoice.invoiceNumber,
+        }).catch(() => undefined)
+      : undefined;
 
     return NextResponse.json({
       success: true,
@@ -176,15 +183,16 @@ export async function GET(
       signatureUrl: (business as any)?.documentSignatureUrl || "",
 
       templateLayoutKey: savedTemplate?.layoutKey || undefined,
-      templateConfig: savedTemplate
+      templateConfig: savedTemplate || paymentQrUrl
         ? {
-            accentColor: savedTemplate.branding?.accentColor,
-            footerNote: savedTemplate.text?.footerNote,
-            declaration: savedTemplate.text?.declaration,
-            termsAndConditions: savedTemplate.text?.termsAndConditions,
-            showSignature: savedTemplate.text?.showSignature,
-            signatureImageUrl: savedTemplate.text?.signatureImageUrl,
-            signatoryLabel: savedTemplate.text?.signatoryLabel,
+            accentColor: savedTemplate?.branding?.accentColor,
+            footerNote: savedTemplate?.text?.footerNote,
+            declaration: savedTemplate?.text?.declaration,
+            termsAndConditions: savedTemplate?.text?.termsAndConditions,
+            showSignature: savedTemplate?.text?.showSignature,
+            signatureImageUrl: savedTemplate?.text?.signatureImageUrl,
+            signatoryLabel: savedTemplate?.text?.signatoryLabel,
+            paymentQrUrl,
           }
         : undefined,
 

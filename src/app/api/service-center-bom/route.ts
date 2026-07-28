@@ -20,7 +20,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import mongoose from "mongoose";
-import ServiceCenterBOM from "@/models/ServiceCenterBOM";
+import BOM from "@/models/BOM";
 import VendorProfile from "@/models/VendorProfile";
 import Business from "@/models/Business";
 import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
@@ -44,7 +44,7 @@ function permissionErrorResponse(err: any) {
   );
 }
 
-async function resolveVendorAndBusiness(userId: string, explicitVendorId?: string | null) {
+async function resolveVendorAndBusiness(userId: string, explicitVendorId?: string | null, fallbackBusinessId?: string | null) {
   const vendor = await resolveOwnerOrManagerVendor(userId);
   if (vendor) {
     return { vendorId: (vendor as any)._id, businessId: (vendor as any).businessId };
@@ -52,6 +52,15 @@ async function resolveVendorAndBusiness(userId: string, explicitVendorId?: strin
   if (explicitVendorId && mongoose.Types.ObjectId.isValid(explicitVendorId)) {
     const v = await VendorProfile.findOne({ _id: explicitVendorId, isDeleted: { $ne: true } }).lean();
     if (v) return { vendorId: (v as any)._id, businessId: (v as any).businessId };
+  }
+  // Business-wide fallback for write access too -- a Brand/Sales/admin
+  // staff member (no vendor context) can create a business-wide material
+  // entry (vendorId unset), per explicit direction ("we have to give the
+  // same [BOM] to Sales team also"). Requires the caller to actually hold
+  // the create permission (checked by the route before calling this), not
+  // just any logged-in user.
+  if (fallbackBusinessId && mongoose.Types.ObjectId.isValid(fallbackBusinessId)) {
+    return { vendorId: null, businessId: new mongoose.Types.ObjectId(fallbackBusinessId) };
   }
   return null;
 }
@@ -65,7 +74,7 @@ async function resolveVendorAndBusiness(userId: string, explicitVendorId?: strin
 // job sheet page just calls GET with a brandId filter), and
 // resolveOwnerOrManagerVendor is exclusively Owner/Manager, so this
 // route 403'd "No vendor profile found" for every other team member.
-async function resolveVendorForRead(userId: string, explicitVendorId?: string | null) {
+async function resolveVendorForRead(userId: string, explicitVendorId?: string | null, fallbackBusinessId?: string | null) {
   const ownerOrManager = await resolveOwnerOrManagerVendor(userId);
   if (ownerOrManager) {
     return { vendorId: (ownerOrManager as any)._id, businessId: (ownerOrManager as any).businessId };
@@ -77,6 +86,15 @@ async function resolveVendorForRead(userId: string, explicitVendorId?: string | 
   if (explicitVendorId && mongoose.Types.ObjectId.isValid(explicitVendorId)) {
     const v = await VendorProfile.findOne({ _id: explicitVendorId, isDeleted: { $ne: true } }).lean();
     if (v) return { vendorId: (v as any)._id, businessId: (v as any).businessId };
+  }
+  // Business-wide fallback: a caller with no vendor context at all (Brand/
+  // Sales/admin staff, not a vendor team member) still gets business-wide
+  // read access to the canonical Material/BOM list -- vendorId left unset
+  // so the query below returns every vendor's entries for this business,
+  // not just one. This is what makes the material list actually usable
+  // from an admin-facing page, not only vendor-scoped ones.
+  if (fallbackBusinessId && mongoose.Types.ObjectId.isValid(fallbackBusinessId)) {
+    return { vendorId: null, businessId: new mongoose.Types.ObjectId(fallbackBusinessId) };
   }
   return null;
 }
@@ -98,7 +116,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const explicitVendorId = searchParams.get("vendorId");
 
-    const resolved = await resolveVendorForRead(session.user.id, explicitVendorId);
+    const resolved = await resolveVendorForRead(session.user.id, explicitVendorId, session.business?.businessId);
     if (!resolved) {
       return NextResponse.json(
         { success: false, error: "No vendor profile found for this account" },
@@ -111,9 +129,14 @@ export async function GET(req: NextRequest) {
     const deviceModelId = searchParams.get("deviceModelId");
     const query: Record<string, unknown> = {
       businessId: resolved.businessId,
-      vendorId: resolved.vendorId,
       isActive: true,
     };
+    // resolved.vendorId is only omitted for the business-wide admin
+    // fallback (see resolveVendorForRead) -- every real vendor caller
+    // still gets filtered to exactly their own entries.
+    if (resolved.vendorId) {
+      query.vendorId = resolved.vendorId;
+    }
     if (search) {
       query.$or = [
         { partName: { $regex: search, $options: "i" } },
@@ -148,7 +171,7 @@ export async function GET(req: NextRequest) {
       query.$and = query.$and ? [...(query.$and as any[]), modelOr] : [modelOr];
     }
 
-    const parts = await ServiceCenterBOM.find(query)
+    const parts = await BOM.find(query)
       .populate("brandId", "name")
       .populate("deviceModelId", "name")
       .sort({ partName: 1 })
@@ -166,6 +189,15 @@ export async function POST(req: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
+    // Real permission gate on write, unlike GET's soft-fail -- was
+    // completely ungated before (any logged-in user could POST), a gap
+    // that got materially more exploitable once the business-wide admin
+    // fallback below stopped requiring a vendor profile to write at all.
+    try {
+      requirePermission(session as any, buildPermissionCode("fault_codes", "create"));
+    } catch (err: any) {
+      return permissionErrorResponse(err);
+    }
 
     const body = await req.json();
     const {
@@ -182,7 +214,7 @@ export async function POST(req: NextRequest) {
     }
 
     await connectDB();
-    const resolved = await resolveVendorAndBusiness(session.user.id, explicitVendorId);
+    const resolved = await resolveVendorAndBusiness(session.user.id, explicitVendorId, session.business?.businessId);
     if (!resolved) {
       return NextResponse.json(
         { success: false, error: "No vendor profile found for this account" },
@@ -218,14 +250,14 @@ export async function POST(req: NextRequest) {
 
     // Whenever deviceModelId is set, seriesId is auto-populated from that
     // model's own seriesId so the two denormalized fields never disagree
-    // (see the seriesId field comment on ServiceCenterBOM).
+    // (see the seriesId field comment on BOM).
     let resolvedSeriesId: mongoose.Types.ObjectId | undefined;
     if (deviceModelId && mongoose.Types.ObjectId.isValid(deviceModelId)) {
       const modelDoc = await DeviceModelModel.findById(deviceModelId).select("seriesId").lean<any>();
       if (modelDoc?.seriesId) resolvedSeriesId = modelDoc.seriesId;
     }
 
-    const part = await ServiceCenterBOM.create({
+    const part = await BOM.create({
       businessId: resolved.businessId,
       vendorId: resolved.vendorId,
       brandId: brandId && mongoose.Types.ObjectId.isValid(brandId) ? brandId : undefined,
@@ -246,7 +278,7 @@ export async function POST(req: NextRequest) {
 
     logAction({
       action: "CREATE",
-      entity: "ServiceCenterBOM",
+      entity: "BOM",
       entityId: part?._id?.toString(),
       after: body,
       req,

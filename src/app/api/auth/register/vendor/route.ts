@@ -14,6 +14,7 @@ import UserRole from '@/models/UserRole'
 import { generateGlobalDocumentNumber } from '@/core/numbering/numberingService'
 import { logAction } from '@/lib/audit/logAction'
 import { generateUniqueUserId } from '@/lib/auth/generateUserId'
+import { getDefaultPublicBusinessId } from '@/core/access/anGroupBusiness.service'
 
 /**
  * REMOVED: a local generateVendorId() used to live here, producing a
@@ -31,7 +32,6 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const {
-      businessId,
       companyName,
       contactPerson,
       email,
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
       gstNumber,
       panNumber,
       category,
+      appliedAs,
       city,
       state,
       pincode,
@@ -52,17 +53,6 @@ export async function POST(req: NextRequest) {
           success: false,
           message:
             'Company name, contact person, email and password are required',
-        },
-        { status: 400 }
-      )
-    }
-
-    if (!businessId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            'businessId is required — a vendor must register under a specific business (e.g. Native)',
         },
         { status: 400 }
       )
@@ -88,15 +78,27 @@ export async function POST(req: NextRequest) {
 
     await connectDB()
 
-    // The target business must exist and be active
+    // Every vendor signs up through this ONE shared page now -- no separate
+    // "which business" step, per explicit direction ("give same vendor
+    // sign up page to everyone... remove mandatory signup for AN group
+    // separately, directly onboard vendors from that signup page but
+    // maintain profile in AN Group only under Service Business"). The
+    // target business is always resolved server-side to whichever Business
+    // an admin has designated as the public-facing Service Business
+    // (Business.isDefaultPublicBusiness -- see getDefaultPublicBusinessId's
+    // own comment), falling back to AN Group's own platform record if none
+    // has been designated. A client-supplied businessId is no longer
+    // accepted, so this can't be redirected to any other business by the
+    // request body.
+    const businessId = await getDefaultPublicBusinessId()
     const business = await (Business as any)
       .findOne({ _id: businessId, isActive: true })
       .select('_id name')
       .lean()
     if (!business) {
       return NextResponse.json(
-        { success: false, message: 'Business not found or inactive' },
-        { status: 404 }
+        { success: false, message: 'No active service business is configured to receive vendor signups yet' },
+        { status: 500 }
       )
     }
 
@@ -163,6 +165,7 @@ export async function POST(req: NextRequest) {
       gstNumber: gstNumber?.toUpperCase().trim() || undefined,
       panNumber: panNumber?.toUpperCase().trim() || undefined,
       category: category || undefined,
+      appliedAs: ["BRAND", "SC", "POS"].includes(appliedAs) ? appliedAs : undefined,
       address: {
         city: city?.trim() || undefined,
         state: state?.trim() || undefined,

@@ -12,10 +12,13 @@
 // (transactional storefront billing) -- so only CRM/Sales/Service-relevant
 // nav entries are kept here. Manufacturing (Production), Purchase (supplier
 // procurement), HR/Payroll, Growth (Social/AI Studio/Design Studio),
-// Logistics, and the storefront-marketplace-specific admin screens are
-// ERP-only concerns that stay in ANgroup -- their pages/APIs are still
-// present in this codebase (not yet deleted, a later cleanup pass), just
-// not linked from nav so AN-CRM presents as a CRM product, not the full ERP.
+// Logistics, and the storefront-marketplace-specific admin screens/APIs/
+// models (ecommerce Order, NativeProduct, ManufacturingBOM, VendorProduct
+// wizard, B2B ordering, coupons, product categories, shipping) have been
+// deleted outright (not just unlinked) -- this repo no longer contains
+// that surface area at all, per explicit direction that AN-CRM be an
+// independent, purpose-built product rather than a full ANgroup clone with
+// unused modules left lying around.
 
 export interface NavItem {
   key: string; label: string; route: string; icon: string;
@@ -56,22 +59,24 @@ export const NAV_GROUPS: NavGroup[] = [
     ]},
   ]},
   { label: "Sales / POS", items: [
+    // Quick-sale billing screen -- see admin/pos/page.tsx's top comment.
+    { key: "pos",      label: "Point of Sale", route: "/admin/pos",       icon: "ShoppingCart" },
     { key: "orders",   label: "Orders",       route: "/admin/orders",     icon: "ShoppingBag" },
     { key: "sales",    label: "Sales",        route: "/admin/sales",      icon: "TrendingUp" },
-    { key: "coupons",  label: "Coupons",      route: "/admin/coupons",    icon: "Hash" },
   ]},
   { label: "Materials & Inventory", items: [
     { key: "inventory",  label: "Inventory",    route: "/admin/inventory",  icon: "Package" },
-    { key: "products",   label: "Products",     route: "/admin/products",   icon: "Box" },
     { key: "warehouses", label: "Warehouses",   route: "/admin/warehouses", icon: "Building2" },
     { key: "materials",  label: "Materials",    route: "/admin/materials",  icon: "Box" },
-    // Canonical Material/BOM entry (Material Code/Description/Mode/SN/HSN/
-    // Rate/Tax%), shared by Brand/SC/POS -- see models/ServiceCenterBOM.ts.
-    { key: "bom",        label: "Bill of Materials", route: "/admin/bom",   icon: "Box" },
+    // Canonical Material/BOM list (Material Code/Description/Mode/SN/HSN/
+    // Rate/Tax%), shared by Brand/SC/POS/Sales -- see models/BOM.ts and
+    // this page's own top comment. Deliberately NOT /admin/bom, which
+    // still serves the unrelated OLD manufacturing BOM (models/
+    // ManufacturingBOM.js, productVariantId/cost-rollup shape).
+    { key: "material-catalog", label: "Material Catalog", route: "/admin/material-catalog", icon: "Package" },
     { key: "masters-units",    label: "Units",              route: "/admin/masters/units",              icon: "Ruler" },
     { key: "masters-brands",   label: "Brands & Models",    route: "/admin/masters/brands",              icon: "Tags" },
     { key: "masters-catalog-requests", label: "Catalog Change Requests", route: "/admin/masters/catalog-requests", icon: "ClipboardCheck" },
-    { key: "masters-prod-cat", label: "Product Categories", route: "/admin/masters/product-categories",  icon: "Layers" },
     { key: "masters-mat-cat",  label: "Material Categories",route: "/admin/masters/material-categories", icon: "Layers" },
     { key: "masters-fault-codes", label: "Fault Codes", route: "/admin/masters/fault-codes", icon: "AlertTriangle" },
     { key: "masters-symptom-codes", label: "Symptom Codes", route: "/admin/masters/symptom-codes", icon: "AlertTriangle" },
@@ -99,10 +104,20 @@ export const NAV_GROUPS: NavGroup[] = [
   ]},
   { label: "Reports", items: [
     { key: "reports",   label: "Reports & Downloads", route: "/admin/reports",   icon: "BarChart3" },
+    { key: "report-builder", label: "Report Builder", route: "/admin/report-builder", icon: "BarChart3" },
+    // Rebuilt on AN-CRM's own data (SalesInvoice/CrmCall/CrmJobSheet) --
+    // the old version of this page/route was ecommerce-Order-based and
+    // was removed along with the rest of the leftover ANgroup storefront
+    // surface area; this is a fresh, CRM/POS-native replacement, not a
+    // restoration of the old one.
     { key: "analytics", label: "Analytics",           route: "/admin/analytics", icon: "BarChart3" },
   ]},
   { label: "Communication", items: [
     { key: "chat", label: "Team Chat", route: "/admin/chat", icon: "MessageSquare" },
+    // In-app product feedback -- any logged-in user, not admin-only (that's
+    // the separate "Feedback" inbox under Admin > Configuration, which
+    // reviews these submissions alongside customer contact-us ones).
+    { key: "send-feedback", label: "Send Feedback", route: "/admin/send-feedback", icon: "MessageSquare" },
     // Notifications is likewise no longer a page -- it's the floating
     // NotificationBell icon (top-right, every admin page).
     // ANu is the floating AnuWidget (see AdminShell.tsx), reachable from
@@ -113,7 +128,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-users",  label: "User Management",      route: "/admin/users",  icon: "UserCog" },
       { key: "admin-access", label: "Access Control",       route: "/admin/access", icon: "Key" },
       { key: "admin-roles",  label: "Roles & Permissions",  route: "/admin/roles",  icon: "Shield" },
-      { key: "admin-an-group-staff", label: "AN Group Staff", route: "/admin/an-group-staff", icon: "Shield" },
+      { key: "admin-an-group-staff", label: "Platform Staff", route: "/admin/an-group-staff", icon: "Shield" },
     ]},
     { key: "adm-config", label: "Configuration", items: [
       { key: "admin-intg", label: "Integrations", route: "/admin/integrations", icon: "Plug" },
@@ -122,6 +137,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-modules", label: "Modules", route: "/admin/modules", icon: "Box" },
       { key: "admin-document-templates", label: "Document Templates", route: "/admin/document-templates", icon: "FileText" },
       { key: "admin-settings", label: "Settings", route: "/admin/settings", icon: "Settings" },
+      { key: "admin-plan", label: "Plan & Billing", route: "/admin/plan", icon: "Receipt" },
       { key: "admin-pincode-data", label: "Pincode Data", route: "/admin/pincode-data", icon: "MapPin" },
       { key: "admin-invoice-templates", label: "Invoice Branding", route: "/admin/invoice-templates", icon: "FileText" },
       { key: "admin-gst", label: "GST", route: "/admin/gst", icon: "FileText" },

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import BusinessMember from "@/models/BusinessMember";
+import Business from "@/models/Business";
 import UserRole from "@/models/UserRole";
 import Role from "@/models/Role";
 import { signToken } from "@/lib/auth/jwt";
@@ -147,7 +148,31 @@ export async function POST(req: Request) {
     // existing role/account-type redirect the login page already does when
     // nothing is configured, so this is additive, not a behavior change for
     // roles nobody has configured a home page for yet.
-    const homeRoute = grantedRoles.find((r) => r.homeRoute && !MINIMAL_FLOOR_ROLE_CODES.includes(r.code))?.homeRoute || null;
+    let homeRoute = grantedRoles.find((r) => r.homeRoute && !MINIMAL_FLOOR_ROLE_CODES.includes(r.code))?.homeRoute || null;
+
+    // SC (Service Center) businesses are single-login, single-screen by
+    // spec -- "SC is single login only... maintain entire workorder flow
+    // in single view or page" -- so anyone logging into an SC-mode business
+    // (other than a super admin, who needs full nav to administer every
+    // business) always lands directly on the workorder screen, regardless
+    // of what homeRoute their role happens to have configured. Looked up
+    // fresh here rather than trusted from the client for the same reason
+    // activeBusinessId itself isn't client-supplied.
+    if (activeBusinessId && !isSuperAdmin) {
+      const activeBusiness = await Business.findById(activeBusinessId).select("operatingMode").lean<any>();
+      if (activeBusiness?.operatingMode === "SC") {
+        // Lands on the CRM Overview (summary + quick links), not straight
+        // into the workorder list -- "SC : Overview page should be there"
+        // per explicit direction. Overview links into Workorders itself.
+        homeRoute = "/admin/crm";
+      } else if (activeBusiness?.operatingMode === "POS" && !homeRoute) {
+        // POS scales small store -> enterprise, so (unlike SC) it keeps
+        // full nav -- this only sets a convenience default landing page
+        // when no role-specific homeRoute is already configured, never
+        // overrides one the way SC's redirect does above.
+        homeRoute = "/admin/pos";
+      }
+    }
 
     // Anyone attached to a vendor's team -- Owner/Manager (see
     // resolveOwnerOrManagerVendor) OR any other vendor-team member

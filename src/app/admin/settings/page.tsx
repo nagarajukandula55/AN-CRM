@@ -34,7 +34,7 @@ import { Building2, Plug, Sparkles, Save, User, ChevronRight, Receipt, Globe2, P
  */
 
 type View = 'business' | 'platform'
-type Tab = 'integrations' | 'ai' | 'invoicing'
+type Tab = 'integrations' | 'ai' | 'invoicing' | 'operations' | 'communication'
 
 interface SsoMapping {
   _id: string
@@ -69,6 +69,19 @@ export default function AdminSettingsPage() {
   })
   const [savingInvoicing, setSavingInvoicing] = useState(false)
 
+  // Operations: inventory serialization, B2C tax toggle, default labour
+  // charge, UPI payment QR ID -- all pre-existed on the Business model
+  // (see models/Business.ts) but were never surfaced in Settings. See
+  // explicit direction: "Bring that Inventory serialization and Tax
+  // related and also Labour Charges related setting to this settings page".
+  const [operations, setOperations] = useState({
+    inventorySerialized: false,
+    applyTaxOnB2CBilling: true,
+    defaultLabourCharge: 0,
+    upiId: '',
+  })
+  const [savingOperations, setSavingOperations] = useState(false)
+
   const { data: meData } = useSWR('/api/auth/me')
   const isSuperAdmin = !!meData?.user?.isSuperAdmin
   const businessId: string | null = meData?.success
@@ -94,6 +107,26 @@ export default function AdminSettingsPage() {
       })
     }
   }, [invoicingRes])
+
+  const { data: operationsRes } = useSWR(
+    businessId && view === 'business' && tab === 'operations' ? `/api/businesses/${businessId}` : null
+  )
+  useEffect(() => {
+    if (operationsRes?.success && operationsRes.business) {
+      const b = operationsRes.business
+      setOperations({
+        inventorySerialized: !!b.inventorySerialized,
+        applyTaxOnB2CBilling: b.applyTaxOnB2CBilling !== false,
+        defaultLabourCharge: b.defaultLabourCharge || 0,
+        upiId: b.upiId || '',
+      })
+    }
+  }, [operationsRes])
+
+  const { data: quotaRes, isLoading: loadingQuota } = useSWR(
+    view === 'business' && tab === 'communication' ? '/api/admin/communication-quota' : null
+  )
+  const quota = quotaRes?.success ? quotaRes.quota : null
 
   const { data: integrationsRes, isLoading: loadingIntegrations } = useSWR(
     businessId && view === 'business' && tab === 'integrations' ? `/api/integrations?businessId=${businessId}` : null
@@ -175,9 +208,31 @@ export default function AdminSettingsPage() {
     setSavingInvoicing(false)
   }
 
+  async function saveOperations(e: React.FormEvent) {
+    e.preventDefault()
+    if (!businessId) return
+    setSavingOperations(true)
+    setMsg('')
+    try {
+      const res = await fetch(`/api/businesses/${businessId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(operations),
+      })
+      const d = await res.json()
+      setMsg(d.success ? '✓ Operations settings updated' : d.message || 'Failed to save')
+    } catch {
+      setMsg('Failed to save')
+    }
+    setSavingOperations(false)
+  }
+
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: 'operations', label: 'Operations', icon: <Building2 size={14} /> },
     { key: 'invoicing', label: 'Invoicing Rules', icon: <Receipt size={14} /> },
     { key: 'integrations', label: 'Integrations', icon: <Plug size={14} /> },
+    { key: 'communication', label: 'Communication Quota', icon: <Globe2 size={14} /> },
     { key: 'ai', label: 'AI / ANu', icon: <Sparkles size={14} /> },
   ]
 
@@ -312,6 +367,82 @@ export default function AdminSettingsPage() {
           )}
         </div>
 
+        {tab === 'operations' && (
+          <div className="rounded-card border border-border bg-surface p-6">
+            <h3 className="h-section mb-1">Operations</h3>
+            <p className="text-xs text-ink-3 mb-5">
+              How this business tracks stock, applies tax on plain B2C bills, and gets paid.
+            </p>
+            <form onSubmit={saveOperations} className="space-y-4">
+              <label className="flex items-center gap-3 rounded-control border border-border px-4 py-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={operations.inventorySerialized}
+                  onChange={(e) => setOperations({ ...operations, inventorySerialized: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <div>
+                  <div className="text-sm font-medium text-ink">Serialized inventory</div>
+                  <div className="text-xs text-ink-3">
+                    When on, every transaction must check and deduct real stock before it can go through. When
+                    off, Inventory is hidden from the menu entirely and no stock check happens.
+                  </div>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 rounded-control border border-border px-4 py-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={operations.applyTaxOnB2CBilling}
+                  onChange={(e) => setOperations({ ...operations, applyTaxOnB2CBilling: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <div>
+                  <div className="text-sm font-medium text-ink">Apply GST on B2C bills</div>
+                  <div className="text-xs text-ink-3">
+                    When off, a plain B2C bill (no company name) is generated with zero tax, on its own
+                    non-GST number series. B2B invoices are never affected by this toggle.
+                  </div>
+                </div>
+              </label>
+
+              <div>
+                <label className="text-xs text-ink-3 mb-1 block">Default labour charge</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={operations.defaultLabourCharge}
+                  onChange={(e) => setOperations({ ...operations, defaultLabourCharge: Number(e.target.value) })}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="0"
+                  className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong"
+                />
+                <div className="text-xs text-ink-3 mt-1">
+                  Used for the one-click "Add Labour Charge" line on a workorder when no BOM labour entry exists.
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-ink-3 mb-1 block">UPI ID (for invoice payment QR)</label>
+                <input
+                  type="text"
+                  value={operations.upiId}
+                  onChange={(e) => setOperations({ ...operations, upiId: e.target.value })}
+                  placeholder="business@okhdfcbank"
+                  className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong"
+                />
+                <div className="text-xs text-ink-3 mt-1">
+                  When set, every printed invoice shows a scannable UPI QR code for this business's own VPA.
+                </div>
+              </div>
+
+              <button type="submit" disabled={savingOperations} className="btn-primary rounded-control px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-50">
+                <Save size={13} /> {savingOperations ? 'Saving…' : 'Save Operations'}
+              </button>
+            </form>
+          </div>
+        )}
+
         {tab === 'invoicing' && (
           <div className="rounded-2xl border border-gray-200 bg-white p-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">Marketplace Invoicing Rules</h3>
@@ -385,6 +516,54 @@ export default function AdminSettingsPage() {
                 <Save size={13} /> {savingInvoicing ? 'Saving…' : 'Save Invoicing Rules'}
               </button>
             </form>
+          </div>
+        )}
+
+        {tab === 'communication' && (
+          <div className="rounded-card border border-border bg-surface p-6">
+            <h3 className="h-section mb-1">Communication Quota</h3>
+            <p className="text-xs text-ink-3 mb-5">
+              Platform-sent email (via our Resend account, on your behalf) and WhatsApp (centrally
+              subscribed) — a monthly allowance set by AN Group. Contact us to change your quota.
+            </p>
+            {loadingQuota ? (
+              <p className="text-sm text-ink-3">Loading…</p>
+            ) : quota ? (
+              <div className="space-y-5">
+                <div>
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="font-medium text-ink">Email</span>
+                    <span className={`text-xs ${quota.emailEnabled ? 'text-success' : 'text-ink-3'}`}>
+                      {quota.emailEnabled ? 'Enabled' : 'Not enabled'}
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-control bg-surface-2 overflow-hidden">
+                    <div
+                      className="h-full bg-accent"
+                      style={{ width: `${Math.min(100, (quota.emailUsed / (quota.emailQuota || 1)) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-ink-3 mt-1">{quota.emailUsed} / {quota.emailQuota} sent this month</div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="font-medium text-ink">WhatsApp</span>
+                    <span className={`text-xs ${quota.whatsappEnabled ? 'text-success' : 'text-ink-3'}`}>
+                      {quota.whatsappEnabled ? 'Enabled' : 'Not enabled'}
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-control bg-surface-2 overflow-hidden">
+                    <div
+                      className="h-full bg-accent"
+                      style={{ width: `${Math.min(100, (quota.whatsappUsed / (quota.whatsappQuota || 1)) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-ink-3 mt-1">{quota.whatsappUsed} / {quota.whatsappQuota} sent this month</div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-ink-3">No quota configured yet.</p>
+            )}
           </div>
         )}
 

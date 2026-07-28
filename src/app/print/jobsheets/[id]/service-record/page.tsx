@@ -12,6 +12,11 @@ interface JobSheetRaw {
   warehouseId?: string
   status: string
   assignedTo?: { name?: string }
+  // Snapshots -- see CrmJobSheet.ts's field comments. Preferred over the
+  // populated assignedTo?.name below since SC job sheets have no formal
+  // assignedTo User ref at all (free-text engineer name only).
+  assignedToName?: string
+  ccoName?: string
   [key: string]: any
 }
 
@@ -57,7 +62,8 @@ export default function ServiceRecordPage() {
         setTemplate(d.template)
         setRenderData(
           serviceRecordToRenderData(jobSheet, d.company, {
-            technicalConsultant: jobSheet.assignedTo?.name,
+            technicalConsultant: jobSheet.assignedToName || jobSheet.assignedTo?.name,
+            ccoName: jobSheet.ccoName,
             hours: vendor?.serviceCenterInfo?.hours,
             hotline: vendor?.serviceCenterInfo?.hotline,
           })
