@@ -4,7 +4,7 @@ import { useState, useEffect, Fragment } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import {
-  Loader2, Plus, X, Building2, CheckCircle,
+  Plus, X, Building2, CheckCircle,
   Clock, Star, ChevronRight, ChevronLeft, ChevronDown, Truck, Users, Network,
 } from 'lucide-react'
 import { StateSelect, CitySelect, PincodeInput } from '@/components/shared/LocationSelect'
@@ -17,6 +17,7 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingPanel } from '@/components/ui/Spinner'
+import { Field, Input, Select as SelectControl, Textarea } from '@/components/ui/Input'
 
 type Vendor = VendorDetailData
 
@@ -55,7 +56,7 @@ function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex gap-0.5">
       {[1,2,3,4,5].map((s) => (
-        <Star key={s} className={`w-3 h-3 ${s <= rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
+        <Star key={s} className={`w-3 h-3 ${s <= rating ? 'text-warning fill-warning' : 'text-ink-3'}`} />
       ))}
     </div>
   )
@@ -114,6 +115,54 @@ function SubVendorRows({ parentId, onOpen }: { parentId: string; onOpen: (id: st
         </tr>
       ))}
     </>
+  )
+}
+
+/** One compliance-document upload card -- the Compliance tab previously
+ * repeated this block three times (required catalog docs, industry docs,
+ * optional docs) with identical markup, all in the old hand-rolled
+ * gray-200/emerald-300 styling. */
+function ComplianceDocCard({ doc, uploaded, optional, onNumberChange, onUpload }: {
+  doc: ComplianceDocRequirement
+  uploaded?: { url?: string; number?: string; uploading?: boolean }
+  optional?: boolean
+  onNumberChange: (value: string) => void
+  onUpload: (file: File) => void
+}) {
+  return (
+    <div className="rounded-control border border-border p-4">
+      <p className="text-sm font-medium text-ink">{doc.label}{!optional && <span className="text-danger ml-0.5">*</span>}</p>
+      {doc.helpText && <p className="text-[11px] text-ink-3 mt-0.5 mb-2">{doc.helpText}</p>}
+
+      {doc.collectNumber && (
+        <Input
+          type="text"
+          placeholder={doc.numberLabel || 'License number'}
+          value={uploaded?.number || ''}
+          onChange={e => onNumberChange(e.target.value)}
+          className="mb-2 py-2"
+        />
+      )}
+
+      <label className={`flex items-center justify-center gap-2 rounded-control border-2 border-dashed px-4 py-3 text-xs cursor-pointer transition ${
+        uploaded?.uploading ? 'border-border bg-surface-2 opacity-60' : uploaded?.url ? 'border-success/40 bg-success-soft' : 'border-border-strong hover:border-accent hover:bg-surface-2'
+      }`}>
+        <span className={uploaded?.url ? 'text-success font-medium' : 'text-ink-3'}>
+          {uploaded?.uploading ? 'Uploading…' : uploaded?.url ? 'Uploaded — click to replace' : optional ? 'Click to upload (optional)' : 'Click to upload document (PDF/image, max 10MB)'}
+        </span>
+        <input
+          type="file"
+          accept="image/*,.pdf"
+          className="hidden"
+          disabled={uploaded?.uploading}
+          onChange={e => {
+            const file = e.target.files?.[0]
+            if (file) onUpload(file)
+            e.target.value = ''
+          }}
+        />
+      </label>
+    </div>
   )
 }
 
@@ -345,40 +394,31 @@ export default function VendorsPage() {
   } = {}) {
     const { type = 'text', required = false, placeholder, hint, onBlur } = opts
     return (
-      <div key={name}>
-        <label className="block text-xs font-medium text-gray-500 mb-1.5">
-          {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-        </label>
-        <input
+      <Field key={name} label={label} required={required} hint={hint}>
+        <Input
           type={type}
           required={required}
           value={form[name]}
           placeholder={placeholder}
           onChange={e => setForm(p => ({ ...p, [name]: e.target.value }))}
           onBlur={onBlur}
-          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-gray-400 transition"
         />
-        {hint && <p className="text-[10px] text-gray-400 mt-1">{hint}</p>}
-      </div>
+      </Field>
     )
   }
 
   function select(name: keyof typeof emptyForm, label: string, options: string[], required = false) {
     return (
-      <div key={name}>
-        <label className="block text-xs font-medium text-gray-500 mb-1.5">
-          {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-        </label>
-        <select
+      <Field key={name} label={label} required={required}>
+        <SelectControl
           required={required}
           value={form[name]}
           onChange={e => setForm(p => ({ ...p, [name]: e.target.value }))}
-          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-400 transition appearance-none"
         >
           <option value="">Select…</option>
           {options.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-      </div>
+        </SelectControl>
+      </Field>
     )
   }
 
@@ -588,14 +628,14 @@ export default function VendorsPage() {
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-gray-100 px-6 pt-3 gap-1">
+            <div className="flex border-b border-border px-6 pt-3 gap-1">
               {TABS.map((tab, i) => (
                 <button key={tab} onClick={() => setActiveTab(tab)}
                   className={`pb-2.5 px-2 text-xs font-medium transition border-b-2 -mb-px flex items-center gap-1.5 ${
-                    activeTab === tab ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-600'
+                    activeTab === tab ? 'border-accent text-ink' : 'border-transparent text-ink-3 hover:text-ink-2'
                   }`}>
                   <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                    activeTab === tab ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-500'
+                    activeTab === tab ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-ink-3'
                   }`}>{i + 1}</span>
                   {tab}
                 </button>
@@ -605,7 +645,7 @@ export default function VendorsPage() {
             {/* Form content */}
             <div className="flex-1 overflow-y-auto px-6 py-6">
               {formError && (
-                <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{formError}</div>
+                <div className="mb-4 text-sm text-danger bg-danger-soft border border-danger/20 rounded-control px-4 py-3">{formError}</div>
               )}
 
               {activeTab === 'Basic Info' && (
@@ -618,51 +658,47 @@ export default function VendorsPage() {
                   </div>
                   {field('email', 'Email Address', { type: 'email', placeholder: 'vendor@company.com' })}
 
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                      Owner Account (registered user)
-                    </label>
+                  <Field
+                    label="Owner Account (registered user)"
+                    hint="Must already be a registered account — this user becomes the vendor's Owner once approved. Leave blank to link by the email above at approval time instead."
+                  >
                     {selectedOwner ? (
-                      <div className="flex items-center justify-between px-4 py-2.5 bg-white border border-gray-200 rounded-xl">
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-surface border border-border-strong rounded-control">
                         <div>
-                          <p className="text-sm text-gray-900">{selectedOwner.name}</p>
-                          <p className="text-xs text-gray-500">{selectedOwner.email}</p>
+                          <p className="text-sm text-ink">{selectedOwner.name}</p>
+                          <p className="text-xs text-ink-3">{selectedOwner.email}</p>
                         </div>
-                        <button type="button" onClick={() => { setSelectedOwner(null); setOwnerSearch('') }} className="text-gray-500 hover:text-gray-900">
+                        <button type="button" onClick={() => { setSelectedOwner(null); setOwnerSearch('') }} className="text-ink-3 hover:text-ink">
                           <X className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (
                       <div className="relative">
-                        <input
+                        <Input
                           type="text"
                           value={ownerSearch}
                           onChange={(e) => { setOwnerSearch(e.target.value); setOwnerDropOpen(true) }}
                           onFocus={() => setOwnerDropOpen(true)}
                           placeholder="Search by registered user ID or email…"
-                          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-gray-400 transition"
                         />
                         {ownerDropOpen && ownerResults.length > 0 && (
-                          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl">
+                          <div className="absolute z-10 mt-1 w-full bg-surface border border-border-strong rounded-control overflow-hidden shadow-card-lg">
                             {ownerResults.map((u) => (
                               <button
                                 type="button"
                                 key={u._id}
-                                className="w-full px-4 py-2.5 text-left hover:bg-gray-50 transition"
+                                className="w-full px-4 py-2.5 text-left hover:bg-surface-2 transition"
                                 onClick={() => { setSelectedOwner(u); setOwnerDropOpen(false); setOwnerSearch('') }}
                               >
-                                <p className="text-sm text-gray-900">{u.name}</p>
-                                <p className="text-xs text-gray-500">{u.email}</p>
+                                <p className="text-sm text-ink">{u.name}</p>
+                                <p className="text-xs text-ink-3">{u.email}</p>
                               </button>
                             ))}
                           </div>
                         )}
                       </div>
                     )}
-                    <p className="text-[10px] text-gray-400 mt-1">
-                      Must already be a registered account — this user becomes the vendor's Owner once approved. Leave blank to link by the email above at approval time instead.
-                    </p>
-                  </div>
+                  </Field>
 
                   <div className="grid grid-cols-2 gap-4">
                     {field('gstNumber', 'GSTIN', { placeholder: '27AABCU9603R1ZX', hint: gstWarning || '15-digit GST Identification Number', onBlur: handleGstBlur })}
@@ -678,24 +714,20 @@ export default function VendorsPage() {
 
               {activeTab === 'Address' && (
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Street Address</label>
-                    <textarea value={form.street} onChange={e => setForm(p => ({ ...p, street: e.target.value }))}
-                      rows={2} placeholder="Building, street, area"
-                      className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-gray-400 transition resize-none" />
-                  </div>
+                  <Field label="Street Address">
+                    <Textarea value={form.street} onChange={e => setForm(p => ({ ...p, street: e.target.value }))}
+                      rows={2} placeholder="Building, street, area" />
+                  </Field>
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1.5">City</label>
+                    <Field label="City">
                       <CitySelect
                         value={form.city}
                         state={form.state}
                         onChange={(value) => setForm(p => ({ ...p, city: value }))}
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-gray-400 transition"
+                        className="w-full bg-surface border border-border-strong rounded-control px-4 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent-soft"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1.5">Pincode</label>
+                    </Field>
+                    <Field label="Pincode" hint="6-digit PIN code">
                       <PincodeInput
                         value={form.pincode}
                         onChange={(value) => setForm(p => ({ ...p, pincode: value }))}
@@ -708,28 +740,26 @@ export default function VendorsPage() {
                           }))
                         }
                         placeholder="400001"
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-gray-400 transition"
+                        className="w-full bg-surface border border-border-strong rounded-control px-4 py-2.5 text-sm text-ink placeholder:text-ink-3 outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent-soft"
                       />
-                      <p className="text-[10px] text-gray-400 mt-1">6-digit PIN code</p>
-                    </div>
+                    </Field>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">State</label>
+                  <Field label="State">
                     <StateSelect
                       value={form.state}
                       onChange={(value) => setForm(p => ({ ...p, state: value, city: '' }))}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-400 transition appearance-none"
+                      className="w-full bg-surface border border-border-strong rounded-control px-4 py-2.5 text-sm text-ink outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent-soft"
                     />
-                  </div>
-                  <div className="mt-2 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-500">
-                    Country is set to <strong>India</strong> by default.
+                  </Field>
+                  <div className="mt-2 px-4 py-3 rounded-control bg-surface-2 border border-border text-xs text-ink-3">
+                    Country is set to <strong className="text-ink-2">India</strong> by default.
                   </div>
                 </div>
               )}
 
               {activeTab === 'Bank Details' && (
                 <div className="space-y-4">
-                  <div className="px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                  <div className="px-4 py-3 rounded-control bg-warning-soft border border-warning/20 text-xs text-warning">
                     Bank details are stored securely and used only for payment processing.
                   </div>
                   {field('bankName', 'Bank Name', { placeholder: 'State Bank of India' })}
@@ -738,174 +768,86 @@ export default function VendorsPage() {
                   {field('accountNumber', 'Account Number', { type: 'password', placeholder: 'Enter account number' })}
                   {field('confirmAccount', 'Confirm Account Number', { placeholder: 'Re-enter account number' })}
                   {form.accountNumber && form.confirmAccount && form.accountNumber !== form.confirmAccount && (
-                    <p className="text-xs text-red-500">Account numbers do not match</p>
+                    <p className="text-xs text-danger">Account numbers do not match</p>
                   )}
                   {form.accountNumber && form.confirmAccount && form.accountNumber === form.confirmAccount && (
-                    <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Account numbers match</p>
+                    <p className="text-xs text-success flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Account numbers match</p>
                   )}
                 </div>
               )}
 
               {activeTab === 'Compliance' && (
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                      Onboarding Business<span className="text-red-500 ml-0.5">*</span>
-                    </label>
-                    <select
+                  <Field
+                    label="Onboarding Business"
+                    required
+                    hint="Every vendor belongs to exactly one business — this determines which business's catalog, documents, and required compliance checks apply."
+                  >
+                    <SelectControl
                       required
                       value={form.onboardingBusinessId}
                       onChange={e => setForm(p => ({ ...p, onboardingBusinessId: e.target.value }))}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-400 transition appearance-none"
                     >
                       <option value="">Select which business is onboarding this vendor…</option>
                       {allBusinesses.map(b => (
                         <option key={b._id} value={b._id}>{b.brandName || b.name}</option>
                       ))}
-                    </select>
-                    <p className="text-[10px] text-gray-400 mt-1">
-                      Every vendor belongs to exactly one business — this determines which business's
-                      catalog, documents, and required compliance checks apply.
-                    </p>
-                  </div>
+                    </SelectControl>
+                  </Field>
 
                   {selectedOnboardingBusiness && (
                     <div className="space-y-3 pt-2">
-                      <p className="text-xs font-medium text-gray-700">
+                      <p className="text-xs font-medium text-ink-2">
                         Required documents — this business's settings
                       </p>
-                      {requiredCatalogDocs.map(doc => {
-                        const uploaded = complianceUploads[doc.key]
-                        return (
-                          <div key={doc.key} className="rounded-xl border border-gray-200 p-4">
-                            <p className="text-sm font-medium text-gray-900">{doc.label}<span className="text-red-500 ml-0.5">*</span></p>
-                            {doc.helpText && <p className="text-[11px] text-gray-400 mt-0.5 mb-2">{doc.helpText}</p>}
-
-                            {doc.collectNumber && (
-                              <input
-                                type="text"
-                                placeholder={doc.numberLabel || 'License number'}
-                                value={uploaded?.number || ''}
-                                onChange={e => setComplianceUploads(prev => ({ ...prev, [doc.key]: { ...prev[doc.key], number: e.target.value } }))}
-                                className="w-full mb-2 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-400"
-                              />
-                            )}
-
-                            <label className={`flex items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 text-xs cursor-pointer transition ${
-                              uploaded?.uploading ? 'border-gray-200 bg-gray-50 opacity-60' : uploaded?.url ? 'border-emerald-300 bg-emerald-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
-                            }`}>
-                              <span className={uploaded?.url ? 'text-emerald-700 font-medium' : 'text-gray-500'}>
-                                {uploaded?.uploading ? 'Uploading…' : uploaded?.url ? 'Uploaded — click to replace' : 'Click to upload document (PDF/image, max 10MB)'}
-                              </span>
-                              <input
-                                type="file"
-                                accept="image/*,.pdf"
-                                className="hidden"
-                                disabled={uploaded?.uploading}
-                                onChange={e => {
-                                  const file = e.target.files?.[0]
-                                  if (file) handleComplianceUpload(doc, file)
-                                  e.target.value = ''
-                                }}
-                              />
-                            </label>
-                          </div>
-                        )
-                      })}
+                      {requiredCatalogDocs.map(doc => (
+                        <ComplianceDocCard
+                          key={doc.key}
+                          doc={doc}
+                          uploaded={complianceUploads[doc.key]}
+                          onNumberChange={(v) => setComplianceUploads(prev => ({ ...prev, [doc.key]: { ...prev[doc.key], number: v } }))}
+                          onUpload={(file) => handleComplianceUpload(doc, file)}
+                        />
+                      ))}
                     </div>
                   )}
 
                   {industryComplianceDocs.length > 0 && (
                     <div className="space-y-3 pt-2">
-                      <p className="text-xs font-medium text-gray-700">
+                      <p className="text-xs font-medium text-ink-2">
                         Required documents for {selectedOnboardingBusiness?.brandName || selectedOnboardingBusiness?.name}&apos;s industry
                       </p>
-                      {industryComplianceDocs.map(doc => {
-                        const uploaded = complianceUploads[doc.key]
-                        return (
-                          <div key={doc.key} className="rounded-xl border border-gray-200 p-4">
-                            <p className="text-sm font-medium text-gray-900">{doc.label}<span className="text-red-500 ml-0.5">*</span></p>
-                            {doc.helpText && <p className="text-[11px] text-gray-400 mt-0.5 mb-2">{doc.helpText}</p>}
-
-                            {doc.collectNumber && (
-                              <input
-                                type="text"
-                                placeholder={doc.numberLabel || 'License number'}
-                                value={uploaded?.number || ''}
-                                onChange={e => setComplianceUploads(prev => ({ ...prev, [doc.key]: { ...prev[doc.key], number: e.target.value } }))}
-                                className="w-full mb-2 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-400"
-                              />
-                            )}
-
-                            <label className={`flex items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 text-xs cursor-pointer transition ${
-                              uploaded?.uploading ? 'border-gray-200 bg-gray-50 opacity-60' : uploaded?.url ? 'border-emerald-300 bg-emerald-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
-                            }`}>
-                              <span className={uploaded?.url ? 'text-emerald-700 font-medium' : 'text-gray-500'}>
-                                {uploaded?.uploading ? 'Uploading…' : uploaded?.url ? 'Uploaded — click to replace' : 'Click to upload document'}
-                              </span>
-                              <input
-                                type="file"
-                                accept="image/*,.pdf"
-                                className="hidden"
-                                disabled={uploaded?.uploading}
-                                onChange={e => {
-                                  const file = e.target.files?.[0]
-                                  if (file) handleComplianceUpload(doc, file)
-                                  e.target.value = ''
-                                }}
-                              />
-                            </label>
-                          </div>
-                        )
-                      })}
+                      {industryComplianceDocs.map(doc => (
+                        <ComplianceDocCard
+                          key={doc.key}
+                          doc={doc}
+                          uploaded={complianceUploads[doc.key]}
+                          onNumberChange={(v) => setComplianceUploads(prev => ({ ...prev, [doc.key]: { ...prev[doc.key], number: v } }))}
+                          onUpload={(file) => handleComplianceUpload(doc, file)}
+                        />
+                      ))}
                     </div>
                   )}
 
                   {selectedOnboardingBusiness && industryComplianceDocs.length === 0 && (
-                    <p className="text-xs text-gray-400 italic">
+                    <p className="text-xs text-ink-3 italic">
                       No additional industry-specific compliance documents required for this business.
                     </p>
                   )}
 
                   {selectedOnboardingBusiness && optionalCatalogDocs.length > 0 && (
                     <div className="space-y-3 pt-2">
-                      <p className="text-xs font-medium text-gray-700">Optional documents</p>
-                      {optionalCatalogDocs.map(doc => {
-                        const uploaded = complianceUploads[doc.key]
-                        return (
-                          <div key={doc.key} className="rounded-xl border border-gray-200 p-4">
-                            <p className="text-sm font-medium text-gray-900">{doc.label}</p>
-                            {doc.helpText && <p className="text-[11px] text-gray-400 mt-0.5 mb-2">{doc.helpText}</p>}
-                            {doc.collectNumber && (
-                              <input
-                                type="text"
-                                placeholder={doc.numberLabel || 'License number'}
-                                value={uploaded?.number || ''}
-                                onChange={e => setComplianceUploads(prev => ({ ...prev, [doc.key]: { ...prev[doc.key], number: e.target.value } }))}
-                                className="w-full mb-2 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-400"
-                              />
-                            )}
-                            <label className={`flex items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 text-xs cursor-pointer transition ${
-                              uploaded?.uploading ? 'border-gray-200 bg-gray-50 opacity-60' : uploaded?.url ? 'border-emerald-300 bg-emerald-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
-                            }`}>
-                              <span className={uploaded?.url ? 'text-emerald-700 font-medium' : 'text-gray-500'}>
-                                {uploaded?.uploading ? 'Uploading…' : uploaded?.url ? 'Uploaded — click to replace' : 'Click to upload (optional)'}
-                              </span>
-                              <input
-                                type="file"
-                                accept="image/*,.pdf"
-                                className="hidden"
-                                disabled={uploaded?.uploading}
-                                onChange={e => {
-                                  const file = e.target.files?.[0]
-                                  if (file) handleComplianceUpload(doc, file)
-                                  e.target.value = ''
-                                }}
-                              />
-                            </label>
-                          </div>
-                        )
-                      })}
+                      <p className="text-xs font-medium text-ink-2">Optional documents</p>
+                      {optionalCatalogDocs.map(doc => (
+                        <ComplianceDocCard
+                          key={doc.key}
+                          doc={doc}
+                          optional
+                          uploaded={complianceUploads[doc.key]}
+                          onNumberChange={(v) => setComplianceUploads(prev => ({ ...prev, [doc.key]: { ...prev[doc.key], number: v } }))}
+                          onUpload={(file) => handleComplianceUpload(doc, file)}
+                        />
+                      ))}
                     </div>
                   )}
                 </div>
@@ -920,40 +862,46 @@ export default function VendorsPage() {
                       '₹5 Cr – ₹25 Cr', '₹25 Cr – ₹100 Cr', 'Above ₹100 Cr',
                     ])}
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Internal Notes</label>
-                    <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-                      rows={4} placeholder="Any internal notes about this vendor..."
-                      className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-gray-400 transition resize-none" />
-                  </div>
+                  <Field label="Internal Notes">
+                    <Textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+                      rows={4} placeholder="Any internal notes about this vendor..." />
+                  </Field>
                 </div>
               )}
             </div>
 
             {/* Footer actions */}
-            <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
+            <div className="px-6 py-4 border-t border-border flex items-center gap-3">
               {/* Back / Next tabs */}
               {activeTab !== 'Basic Info' && (
-                <button type="button"
+                <Button
+                  type="button"
+                  variant="secondary"
+                  icon={<ChevronLeft className="w-4 h-4" />}
                   onClick={() => setActiveTab(TABS[TABS.indexOf(activeTab) - 1])}
-                  className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition">
-                  <ChevronLeft className="w-4 h-4" /> Back
-                </button>
+                >
+                  Back
+                </Button>
               )}
 
               {activeTab !== 'Additional' ? (
-                <button type="button"
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="flex-1"
                   onClick={() => setActiveTab(TABS[TABS.indexOf(activeTab) + 1])}
-                  className="flex-1 flex items-center justify-center gap-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition">
+                >
                   Next <ChevronRight className="w-4 h-4" />
-                </button>
+                </Button>
               ) : null}
 
-              <button onClick={handleSubmit} disabled={submitting}
-                className={`${activeTab !== 'Additional' ? 'px-4' : 'flex-1'} flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition disabled:opacity-50`}>
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              <Button
+                className={activeTab === 'Additional' ? 'flex-1' : ''}
+                onClick={handleSubmit}
+                loading={submitting}
+              >
                 {submitting ? 'Saving…' : 'Onboard Vendor'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
