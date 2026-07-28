@@ -1,7 +1,11 @@
-# AN-CRM — Refund & Cancellation Policy
+import { LegalDoc } from "@/components/legal/LegalDoc";
 
-**Last updated: 2026-07-28**
+export const metadata = {
+  title: "Refund & Cancellation Policy — AN-CRM",
+  description: "When a AN-CRM subscription payment is and isn't refundable.",
+};
 
+const MARKDOWN = `
 This Policy is part of, and should be read together with, the AN-CRM
 Terms of Service. It is drafted with reference to the Consumer Protection
 Act, 2019 and the Consumer Protection (E-Commerce) Rules, 2020.
@@ -10,8 +14,8 @@ Act, 2019 and the Consumer Protection (E-Commerce) Rules, 2020.
 
 Every new account on the Basic tier receives a 7-day free trial. No
 payment is collected during the trial and no refund question arises for
-it — simply do not upgrade to a paid plan if you do not wish to
-continue, and access will pause automatically at the end of the trial.
+it — simply do not upgrade to a paid plan if you do not wish to continue,
+and access will pause automatically at the end of the trial.
 
 ## 2. Subscription Payments Are Generally Non-Refundable
 
@@ -85,8 +89,9 @@ separately) are non-refundable even where a refund of the underlying
 subscription fee is approved, as they are levied by the third-party
 payment processor and not retained by us.
 
----
-*Corporate/contact details filled in per the business owner's
-confirmation (see terms-of-service.md's top note on pending CIN/exact
-address). Review the uptime threshold in Section 3.3 against your actual
-hosting SLA before publication.*
+*Full source: legal/refund-cancellation-policy.md in the repository.*
+`;
+
+export default function RefundPolicyPage() {
+  return <LegalDoc title="Refund & Cancellation Policy" updatedLabel="Last updated: 28 July 2026" markdown={MARKDOWN} />;
+}

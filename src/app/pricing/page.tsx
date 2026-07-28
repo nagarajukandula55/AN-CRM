@@ -148,7 +148,10 @@ export default function PricingPage() {
         </div>
 
         <p className="text-center text-xs text-ink-3 mt-10">
-          Prices shown are indicative and may change. GST as applicable.
+          Prices shown are indicative and may change. GST as applicable. By
+          subscribing you agree to our{' '}
+          <Link href="/terms" className="underline hover:text-ink">Terms of Service</Link> and{' '}
+          <Link href="/refund-policy" className="underline hover:text-ink">Refund &amp; Cancellation Policy</Link>.
         </p>
       </div>
     </div>

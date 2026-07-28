@@ -1,7 +1,11 @@
-# AN-CRM — Vendor / Sub-Vendor Partner Agreement
+import { LegalDoc } from "@/components/legal/LegalDoc";
 
-**Last updated: 2026-07-28**
+export const metadata = {
+  title: "Vendor / Sub-Vendor Partner Agreement — AN-CRM",
+  description: "Governs the relationship between a Parent Vendor and its Sub-Vendors on AN-CRM's Ultimate tier.",
+};
 
+const MARKDOWN = `
 This Agreement supplements the AN-CRM Terms of Service and governs the
 relationship between a Parent Vendor and its Sub-Vendors where the
 Parent Vendor uses AN-CRM's sub-vendor hierarchy feature (Ultimate tier).
@@ -64,20 +68,19 @@ for legal compliance or platform integrity.
 Nothing in this Agreement creates an employment, partnership, agency, or
 joint-venture relationship between AN-CRM and any Parent Vendor or
 Sub-Vendor, or between a Parent Vendor and its Sub-Vendor (that
-relationship, whatever its legal character, is a matter between those
-two parties alone).
+relationship, whatever its legal character, is a matter between those two
+parties alone).
 
 ## 6. Governing Law
 
 This Agreement is governed by, and disputes resolved under, the same
 governing law and dispute resolution provisions as the AN-CRM Terms of
-Service (Section 12).
+Service (Section 12) — arbitration seated at Visakhapatnam under the
+Arbitration and Conciliation Act, 1996.
 
----
-*This is a standards-based template. If the actual commercial
-relationship between AN-CRM and Parent Vendors/Sub-Vendors involves
-revenue share, exclusivity, or reseller obligations beyond simple
-platform access, those terms should be added here and reviewed by
-counsel — this template deliberately keeps AN-CRM's role limited to
-"platform provider," not principal, in the Parent/Sub-Vendor commercial
-relationship.*
+*Full source: legal/vendor-partner-agreement.md in the repository.*
+`;
+
+export default function VendorAgreementPage() {
+  return <LegalDoc title="Vendor / Sub-Vendor Partner Agreement" updatedLabel="Last updated: 28 July 2026" markdown={MARKDOWN} />;
+}

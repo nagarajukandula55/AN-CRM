@@ -211,8 +211,15 @@ export default function CrmHomePage() {
       </section>
 
       <footer className="border-t border-border">
-        <div className="max-w-6xl mx-auto px-6 py-8 text-center text-xs text-ink-3">
-          © {new Date().getFullYear()} AN-CRM. Built for AN Group.
+        <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col items-center gap-3 text-center text-xs text-ink-3">
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            <a href="/terms" className="hover:text-ink transition-colors">Terms of Service</a>
+            <a href="/privacy" className="hover:text-ink transition-colors">Privacy Policy</a>
+            <a href="/refund-policy" className="hover:text-ink transition-colors">Refund & Cancellation</a>
+            <a href="/vendor-agreement" className="hover:text-ink transition-colors">Vendor Agreement</a>
+            <a href="/contact" className="hover:text-ink transition-colors">Contact</a>
+          </div>
+          <div>© {new Date().getFullYear()} AN-CRM. Built for AN Group.</div>
         </div>
       </footer>
     </div>

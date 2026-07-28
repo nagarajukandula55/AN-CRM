@@ -1,8 +1,8 @@
 # AN-CRM — Privacy Policy
 
-**Last updated: [DATE]**
+**Last updated: 2026-07-28**
 
-This Privacy Policy explains how **[LEGAL ENTITY NAME]** ("AN-CRM", "we",
+This Privacy Policy explains how **AN Group (operating the AN-CRM platform)** ("AN-CRM", "we",
 "us") collects, uses, discloses, and protects personal data in connection
 with the AN-CRM platform, in accordance with the **Digital Personal Data
 Protection Act, 2023 ("DPDP Act")**, the Information Technology Act, 2000
@@ -118,9 +118,9 @@ Government from time to time.
 In accordance with the IT Act, 2000 and DPDP Act, 2023, our Grievance
 Officer can be contacted at:
 
-**Name:** [GRIEVANCE OFFICER NAME]
-**Email:** [GRIEVANCE OFFICER EMAIL]
-**Address:** [REGISTERED ADDRESS]
+**Name:** Raj
+**Email:** anserviceflow@gmail.com
+**Address:** Visakhapatnam, Andhra Pradesh, India
 
 We will acknowledge grievances within a reasonable time and resolve them
 as expeditiously as possible, in line with statutory timelines where

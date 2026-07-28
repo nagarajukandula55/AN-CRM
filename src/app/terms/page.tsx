@@ -1,7 +1,11 @@
-# AN-CRM — Terms of Service
+import { LegalDoc } from "@/components/legal/LegalDoc";
 
-**Last updated: 2026-07-28**
+export const metadata = {
+  title: "Terms of Service — AN-CRM",
+  description: "The legally binding terms governing use of the AN-CRM platform.",
+};
 
+const MARKDOWN = `
 These Terms of Service ("Terms") are a legally binding agreement between
 **AN Group (operating the AN-CRM platform)**, a company incorporated under the Companies Act,
 2013, having its registered office at **Visakhapatnam, Andhra Pradesh, India** ("AN-CRM",
@@ -145,12 +149,12 @@ relationship.
 9.1 We may suspend or terminate access immediately for breach of these
 Terms, non-payment (subject to Section 3.5), or where required by law.
 
-9.2 On termination, we will retain Customer Data for **90 days** to allow export, after which it may be deleted,
-except where retention is required by applicable law (including the
-Income Tax Act, 1961 and GST record-keeping requirements, which may
-require retention of financial records for longer statutory periods —
-this is your obligation to manage via export, not ours to enforce on your
-behalf).
+9.2 On termination, we will retain Customer Data for **90 days** to
+allow export, after which it may be deleted, except where retention is
+required by applicable law (including the Income Tax Act, 1961 and GST
+record-keeping requirements, which may require retention of financial
+records for longer statutory periods — this is your obligation to manage
+via export, not ours to enforce on your behalf).
 
 ## 10. Warranties and Limitation of Liability
 
@@ -181,13 +185,13 @@ connection with your use of the Service.
 
 12.1 These Terms are governed by the laws of India.
 
-12.2 Any dispute shall first be attempted to be resolved through good-
-faith negotiation. Failing resolution within 30 days, the dispute shall
-be referred to and finally resolved by arbitration under the Arbitration
-and Conciliation Act, 1996, seated at **Visakhapatnam**, in
+12.2 Any dispute shall first be attempted to be resolved through
+good-faith negotiation. Failing resolution within 30 days, the dispute
+shall be referred to and finally resolved by arbitration under the
+Arbitration and Conciliation Act, 1996, seated at **Visakhapatnam**, in
 English, before a sole arbitrator appointed by mutual agreement (or, in
-default, per the Act). Subject to the above, the courts at **Visakhapatnam**
-shall have exclusive jurisdiction.
+default, per the Act). Subject to the above, the courts at
+**Visakhapatnam** shall have exclusive jurisdiction.
 
 ## 13. Changes to These Terms
 
@@ -199,12 +203,13 @@ Continued use after the effective date constitutes acceptance.
 
 For questions about these Terms, contact **anserviceflow@gmail.com**.
 
----
 *This document is a standards-based template drafted with reference to
 the Indian Contract Act 1872, Information Technology Act 2000 and Rules
-thereunder, Consumer Protection Act 2019 (including the E-Commerce
-Rules 2020), the Digital Personal Data Protection Act 2023, and the CGST
-Act 2017. It is not a substitute for review by a qualified Indian
-corporate/technology lawyer before publication — bracketed placeholders
-MUST be completed and the whole document reviewed against your actual
-corporate structure, registered address, and business practices.*
+thereunder, Consumer Protection Act 2019 (including the E-Commerce Rules
+2020), the Digital Personal Data Protection Act 2023, and the CGST Act
+2017. Full source: legal/terms-of-service.md in the repository.*
+`;
+
+export default function TermsPage() {
+  return <LegalDoc title="Terms of Service" updatedLabel="Last updated: 28 July 2026" markdown={MARKDOWN} />;
+}
