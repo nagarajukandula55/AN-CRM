@@ -49,8 +49,20 @@ export interface ICrmJobSheetLineItem {
   unit: string;
   unitPrice: number;
   taxRate: number;
-  hsnCode?: string; // set when the line was picked from ServiceCenterBOM
-  serviceCenterBOMId?: Types.ObjectId; // ref ServiceCenterBOM, if picked from BOM
+  hsnCode?: string; // set when the line was picked from BOM
+  // Snapshot of the source BOM entry's Material Code
+  // (partCode), per the standard line-item field set: "Solution,
+  // Description, Material Code, Qty, Rate, Tax%, Cost". Set alongside
+  // serviceCenterBOMId when a line is picked from the BOM; stays legible
+  // on the printed job sheet even if that BOM entry is later edited/
+  // deactivated.
+  materialCode?: string;
+  // Pre-tax line cost (quantity * unitPrice), stored rather than only
+  // derived client-side so the printed job sheet's "Cost" column and any
+  // reporting on it stay stable even if quantity/unitPrice display
+  // formatting changes later.
+  cost?: number;
+  serviceCenterBOMId?: Types.ObjectId; // ref BOM, if picked from BOM
   // Per-line diagnosis fields, per explicit direction: each item on the
   // repair table gets its own Fault Phenomenon/Symptom/Solution rather than
   // one shared set for the whole job sheet (moved off the job-sheet-level
@@ -138,6 +150,13 @@ export interface ICrmJobSheet extends Document {
   completedAt?: Date;
 
   assignedTo?: Types.ObjectId; // engineer performing the job
+  // Snapshot of the assigned engineer's name -- per explicit direction
+  // ("Also Engineer name while closing the call"), captured at assignment
+  // time (see assign-engineer/route.ts) and again refreshed at close time
+  // so the printed job sheet/invoice always shows a readable engineer
+  // name without needing a populate, and survives that user account
+  // being renamed or deleted later.
+  assignedToName?: string;
   assignedBy?: Types.ObjectId; // CCO who made the assignment
   engineerAssignedAt?: Date;
   status: CrmJobSheetStatus;
@@ -176,6 +195,14 @@ export interface ICrmJobSheet extends Document {
 
   isDeleted: boolean;
   createdBy: Types.ObjectId;
+  // Snapshot of the CCO's name -- copied from the originating CrmCall's
+  // createdByName when this job sheet was converted from a call, or the
+  // creating user's own name for a standalone job sheet. Per explicit
+  // direction ("CCO name should be taken and same should come on Job
+  // sheet"). Stored as plain text for the same reasons as
+  // assignedToName -- survives account changes, no populate needed to
+  // print.
+  ccoName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -188,7 +215,9 @@ const CrmJobSheetLineItemSchema = new Schema<ICrmJobSheetLineItem>(
     unitPrice: { type: Number, default: 0 },
     taxRate: { type: Number, default: 0 },
     hsnCode: { type: String },
-    serviceCenterBOMId: { type: Schema.Types.ObjectId, ref: "ServiceCenterBOM" },
+    materialCode: { type: String, trim: true, default: "" },
+    cost: { type: Number, default: 0 },
+    serviceCenterBOMId: { type: Schema.Types.ObjectId, ref: "BOM" },
     faultCodeId: { type: Schema.Types.ObjectId, ref: "FaultCode" },
     symptomCodeId: { type: Schema.Types.ObjectId, ref: "SymptomCode" },
     solutionId: { type: Schema.Types.ObjectId, ref: "Solution" },
@@ -246,6 +275,7 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
     completedAt: { type: Date },
 
     assignedTo: { type: Schema.Types.ObjectId, ref: "User" },
+    assignedToName: { type: String, trim: true, default: "" },
     assignedBy: { type: Schema.Types.ObjectId, ref: "User" },
     engineerAssignedAt: { type: Date },
     status: {
@@ -278,6 +308,7 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
 
     isDeleted: { type: Boolean, default: false, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    ccoName: { type: String, trim: true, default: "" },
   },
   { timestamps: true }
 );

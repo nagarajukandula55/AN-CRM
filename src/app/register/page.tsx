@@ -137,6 +137,9 @@ function RegisterForm() {
   const [vendGst, setVendGst] = useState('')
   const [vendPan, setVendPan] = useState('')
   const [vendCategory, setVendCategory] = useState('')
+  // Which operating mode they're applying to run as -- per explicit
+  // direction ("in the signup page add Type they are applying").
+  const [vendAppliedAs, setVendAppliedAs] = useState<'BRAND' | 'SC' | 'POS' | ''>('')
   const [vendCity, setVendCity] = useState('')
   const [vendState, setVendState] = useState('')
   const [vendPincode, setVendPincode] = useState('')
@@ -228,6 +231,7 @@ function RegisterForm() {
           gstNumber: vendGst,
           panNumber: vendPan,
           category: vendCategory,
+          appliedAs: vendAppliedAs || undefined,
           city: vendCity,
           state: vendState,
           pincode: vendPincode,

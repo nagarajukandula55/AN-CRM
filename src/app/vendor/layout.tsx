@@ -36,7 +36,7 @@ import {
 // vendor-wide list, so it belongs inside "My Products" rather than
 // getting its own nav entry. Service Center BOM (the repair parts/
 // labour/consumable price list workorders pick from) is a DIFFERENT,
-// unrelated BOM -- see models/ServiceCenterBOM.ts's own comment -- and
+// unrelated BOM -- see models/BOM.ts's own comment -- and
 // DOES get a nav entry below, since it's genuinely vendor-wide, not
 // scoped to one product.
 //

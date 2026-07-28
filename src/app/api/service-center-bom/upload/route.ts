@@ -5,7 +5,7 @@
  * insertMany with ordered:false for partial-failure tolerance) but parses
  * with papaparse for real quoted-field CSV support, and resolves/auto-creates
  * Brand -> Series -> DeviceModel by name per row (case-insensitive, scoped
- * to this business) before building each ServiceCenterBOM doc.
+ * to this business) before building each BOM doc.
  *
  * Expected columns: partName,brandName,seriesName,modelName,partType,unit,
  * hsnCode,gstRate,rate,warrantyDays,description
@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Papa from "papaparse";
 import { connectDB } from "@/lib/mongodb";
 import mongoose from "mongoose";
-import ServiceCenterBOM from "@/models/ServiceCenterBOM";
+import BOM from "@/models/BOM";
 import VendorProfile from "@/models/VendorProfile";
 import Brand from "@/models/Brand";
 import Series from "@/models/Series";
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
 
     // partCode is a running per business+vendor sequence, so allocation is
     // sequential (one row at a time) rather than batched.
-    let nextSeq = (await ServiceCenterBOM.countDocuments({
+    let nextSeq = (await BOM.countDocuments({
       businessId: resolved.businessId,
       vendorId: resolved.vendorId,
     })) + 1;
@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
         const partCode = `PART-${String(nextSeq).padStart(4, "0")}`;
         nextSeq++;
 
-        await ServiceCenterBOM.create({
+        await BOM.create({
           businessId: resolved.businessId,
           vendorId: resolved.vendorId,
           brandId: brand._id,
@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
 
     logAction({
       action: "CREATE",
-      entity: "ServiceCenterBOM",
+      entity: "BOM",
       entityId: "bulk-upload",
       after: { created, failed, sourceFileName: file.name },
       req,

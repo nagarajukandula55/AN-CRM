@@ -36,6 +36,10 @@ function render(data: InvoiceRenderData): string {
       </div>`
     : "";
 
+  const paymentQrHtml = data.templateConfig?.paymentQrUrl
+    ? `<div style="display:flex;align-items:center;gap:8px;margin-top:12px;"><img src="${esc(data.templateConfig.paymentQrUrl)}" alt="UPI payment QR" style="width:80px;height:80px;object-fit:contain;"/><div style="font-size:10px;color:#666;">Scan to pay via UPI</div></div>`
+    : "";
+
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"/><title>Invoice ${esc(data.invoiceNumber)}</title>
 <style>
@@ -97,6 +101,7 @@ tbody td:nth-child(1),tbody td:nth-child(4),tbody td:nth-child(5),tbody td:nth-c
   <div>IGST <span style="float:right;">₹${t.igst}</span></div>
   <div class="grand">Grand Total <span style="float:right;">₹${t.grandTotal}</span></div>
 </div>
+${paymentQrHtml}
 ${signatureHtml}
 </div>
 <div class="footerBand">${safeStr(data.templateConfig?.footerNote, "This is a computer generated GST invoice.")}</div>

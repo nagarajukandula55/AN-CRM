@@ -43,6 +43,10 @@ function render(data: InvoiceRenderData): string {
         .join("")}</div>`
     : "";
 
+  const paymentQrHtml = data.templateConfig?.paymentQrUrl
+    ? `<div class="paymentQr"><img src="${esc(data.templateConfig.paymentQrUrl)}" alt="UPI payment QR" class="paymentQrImage" /><div class="paymentQrLabel">Scan to pay via UPI</div></div>`
+    : "";
+
   const signatureHtml = data.templateConfig?.showSignature !== false
     ? `<div class="signatureArea">
         ${data.templateConfig?.signatureImageUrl ? `<img src="${esc(data.templateConfig.signatureImageUrl)}" alt="signature" class="signatureImage" />` : ""}
@@ -73,6 +77,9 @@ function render(data: InvoiceRenderData): string {
 .summaryRow{display:flex;justify-content:space-between;gap:20px;margin-top:20px;}
 .summary{width:60%;border:1px solid #000;border-radius:10px;padding:15px;line-height:2;margin-left:auto;}
 .grand{font-size:16px;font-weight:bold;margin-top:10px;}
+.paymentQr{display:flex;align-items:center;gap:10px;margin-top:14px;}
+.paymentQrImage{width:90px;height:90px;object-fit:contain;}
+.paymentQrLabel{font-size:11px;color:#444;}
 .signatureArea{width:60%;margin-left:auto;text-align:right;margin-top:10px;}
 .signatureImage{height:85px;object-fit:contain;display:block;margin-left:auto;}
 .signatoryText{margin-top:3px;font-size:12px;font-weight:600;}
@@ -151,6 +158,7 @@ ${hsnSummaryHtml}
   <div>IGST : ₹${t.igst}</div>
   <div class="grand">Grand Total : ₹${t.grandTotal}</div>
 </div>
+${paymentQrHtml}
 ${signatureHtml}
 <div class="footer">${safeStr(data.templateConfig?.footerNote, "This is a computer generated GST invoice.")}</div>
 <div class="declaration"><b>Declaration</b><p>${safeStr(data.templateConfig?.declaration, "Certified that the particulars given above are true and correct. This invoice is generated electronically and does not require a physical signature.")}</p>

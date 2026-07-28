@@ -56,6 +56,8 @@ export const NAV_GROUPS: NavGroup[] = [
     ]},
   ]},
   { label: "Sales / POS", items: [
+    // Quick-sale billing screen -- see admin/pos/page.tsx's top comment.
+    { key: "pos",      label: "Point of Sale", route: "/admin/pos",       icon: "ShoppingCart" },
     { key: "orders",   label: "Orders",       route: "/admin/orders",     icon: "ShoppingBag" },
     { key: "sales",    label: "Sales",        route: "/admin/sales",      icon: "TrendingUp" },
     { key: "coupons",  label: "Coupons",      route: "/admin/coupons",    icon: "Hash" },
@@ -65,9 +67,12 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "products",   label: "Products",     route: "/admin/products",   icon: "Box" },
     { key: "warehouses", label: "Warehouses",   route: "/admin/warehouses", icon: "Building2" },
     { key: "materials",  label: "Materials",    route: "/admin/materials",  icon: "Box" },
-    // Canonical Material/BOM entry (Material Code/Description/Mode/SN/HSN/
-    // Rate/Tax%), shared by Brand/SC/POS -- see models/ServiceCenterBOM.ts.
-    { key: "bom",        label: "Bill of Materials", route: "/admin/bom",   icon: "Box" },
+    // Canonical Material/BOM list (Material Code/Description/Mode/SN/HSN/
+    // Rate/Tax%), shared by Brand/SC/POS/Sales -- see models/BOM.ts and
+    // this page's own top comment. Deliberately NOT /admin/bom, which
+    // still serves the unrelated OLD manufacturing BOM (models/
+    // ManufacturingBOM.js, productVariantId/cost-rollup shape).
+    { key: "material-catalog", label: "Material Catalog", route: "/admin/material-catalog", icon: "Package" },
     { key: "masters-units",    label: "Units",              route: "/admin/masters/units",              icon: "Ruler" },
     { key: "masters-brands",   label: "Brands & Models",    route: "/admin/masters/brands",              icon: "Tags" },
     { key: "masters-catalog-requests", label: "Catalog Change Requests", route: "/admin/masters/catalog-requests", icon: "ClipboardCheck" },
@@ -99,10 +104,15 @@ export const NAV_GROUPS: NavGroup[] = [
   ]},
   { label: "Reports", items: [
     { key: "reports",   label: "Reports & Downloads", route: "/admin/reports",   icon: "BarChart3" },
+    { key: "report-builder", label: "Report Builder", route: "/admin/report-builder", icon: "BarChart3" },
     { key: "analytics", label: "Analytics",           route: "/admin/analytics", icon: "BarChart3" },
   ]},
   { label: "Communication", items: [
     { key: "chat", label: "Team Chat", route: "/admin/chat", icon: "MessageSquare" },
+    // In-app product feedback -- any logged-in user, not admin-only (that's
+    // the separate "Feedback" inbox under Admin > Configuration, which
+    // reviews these submissions alongside customer contact-us ones).
+    { key: "send-feedback", label: "Send Feedback", route: "/admin/send-feedback", icon: "MessageSquare" },
     // Notifications is likewise no longer a page -- it's the floating
     // NotificationBell icon (top-right, every admin page).
     // ANu is the floating AnuWidget (see AdminShell.tsx), reachable from
@@ -122,6 +132,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-modules", label: "Modules", route: "/admin/modules", icon: "Box" },
       { key: "admin-document-templates", label: "Document Templates", route: "/admin/document-templates", icon: "FileText" },
       { key: "admin-settings", label: "Settings", route: "/admin/settings", icon: "Settings" },
+      { key: "admin-plan", label: "Plan & Billing", route: "/admin/plan", icon: "Receipt" },
       { key: "admin-pincode-data", label: "Pincode Data", route: "/admin/pincode-data", icon: "MapPin" },
       { key: "admin-invoice-templates", label: "Invoice Branding", route: "/admin/invoice-templates", icon: "FileText" },
       { key: "admin-gst", label: "GST", route: "/admin/gst", icon: "FileText" },

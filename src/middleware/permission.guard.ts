@@ -50,6 +50,21 @@ export function requirePermission(
     throw error;
   }
 
+  // Subscription/trial expired -- blocks EVERY route that already calls
+  // requirePermission() (the overwhelming majority of mutating/data
+  // routes), not just a hand-picked few, per explicit direction ("upon
+  // reaching deadline services should get stopped automatically"). Never
+  // true for a super admin -- see IEnrichedSession.subscriptionBlocked's
+  // comment. Uses the same "FORBIDDEN" code as a normal permission denial
+  // so every existing call site's status-mapping keeps working unchanged.
+  if ((session as any).subscriptionBlocked) {
+    const error = new Error(
+      "Subscription expired -- renew your plan to continue (Admin > Plan & Billing)."
+    );
+    (error as any).code = "FORBIDDEN";
+    throw error;
+  }
+
   if (!hasPermission(session, permission)) {
     const error = new Error(
       `Forbidden: Missing permission -> ${permission}`
@@ -73,6 +88,14 @@ export function requireAnyPermission(
   }
 
   if (session.isSuperAdmin) return;
+
+  if ((session as any).subscriptionBlocked) {
+    const error = new Error(
+      "Subscription expired -- renew your plan to continue (Admin > Plan & Billing)."
+    );
+    (error as any).code = "FORBIDDEN";
+    throw error;
+  }
 
   const ok = permissions.some((p) => hasPermission(session, p));
 

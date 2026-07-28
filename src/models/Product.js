@@ -81,7 +81,7 @@ const ProductSchema = new mongoose.Schema(
 
   bomId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "BOM",
+    ref: "ManufacturingBOM",
   },
 
   /* Tax */

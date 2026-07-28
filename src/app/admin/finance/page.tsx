@@ -10,6 +10,8 @@ import {
   Clock,
   Calendar,
   ArrowRight,
+  Receipt,
+  FileText,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -18,11 +20,20 @@ import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingPanel } from '@/components/ui/Spinner'
 
+// Matches models/SalesInvoice.ts's real shape -- was previously read as
+// flat `totalAmount`/`customerName`, fields that don't exist on this
+// model (it's `grandTotal` and `customer.name`), so every stat card and
+// the invoice table below silently showed ₹0 / blank customer for every
+// real invoice. This is the single canonical invoice model every
+// operating mode (Brand/SC/POS/Sales) writes to, so fixing the field
+// mapping here surfaces ALL of them, not just one source.
 interface Invoice {
   _id: string
   invoiceNumber: string
-  customerName: string
-  totalAmount: number
+  customer?: { name?: string; company?: string; gstNumber?: string }
+  grandTotal: number
+  taxTotal?: number
+  invoiceType?: string
   status: string
   createdAt: string
   dueDate?: string
@@ -105,13 +116,13 @@ export default function FinancePage() {
     fetchAll()
   }, [])
 
-  const totalRevenue = invoices.reduce((s, i) => s + (i.totalAmount ?? 0), 0)
+  const totalRevenue = invoices.reduce((s, i) => s + (i.grandTotal ?? 0), 0)
   const collected = invoices
     .filter((i) => i.status === 'PAID')
-    .reduce((s, i) => s + (i.totalAmount ?? 0), 0)
+    .reduce((s, i) => s + (i.grandTotal ?? 0), 0)
   const outstanding = invoices
-    .filter((i) => ['SENT', 'OVERDUE'].includes(i.status))
-    .reduce((s, i) => s + (i.totalAmount ?? 0), 0)
+    .filter((i) => ['SENT', 'OVERDUE', 'PARTIAL'].includes(i.status))
+    .reduce((s, i) => s + (i.grandTotal ?? 0), 0)
 
   const now = new Date()
   const thisMonth = invoices
@@ -119,7 +130,13 @@ export default function FinancePage() {
       const d = new Date(i.createdAt)
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
     })
-    .reduce((s, i) => s + (i.totalAmount ?? 0), 0)
+    .reduce((s, i) => s + (i.grandTotal ?? 0), 0)
+
+  const taxCollected = invoices
+    .filter((i) => i.status === 'PAID')
+    .reduce((s, i) => s + (i.taxTotal ?? 0), 0)
+  const b2bCount = invoices.filter((i) => i.invoiceType === 'B2B').length
+  const b2cCount = invoices.length - b2bCount
 
   const filteredInvoices = invoices.filter((i) => {
     if (filter === 'PAID') return i.status === 'PAID'
@@ -148,11 +165,11 @@ export default function FinancePage() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           {[
             { icon: TrendingUp, label: 'Total Revenue', value: fmt(totalRevenue), sub: 'All invoices', filterValue: 'ALL' as const },
             { icon: CheckCircle, label: 'Collected', value: fmt(collected), sub: 'Paid invoices', filterValue: 'PAID' as const },
-            { icon: Clock, label: 'Outstanding', value: fmt(outstanding), sub: 'Sent + Overdue', filterValue: 'UNPAID' as const },
+            { icon: Clock, label: 'Outstanding', value: fmt(outstanding), sub: 'Sent + Overdue + Partial', filterValue: 'UNPAID' as const },
             { icon: Calendar, label: 'This Month', value: fmt(thisMonth), sub: 'Current month', filterValue: null },
           ].map(({ icon: Icon, label, value, sub, filterValue }) => {
             const isActive = filterValue !== null && filter === filterValue;
@@ -179,6 +196,39 @@ export default function FinancePage() {
               </Card>
             );
           })}
+        </div>
+
+        {/* Secondary stats: tax + invoice mix, across every source (POS/
+            SC/Sales) since they all write to the same SalesInvoice model. */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-ink-3 text-sm">Tax Collected</span>
+              <div className="w-8 h-8 rounded-control bg-accent-soft flex items-center justify-center">
+                <Receipt className="w-4 h-4 text-accent" />
+              </div>
+            </div>
+            <p className="tabular text-2xl font-semibold text-ink">{fmt(taxCollected)}</p>
+            <p className="text-xs text-ink-3 mt-1">Paid invoices only</p>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-ink-3 text-sm">Total Invoices</span>
+              <div className="w-8 h-8 rounded-control bg-accent-soft flex items-center justify-center">
+                <FileText className="w-4 h-4 text-accent" />
+              </div>
+            </div>
+            <p className="tabular text-2xl font-semibold text-ink">{invoices.length}</p>
+            <p className="text-xs text-ink-3 mt-1">{b2bCount} B2B · {b2cCount} B2C</p>
+          </Card>
+          <Card className="p-6 col-span-2 lg:col-span-1">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-ink-3 text-sm">Export for GST filing</span>
+            </div>
+            <Link href="/admin/reports" className="text-sm text-accent hover:underline flex items-center gap-1 mt-2">
+              Download invoices ZIP by date range <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </Card>
         </div>
 
         {/* Invoice Filter */}
@@ -213,9 +263,9 @@ export default function FinancePage() {
                   filteredInvoices.map((inv) => (
                     <tr key={inv._id} className="hover:bg-surface-2 transition-colors">
                       <td className="px-6 py-3 font-medium text-ink">{inv.invoiceNumber}</td>
-                      <td className="px-6 py-3 text-ink-2">{inv.customerName}</td>
+                      <td className="px-6 py-3 text-ink-2">{inv.customer?.name || inv.customer?.company || '—'}</td>
                       <td className="px-6 py-3 text-ink-3">{fmtDate(inv.createdAt)}</td>
-                      <td className="px-6 py-3 text-right tabular text-ink">{fmt(inv.totalAmount)}</td>
+                      <td className="px-6 py-3 text-right tabular text-ink">{fmt(inv.grandTotal)}</td>
                       <td className="px-6 py-3 text-center">
                         <Badge tone={STATUS_TONE[inv.status] ?? 'neutral'}>{inv.status}</Badge>
                       </td>

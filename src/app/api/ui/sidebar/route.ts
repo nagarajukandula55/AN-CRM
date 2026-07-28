@@ -123,15 +123,31 @@ export async function POST(req: Request) {
       }
     }
 
-    // SC (Service Center) businesses are single-login, single-screen by
-    // spec -- collapse the sidebar to just the workorder screen for
-    // everyone but a super admin (who needs full nav to administer every
-    // business, same exemption as the login redirect in
-    // api/auth/login/route.ts). Applied last, after every other filter, so
-    // it always wins regardless of what permissions/business-module
-    // config would otherwise have shown.
+    // SC (Service Center) businesses are single-login, workorder-first by
+    // spec, but still share the modules every operating mode has in
+    // common -- BOM, Inventory (when serialization is enabled), Reports,
+    // Settings and Profile, per explicit direction ("All the category
+    // parts will have BOM in common, Inventory (If they Enable
+    // Serialization) Reports and setting and profile view pages"). So the
+    // collapse keeps that common set alongside the workorder screen,
+    // rather than showing ONLY crm_jobsheets. Applied last, after every
+    // other filter, so it always wins regardless of what permissions/
+    // business-module config would otherwise have shown. Exempts a super
+    // admin, who needs full nav to administer every business.
     if (business?.operatingMode === "SC" && !session.isSuperAdmin) {
-      visibleModules = visibleModules.filter((m: any) => m.key === "crm_jobsheets");
+      const scAllowedKeys = new Set([
+        "crm",
+        "crm_jobsheets",
+        "material-catalog",
+        "reports",
+        "report-builder",
+        "analytics",
+        "admin-settings",
+        "admin-plan",
+        "send-feedback",
+        ...(business?.inventorySerialized ? ["inventory", "stock-transfers", "stock-adjustments", "inventory-lots"] : []),
+      ]);
+      visibleModules = visibleModules.filter((m: any) => scAllowedKeys.has(m.key));
     }
 
     if (visibleModules.length === 0 && !session.isSuperAdmin) {

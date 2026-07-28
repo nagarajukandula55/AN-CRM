@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import mongoose from "mongoose";
-import ServiceCenterBOM from "@/models/ServiceCenterBOM";
+import BOM from "@/models/BOM";
 import DeviceModel from "@/models/DeviceModel";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { logAction } from "@/lib/audit/logAction";
@@ -35,7 +35,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // Keep seriesId in sync whenever deviceModelId changes (including being
-    // cleared) -- see the seriesId field comment on ServiceCenterBOM.
+    // cleared) -- see the seriesId field comment on BOM.
     if (updates.deviceModelId !== undefined) {
       if (updates.deviceModelId && mongoose.Types.ObjectId.isValid(updates.deviceModelId as string)) {
         const modelDoc = await DeviceModel.findById(updates.deviceModelId).select("seriesId").lean<any>();
@@ -45,7 +45,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
-    const part = await ServiceCenterBOM.findOneAndUpdate(
+    const part = await BOM.findOneAndUpdate(
       { _id: id, businessId: (vendor as any).businessId, vendorId: (vendor as any)._id },
       { $set: updates },
       { new: true, runValidators: true }
@@ -54,7 +54,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ success: false, error: "Part not found" }, { status: 404 });
     }
 
-    logAction({ action: "UPDATE", entity: "ServiceCenterBOM", entityId: id, after: updates, req });
+    logAction({ action: "UPDATE", entity: "BOM", entityId: id, after: updates, req });
 
     return NextResponse.json({ success: true, part });
   } catch (error: unknown) {
@@ -80,7 +80,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ success: false, error: "No vendor profile found for this account" }, { status: 403 });
     }
 
-    const part = await ServiceCenterBOM.findOneAndUpdate(
+    const part = await BOM.findOneAndUpdate(
       { _id: id, businessId: (vendor as any).businessId, vendorId: (vendor as any)._id },
       { $set: { isActive: false } },
       { new: true }
@@ -89,7 +89,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ success: false, error: "Part not found" }, { status: 404 });
     }
 
-    logAction({ action: "DELETE", entity: "ServiceCenterBOM", entityId: id, req });
+    logAction({ action: "DELETE", entity: "BOM", entityId: id, req });
 
     return NextResponse.json({ success: true, message: "Part deactivated" });
   } catch (error: unknown) {

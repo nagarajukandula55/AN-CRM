@@ -249,6 +249,8 @@ export async function POST(req: NextRequest) {
       currency: currency || "INR",
       tags: tags || [],
       createdBy: new mongoose.Types.ObjectId(userId),
+      // CCO name snapshot -- see CrmCall.ts's field comment.
+      createdByName: session.user.name || "",
     });
 
     logAction({

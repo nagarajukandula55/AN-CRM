@@ -3,25 +3,25 @@
 @tailwind utilities;
 
 /* ==========================================
-   AN GROUP — DESIGN TOKENS
+   AN-CRM — DESIGN TOKENS
 
-   One accent, chosen deliberately: a deep petrol
-   teal ("ledger" blue-green) rather than the
-   generic indigo/blue every SaaS dashboard reaches
-   for -- distinct, and reads as trustworthy/
-   financial without being cold. Neutrals lean
-   warm (a hair of ochre in the paper tone, not
-   pure grey) so the ground feels chosen, not
-   inherited. Semantic colors (success/warning/
-   critical) are a DIFFERENT hue family from the
-   accent on purpose -- state meaning shouldn't be
-   confused with brand identity.
+   AN-CRM is its own product, not a re-skin of ANgroup -- per explicit
+   direction ("no need to keep ANgroup theme or colour code here").
+   Accent: a confident violet, distinct from ANgroup's petrol teal, chosen
+   to read as premium/modern SaaS without tipping into generic
+   indigo-600-everywhere -- the gradient hero on the homepage and every
+   button/link/focus ring in the app pick this up automatically since
+   everything routes through this one variable. Neutrals lean warm (a hair
+   of ochre in the paper tone, not pure grey) so the ground feels chosen,
+   not inherited. Semantic colors (success/warning/critical) are a
+   DIFFERENT hue family from the accent on purpose -- state meaning
+   shouldn't be confused with brand identity.
 
-   Every page should consume these variables (or
-   the Tailwind tokens in tailwind.config.ts that
-   map to them) instead of hardcoding gray-900/
-   indigo-600/rounded-xl-vs-2xl per file -- that
-   drift is exactly what the UI audit flagged.
+   Every page should consume these variables (or the Tailwind tokens in
+   tailwind.config.ts that map to them) instead of hardcoding gray-900/
+   indigo-600/rounded-xl-vs-2xl per file -- that drift is exactly what the
+   UI audit flagged (see admin/settings/page.tsx for a known offender
+   still needing this pass, not yet done).
 ========================================== */
 
 :root {
@@ -48,10 +48,10 @@
   --text-3: #8B8F94;
   --muted: #6B6F75;
 
-  /* Brand accent -- petrol teal */
-  --accent: #0B5D6B;
-  --accent-hover: #094C58;
-  --accent-soft: rgba(11, 93, 107, 0.10);
+  /* Brand accent -- confident violet, AN-CRM's own identity */
+  --accent: #5B3DF5;
+  --accent-hover: #4A2FE0;
+  --accent-soft: rgba(91, 61, 245, 0.10);
   --accent-fg: #ffffff;
 
   /* Kept for existing call sites during migration -- primary now maps to

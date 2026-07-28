@@ -79,6 +79,13 @@ const EDITABLE_FIELDS = [
   // bill (no company name on the customer) -- see models/Business.ts's
   // applyTaxOnB2CBilling comment.
   "applyTaxOnB2CBilling",
+  // Default rate for the one-click "Add Labour Charge" line on a
+  // workorder -- see models/Business.ts's defaultLabourCharge comment.
+  // Existed on the schema already, never surfaced in Settings until now.
+  "defaultLabourCharge",
+  // UPI VPA (e.g. "business@okhdfcbank") used to generate the payment QR
+  // code on printed invoices -- see models/Business.ts's upiId comment.
+  "upiId",
   // Business Type / Industry enums + address fields — the edit form used
   // to only show city/state/pincode read-only (they were never actually
   // saveable), and type/industry weren't editable post-creation at all.

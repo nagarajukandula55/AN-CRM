@@ -33,7 +33,7 @@ import CrmJobSheet from "../src/models/CrmJobSheet";
 import FaultCode, { DEFAULT_FAULT_CODES } from "../src/models/FaultCode";
 import SymptomCode, { DEFAULT_SYMPTOM_CODES } from "../src/models/SymptomCode";
 import Solution from "../src/models/Solution";
-import ServiceCenterBOM from "../src/models/ServiceCenterBOM";
+import ServiceCenterBOM from "../src/models/BOM";
 import EmployeeProfile from "../src/models/EmployeeProfile";
 import VendorProfile from "../src/models/VendorProfile";
 import { generateDocumentNumber } from "../src/core/numbering/numberingService";

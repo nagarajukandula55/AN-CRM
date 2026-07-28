@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
+import User from "@/models/User";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
@@ -52,7 +53,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       );
     }
 
+    const engineer = await User.findById(engineerId).select("name").lean<any>();
+
     jobSheet.assignedTo = new mongoose.Types.ObjectId(engineerId) as any;
+    // Engineer name snapshot -- see CrmJobSheet.ts's field comment.
+    jobSheet.assignedToName = engineer?.name || "";
     jobSheet.assignedBy = new mongoose.Types.ObjectId(userId) as any;
     jobSheet.engineerAssignedAt = new Date();
     jobSheet.status = "REPAIR_STARTED";

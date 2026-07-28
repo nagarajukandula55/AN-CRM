@@ -256,6 +256,10 @@ export async function POST(req: NextRequest) {
       status: "CREATED",
       lineItems: Array.isArray(lineItems) ? lineItems : [],
       createdBy: new mongoose.Types.ObjectId(userId),
+      // CCO name snapshot -- copied from the originating call's CCO when
+      // converting a call, else this creating user's own name for a
+      // standalone/walk-in job sheet. See CrmJobSheet.ts's field comment.
+      ccoName: (linkedCall as any)?.createdByName || session.user.name || "",
     });
 
     if (linkedCall) {

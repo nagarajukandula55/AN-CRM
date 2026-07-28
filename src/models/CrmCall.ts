@@ -167,6 +167,13 @@ export interface ICrmCall extends Document {
    * still always sets this from the session.
    */
   createdBy?: Types.ObjectId;
+  // Snapshot of the CCO's name at the moment this call was logged -- per
+  // explicit direction ("CCO name should be taken and same should come on
+  // Job sheet"). Stored as plain text (not just resolved via createdBy's
+  // User ref) so it survives that user account being renamed or deleted,
+  // and so print documents/job sheets never need an extra populate to
+  // show who logged the call.
+  createdByName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -262,6 +269,7 @@ const CrmCallSchema = new Schema<ICrmCall>(
     tags: { type: [String], default: [] },
     isDeleted: { type: Boolean, default: false, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    createdByName: { type: String, trim: true, default: "" },
   },
   { timestamps: true }
 );

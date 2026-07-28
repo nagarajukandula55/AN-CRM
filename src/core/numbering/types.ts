@@ -136,6 +136,10 @@ export const DOCUMENT_TYPES = [
   "VENDOR_BILLING_INVOICE",
   // Orders placed through the B2B partner ordering portal (models/B2BOrder.ts).
   "B2B_ORDER",
+  // Invoice raised against AN-CRM itself when a business's own Subscription
+  // (plan license) payment is verified -- see models/SubscriptionInvoice.ts
+  // and api/subscriptions/verify/route.ts.
+  "SUBSCRIPTION_INVOICE",
 ] as const;
 
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
@@ -184,6 +188,7 @@ export const DEFAULT_PREFIXES: Record<DocumentType, string> = {
   ROLE: "ROLE",
   VENDOR_BILLING_INVOICE: "VBI",
   B2B_ORDER: "B2BO",
+  SUBSCRIPTION_INVOICE: "SUBINV",
 };
 
 export interface GeneratedNumber {
@@ -242,4 +247,5 @@ export const DOCUMENT_NUMBER_TOKENS: Partial<Record<DocumentType, string>> = {
   B2B_INVOICE: "b2bInvoiceNumber",
   PROFORMA_INVOICE: "proformaInvoiceNumber",
   ROLE: "roleNumber",
+  SUBSCRIPTION_INVOICE: "subscriptionInvoiceNumber",
 };

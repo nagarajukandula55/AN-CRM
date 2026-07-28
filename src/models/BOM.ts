@@ -1,8 +1,11 @@
 /**
- * ServiceCenterBOM — the canonical Material/BOM entry for the CRM, standard
- * across every operating mode (Brand / SC / POS), per the platform-wide BOM
+ * BOM — the canonical Material/BOM entry for the CRM, standard across every
+ * operating mode (Brand / SC / POS / Sales), per the platform-wide BOM
  * spec: Material Code, Material Description, Mode, SN, HSN, Rate, Tax%.
- * Mapping onto this model's fields:
+ * Renamed from "ServiceCenterBOM" -- per explicit direction ("make it BOM
+ * only in this repo because we have to give the same to Sales team also so
+ * only BOM is looks valid") -- since it was never actually SC-specific
+ * data, just SC-originated naming. Mapping onto this model's fields:
  *   Material Code        -> partCode        (auto-generated or manual, see
  *                            Business.bomCodeGenerationMode)
  *   Material Description -> partName + description
@@ -14,32 +17,35 @@
  *   Rate                 -> rate (without tax)
  *   Tax%                 -> gstRate
  *
- * Originally built specific to service-center repair estimation/invoicing
- * (vendorId-scoped part price lists feeding CrmJobSheet line items at
- * close time) -- kept as the SAME model rather than forked, since a Brand
- * or POS business's material list needs exactly this shape. `vendorId` is
- * now optional precisely so non-SC businesses (no vendor concept) can also
- * use this model directly; existing SC routes are unaffected since they
- * always pass a real vendorId.
+ * `vendorId` is optional so non-vendor businesses (Brand, POS) can use this
+ * model directly for their own material/product list; existing vendor-
+ * scoped SC routes are unaffected since they always pass a real vendorId.
  *
- * Distinct from the manufacturing src/models/BOM.js (multi-level
- * production BOM with cost roll-ups) and the vendor-onboarding
+ * Distinct from the manufacturing src/models/BOM.js (registered as
+ * "ManufacturingBOM" after this rename freed up the "BOM" name -- see that
+ * file's own comment; multi-level production BOM with cost roll-ups, kept
+ * for any remaining ANgroup-side callers) and the vendor-onboarding
  * src/models/VendorProductBOM.js -- those remain separate, deeper
  * structures for their own flows.
  *
+ * Explicit `collection: "servicecenterboms"` pins this to its original
+ * collection so the rename is purely a developer-facing naming change --
+ * no data migration, nothing moves.
+ *
  * Every entry carries a businessId (required) and an optional vendorId
- * ("business tag and vendor tag") so a vendor's part list stays private to
- * them within their business, per the original spec ("this BOM should be
- * available to that particular partner who had made [it]").
+ * ("business tag and vendor tag") so a vendor's own entries stay private
+ * to them within their business (see the strict per-vendor isolation on
+ * FaultCode/SymptomCode/Solution for the same pattern), while Brand/POS/
+ * Sales-facing entries (vendorId unset) are visible business-wide.
  */
 
 import mongoose, { Schema, Model, Document, Types } from "mongoose";
 
-export type ServiceCenterBOMPartType = "SPARE_PART" | "LABOUR" | "CONSUMABLE";
+export type BOMPartType = "SPARE_PART" | "LABOUR" | "CONSUMABLE";
 
-export interface IServiceCenterBOM extends Document {
+export interface IBOM extends Document {
   businessId: Types.ObjectId;
-  // Optional -- unset for a Brand/POS business's own material list (no
+  // Optional -- unset for a Brand/POS/Sales business-wide material list (no
   // vendor concept there). SC entries always carry a real vendorId.
   vendorId?: Types.ObjectId;
   brandId?: Types.ObjectId; // ref Brand -- which device brand this part fits, if any
@@ -59,7 +65,7 @@ export interface IServiceCenterBOM extends Document {
   partName: string;
   partCode: string;
   description?: string; // spec/detail beyond the name, for GST-invoice line clarity
-  partType: ServiceCenterBOMPartType;
+  partType: BOMPartType;
   unit: string; // e.g. "pcs", "nos", "set"
   hsnCode: string;
   gstRate: number; // % -- explicit on the part, not just derived from HSN lookup at billing time
@@ -83,7 +89,7 @@ export interface IServiceCenterBOM extends Document {
   updatedAt: Date;
 }
 
-const ServiceCenterBOMSchema = new Schema<IServiceCenterBOM>(
+const BOMSchema = new Schema<IBOM>(
   {
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true, index: true },
     vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
@@ -103,14 +109,14 @@ const ServiceCenterBOMSchema = new Schema<IServiceCenterBOM>(
     materialId: { type: Schema.Types.ObjectId, ref: "Material", default: null },
     isActive: { type: Boolean, default: true },
   },
-  { timestamps: true }
+  { timestamps: true, collection: "servicecenterboms" }
 );
 
-ServiceCenterBOMSchema.index({ businessId: 1, vendorId: 1, partCode: 1 }, { unique: true });
-ServiceCenterBOMSchema.index({ businessId: 1, vendorId: 1, isActive: 1 });
+BOMSchema.index({ businessId: 1, vendorId: 1, partCode: 1 }, { unique: true });
+BOMSchema.index({ businessId: 1, vendorId: 1, isActive: 1 });
 
-const ServiceCenterBOM: Model<IServiceCenterBOM> =
-  (mongoose.models.ServiceCenterBOM as Model<IServiceCenterBOM>) ||
-  mongoose.model<IServiceCenterBOM>("ServiceCenterBOM", ServiceCenterBOMSchema);
+const BOM: Model<IBOM> =
+  (mongoose.models.BOM as Model<IBOM>) ||
+  mongoose.model<IBOM>("BOM", BOMSchema);
 
-export default ServiceCenterBOM;
+export default BOM;

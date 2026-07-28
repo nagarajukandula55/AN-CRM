@@ -17,7 +17,7 @@ import Brand from "@/models/Brand";
 import Series from "@/models/Series";
 import DeviceModel from "@/models/DeviceModel";
 import Variant from "@/models/Variant";
-import ServiceCenterBOM from "@/models/ServiceCenterBOM";
+import BOM from "@/models/BOM";
 import CrmCall from "@/models/CrmCall";
 import CrmJobSheet from "@/models/CrmJobSheet";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
         // Live usage records that point at brandId directly (not just via
         // the catalog tree) would otherwise silently orphan onto a
         // deleted _id once the duplicate is removed below.
-        await ServiceCenterBOM.updateMany({ brandId: dupe._id }, { $set: { brandId: survivor._id } });
+        await BOM.updateMany({ brandId: dupe._id }, { $set: { brandId: survivor._id } });
         await CrmCall.updateMany({ brandId: dupe._id }, { $set: { brandId: survivor._id } });
         await CrmJobSheet.updateMany({ brandId: dupe._id }, { $set: { brandId: survivor._id } });
         await Brand.deleteOne({ _id: dupe._id });
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
       const [survivor, ...dupes] = group;
       for (const dupe of dupes) {
         await DeviceModel.updateMany({ seriesId: dupe._id }, { $set: { seriesId: survivor._id } });
-        await ServiceCenterBOM.updateMany({ seriesId: dupe._id }, { $set: { seriesId: survivor._id } });
+        await BOM.updateMany({ seriesId: dupe._id }, { $set: { seriesId: survivor._id } });
         await Series.deleteOne({ _id: dupe._id });
         seriesMerged++;
       }
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
       const [survivor, ...dupes] = group;
       for (const dupe of dupes) {
         await Variant.updateMany({ modelId: dupe._id }, { $set: { modelId: survivor._id } });
-        await ServiceCenterBOM.updateMany({ deviceModelId: dupe._id }, { $set: { deviceModelId: survivor._id } });
+        await BOM.updateMany({ deviceModelId: dupe._id }, { $set: { deviceModelId: survivor._id } });
         await CrmCall.updateMany({ deviceModelId: dupe._id }, { $set: { deviceModelId: survivor._id } });
         await CrmJobSheet.updateMany({ deviceModelId: dupe._id }, { $set: { deviceModelId: survivor._id } });
         await DeviceModel.deleteOne({ _id: dupe._id });

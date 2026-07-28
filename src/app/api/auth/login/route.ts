@@ -161,7 +161,16 @@ export async function POST(req: Request) {
     if (activeBusinessId && !isSuperAdmin) {
       const activeBusiness = await Business.findById(activeBusinessId).select("operatingMode").lean<any>();
       if (activeBusiness?.operatingMode === "SC") {
-        homeRoute = "/admin/crm/jobsheets";
+        // Lands on the CRM Overview (summary + quick links), not straight
+        // into the workorder list -- "SC : Overview page should be there"
+        // per explicit direction. Overview links into Workorders itself.
+        homeRoute = "/admin/crm";
+      } else if (activeBusiness?.operatingMode === "POS" && !homeRoute) {
+        // POS scales small store -> enterprise, so (unlike SC) it keeps
+        // full nav -- this only sets a convenience default landing page
+        // when no role-specific homeRoute is already configured, never
+        // overrides one the way SC's redirect does above.
+        homeRoute = "/admin/pos";
       }
     }
 

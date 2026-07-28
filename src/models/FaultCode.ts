@@ -5,6 +5,14 @@
  * time. businessId-scoped like Brand; a null businessId means a global
  * (platform-seeded) fault code visible to every business, same pattern as
  * other master-data models that fall back to a shared default set.
+ *
+ * Optionally vendorId-scoped on top of that -- per explicit direction
+ * ("Fault code, Symptom code and Solution move out of this project and
+ * give facility to add by vendor themselves / FC, SC & Sol self managed"),
+ * an SC vendor can maintain their own private fault-code list rather than
+ * only using the business-wide/global one. Unset vendorId (the default)
+ * behaves exactly as before -- a business-wide or global entry visible to
+ * every vendor in that business.
  */
 
 import mongoose, { Schema, Model, Document, Types } from "mongoose";
@@ -13,6 +21,9 @@ import { DEVICE_CATEGORIES, type DeviceCategory } from "@/core/catalog/deviceCat
 
 export interface IFaultCode extends Document {
   businessId?: Types.ObjectId | null;
+  // Optional -- set when this fault code belongs privately to one vendor's
+  // own list rather than the whole business. See top-of-file comment.
+  vendorId?: Types.ObjectId | null;
   businessScope: BusinessScope;
   businessIds: Types.ObjectId[];
   code: string;
@@ -39,6 +50,7 @@ export interface IFaultCode extends Document {
 const FaultCodeSchema = new Schema<IFaultCode>(
   {
     businessId: { type: Schema.Types.ObjectId, ref: "Business", default: null, index: true },
+    vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
     businessScope: { type: String, enum: BUSINESS_SCOPES, default: "SINGLE" },
     businessIds: [{ type: Schema.Types.ObjectId, ref: "Business" }],
     code: { type: String, required: true, trim: true },
@@ -52,7 +64,13 @@ const FaultCodeSchema = new Schema<IFaultCode>(
 );
 
 FaultCodeSchema.index({ businessId: 1, isActive: 1 });
-FaultCodeSchema.index({ businessId: 1, code: 1 }, { unique: true });
+// Was {businessId,code} unique -- meant two vendors under the same
+// business could never independently use the same short code for their
+// own private list. Now unique per (businessId, vendorId, code); vendorId
+// null (business-wide/global entries) is unaffected since Mongo treats
+// null as an equal value within a compound unique index, same reasoning
+// as BOM's own vendorId-optional unique index.
+FaultCodeSchema.index({ businessId: 1, vendorId: 1, code: 1 }, { unique: true });
 FaultCodeSchema.index({ businessId: 1, deviceCategory: 1, category: 1 });
 
 const FaultCode: Model<IFaultCode> =

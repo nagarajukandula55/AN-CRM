@@ -118,6 +118,9 @@ export default function PartnerSignupPage() {
   const [companyName, setCompanyName] = useState("");
   const [contactPerson, setContactPerson] = useState(fullName);
   const [category, setCategory] = useState("");
+  // Which operating mode they're applying to run as -- per explicit
+  // direction ("in the signup page add Type they are applying").
+  const [appliedAs, setAppliedAs] = useState<"BRAND" | "SC" | "POS" | "">("");
   const [gstRegistered, setGstRegistered] = useState(true);
   const [gstNumber, setGstNumber] = useState("");
   const [panNumber, setPanNumber] = useState("");
@@ -151,6 +154,7 @@ export default function PartnerSignupPage() {
   function validateStep2(): string | null {
     if (!companyName.trim()) return "Company name is required";
     if (!contactPerson.trim()) return "Contact person is required";
+    if (!appliedAs) return "Please select what you're applying as";
     if (gstRegistered && !gstNumber.trim()) return "GSTIN is required for GST-registered businesses";
     if (!gstRegistered && !panNumber.trim()) return "PAN is required for businesses without GST";
     if (gstNumber.trim()) {
@@ -224,6 +228,7 @@ export default function PartnerSignupPage() {
             gstNumber: gstRegistered ? gstNumber.trim().toUpperCase() : undefined,
             panNumber: panNumber.trim() ? panNumber.trim().toUpperCase() : undefined,
             category: category || undefined,
+            appliedAs: appliedAs || undefined,
             address:
               street || city || addrState || pincode
                 ? {
@@ -493,6 +498,18 @@ export default function PartnerSignupPage() {
                             {c}
                           </option>
                         ))}
+                      </select>
+                    </Field>
+                    <Field label="What are you applying as?" required>
+                      <select
+                        className={neonInputCls}
+                        value={appliedAs}
+                        onChange={(e) => setAppliedAs(e.target.value as "BRAND" | "SC" | "POS" | "")}
+                      >
+                        <option value="">Select…</option>
+                        <option value="BRAND">Brand (multi-role, call center + appointments)</option>
+                        <option value="SC">Service Center (single login, workorder flow)</option>
+                        <option value="POS">Sales / POS (billing counter, store to enterprise)</option>
                       </select>
                     </Field>
                   </div>
