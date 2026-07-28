@@ -126,7 +126,7 @@ function LoginForm() {
                 type="text"
                 value={form.identifier}
                 onChange={(e) => setForm({ ...form, identifier: e.target.value })}
-                placeholder="raj@angroup.com"
+                placeholder="you@company.com"
                 required
                 autoFocus
                 className="w-full rounded-control border border-border-strong bg-surface px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft transition-all"
