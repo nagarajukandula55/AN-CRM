@@ -12,6 +12,7 @@ import { buildPermissionCode } from "@/core/access/actions";
 import { logAction } from "@/lib/audit/logAction";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { notifySuperAdmins } from "@/services/notification.service";
+import Business from "@/models/Business";
 // Required for .populate(...) below -- model must be registered before populate can resolve it.
 import "@/models/User";
 import "@/models/Business";
@@ -165,6 +166,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // SC businesses self-manage their own catalog additions -- no approval
+    // queue, per explicit direction ("for SC we are allowing partner
+    // maintain their own data ... no approval or no other processes"),
+    // same self-service posture as FaultCode/SymptomCode/Solution already
+    // have for a vendor's own list. Only SC skips the queue: Brand's
+    // catalog is the shared, verified one (per the same direction), and
+    // POS has no device/workorder catalog use for this at all.
+    const business = await Business.findById(bizObjectId).select("operatingMode").lean();
+    const selfManage = (business as any)?.operatingMode === "SC";
+
+    let resultEntity: any = null;
+    if (selfManage) {
+      const entityData = { businessId: bizObjectId, businessScope: "SINGLE" as const };
+      if (kind === "BRAND") {
+        resultEntity = await Brand.create({ ...entityData, name: trimmedName, category });
+      } else if (kind === "SERIES") {
+        resultEntity = await Series.create({ ...entityData, name: trimmedName, brandId: new Types.ObjectId(brandId) });
+      } else if (kind === "MODEL") {
+        resultEntity = await DeviceModel.create({
+          ...entityData,
+          name: trimmedName,
+          brandId: new Types.ObjectId(brandId),
+          seriesId: seriesId ? new Types.ObjectId(seriesId) : null,
+        });
+      } else if (kind === "VARIANT") {
+        resultEntity = await Variant.create({ ...entityData, name: trimmedName, modelId: new Types.ObjectId(modelId) });
+      }
+    }
+
     const request = await CatalogChangeRequest.create({
       businessId: bizObjectId,
       requestedBy: new Types.ObjectId(session.user.id),
@@ -174,7 +204,10 @@ export async function POST(req: NextRequest) {
       brandId: kind === "SERIES" || kind === "MODEL" ? new Types.ObjectId(brandId) : undefined,
       seriesId: kind === "MODEL" && seriesId ? new Types.ObjectId(seriesId) : undefined,
       modelId: kind === "VARIANT" ? new Types.ObjectId(modelId) : undefined,
-      status: "PENDING",
+      status: selfManage ? "APPROVED" : "PENDING",
+      reviewedBy: selfManage ? new Types.ObjectId(session.user.id) : undefined,
+      reviewedAt: selfManage ? new Date() : undefined,
+      resultEntityId: selfManage && resultEntity ? resultEntity._id : undefined,
     });
 
     logAction({
@@ -185,6 +218,13 @@ export async function POST(req: NextRequest) {
       req,
       actor: { id: session.user.id, businessId },
     });
+
+    if (selfManage) {
+      return NextResponse.json(
+        { success: true, message: `"${trimmedName}" added — no approval needed for a Service Center's own catalog.`, request, entity: resultEntity },
+        { status: 201 }
+      );
+    }
 
     // Fire-and-forget -- a Telegram outage must never fail the request creation.
     sendTelegramMessage(

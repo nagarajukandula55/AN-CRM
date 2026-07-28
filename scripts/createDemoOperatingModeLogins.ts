@@ -35,6 +35,21 @@ const DEMOS: { mode: "BRAND" | "SC" | "POS"; name: string; code: string; email: 
 
 const ALL_ACTION_KEYS = STANDARD_ACTIONS.map((a) => a.key);
 
+// Snapshot (via `grep -rn 'buildPermissionCode("' src/app/api`) of every
+// permission-code module key any API route actually checks -- several
+// (catalog, brands, device_models, fault_codes, solutions, staff, hr_*,
+// audit, assets, contact_messages) have no 1:1 sidebar key at all, so
+// STATIC_MODULES/ModuleDefinition alone missed them: a demo login could
+// see the "Brands & Models" nav item but still get a 403 CATALOG.CREATE
+// the moment it tried to submit anything, since the checked code and the
+// nav key are different strings. Extend this list if a new route
+// introduces another key.
+const EXTRA_PERMISSION_KEYS = [
+  "catalog", "brands", "device_models", "fault_codes", "solutions",
+  "staff", "hr_documents", "hr_leaves", "hr_payroll", "audit", "assets",
+  "contact_messages", "sales_documents",
+];
+
 async function main() {
   if (!PASSWORD) {
     throw new Error("Set DEMO_LOGIN_PASSWORD in the environment before running this script.");
@@ -50,7 +65,7 @@ async function main() {
   // but the dashboard.
   const dbModuleKeys: string[] = await ModuleDefinition.find({ businessId: null }).distinct("key");
   const staticKeys = STATIC_MODULES.map((m) => m.key);
-  const allModuleKeys = Array.from(new Set([...dbModuleKeys, ...staticKeys]));
+  const allModuleKeys = Array.from(new Set([...dbModuleKeys, ...staticKeys, ...EXTRA_PERMISSION_KEYS]));
   const permissionCodes = allModuleKeys.flatMap((m) => ALL_ACTION_KEYS.map((a) => buildPermissionCode(m, a)));
 
   for (const demo of DEMOS) {
