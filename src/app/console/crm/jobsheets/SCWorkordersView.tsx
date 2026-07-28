@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingPanel } from '@/components/ui/Spinner'
 import { STATUSES, STATUS_TONE, OPEN_STATUSES, ageingDays, fmtDate, type JobSheet } from './shared'
-import { SCNewJobSheetModal } from './SCNewJobSheetModal'
 
 /**
  * Service Center's Workorders view -- a single-login shop, not a
@@ -18,14 +17,17 @@ import { SCNewJobSheetModal } from './SCNewJobSheetModal'
  * running this: whoever's logged in) -- ageing is the thing that matters
  * instead, since a workorder sitting past day 7 with nobody looking at it
  * is the real risk here. Distinct from BrandWorkordersView on purpose.
+ *
+ * "New Job Sheet" and every row both go to /console/crm/jobsheets/sc[...] --
+ * NOT a modal, per explicit direction. That route is one single screen
+ * covering intake through closure (see its own top comment).
  */
 export function SCWorkordersView() {
   const router = useRouter()
   const [statusFilter, setStatusFilter] = useState('ALL')
-  const [showNew, setShowNew] = useState(false)
 
   const qs = statusFilter !== 'ALL' ? `?status=${statusFilter}` : ''
-  const { data, isLoading: loading, error: swrError, mutate } = useSWR(`/api/crm/jobsheets${qs}`, { keepPreviousData: true })
+  const { data, isLoading: loading, error: swrError } = useSWR(`/api/crm/jobsheets${qs}`, { keepPreviousData: true })
   const jobSheets: JobSheet[] = data?.success !== false ? (data?.jobSheets || []) : []
   const error = swrError ? (swrError.message || 'Could not load workorders.') : (data?.success === false ? (data.message || 'Failed to load workorders') : null)
 
@@ -43,7 +45,7 @@ export function SCWorkordersView() {
         actions={
           <>
             <Button variant="secondary" size="sm" onClick={() => router.push('/console/crm')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
-            <Button onClick={() => setShowNew(true)} icon={<Plus className="w-4 h-4" />}>New Job Sheet</Button>
+            <Button onClick={() => router.push('/console/crm/jobsheets/sc')} icon={<Plus className="w-4 h-4" />}>New Job Sheet</Button>
           </>
         }
       />
@@ -84,7 +86,7 @@ export function SCWorkordersView() {
                 const days = ageingDays(js.createdAt)
                 const isOverdue = OPEN_STATUSES.has(js.status) && days >= 7
                 return (
-                  <tr key={js._id} className="hover:bg-surface-2 transition-colors cursor-pointer" onClick={() => router.push(`/console/crm/jobsheets/${js._id}`)}>
+                  <tr key={js._id} className="hover:bg-surface-2 transition-colors cursor-pointer" onClick={() => router.push(`/console/crm/jobsheets/sc/${js._id}`)}>
                     <td className="px-6 py-4 tabular text-sm text-ink-3">{js.jobSheetNumber}</td>
                     <td className="px-6 py-4 font-medium text-ink">{js.customerName}</td>
                     <td className="px-6 py-4 text-ink-2 text-sm">
@@ -112,13 +114,6 @@ export function SCWorkordersView() {
           </tbody>
         </table>
       </div>
-
-      {showNew && (
-        <SCNewJobSheetModal
-          onClose={() => setShowNew(false)}
-          onCreated={(id) => { setShowNew(false); mutate(); router.push(`/console/crm/jobsheets/${id}`) }}
-        />
-      )}
     </div>
   )
 }
