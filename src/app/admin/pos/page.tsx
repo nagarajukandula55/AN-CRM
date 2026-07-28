@@ -4,7 +4,7 @@ import { Plus, Trash2, ShoppingCart, IndianRupee, CheckCircle2 } from 'lucide-re
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody } from '@/components/ui/Card'
-import { Field, Input, Select } from '@/components/ui/Field'
+import { Field, Input, Select } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 
 /**

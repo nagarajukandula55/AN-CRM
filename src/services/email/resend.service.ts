@@ -334,3 +334,36 @@ export async function sendInvoiceEmail({
     };
   }
 }
+
+/**
+ * Generic HTML email sender, for callers with no dedicated template of
+ * their own (e.g. the scheduled-report emailer) -- reuses the same
+ * per-business-then-global Resend credential resolution as every other
+ * sender here, so a scheduled report emails from this business's own
+ * configured identity when it has one, same "work on their behalf"
+ * pattern as the rest of this file.
+ */
+export async function sendGenericEmail({
+  to,
+  subject,
+  html,
+  businessId,
+}: {
+  to: string | string[];
+  subject: string;
+  html: string;
+  businessId?: string;
+}) {
+  try {
+    const { apiKey, from } = await resolveResendCreds(businessId);
+    if (!apiKey) {
+      throw new Error("No Resend API key configured (neither business-specific nor global RESEND_API_KEY)");
+    }
+    const resend = new Resend(apiKey);
+    const result = await resend.emails.send({ from, to, subject, html });
+    return { success: true, result };
+  } catch (err: any) {
+    console.error("RESEND GENERIC EMAIL ERROR", err);
+    return { success: false, error: err?.message || "Unknown email error" };
+  }
+}

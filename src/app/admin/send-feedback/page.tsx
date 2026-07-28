@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { MessageSquare, Send, CheckCircle2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
-import { Field, Textarea } from '@/components/ui/Field'
+import { Field, Textarea } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 
 /**

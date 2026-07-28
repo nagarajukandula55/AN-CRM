@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { Field, Input, Select } from '@/components/ui/Field'
+import { Field, Input, Select } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingPanel } from '@/components/ui/Spinner'
 

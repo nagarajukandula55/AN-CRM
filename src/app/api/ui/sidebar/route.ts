@@ -140,6 +140,7 @@ export async function POST(req: Request) {
         "crm_jobsheets",
         "material-catalog",
         "reports",
+        "report-builder",
         "analytics",
         "admin-settings",
         "admin-plan",

@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { Search, Wrench, CheckCircle2, Clock } from 'lucide-react'
 import { Card, CardBody } from '@/components/ui/Card'
-import { Field, Input } from '@/components/ui/Field'
+import { Field, Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'

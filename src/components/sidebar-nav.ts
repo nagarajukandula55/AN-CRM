@@ -104,6 +104,7 @@ export const NAV_GROUPS: NavGroup[] = [
   ]},
   { label: "Reports", items: [
     { key: "reports",   label: "Reports & Downloads", route: "/admin/reports",   icon: "BarChart3" },
+    { key: "report-builder", label: "Report Builder", route: "/admin/report-builder", icon: "BarChart3" },
     { key: "analytics", label: "Analytics",           route: "/admin/analytics", icon: "BarChart3" },
   ]},
   { label: "Communication", items: [
