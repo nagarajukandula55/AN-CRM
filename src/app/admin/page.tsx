@@ -85,7 +85,7 @@ export default function AdminDashboard() {
           const jsRes = await fetch('/api/crm/jobsheets')
           if (jsRes.ok) {
             const data = await jsRes.json()
-            const list = data?.jobsheets ?? data?.data ?? []
+            const list = data?.jobSheets ?? []
             setOpenWorkorders(Array.isArray(list) ? list.filter((j: any) => !['CLOSED', 'CANCELLED'].includes(j.status)).length : 0)
           }
         }
