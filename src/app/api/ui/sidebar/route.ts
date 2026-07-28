@@ -138,7 +138,7 @@ export async function POST(req: Request) {
       const scAllowedKeys = new Set([
         "crm",
         "crm_jobsheets",
-        "bom",
+        "material-catalog",
         "reports",
         "analytics",
         "admin-settings",
