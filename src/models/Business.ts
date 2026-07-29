@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { BUSINESS_TYPES, INDUSTRIES, OPERATING_MODES } from "@/data/businessConstants";
+import { DEVICE_CATEGORIES } from "@/core/catalog/deviceCategory";
 
 /* =========================================================
    ACCESS
@@ -739,6 +740,13 @@ const BusinessSchema = new mongoose.Schema(
     serviceOrderTerms: { type: String, default: "" },
     estimateTerms: { type: String, default: "" },
     invoiceTerms: { type: String, default: "" },
+
+    // Narrows the workorder intake form's "Device Type" dropdown down to
+    // just the categories this business actually services, instead of the
+    // full 45-category universal list -- per explicit direction. Empty
+    // (the default) means show every category, so existing businesses
+    // aren't suddenly left with an empty dropdown until they configure this.
+    enabledDeviceCategories: [{ type: String, enum: DEVICE_CATEGORIES }],
 
     pincode: {
       type: String,

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { Building2, Plug, Sparkles, Save, User, ChevronRight, Receipt, Globe2, Plus, Trash2 } from 'lucide-react'
+import { DEVICE_CATEGORIES, DEVICE_CATEGORY_LABELS } from '@/core/catalog/deviceCategory'
 
 /**
  * Admin Settings hub — src/app/console/settings.
@@ -83,6 +84,7 @@ export default function AdminSettingsPage() {
     serviceOrderTerms: '',
     estimateTerms: '',
     invoiceTerms: '',
+    enabledDeviceCategories: [] as string[],
   })
   const [savingOperations, setSavingOperations] = useState(false)
 
@@ -127,6 +129,7 @@ export default function AdminSettingsPage() {
         serviceOrderTerms: b.serviceOrderTerms || '',
         estimateTerms: b.estimateTerms || '',
         invoiceTerms: b.invoiceTerms || '',
+        enabledDeviceCategories: b.enabledDeviceCategories || [],
       })
     }
   }, [operationsRes])
@@ -441,6 +444,34 @@ export default function AdminSettingsPage() {
                 />
                 <div className="text-xs text-ink-3 mt-1">
                   When set, every printed invoice shows a scannable UPI QR code for this business's own VPA.
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <div className="text-sm font-medium text-ink mb-1">Device Types</div>
+                <div className="text-xs text-ink-3 mb-3">
+                  Narrows the workorder intake form's "Device Type" dropdown to just what this business services. Leave none checked to show every category.
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mb-2">
+                  {DEVICE_CATEGORIES.map((c) => {
+                    const checked = operations.enabledDeviceCategories.includes(c)
+                    return (
+                      <label key={c} className="flex items-center gap-1.5 text-xs text-ink-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => setOperations({
+                            ...operations,
+                            enabledDeviceCategories: e.target.checked
+                              ? [...operations.enabledDeviceCategories, c]
+                              : operations.enabledDeviceCategories.filter((x) => x !== c),
+                          })}
+                          className="rounded border-border"
+                        />
+                        {DEVICE_CATEGORY_LABELS[c]}
+                      </label>
+                    )
+                  })}
                 </div>
               </div>
 
