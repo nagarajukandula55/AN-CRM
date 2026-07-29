@@ -96,6 +96,10 @@ const EDITABLE_FIELDS = [
   // Narrows the workorder "Device Type" dropdown -- see models/Business.ts's
   // enabledDeviceCategories comment.
   "enabledDeviceCategories",
+  // Growing list of free-text Brand/Model names typed in via the SC intake
+  // screen's "add new" mini-modal -- see models/Business.ts's comment.
+  "savedBrands",
+  "savedModels",
   // Business Type / Industry enums + address fields — the edit form used
   // to only show city/state/pincode read-only (they were never actually
   // saveable), and type/industry weren't editable post-creation at all.

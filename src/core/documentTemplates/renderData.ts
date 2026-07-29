@@ -40,6 +40,12 @@ export interface DocumentRenderData {
      * instead of a signature image -- see the "signature" case in
      * renderer.tsx. */
     signatureUrl?: string;
+    /** Name shown alongside "Authorized Signatory" on the signature
+     * block's left side -- e.g. the CCO who logged a job sheet, so a
+     * physical printout has an actual name to sign against, not just a
+     * blank title. Undefined leaves the signature block exactly as it was
+     * for every document type that doesn't set this (invoices, POs, etc.). */
+    signedByName?: string;
   };
   party: {
     name: string;
@@ -57,4 +63,22 @@ export interface DocumentRenderData {
   };
   notes?: string;
   footerText?: string;
+  /** Device identity, shown as its own labelled row on Workorder/Service
+   * Record prints (borrowed from the OnePlus-style service-report layout
+   * the business asked us to match) instead of being buried in the
+   * free-text notes block. */
+  device?: {
+    model?: string;
+    brand?: string;
+    imeiOrSerial?: string;
+  };
+  /** Rendered as a bordered footer strip (address/phone/hours/hotline) at
+   * the bottom of Workorder/Service Record prints, matching the reference
+   * layout's service-center footer band. */
+  footerBand?: {
+    address?: string;
+    phone?: string;
+    hours?: string;
+    hotline?: string;
+  };
 }

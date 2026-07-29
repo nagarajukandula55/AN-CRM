@@ -37,15 +37,16 @@ function newBlockId(): string {
 
 /** A reasonable starting block order per document type, so a fresh template isn't empty. */
 export function defaultBlocksFor(documentType: DocumentTemplateType): ITemplateBlock[] {
-  const base: TemplateBlockType[] = [
-    "header",
-    "company-details",
-    "party-details",
-    "items-table",
-    "totals",
-    "terms",
-    "signature",
-  ];
+  // WORK_ORDER carries no pricing/billing at all -- that belongs on the
+  // Service Record (parts/labour) and Invoice (the actual bill), not a
+  // document a technician/customer holds mid-repair before a price is
+  // even settled. Per explicit direction: no items table, no totals, and
+  // no doc-number/date/status header block -- company-details (the
+  // issuing service center) leads instead.
+  const base: TemplateBlockType[] =
+    documentType === "WORK_ORDER"
+      ? ["company-details", "party-details", "terms", "signature"]
+      : ["header", "company-details", "party-details", "items-table", "totals", "terms", "signature"];
   return base.map((type) => ({ id: newBlockId(), type, config: {} }));
 }
 

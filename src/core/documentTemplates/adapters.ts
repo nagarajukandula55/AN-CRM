@@ -72,55 +72,71 @@ export function jobSheetToRenderData(
   // shown here so the printed document isn't just missing the brand entirely.
   const brandName = (typeof jobSheet.brandId === "object" ? jobSheet.brandId?.name : undefined) || jobSheet.pendingBrandName;
   const device = [jobSheet.product, brandName, jobSheet.deviceModel].filter(Boolean).join(" · ");
+  const engineerName = jobSheet.assignedToName || (typeof jobSheet.assignedTo === "object" ? jobSheet.assignedTo?.name : undefined);
+
+  // A Workorder is the document a technician/customer holds mid-repair,
+  // before pricing is even settled -- no items/pricing at all, per
+  // explicit direction ("no where part or billing details should be there
+  // ... those details must come in service Record not workorder print").
+  // ESTIMATE keeps them; that's the whole point of an estimate.
+  const includePricing = docType === "ESTIMATE";
 
   return {
     docTypeLabel: docType === "ESTIMATE" ? "ESTIMATE" : "WORK ORDER",
     docNumber: jobSheet.jobSheetNumber,
     date: fmtDate(jobSheet.createdAt),
     status: jobSheet.status?.replace(/_/g, " "),
-    company,
+    company: { ...company, signedByName: docType === "WORK_ORDER" ? jobSheet.ccoName : undefined },
     party: {
       name: jobSheet.customerName,
       address: [jobSheet.address, jobSheet.city, jobSheet.state, jobSheet.pincode].filter(Boolean).join(", "),
       phone: jobSheet.phone,
       email: jobSheet.email,
     },
-    items: lineItems.map((l: any) => {
-      // Each ref is either populated ({code, description}) or a bare
-      // ObjectId (unpopulated) -- only render when actually populated.
-      const codeOf = (ref: any) => (ref && typeof ref === "object" && ref.code ? `${ref.code} — ${ref.description || ""}`.trim() : undefined);
-      const diagnosis = [
-        codeOf(l.faultCodeId) && `Fault: ${codeOf(l.faultCodeId)}`,
-        codeOf(l.symptomCodeId) && `Symptom: ${codeOf(l.symptomCodeId)}`,
-        codeOf(l.solutionId) && `Solution: ${codeOf(l.solutionId)}`,
-      ].filter(Boolean).join(" · ") || undefined;
-      return {
-        description: l.description,
-        hsnCode: l.hsnCode,
-        qty: l.quantity || 0,
-        unit: l.unit,
-        unitPrice: l.unitPrice || 0,
-        taxRate: l.taxRate || 0,
-        amount: (l.quantity || 0) * (l.unitPrice || 0) * (1 + (l.taxRate || 0) / 100),
-        diagnosis,
-      };
-    }),
-    totals: { subtotal, tax, grandTotal: subtotal + tax },
+    items: includePricing
+      ? lineItems.map((l: any) => {
+          // Each ref is either populated ({code, description}) or a bare
+          // ObjectId (unpopulated) -- only render when actually populated.
+          const codeOf = (ref: any) => (ref && typeof ref === "object" && ref.code ? `${ref.code} — ${ref.description || ""}`.trim() : undefined);
+          const diagnosis = [
+            codeOf(l.faultCodeId) && `Fault: ${codeOf(l.faultCodeId)}`,
+            codeOf(l.symptomCodeId) && `Symptom: ${codeOf(l.symptomCodeId)}`,
+            codeOf(l.solutionId) && `Solution: ${codeOf(l.solutionId)}`,
+          ].filter(Boolean).join(" · ") || undefined;
+          return {
+            description: l.description,
+            hsnCode: l.hsnCode,
+            qty: l.quantity || 0,
+            unit: l.unit,
+            unitPrice: l.unitPrice || 0,
+            taxRate: l.taxRate || 0,
+            amount: (l.quantity || 0) * (l.unitPrice || 0) * (1 + (l.taxRate || 0) / 100),
+            diagnosis,
+          };
+        })
+      : [],
+    totals: includePricing ? { subtotal, tax, grandTotal: subtotal + tax } : { subtotal: 0, tax: 0, grandTotal: 0 },
+    // Customer contact is already the party-details block above -- these
+    // notes carry Issue -> (work performed once repair is underway) ->
+    // who logged/is fixing it, in that reading order, per explicit
+    // direction on section ordering. Device identity itself moved to its
+    // own `device` field (see below) so it prints as a labelled row like
+    // the reference Service Handover Report layout, not buried in a text
+    // blob.
     notes: [
-      device && `Device: ${device}`,
+      jobSheet.title && `Issue Reported: ${jobSheet.title}`,
       jobSheet.issueDescription && `Issue: ${jobSheet.issueDescription}`,
       jobSheet.workPerformed && `Work performed: ${jobSheet.workPerformed}`,
-      // Per explicit direction: the CCO who logged the job (or the
-      // assigned engineer, once there is one) must show on the printed
-      // work order, not just the closed-job Service Record -- this is
-      // the document a customer/technician actually holds during the
-      // repair, not just at handover.
       jobSheet.ccoName && `Logged By (CCO): ${jobSheet.ccoName}`,
-      (jobSheet.assignedToName || (typeof jobSheet.assignedTo === "object" ? jobSheet.assignedTo?.name : undefined)) &&
-        `Engineer: ${jobSheet.assignedToName || jobSheet.assignedTo?.name}`,
+      engineerName && `Engineer: ${engineerName}`,
     ]
       .filter(Boolean)
       .join("\n"),
+    device: {
+      brand: brandName,
+      model: jobSheet.deviceModel,
+      imeiOrSerial: jobSheet.imeiOrSerialNumber,
+    },
     footerText:
       docType === "ESTIMATE"
         ? "This is an estimate, not a final invoice. Prices are subject to change based on actual repair findings."
@@ -147,6 +163,7 @@ export function serviceRecordToRenderData(
   );
   const serviceCharge = jobSheet.serviceCharge || 0;
   const grandTotal = materialTotal + tax + serviceCharge;
+  const brandName = (typeof jobSheet.brandId === "object" ? jobSheet.brandId?.name : undefined) || jobSheet.pendingBrandName;
 
   return {
     docTypeLabel: "SERVICE RECORD",
@@ -176,13 +193,21 @@ export function serviceRecordToRenderData(
     ],
     totals: { subtotal: materialTotal + serviceCharge, tax, grandTotal },
     notes: [
+      jobSheet.title && `Issue Reported: ${jobSheet.title}`,
       extra.ccoName && `Logged By (CCO): ${extra.ccoName}`,
       extra.technicalConsultant && `Technical Consultant: ${extra.technicalConsultant}`,
-      extra.hours && `Service Hours: ${extra.hours}`,
-      extra.hotline && `Official Hotline: ${extra.hotline}`,
     ]
       .filter(Boolean)
       .join("\n"),
+    device: {
+      brand: brandName,
+      model: jobSheet.deviceModel,
+      imeiOrSerial: jobSheet.imeiOrSerialNumber,
+    },
+    footerBand: {
+      hours: extra.hours,
+      hotline: extra.hotline,
+    },
     footerText: "This is a service record, not a tax invoice.",
   };
 }

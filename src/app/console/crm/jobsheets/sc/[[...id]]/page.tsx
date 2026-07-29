@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2, Plus, Trash2, Printer, FileText, Check } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus, Trash2, Printer, FileText, Check, X } from 'lucide-react'
 import { validateGSTIN } from '@/lib/validation/gst'
 import { StateSelect, CitySelect, PincodeInput } from '@/components/shared/LocationSelect'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
@@ -134,8 +134,27 @@ export default function SCJobSheetScreen() {
   const currentUserId: string | null = meData?.user?.id ?? null
   const currentUserName: string = meData?.user?.name ?? ''
 
-  const { data: businessData } = useSWR(businessId ? `/api/businesses/${businessId}` : null)
+  const { data: businessData, mutate: fetchBusiness } = useSWR(businessId ? `/api/businesses/${businessId}` : null)
   const defaultLabourCharge: number = businessData?.business?.defaultLabourCharge || 0
+  const savedBrands: string[] = businessData?.business?.savedBrands || []
+  const savedModels: string[] = businessData?.business?.savedModels || []
+
+  // Persists a new Brand/Model name onto Business.savedBrands/savedModels
+  // (deduped) so it shows up as a dropdown suggestion on every future
+  // workorder -- the mini-modal "add & save" flow asked for, without the
+  // shared approval-gated catalog tree (see intake screen's own comment).
+  async function saveBusinessListValue(field: 'savedBrands' | 'savedModels', value: string) {
+    if (!businessId || !value.trim()) return
+    const current: string[] = businessData?.business?.[field] || []
+    if (current.some(v => v.toLowerCase() === value.trim().toLowerCase())) return
+    const next = [...current, value.trim()]
+    await fetch(`/api/businesses/${businessId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: next }),
+    })
+    fetchBusiness()
+  }
 
   // ---------- Intake (no job yet) ----------
   const [intake, setIntake] = useState({
@@ -152,6 +171,24 @@ export default function SCJobSheetScreen() {
 
   const [creating, setCreating] = useState(false)
   const [intakeError, setIntakeError] = useState<string | null>(null)
+
+  const [addListModal, setAddListModal] = useState<null | 'savedBrands' | 'savedModels'>(null)
+  const [addListValue, setAddListValue] = useState('')
+  const [savingListValue, setSavingListValue] = useState(false)
+
+  async function submitAddListValue() {
+    if (!addListModal || !addListValue.trim()) return
+    setSavingListValue(true)
+    try {
+      await saveBusinessListValue(addListModal, addListValue.trim())
+      if (addListModal === 'savedBrands') setIntake(p => ({ ...p, brandName: addListValue.trim() }))
+      if (addListModal === 'savedModels') setIntake(p => ({ ...p, deviceModel: addListValue.trim() }))
+      setAddListModal(null)
+      setAddListValue('')
+    } finally {
+      setSavingListValue(false)
+    }
+  }
 
   async function createJobSheet(e: React.FormEvent) {
     e.preventDefault()
@@ -205,8 +242,46 @@ export default function SCJobSheetScreen() {
     }
   }, [job?._id])
 
-  const { data: bomPartsData } = useSWR(job ? '/api/service-center-bom' : null)
+  const { data: bomPartsData, mutate: fetchBomParts } = useSWR(job ? '/api/service-center-bom' : null)
   const bomParts: BOMPart[] = bomPartsData?.success ? (bomPartsData.parts || []) : []
+
+  const [addPartForLine, setAddPartForLine] = useState<number | null>(null)
+  const [newPart, setNewPart] = useState({ partName: '', hsnCode: '', rate: '', gstRate: '18', unit: 'PCS', partType: 'SPARE_PART' as BOMPart['partType'] })
+  const [savingPart, setSavingPart] = useState(false)
+  const [addPartError, setAddPartError] = useState<string | null>(null)
+
+  async function submitNewPart() {
+    if (!newPart.partName.trim() || !newPart.hsnCode.trim() || newPart.rate === '') {
+      setAddPartError('Part name, HSN code and rate are required.')
+      return
+    }
+    setSavingPart(true); setAddPartError(null)
+    try {
+      const res = await fetch('/api/service-center-bom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          partName: newPart.partName, hsnCode: newPart.hsnCode, rate: Number(newPart.rate),
+          gstRate: Number(newPart.gstRate) || 0, unit: newPart.unit, partType: newPart.partType,
+        }),
+      })
+      const d = await res.json()
+      if (!res.ok || d.success === false) throw new Error(d.error || 'Failed to add part')
+      if (addPartForLine !== null) {
+        updateLine(addPartForLine, {
+          description: d.part.partName, unitPrice: d.part.rate, taxRate: d.part.gstRate,
+          unit: d.part.unit, serviceCenterBOMId: d.part._id,
+        })
+      }
+      fetchBomParts()
+      setAddPartForLine(null)
+      setNewPart({ partName: '', hsnCode: '', rate: '', gstRate: '18', unit: 'PCS', partType: 'SPARE_PART' })
+    } catch (err: any) {
+      setAddPartError(err.message || 'Something went wrong')
+    } finally {
+      setSavingPart(false)
+    }
+  }
 
   const { data: solutionsData, mutate: fetchSolutions } = useSWR(businessId ? `/api/solutions?businessId=${businessId}` : null)
   const solutions: Solution[] = solutionsData?.success ? (solutionsData.solutions || []) : (solutionsData?.solutions || [])
@@ -463,11 +538,27 @@ export default function SCJobSheetScreen() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className={labelCls}>Brand</label>
-                    <input value={intake.brandName} onChange={e => setIntake(p => ({ ...p, brandName: e.target.value }))} className={inputCls} placeholder="e.g. Samsung" />
+                    <div className="flex gap-1">
+                      <input list="sc-brand-list" value={intake.brandName} onChange={e => setIntake(p => ({ ...p, brandName: e.target.value }))} className={inputCls} placeholder="e.g. Samsung" />
+                      <datalist id="sc-brand-list">
+                        {savedBrands.map(b => <option key={b} value={b} />)}
+                      </datalist>
+                      <button type="button" title="Add new brand" onClick={() => { setAddListModal('savedBrands'); setAddListValue('') }} className="shrink-0 w-7 h-7 flex items-center justify-center rounded-control border border-border text-ink-3 hover:text-accent hover:border-accent">
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <label className={labelCls}>Model</label>
-                    <input value={intake.deviceModel} onChange={e => setIntake(p => ({ ...p, deviceModel: e.target.value }))} className={inputCls} placeholder="e.g. Galaxy M14" />
+                    <div className="flex gap-1">
+                      <input list="sc-model-list" value={intake.deviceModel} onChange={e => setIntake(p => ({ ...p, deviceModel: e.target.value }))} className={inputCls} placeholder="e.g. Galaxy M14" />
+                      <datalist id="sc-model-list">
+                        {savedModels.map(m => <option key={m} value={m} />)}
+                      </datalist>
+                      <button type="button" title="Add new model" onClick={() => { setAddListModal('savedModels'); setAddListValue('') }} className="shrink-0 w-7 h-7 flex items-center justify-center rounded-control border border-border text-ink-3 hover:text-accent hover:border-accent">
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -496,6 +587,25 @@ export default function SCJobSheetScreen() {
             </div>
           </div>
         </form>
+
+        {addListModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setAddListModal(null)}>
+            <div className="bg-surface border border-border rounded-card shadow-card-lg w-full max-w-sm p-5 space-y-3" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-ink">{addListModal === 'savedBrands' ? 'Add New Brand' : 'Add New Model'}</h3>
+                <button onClick={() => setAddListModal(null)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
+              </div>
+              <div>
+                <label className={labelCls}>{addListModal === 'savedBrands' ? 'Brand Name' : 'Model Name'}</label>
+                <input autoFocus value={addListValue} onChange={e => setAddListValue(e.target.value)} className={inputCls} placeholder={addListModal === 'savedBrands' ? 'e.g. Samsung' : 'e.g. Galaxy M14'} />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="secondary" size="sm" onClick={() => setAddListModal(null)}>Cancel</Button>
+                <Button size="sm" onClick={submitAddListValue} disabled={savingListValue} icon={savingListValue ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save &amp; Use</Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -508,7 +618,6 @@ export default function SCJobSheetScreen() {
   const total = lineItems.reduce((sum, l) => sum + lineTotal(l), 0)
   const isOpen = job.status !== 'CLOSED' && job.status !== 'CANCELLED'
   const inRepair = job.status === 'REPAIR_STARTED' || job.status === 'REPAIR_IN_PROGRESS'
-  const showActionBar = isOpen && job.status !== 'REPAIR_COMPLETED'
   const tat = tatLabel(job.createdAt, job.completedAt)
 
   // ---------- In-progress / closure screen (same route, same component) ----------
@@ -519,21 +628,43 @@ export default function SCJobSheetScreen() {
         description={`${job.customerName} — ${[job.product, job.deviceModel].filter(Boolean).join(' · ') || 'Device'}`}
         actions={
           <>
-            <Button variant="secondary" onClick={() => router.push('/console/crm/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
-            <Button variant="secondary" onClick={() => router.push(`/print/jobsheets/${job._id}`)} icon={<Printer className="w-4 h-4" />}>Print Workorder</Button>
+            <Button variant="secondary" size="sm" onClick={() => router.push('/console/crm/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
+            <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}`)} icon={<Printer className="w-4 h-4" />}>Print Workorder</Button>
             {inRepair && (
-              <Button variant="secondary" onClick={() => router.push(`/print/jobsheets/${job._id}?doc=estimate`)} icon={<FileText className="w-4 h-4" />}>Print Estimate</Button>
+              <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}?doc=estimate`)} icon={<FileText className="w-4 h-4" />}>Print Estimate</Button>
             )}
             {(job.status === 'REPAIR_COMPLETED' || job.status === 'CLOSED') && (
               <>
-                <Button variant="secondary" onClick={() => router.push(`/print/jobsheets/${job._id}/service-record`)} icon={<FileText className="w-4 h-4" />}>Service Order</Button>
+                <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}/service-record`)} icon={<FileText className="w-4 h-4" />}>Service Order</Button>
                 {job.invoiceId && (
-                  <Button variant="secondary" onClick={() => router.push(`/console/crm/invoices/${job.invoiceId}`)} icon={<FileText className="w-4 h-4" />}>Invoice</Button>
+                  <Button variant="secondary" size="sm" onClick={() => router.push(`/console/crm/invoices/${job.invoiceId}`)} icon={<FileText className="w-4 h-4" />}>Invoice</Button>
                 )}
               </>
             )}
+            {/* Every primary action lives up here now, not a separate
+                bottom action bar -- per explicit direction. Editing
+                (Save/parts) only makes sense once repair has actually
+                started; see the Parts & Service Lines gate below, which
+                is now job.status !== 'CREATED' instead of just isOpen. */}
+            {isOpen && job.status !== 'CREATED' && (
+              <Button variant="secondary" size="sm" onClick={saveLineItems} disabled={saving}>Save</Button>
+            )}
+            {job.status === 'PART_PENDING' && (
+              <Button size="sm" onClick={() => transition('resume-repair')} disabled={saving}>Resume Repair</Button>
+            )}
+            {inRepair && (
+              <Button variant="secondary" size="sm" onClick={() => transition('part-pending')} disabled={saving}>Mark Part Pending</Button>
+            )}
+            {inRepair && (
+              <Button size="sm" onClick={completeAndInvoice} disabled={saving}>Complete Repair &amp; Invoice</Button>
+            )}
             {job.status === 'CREATED' && (
-              <Button onClick={proceedForRepair} disabled={saving}>Proceed for Repair</Button>
+              <Button size="sm" onClick={proceedForRepair} disabled={saving}>Proceed for Repair</Button>
+            )}
+            {isOpen && (
+              <Button variant="secondary" size="sm" onClick={() => { if (confirm('Cancel this job sheet?')) transition('cancel', { cancelReason: 'Cancelled by service center' }) }} disabled={saving} className="text-danger">
+                Cancel Job Sheet
+              </Button>
             )}
           </>
         }
@@ -541,7 +672,11 @@ export default function SCJobSheetScreen() {
 
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <MilestoneStepper job={job} />
-        {tat && <span className="text-xs text-ink-3">TAT: <span className="tabular text-ink-2 font-medium">{tat}</span>{!job.completedAt && ' (running)'}</span>}
+        {tat && (
+          <Badge tone={job.completedAt ? 'success' : 'warning'}>
+            TAT: {tat}{!job.completedAt && ' (running)'}
+          </Badge>
+        )}
       </div>
 
       {actionError && <div className="mb-6 text-sm text-danger bg-danger-soft border border-danger/20 rounded-control px-4 py-3">{actionError}</div>}
@@ -564,13 +699,20 @@ export default function SCJobSheetScreen() {
         {job.ccoName && <p className="text-xs text-ink-3 mt-2">Logged by (CCO): {job.ccoName}</p>}
       </Card>
 
-      {isOpen && (
+      {isOpen && job.status !== 'CREATED' && (
         <Card className="overflow-hidden mb-6">
           <div className="px-5 py-3 border-b border-border flex items-center justify-between flex-wrap gap-2">
             <h3 className="text-sm font-semibold text-ink">Parts &amp; Service Lines</h3>
             <div className="flex gap-2">
               <Button variant="secondary" size="sm" onClick={addLabourCharge} icon={<Plus className="w-4 h-4" />}>Add Service/Labour Charge</Button>
               <Button variant="secondary" size="sm" onClick={addLine} icon={<Plus className="w-4 h-4" />}>Add Line</Button>
+              <Button
+                variant="secondary" size="sm"
+                onClick={() => { setAddPartForLine(lineItems.length); addLine(); setAddPartError(null) }}
+                icon={<Plus className="w-4 h-4" />}
+              >
+                Add New Part to BOM
+              </Button>
             </div>
           </div>
           {bomParts.length === 0 && (
@@ -657,28 +799,6 @@ export default function SCJobSheetScreen() {
         </Card>
       )}
 
-      {isOpen && (
-        <Card className="p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={saveLineItems} disabled={saving}>Save</Button>
-            {job.status === 'PART_PENDING' && (
-              <Button size="sm" onClick={() => transition('resume-repair')} disabled={saving}>Resume Repair</Button>
-            )}
-            {inRepair && (
-              <Button variant="secondary" size="sm" onClick={() => transition('part-pending')} disabled={saving}>Mark Part Pending</Button>
-            )}
-            {inRepair && (
-              <Button size="sm" onClick={completeAndInvoice} disabled={saving}>Complete Repair &amp; Generate Invoice</Button>
-            )}
-            {job.status !== 'CANCELLED' && (
-              <Button variant="secondary" size="sm" onClick={() => { if (confirm('Cancel this job sheet?')) transition('cancel', { cancelReason: 'Cancelled by service center' }) }} disabled={saving} className="ml-auto text-danger">
-                Cancel Job Sheet
-              </Button>
-            )}
-          </div>
-        </Card>
-      )}
-
       {job.status === 'REPAIR_COMPLETED' && (
         <Card className="p-5 mt-6">
           <h3 className="text-sm font-semibold text-ink mb-3">Handover &amp; Close</h3>
@@ -705,6 +825,54 @@ export default function SCJobSheetScreen() {
         <Card className="p-5 mt-6 text-center">
           <p className="text-sm text-ink-2">This job sheet is closed.</p>
         </Card>
+      )}
+
+      {addPartForLine !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setAddPartForLine(null)}>
+          <div className="bg-surface border border-border rounded-card shadow-card-lg w-full max-w-md p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-ink">Add New Part to BOM</h3>
+              <button onClick={() => setAddPartForLine(null)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
+            </div>
+            {addPartError && <div className="text-xs text-danger bg-danger-soft border border-danger/20 rounded-control px-3 py-2">{addPartError}</div>}
+            <div>
+              <label className={labelCls}>Part / Material Name *</label>
+              <input value={newPart.partName} onChange={e => setNewPart(p => ({ ...p, partName: e.target.value }))} className={inputCls} placeholder="e.g. iPhone 13 Display Assembly" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className={labelCls}>HSN Code *</label>
+                <input value={newPart.hsnCode} onChange={e => setNewPart(p => ({ ...p, hsnCode: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Unit</label>
+                <input value={newPart.unit} onChange={e => setNewPart(p => ({ ...p, unit: e.target.value }))} className={inputCls} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className={labelCls}>Rate *</label>
+                <input type="number" min={0} value={newPart.rate} onChange={e => setNewPart(p => ({ ...p, rate: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Tax %</label>
+                <input type="number" min={0} value={newPart.gstRate} onChange={e => setNewPart(p => ({ ...p, gstRate: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Type</label>
+                <select value={newPart.partType} onChange={e => setNewPart(p => ({ ...p, partType: e.target.value as BOMPart['partType'] }))} className={inputCls}>
+                  <option value="SPARE_PART">Spare Part</option>
+                  <option value="CONSUMABLE">Consumable</option>
+                  <option value="LABOUR">Labour</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" size="sm" onClick={() => setAddPartForLine(null)}>Cancel</Button>
+              <Button size="sm" onClick={submitNewPart} disabled={savingPart} icon={savingPart ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save to BOM</Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
