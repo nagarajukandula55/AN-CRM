@@ -117,11 +117,14 @@ export function jobSheetToRenderData(
       : [],
     totals: includePricing ? { subtotal, tax, grandTotal: subtotal + tax } : { subtotal: 0, tax: 0, grandTotal: 0 },
     // Customer contact is already the party-details block above -- these
-    // notes carry Device -> Issue -> (work performed once repair is
-    // underway) -> who logged/is fixing it, in that reading order, per
-    // explicit direction on section ordering.
+    // notes carry Issue -> (work performed once repair is underway) ->
+    // who logged/is fixing it, in that reading order, per explicit
+    // direction on section ordering. Device identity itself moved to its
+    // own `device` field (see below) so it prints as a labelled row like
+    // the reference Service Handover Report layout, not buried in a text
+    // blob.
     notes: [
-      device && `Device: ${device}`,
+      jobSheet.title && `Issue Reported: ${jobSheet.title}`,
       jobSheet.issueDescription && `Issue: ${jobSheet.issueDescription}`,
       jobSheet.workPerformed && `Work performed: ${jobSheet.workPerformed}`,
       jobSheet.ccoName && `Logged By (CCO): ${jobSheet.ccoName}`,
@@ -129,6 +132,11 @@ export function jobSheetToRenderData(
     ]
       .filter(Boolean)
       .join("\n"),
+    device: {
+      brand: brandName,
+      model: jobSheet.deviceModel,
+      imeiOrSerial: jobSheet.imeiOrSerialNumber,
+    },
     footerText:
       docType === "ESTIMATE"
         ? "This is an estimate, not a final invoice. Prices are subject to change based on actual repair findings."
@@ -155,6 +163,7 @@ export function serviceRecordToRenderData(
   );
   const serviceCharge = jobSheet.serviceCharge || 0;
   const grandTotal = materialTotal + tax + serviceCharge;
+  const brandName = (typeof jobSheet.brandId === "object" ? jobSheet.brandId?.name : undefined) || jobSheet.pendingBrandName;
 
   return {
     docTypeLabel: "SERVICE RECORD",
@@ -184,13 +193,21 @@ export function serviceRecordToRenderData(
     ],
     totals: { subtotal: materialTotal + serviceCharge, tax, grandTotal },
     notes: [
+      jobSheet.title && `Issue Reported: ${jobSheet.title}`,
       extra.ccoName && `Logged By (CCO): ${extra.ccoName}`,
       extra.technicalConsultant && `Technical Consultant: ${extra.technicalConsultant}`,
-      extra.hours && `Service Hours: ${extra.hours}`,
-      extra.hotline && `Official Hotline: ${extra.hotline}`,
     ]
       .filter(Boolean)
       .join("\n"),
+    device: {
+      brand: brandName,
+      model: jobSheet.deviceModel,
+      imeiOrSerial: jobSheet.imeiOrSerialNumber,
+    },
+    footerBand: {
+      hours: extra.hours,
+      hotline: extra.hotline,
+    },
     footerText: "This is a service record, not a tax invoice.",
   };
 }

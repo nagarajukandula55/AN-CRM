@@ -84,7 +84,31 @@ function renderBlock(
         </div>
       );
 
-    case "party-details":
+    case "party-details": {
+      // Workorder/Service Record borrow the reference service-report
+      // layout's bordered label:value row style instead of a plain
+      // address block, and add the device identity as its own row (was
+      // previously buried inside the free-text notes block).
+      const isServiceStyle = data.docTypeLabel === "WORK ORDER" || data.docTypeLabel === "SERVICE RECORD";
+      if (isServiceStyle) {
+        const Row = ({ label, value }: { label: string; value?: string }) =>
+          value ? (
+            <div className="flex border-b border-gray-100 py-1.5 text-xs">
+              <span className="w-32 shrink-0 text-gray-400">{label}</span>
+              <span className="text-gray-800">{value}</span>
+            </div>
+          ) : null;
+        return (
+          <div>
+            <Row label="Customer Name" value={data.party.name} />
+            <Row label="Contact No." value={data.party.phone} />
+            {data.party.address && <Row label="Address" value={data.party.address} />}
+            {data.device?.brand && <Row label="Brand" value={data.device.brand} />}
+            {data.device?.model && <Row label="Model" value={data.device.model} />}
+            {data.device?.imeiOrSerial && <Row label="IMEI / Serial No." value={data.device.imeiOrSerial} />}
+          </div>
+        );
+      }
       return (
         <div>
           <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">To</p>
@@ -95,12 +119,13 @@ function renderBlock(
           {data.party.gstin && <p className="text-xs text-gray-500">GSTIN: {data.party.gstin}</p>}
         </div>
       );
+    }
 
     case "items-table":
       return (
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="border-b-2 text-left" style={{ borderColor: accent }}>
+            <tr className="border-b-2 text-left bg-gray-50" style={{ borderColor: accent }}>
               <th className="py-2 pr-2">Description</th>
               <th className="py-2 pr-2">HSN</th>
               <th className="py-2 pr-2 text-right">Qty</th>
@@ -127,7 +152,11 @@ function renderBlock(
         </table>
       );
 
-    case "totals":
+    case "totals": {
+      // Service Record borrows the reference report's bold, highlighted
+      // "Paid Amount" line instead of a plain "Total" -- this document
+      // represents money actually collected, not just a running total.
+      const isServiceRecord = data.docTypeLabel === "SERVICE RECORD";
       return (
         <div className="flex justify-end">
           <div className="w-60 text-xs space-y-1">
@@ -136,12 +165,13 @@ function renderBlock(
             {!!data.totals.discount && (
               <div className="flex justify-between"><span className="text-gray-500">Discount</span><span>-{fmtMoney(data.totals.discount)}</span></div>
             )}
-            <div className="flex justify-between font-semibold text-sm border-t pt-1 mt-1" style={{ borderColor: accent }}>
-              <span>Total</span><span>{fmtMoney(data.totals.grandTotal)}</span>
+            <div className="flex justify-between font-semibold border-t pt-1 mt-1" style={{ borderColor: accent, fontSize: isServiceRecord ? "0.95rem" : undefined }}>
+              <span>{isServiceRecord ? "Paid Amount" : "Total"}</span><span>{fmtMoney(data.totals.grandTotal)}</span>
             </div>
           </div>
         </div>
       );
+    }
 
     case "terms": {
       // Was `config.text || data.notes || company.termsAndConditions` --
@@ -150,6 +180,25 @@ function renderBlock(
       // business Terms & Conditions text never rendered at all. These are
       // two different things -- render both, independently, when present.
       const termsText = (block.config?.text as string) || data.company?.termsAndConditions;
+      const isServiceStyle = data.docTypeLabel === "WORK ORDER" || data.docTypeLabel === "SERVICE RECORD";
+      if (isServiceStyle) {
+        return (
+          <div className="space-y-3">
+            {data.notes && (
+              <div className="border border-gray-200 rounded p-3">
+                <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Notes</p>
+                <p className="text-xs text-gray-600 whitespace-pre-line">{data.notes}</p>
+              </div>
+            )}
+            {termsText && (
+              <div className="border border-gray-200 rounded p-3">
+                <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Terms &amp; Conditions</p>
+                <p className="text-[11px] leading-relaxed text-gray-600 whitespace-pre-line">{termsText}</p>
+              </div>
+            )}
+          </div>
+        );
+      }
       return (
         <div className="space-y-3">
           {data.notes && (
@@ -195,6 +244,42 @@ function renderBlock(
           </div>
         </div>
       );
+      // Footer strip borrowed from the reference service-report layout --
+      // shown below the signature line(s) on Workorder/Service Record
+      // prints only, using whatever address/phone/hours/hotline this
+      // document actually has (footerBand for hours/hotline, company for
+      // address/phone -- see adapters.ts).
+      const footerBandItems = [
+        data.company.address,
+        data.company.phone && `Phone: ${data.company.phone}`,
+        data.footerBand?.hours && `Service Hours: ${data.footerBand.hours}`,
+        data.footerBand?.hotline && `Hotline: ${data.footerBand.hotline}`,
+      ].filter(Boolean) as string[];
+      const footerBand = footerBandItems.length > 0 && (
+        <div className="mt-6 pt-3 border-t border-gray-200 text-[10px] text-gray-400">
+          {footerBandItems.join("  •  ")}
+        </div>
+      );
+      if (data.docTypeLabel === "WORK ORDER") {
+        return (
+          <div>
+            <p className="text-[11px] font-medium text-gray-700 mb-4">Signature constitutes agreement to the above terms.</p>
+            <div className="flex justify-between">
+              {data.company.signedByName ? issuerBlock : customerBlock}
+              {data.company.signedByName ? customerBlock : issuerBlock}
+            </div>
+            {footerBand}
+          </div>
+        );
+      }
+      if (data.docTypeLabel === "SERVICE RECORD") {
+        return (
+          <div>
+            <p className="text-[11px] font-medium text-gray-700 mb-4">Signature constitutes agreement to the above terms. <span className="inline-block w-56 border-b border-gray-400 align-middle ml-2" /></p>
+            {footerBand}
+          </div>
+        );
+      }
       return (
         <div className="flex justify-between pt-8">
           {data.company.signedByName ? issuerBlock : customerBlock}

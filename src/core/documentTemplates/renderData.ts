@@ -63,4 +63,22 @@ export interface DocumentRenderData {
   };
   notes?: string;
   footerText?: string;
+  /** Device identity, shown as its own labelled row on Workorder/Service
+   * Record prints (borrowed from the OnePlus-style service-report layout
+   * the business asked us to match) instead of being buried in the
+   * free-text notes block. */
+  device?: {
+    model?: string;
+    brand?: string;
+    imeiOrSerial?: string;
+  };
+  /** Rendered as a bordered footer strip (address/phone/hours/hotline) at
+   * the bottom of Workorder/Service Record prints, matching the reference
+   * layout's service-center footer band. */
+  footerBand?: {
+    address?: string;
+    phone?: string;
+    hours?: string;
+    hotline?: string;
+  };
 }
