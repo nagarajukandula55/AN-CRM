@@ -153,6 +153,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-intg", label: "Integrations", route: "/console/integrations", icon: "Plug" },
       { key: "admin-status", label: "System Status", route: "/console/system-status", icon: "Activity" },
       { key: "admin-modules", label: "Modules", route: "/console/modules", icon: "Box" },
+      { key: "admin-module-builder", label: "Module Builder", route: "/console/module-builder", icon: "LayoutTemplate" },
       { key: "admin-settings", label: "Settings", route: "/console/settings", icon: "Settings" },
       { key: "admin-plan", label: "Plan & Billing", route: "/console/plan", icon: "Receipt" },
     ]},
