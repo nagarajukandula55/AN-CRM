@@ -62,6 +62,15 @@ export const VENDOR_MODULE_KEYS = [
   // Appointment/Workorder create/convert forms.
   "brands",
   "device_models",
+  // Per-business Settings page (Terms & Conditions, Device Types,
+  // Inventory Serialization/GST toggles, default labour charge, etc.) --
+  // missing here meant a vendor Owner/Manager could NEVER be granted
+  // SETTINGS.VIEW, so the sidebar's "admin-settings" entry stayed
+  // invisible no matter what was toggled in Business > Modules (that
+  // toggle only controls a business's own opt-in/opt-out, not whether
+  // the module can be granted to a vendor role at all). Reported live,
+  // repeatedly, as "Settings not in sidebar" for a Service Center account.
+  "settings",
 ] as const;
 
 const ALL_ACTION_KEYS = STANDARD_ACTIONS.map((a) => a.key);

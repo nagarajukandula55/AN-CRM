@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { TrendingUp, FileText, Clock, Truck, BarChart3, ArrowRight, Users2, ClipboardList } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -50,6 +51,7 @@ const QUICK_ACTIONS: { href: string; icon: React.ElementType; label: string; des
 ]
 
 export default function AdminDashboard() {
+  const router = useRouter()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [deals, setDeals] = useState<Deal[]>([])
   const [openWorkorders, setOpenWorkorders] = useState<number | null>(null)
@@ -67,6 +69,15 @@ export default function AdminDashboard() {
         const activeBiz = (meData?.businesses ?? []).find((b: any) => b._id === user?.activeBusinessId)
         const mode: OperatingMode = activeBiz?.operatingMode || ''
         setOperatingMode(mode)
+        // SC is workorder-first and single-login by spec (see the SC
+        // sidebar-collapse comment in api/ui/sidebar/route.ts) -- CRM
+        // Overview IS its dashboard, not a separate generic admin home,
+        // per explicit direction. Redirect immediately rather than
+        // rendering this generic dashboard first.
+        if (mode === 'SC') {
+          router.replace('/console/crm')
+          return
+        }
 
         const [invRes, dealsRes] = await Promise.all([
           fetch('/api/sales/invoices'),

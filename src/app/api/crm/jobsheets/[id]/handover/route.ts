@@ -10,6 +10,7 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
 import CrmCall from "@/models/CrmCall";
+import SalesInvoice from "@/models/SalesInvoice";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
@@ -66,6 +67,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     jobSheet.handedOverBy = new mongoose.Types.ObjectId(userId) as any;
     jobSheet.status = "CLOSED";
     await jobSheet.save();
+
+    // The SalesInvoice generated at close-time (see close/route.ts) was
+    // left at "SENT" forever -- handover never touched it, so a job could
+    // be fully paid and closed and still never count as revenue anywhere
+    // (CRM Overview's /api/crm/revenue only sums status: "PAID"). Payment
+    // is actually collected right here, so this is the one place that
+    // can correctly mark the invoice paid.
+    if (jobSheet.invoiceId) {
+      await SalesInvoice.findByIdAndUpdate(jobSheet.invoiceId, {
+        $set: { status: "PAID", paidAt: new Date(), paidAmount: Number(paymentCollected), paymentMode },
+      });
+    }
 
     let closedCall = null;
     if (jobSheet.callId) {
