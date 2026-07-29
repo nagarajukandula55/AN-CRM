@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
-import { ArrowLeft, Plus, Printer } from 'lucide-react'
+import { ArrowLeft, Plus, Printer, Search } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -25,8 +25,12 @@ import { STATUSES, STATUS_TONE, OPEN_STATUSES, ageingDays, fmtDate, tatLabel, ty
 export function SCWorkordersView() {
   const router = useRouter()
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [search, setSearch] = useState('')
 
-  const qs = statusFilter !== 'ALL' ? `?status=${statusFilter}` : ''
+  const params = new URLSearchParams()
+  if (statusFilter !== 'ALL') params.set('status', statusFilter)
+  if (search.trim()) params.set('search', search.trim())
+  const qs = params.toString() ? `?${params.toString()}` : ''
   const { data, isLoading: loading, error: swrError } = useSWR(`/api/crm/jobsheets${qs}`, { keepPreviousData: true })
   const jobSheets: JobSheet[] = data?.success !== false ? (data?.jobSheets || []) : []
   const error = swrError ? (swrError.message || 'Could not load workorders.') : (data?.success === false ? (data.message || 'Failed to load workorders') : null)
@@ -58,6 +62,16 @@ export function SCWorkordersView() {
         </div>
       )}
 
+      <div className="relative mb-4 max-w-sm">
+        <Search className="w-4 h-4 text-ink-3 absolute left-3 top-1/2 -translate-y-1/2" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, contact no. or IMEI…"
+          className="w-full bg-surface border border-border rounded-control pl-9 pr-3 py-1.5 text-xs text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+        />
+      </div>
+
       <div className="flex gap-1 flex-wrap mb-6">
         {STATUSES.map((s) => (
           <Button key={s} variant={statusFilter === s ? 'primary' : 'secondary'} size="sm" onClick={() => setStatusFilter(s)}>
@@ -81,7 +95,7 @@ export function SCWorkordersView() {
           </thead>
           <tbody className="divide-y divide-border">
             {jobSheets.length === 0 ? (
-              <tr><td colSpan={7}><EmptyState kind="empty" title="No workorders found" description="Add your first workorder to get started." /></td></tr>
+              <tr><td colSpan={7}><EmptyState kind={search.trim() ? 'search' : 'empty'} title="No workorders found" description={search.trim() ? 'Try a different name, contact number, or IMEI.' : 'Add your first workorder to get started.'} /></td></tr>
             ) : (
               jobSheets.map((js) => {
                 const days = ageingDays(js.createdAt)

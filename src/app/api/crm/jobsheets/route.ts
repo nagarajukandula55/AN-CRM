@@ -71,6 +71,8 @@ export async function GET(req: NextRequest) {
         { customerName: { $regex: search, $options: "i" } },
         { jobSheetNumber: { $regex: search, $options: "i" } },
         { title: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+        { imeiOrSerialNumber: { $regex: search, $options: "i" } },
       ];
     }
 

@@ -748,6 +748,15 @@ const BusinessSchema = new mongoose.Schema(
     // aren't suddenly left with an empty dropdown until they configure this.
     enabledDeviceCategories: [{ type: String, enum: DEVICE_CATEGORIES }],
 
+    // Free-text Brand/Model names this business has typed in on a workorder
+    // intake before -- lets the "add new" mini-modal on that screen persist
+    // a name so it shows up as a dropdown suggestion next time, without
+    // requiring the shared, approval-gated Brand/Series/DeviceModel catalog
+    // tree (see the SC intake screen's own comment on why that tree was
+    // dropped in favour of plain text for this operating mode).
+    savedBrands: [{ type: String, trim: true }],
+    savedModels: [{ type: String, trim: true }],
+
     pincode: {
       type: String,
       default: "",
