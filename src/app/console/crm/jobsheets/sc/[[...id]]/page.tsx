@@ -363,110 +363,120 @@ export default function SCJobSheetScreen() {
           description="This same screen carries the job through repair to closure."
           actions={<Button variant="secondary" onClick={() => router.push('/console/crm/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>}
         />
-        <form onSubmit={createJobSheet} className="space-y-4 max-w-4xl">
+        <form onSubmit={createJobSheet} className="space-y-4">
           {intakeError && <div className="text-sm text-danger bg-danger-soft border border-danger/20 rounded-control px-4 py-3">{intakeError}</div>}
 
-          <Card className="p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-ink">Customer</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Customer Name *</label>
-                <input required value={intake.customerName} onChange={e => setIntake(p => ({ ...p, customerName: e.target.value }))} className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Contact No *</label>
-                <input required type="tel" value={intake.phone} onChange={e => setIntake(p => ({ ...p, phone: e.target.value }))} className={inputCls} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Company <span className="text-ink-3 font-normal">(B2B customer)</span></label>
-                <input value={intake.company} onChange={e => setIntake(p => ({ ...p, company: e.target.value }))} className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>GSTIN</label>
-                <input value={intake.gstin} onChange={e => setIntake(p => ({ ...p, gstin: e.target.value.toUpperCase() }))} maxLength={15} className={`${inputCls} font-mono`} placeholder="22AAAAA0000A1Z5" />
-              </div>
-            </div>
-          </Card>
+          {/* Two columns so the screen actually uses its width instead of
+              reading as one narrow stacked form with empty space beside it
+              -- per explicit direction. Customer+Address (who/where) on the
+              left, Device+Issue (what's being fixed) on the right. */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            <div className="space-y-4">
+              <Card className="p-5 space-y-3">
+                <h3 className="text-sm font-semibold text-ink">Customer</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Customer Name *</label>
+                    <input required value={intake.customerName} onChange={e => setIntake(p => ({ ...p, customerName: e.target.value }))} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Contact No *</label>
+                    <input required type="tel" value={intake.phone} onChange={e => setIntake(p => ({ ...p, phone: e.target.value }))} className={inputCls} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Company <span className="text-ink-3 font-normal">(B2B customer)</span></label>
+                    <input value={intake.company} onChange={e => setIntake(p => ({ ...p, company: e.target.value }))} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>GSTIN</label>
+                    <input value={intake.gstin} onChange={e => setIntake(p => ({ ...p, gstin: e.target.value.toUpperCase() }))} maxLength={15} className={`${inputCls} font-mono`} placeholder="22AAAAA0000A1Z5" />
+                  </div>
+                </div>
+              </Card>
 
-          <Card className="p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-ink">Address</h3>
-            <div>
-              <label className={labelCls}>Address</label>
-              <input value={intake.address} onChange={e => setIntake(p => ({ ...p, address: e.target.value }))} className={inputCls} />
+              <Card className="p-5 space-y-3">
+                <h3 className="text-sm font-semibold text-ink">Address</h3>
+                <div>
+                  <label className={labelCls}>Address</label>
+                  <input value={intake.address} onChange={e => setIntake(p => ({ ...p, address: e.target.value }))} className={inputCls} />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className={labelCls}>Pincode</label>
+                    <PincodeInput
+                      value={intake.pincode}
+                      onChange={(value) => setIntake(p => ({ ...p, pincode: value }))}
+                      onResolved={({ state, city }) => setIntake(p => ({ ...p, state: p.state || state, city: p.city || city }))}
+                      placeholder="400001"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>State</label>
+                    <StateSelect value={intake.state} onChange={(value) => setIntake(p => ({ ...p, state: value, city: '' }))} className={`${inputCls} appearance-none`} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>City</label>
+                    <CitySelect value={intake.city} state={intake.state} onChange={(value) => setIntake(p => ({ ...p, city: value }))} className={inputCls} />
+                  </div>
+                </div>
+              </Card>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className={labelCls}>Pincode</label>
-                <PincodeInput
-                  value={intake.pincode}
-                  onChange={(value) => setIntake(p => ({ ...p, pincode: value }))}
-                  onResolved={({ state, city }) => setIntake(p => ({ ...p, state: p.state || state, city: p.city || city }))}
-                  placeholder="400001"
-                  className={inputCls}
+
+            <div className="space-y-4">
+              <Card className="p-5 space-y-3">
+                <h3 className="text-sm font-semibold text-ink">Device</h3>
+                <div>
+                  <label className={labelCls}>Device Type *</label>
+                  <select
+                    required
+                    value={intake.deviceCategory}
+                    onChange={e => setIntake(p => ({ ...p, deviceCategory: e.target.value as DeviceCategory | '', brandId: '', pendingBrandName: '', seriesId: '', deviceModelId: '', deviceModel: '', variantId: '' }))}
+                    className={inputCls}
+                  >
+                    <option value="">Select device type…</option>
+                    {DEVICE_CATEGORIES.map(c => <option key={c} value={c}>{DEVICE_CATEGORY_LABELS[c]}</option>)}
+                  </select>
+                </div>
+                <DeviceCatalogFields
+                  businessId={businessId}
+                  deviceCategory={intake.deviceCategory}
+                  brands={brands}
+                  value={{ brandId: intake.brandId, pendingBrandName: intake.pendingBrandName, seriesId: intake.seriesId, deviceModelId: intake.deviceModelId, deviceModel: intake.deviceModel, variantId: intake.variantId }}
+                  onChange={(patch) => setIntake(p => ({ ...p, ...patch }))}
+                  inputCls={inputCls}
+                  labelCls={labelCls}
                 />
-              </div>
-              <div>
-                <label className={labelCls}>State</label>
-                <StateSelect value={intake.state} onChange={(value) => setIntake(p => ({ ...p, state: value, city: '' }))} className={`${inputCls} appearance-none`} />
-              </div>
-              <div>
-                <label className={labelCls}>City</label>
-                <CitySelect value={intake.city} state={intake.state} onChange={(value) => setIntake(p => ({ ...p, city: value }))} className={inputCls} />
-              </div>
-            </div>
-          </Card>
+                <p className="text-xs text-ink-3">Brand/Model not in the list yet? Use "Request to add" above — added straight to your shop's own catalog, no approval needed.</p>
+                <div>
+                  <label className={labelCls}>IMEI / Serial Number *</label>
+                  <input required value={intake.imeiOrSerialNumber} onChange={e => setIntake(p => ({ ...p, imeiOrSerialNumber: e.target.value }))} className={inputCls} />
+                </div>
+              </Card>
 
-          <Card className="p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-ink">Device</h3>
-            <div>
-              <label className={labelCls}>Device Type *</label>
-              <select
-                required
-                value={intake.deviceCategory}
-                onChange={e => setIntake(p => ({ ...p, deviceCategory: e.target.value as DeviceCategory | '', brandId: '', pendingBrandName: '', seriesId: '', deviceModelId: '', deviceModel: '', variantId: '' }))}
-                className={inputCls}
-              >
-                <option value="">Select device type…</option>
-                {DEVICE_CATEGORIES.map(c => <option key={c} value={c}>{DEVICE_CATEGORY_LABELS[c]}</option>)}
-              </select>
+              <Card className="p-5 space-y-3">
+                <h3 className="text-sm font-semibold text-ink">Issue</h3>
+                <div>
+                  <label className={labelCls}>Fault in Device *</label>
+                  <textarea required rows={3} value={intake.title} onChange={e => setIntake(p => ({ ...p, title: e.target.value }))} className={`${inputCls} resize-none`} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Remark</label>
+                    <input value={intake.remark} onChange={e => setIntake(p => ({ ...p, remark: e.target.value }))} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>CCO Name</label>
+                    <input value={intake.ccoName} onChange={e => setIntake(p => ({ ...p, ccoName: e.target.value }))} className={inputCls} />
+                  </div>
+                </div>
+              </Card>
             </div>
-            <DeviceCatalogFields
-              businessId={businessId}
-              deviceCategory={intake.deviceCategory}
-              brands={brands}
-              value={{ brandId: intake.brandId, pendingBrandName: intake.pendingBrandName, seriesId: intake.seriesId, deviceModelId: intake.deviceModelId, deviceModel: intake.deviceModel, variantId: intake.variantId }}
-              onChange={(patch) => setIntake(p => ({ ...p, ...patch }))}
-              inputCls={inputCls}
-              labelCls={labelCls}
-            />
-            <p className="text-xs text-ink-3">Brand/Model not in the list yet? Use "Request to add" above — added straight to your shop's own catalog, no approval needed.</p>
-            <div>
-              <label className={labelCls}>IMEI / Serial Number *</label>
-              <input required value={intake.imeiOrSerialNumber} onChange={e => setIntake(p => ({ ...p, imeiOrSerialNumber: e.target.value }))} className={inputCls} />
-            </div>
-          </Card>
+          </div>
 
-          <Card className="p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-ink">Issue</h3>
-            <div>
-              <label className={labelCls}>Fault in Device *</label>
-              <textarea required rows={3} value={intake.title} onChange={e => setIntake(p => ({ ...p, title: e.target.value }))} className={`${inputCls} resize-none`} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Remark</label>
-                <input value={intake.remark} onChange={e => setIntake(p => ({ ...p, remark: e.target.value }))} className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>CCO Name</label>
-                <input value={intake.ccoName} onChange={e => setIntake(p => ({ ...p, ccoName: e.target.value }))} className={inputCls} />
-              </div>
-            </div>
-          </Card>
-
-          <Button type="submit" size="lg" className="w-full" disabled={creating} icon={creating ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>
+          <Button type="submit" size="lg" className="w-full max-w-md" disabled={creating} icon={creating ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>
             Save
           </Button>
         </form>
