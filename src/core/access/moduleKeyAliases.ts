@@ -77,6 +77,14 @@ export const MODULE_KEY_ALIASES: Record<string, string> = {
   // api/stock/transfers/route.ts enforce the underscored codes.
   "stock-adjustments": "stock_adjustments",
   "stock-transfers": "stock_transfers",
+  // Found live: a Service Center Owner hit "Forbidden: Missing permission
+  // -> CATALOG.CREATE" using the Workorders "Request to add a Brand" mini-
+  // modal -- api/catalog/requests/route.ts enforces the bare "catalog"
+  // module key (see moduleHierarchy.ts's comment on that entry), not the
+  // sidebar's "masters-catalog-requests" key, so toggling that module on
+  // for a business never actually granted it. Same bug class as every
+  // other entry in this file.
+  "masters-catalog-requests": "catalog",
 };
 
 /**
