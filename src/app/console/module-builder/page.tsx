@@ -18,7 +18,7 @@
  * right.
  */
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
@@ -213,6 +213,14 @@ function CanvasField({
 }
 
 export default function ModuleBuilderPage() {
+  return (
+    <Suspense fallback={<LoadingPanel label="Loading…" />}>
+      <ModuleBuilderPageInner />
+    </Suspense>
+  );
+}
+
+function ModuleBuilderPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editingKey = searchParams.get("key");
