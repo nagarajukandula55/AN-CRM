@@ -508,7 +508,6 @@ export default function SCJobSheetScreen() {
   const total = lineItems.reduce((sum, l) => sum + lineTotal(l), 0)
   const isOpen = job.status !== 'CLOSED' && job.status !== 'CANCELLED'
   const inRepair = job.status === 'REPAIR_STARTED' || job.status === 'REPAIR_IN_PROGRESS'
-  const showActionBar = isOpen && job.status !== 'REPAIR_COMPLETED'
   const tat = tatLabel(job.createdAt, job.completedAt)
 
   // ---------- In-progress / closure screen (same route, same component) ----------
@@ -519,21 +518,43 @@ export default function SCJobSheetScreen() {
         description={`${job.customerName} — ${[job.product, job.deviceModel].filter(Boolean).join(' · ') || 'Device'}`}
         actions={
           <>
-            <Button variant="secondary" onClick={() => router.push('/console/crm/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
-            <Button variant="secondary" onClick={() => router.push(`/print/jobsheets/${job._id}`)} icon={<Printer className="w-4 h-4" />}>Print Workorder</Button>
+            <Button variant="secondary" size="sm" onClick={() => router.push('/console/crm/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
+            <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}`)} icon={<Printer className="w-4 h-4" />}>Print Workorder</Button>
             {inRepair && (
-              <Button variant="secondary" onClick={() => router.push(`/print/jobsheets/${job._id}?doc=estimate`)} icon={<FileText className="w-4 h-4" />}>Print Estimate</Button>
+              <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}?doc=estimate`)} icon={<FileText className="w-4 h-4" />}>Print Estimate</Button>
             )}
             {(job.status === 'REPAIR_COMPLETED' || job.status === 'CLOSED') && (
               <>
-                <Button variant="secondary" onClick={() => router.push(`/print/jobsheets/${job._id}/service-record`)} icon={<FileText className="w-4 h-4" />}>Service Order</Button>
+                <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}/service-record`)} icon={<FileText className="w-4 h-4" />}>Service Order</Button>
                 {job.invoiceId && (
-                  <Button variant="secondary" onClick={() => router.push(`/console/crm/invoices/${job.invoiceId}`)} icon={<FileText className="w-4 h-4" />}>Invoice</Button>
+                  <Button variant="secondary" size="sm" onClick={() => router.push(`/console/crm/invoices/${job.invoiceId}`)} icon={<FileText className="w-4 h-4" />}>Invoice</Button>
                 )}
               </>
             )}
+            {/* Every primary action lives up here now, not a separate
+                bottom action bar -- per explicit direction. Editing
+                (Save/parts) only makes sense once repair has actually
+                started; see the Parts & Service Lines gate below, which
+                is now job.status !== 'CREATED' instead of just isOpen. */}
+            {isOpen && job.status !== 'CREATED' && (
+              <Button variant="secondary" size="sm" onClick={saveLineItems} disabled={saving}>Save</Button>
+            )}
+            {job.status === 'PART_PENDING' && (
+              <Button size="sm" onClick={() => transition('resume-repair')} disabled={saving}>Resume Repair</Button>
+            )}
+            {inRepair && (
+              <Button variant="secondary" size="sm" onClick={() => transition('part-pending')} disabled={saving}>Mark Part Pending</Button>
+            )}
+            {inRepair && (
+              <Button size="sm" onClick={completeAndInvoice} disabled={saving}>Complete Repair &amp; Invoice</Button>
+            )}
             {job.status === 'CREATED' && (
-              <Button onClick={proceedForRepair} disabled={saving}>Proceed for Repair</Button>
+              <Button size="sm" onClick={proceedForRepair} disabled={saving}>Proceed for Repair</Button>
+            )}
+            {isOpen && (
+              <Button variant="secondary" size="sm" onClick={() => { if (confirm('Cancel this job sheet?')) transition('cancel', { cancelReason: 'Cancelled by service center' }) }} disabled={saving} className="text-danger">
+                Cancel Job Sheet
+              </Button>
             )}
           </>
         }
@@ -541,7 +562,11 @@ export default function SCJobSheetScreen() {
 
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <MilestoneStepper job={job} />
-        {tat && <span className="text-xs text-ink-3">TAT: <span className="tabular text-ink-2 font-medium">{tat}</span>{!job.completedAt && ' (running)'}</span>}
+        {tat && (
+          <Badge tone={job.completedAt ? 'success' : 'warning'}>
+            TAT: {tat}{!job.completedAt && ' (running)'}
+          </Badge>
+        )}
       </div>
 
       {actionError && <div className="mb-6 text-sm text-danger bg-danger-soft border border-danger/20 rounded-control px-4 py-3">{actionError}</div>}
@@ -564,7 +589,7 @@ export default function SCJobSheetScreen() {
         {job.ccoName && <p className="text-xs text-ink-3 mt-2">Logged by (CCO): {job.ccoName}</p>}
       </Card>
 
-      {isOpen && (
+      {isOpen && job.status !== 'CREATED' && (
         <Card className="overflow-hidden mb-6">
           <div className="px-5 py-3 border-b border-border flex items-center justify-between flex-wrap gap-2">
             <h3 className="text-sm font-semibold text-ink">Parts &amp; Service Lines</h3>
@@ -653,28 +678,6 @@ export default function SCJobSheetScreen() {
           <div>
             <label className={labelCls}>Engineer Name <span className="text-ink-3 font-normal">(prints on the closed job sheet)</span></label>
             <input value={engineerName} onChange={e => setEngineerName(e.target.value)} className={inputCls} placeholder="Who repaired this device" />
-          </div>
-        </Card>
-      )}
-
-      {isOpen && (
-        <Card className="p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={saveLineItems} disabled={saving}>Save</Button>
-            {job.status === 'PART_PENDING' && (
-              <Button size="sm" onClick={() => transition('resume-repair')} disabled={saving}>Resume Repair</Button>
-            )}
-            {inRepair && (
-              <Button variant="secondary" size="sm" onClick={() => transition('part-pending')} disabled={saving}>Mark Part Pending</Button>
-            )}
-            {inRepair && (
-              <Button size="sm" onClick={completeAndInvoice} disabled={saving}>Complete Repair &amp; Generate Invoice</Button>
-            )}
-            {job.status !== 'CANCELLED' && (
-              <Button variant="secondary" size="sm" onClick={() => { if (confirm('Cancel this job sheet?')) transition('cancel', { cancelReason: 'Cancelled by service center' }) }} disabled={saving} className="ml-auto text-danger">
-                Cancel Job Sheet
-              </Button>
-            )}
           </div>
         </Card>
       )}

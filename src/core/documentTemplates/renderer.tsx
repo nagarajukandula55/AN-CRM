@@ -166,29 +166,42 @@ function renderBlock(
       );
     }
 
-    case "signature":
-      return (
-        <div className="flex justify-between pt-8">
-          <div className="text-center text-xs text-gray-500">
-            <div className="w-40 border-t border-gray-300 pt-1">
-              Customer Signature
+    case "signature": {
+      // When signedByName is set (currently: CrmJobSheet's ccoName on a
+      // Workorder print), the issuer's signatory sits on the LEFT with
+      // their actual name and the customer's on the right -- per explicit
+      // direction. Every other document type leaves this field unset and
+      // keeps the original customer-left/issuer-right arrangement.
+      const issuerBlock = (
+        <div className="text-center text-xs text-gray-500">
+          {data.company.signatureUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={data.company.signatureUrl} alt="" className="h-10 w-40 object-contain mx-auto" />
+          ) : (
+            <div className="h-10 w-40 flex items-end justify-center italic text-[10px]">
+              Digital document — no physical signature required
             </div>
-          </div>
-          <div className="text-center text-xs text-gray-500">
-            {data.company.signatureUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.company.signatureUrl} alt="" className="h-10 w-40 object-contain mx-auto" />
-            ) : (
-              <div className="h-10 w-40 flex items-end justify-center italic text-[10px]">
-                Digital document — no physical signature required
-              </div>
-            )}
-            <div className="w-40 border-t border-gray-300 pt-1">
-              {(block.config?.label as string) || "Authorized Signatory (Service Centre)"}
-            </div>
+          )}
+          <div className="w-40 border-t border-gray-300 pt-1">
+            {(block.config?.label as string) || "Authorized Signatory (Service Centre)"}
+            {data.company.signedByName && <span className="block text-gray-400">{data.company.signedByName}</span>}
           </div>
         </div>
       );
+      const customerBlock = (
+        <div className="text-center text-xs text-gray-500">
+          <div className="w-40 border-t border-gray-300 pt-1">
+            Customer Signature
+          </div>
+        </div>
+      );
+      return (
+        <div className="flex justify-between pt-8">
+          {data.company.signedByName ? issuerBlock : customerBlock}
+          {data.company.signedByName ? customerBlock : issuerBlock}
+        </div>
+      );
+    }
 
     case "custom-text":
       return (

@@ -40,6 +40,12 @@ export interface DocumentRenderData {
      * instead of a signature image -- see the "signature" case in
      * renderer.tsx. */
     signatureUrl?: string;
+    /** Name shown alongside "Authorized Signatory" on the signature
+     * block's left side -- e.g. the CCO who logged a job sheet, so a
+     * physical printout has an actual name to sign against, not just a
+     * blank title. Undefined leaves the signature block exactly as it was
+     * for every document type that doesn't set this (invoices, POs, etc.). */
+    signedByName?: string;
   };
   party: {
     name: string;
