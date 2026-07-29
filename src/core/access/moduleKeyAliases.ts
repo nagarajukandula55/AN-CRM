@@ -85,6 +85,15 @@ export const MODULE_KEY_ALIASES: Record<string, string> = {
   // for a business never actually granted it. Same bug class as every
   // other entry in this file.
   "masters-catalog-requests": "catalog",
+  // Sidebar/Business.modules key is "material-catalog" (the canonical
+  // Material/BOM list page, models/BOM.ts) but moduleHierarchy.ts's real
+  // ModuleDefinition -- and every VENDOR_MODULE_KEYS grant -- is seeded
+  // under "bom". Without this alias a vendor Owner/Manager's granted
+  // BOM.VIEW permission never matched "material-catalog"'s own unaliased
+  // key, so the nav item never appeared for any vendor business
+  // regardless of Business.modules toggles. Same bug class as every
+  // other entry in this file.
+  "material-catalog": "bom",
 };
 
 /**

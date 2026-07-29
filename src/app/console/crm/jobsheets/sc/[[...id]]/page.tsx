@@ -382,6 +382,14 @@ export default function SCJobSheetScreen() {
 
   const [engineerName, setEngineerName] = useState('')
 
+  const [showPartPendingModal, setShowPartPendingModal] = useState(false)
+  const [brandJobNo, setBrandJobNo] = useState('')
+
+  async function confirmPartPending() {
+    await transition('part-pending', { brandJobNoForPartOrder: brandJobNo.trim() || undefined })
+    setShowPartPendingModal(false)
+  }
+
   async function completeAndInvoice() {
     if (!jobId) return
     if (!engineerName.trim()) { setActionError('Engineer name is required to complete the repair.'); return }
@@ -618,6 +626,12 @@ export default function SCJobSheetScreen() {
   const total = lineItems.reduce((sum, l) => sum + lineTotal(l), 0)
   const isOpen = job.status !== 'CLOSED' && job.status !== 'CANCELLED'
   const inRepair = job.status === 'REPAIR_STARTED' || job.status === 'REPAIR_IN_PROGRESS'
+  // Parts/lines are only editable while repair is actually underway --
+  // once REPAIR_COMPLETED, the job is done and only Handover & Close
+  // remains; letting the line items still be edited at that point (as
+  // they were before) let someone silently change what was actually
+  // repaired/charged after the fact.
+  const editable = inRepair || job.status === 'PART_PENDING'
   const tat = tatLabel(job.createdAt, job.completedAt)
 
   // ---------- In-progress / closure screen (same route, same component) ----------
@@ -643,17 +657,18 @@ export default function SCJobSheetScreen() {
             )}
             {/* Every primary action lives up here now, not a separate
                 bottom action bar -- per explicit direction. Editing
-                (Save/parts) only makes sense once repair has actually
-                started; see the Parts & Service Lines gate below, which
-                is now job.status !== 'CREATED' instead of just isOpen. */}
-            {isOpen && job.status !== 'CREATED' && (
+                (Save/parts) only makes sense while repair is actually in
+                progress -- see the `editable` gate on Parts & Service
+                Lines below, which excludes CREATED (not started yet) and
+                REPAIR_COMPLETED (already done, only Handover remains). */}
+            {editable && (
               <Button variant="secondary" size="sm" onClick={saveLineItems} disabled={saving}>Save</Button>
             )}
             {job.status === 'PART_PENDING' && (
               <Button size="sm" onClick={() => transition('resume-repair')} disabled={saving}>Resume Repair</Button>
             )}
             {inRepair && (
-              <Button variant="secondary" size="sm" onClick={() => transition('part-pending')} disabled={saving}>Mark Part Pending</Button>
+              <Button variant="secondary" size="sm" onClick={() => { setBrandJobNo(''); setShowPartPendingModal(true) }} disabled={saving}>Mark Part Pending</Button>
             )}
             {inRepair && (
               <Button size="sm" onClick={completeAndInvoice} disabled={saving}>Complete Repair &amp; Invoice</Button>
@@ -703,18 +718,25 @@ export default function SCJobSheetScreen() {
         <Card className="overflow-hidden mb-6">
           <div className="px-5 py-3 border-b border-border flex items-center justify-between flex-wrap gap-2">
             <h3 className="text-sm font-semibold text-ink">Parts &amp; Service Lines</h3>
-            <div className="flex gap-2">
-              <Button variant="secondary" size="sm" onClick={addLabourCharge} icon={<Plus className="w-4 h-4" />}>Add Service/Labour Charge</Button>
-              <Button variant="secondary" size="sm" onClick={addLine} icon={<Plus className="w-4 h-4" />}>Add Line</Button>
-              <Button
-                variant="secondary" size="sm"
-                onClick={() => { setAddPartForLine(lineItems.length); addLine(); setAddPartError(null) }}
-                icon={<Plus className="w-4 h-4" />}
-              >
-                Add New Part to BOM
-              </Button>
-            </div>
+            {editable && (
+              <div className="flex gap-2">
+                <Button variant="secondary" size="sm" onClick={addLabourCharge} icon={<Plus className="w-4 h-4" />}>Add Service/Labour Charge</Button>
+                <Button variant="secondary" size="sm" onClick={addLine} icon={<Plus className="w-4 h-4" />}>Add Line</Button>
+                <Button
+                  variant="secondary" size="sm"
+                  onClick={() => { setAddPartForLine(lineItems.length); addLine(); setAddPartError(null) }}
+                  icon={<Plus className="w-4 h-4" />}
+                >
+                  Add New Part to BOM
+                </Button>
+              </div>
+            )}
           </div>
+          {!editable && (
+            <p className="px-5 py-2 text-xs text-ink-3 bg-surface-2/40 border-b border-border">
+              {job.status === 'CREATED' ? 'Editable once you click Proceed for Repair.' : 'This job is past the repair stage and can no longer be edited.'}
+            </p>
+          )}
           {bomParts.length === 0 && (
             <p className="px-5 py-2 text-xs text-warning bg-warning-soft border-b border-border">No materials found in your BOM yet — add parts under Material Catalog to have them listed here for quick selection.</p>
           )}
@@ -736,16 +758,16 @@ export default function SCJobSheetScreen() {
                 {lineItems.map((l, i) => (
                   <tr key={i}>
                     <td className="px-5 py-1.5">
-                      <input list={`bom-parts-${i}`} value={l.description} onChange={e => updateLine(i, { description: e.target.value })} className={`${inputCls} py-1.5`} placeholder="Part / service name" />
+                      <input disabled={!editable} list={`bom-parts-${i}`} value={l.description} onChange={e => updateLine(i, { description: e.target.value })} className={`${inputCls} py-1.5 disabled:opacity-60 disabled:cursor-not-allowed`} placeholder="Part / service name" />
                       <datalist id={`bom-parts-${i}`}>
                         {bomParts.map(p => <option key={p._id} value={p.partName} />)}
                       </datalist>
                     </td>
-                    <td className="px-2 py-1.5"><input type="number" min={1} value={l.quantity} onChange={e => updateLine(i, { quantity: Number(e.target.value) })} className={`${inputCls} py-1.5 text-center`} /></td>
-                    <td className="px-2 py-1.5"><input type="number" min={0} value={l.unitPrice} onChange={e => updateLine(i, { unitPrice: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right`} /></td>
-                    <td className="px-2 py-1.5"><input type="number" min={0} value={l.taxRate} onChange={e => updateLine(i, { taxRate: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right`} /></td>
+                    <td className="px-2 py-1.5"><input disabled={!editable} type="number" min={1} value={l.quantity} onChange={e => updateLine(i, { quantity: Number(e.target.value) })} className={`${inputCls} py-1.5 text-center disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
+                    <td className="px-2 py-1.5"><input disabled={!editable} type="number" min={0} value={l.unitPrice} onChange={e => updateLine(i, { unitPrice: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
+                    <td className="px-2 py-1.5"><input disabled={!editable} type="number" min={0} value={l.taxRate} onChange={e => updateLine(i, { taxRate: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
                     <td className="px-5 py-1.5 text-right tabular text-ink font-medium text-xs">₹{lineTotal(l).toFixed(2)}</td>
-                    <td className="px-2 py-1.5"><button onClick={() => removeLine(i)} className="text-ink-3 hover:text-danger"><Trash2 className="w-4 h-4" /></button></td>
+                    <td className="px-2 py-1.5">{editable && <button onClick={() => removeLine(i)} className="text-ink-3 hover:text-danger"><Trash2 className="w-4 h-4" /></button>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -825,6 +847,25 @@ export default function SCJobSheetScreen() {
         <Card className="p-5 mt-6 text-center">
           <p className="text-sm text-ink-2">This job sheet is closed.</p>
         </Card>
+      )}
+
+      {showPartPendingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowPartPendingModal(false)}>
+          <div className="bg-surface border border-border rounded-card shadow-card-lg w-full max-w-sm p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-ink">Mark Part Pending</h3>
+              <button onClick={() => setShowPartPendingModal(false)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
+            </div>
+            <div>
+              <label className={labelCls}>Brand Job No. <span className="text-ink-3 font-normal">(optional)</span></label>
+              <input autoFocus value={brandJobNo} onChange={e => setBrandJobNo(e.target.value)} className={inputCls} placeholder="e.g. brand's part-order reference" />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="secondary" size="sm" onClick={() => setShowPartPendingModal(false)}>Cancel</Button>
+              <Button size="sm" onClick={confirmPartPending} disabled={saving} icon={saving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Confirm</Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {addPartForLine !== null && (

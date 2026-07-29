@@ -139,13 +139,20 @@ export async function POST(req: Request) {
         "crm",
         "crm_jobsheets",
         "material-catalog",
+        // Revenue from closed workorders is billed through SalesInvoice
+        // (see crmJobsheetAccess/close route), so Sales and Stock
+        // Adjustments (consuming BOM parts against on-hand quantity) are
+        // relevant to every SC shop, not just ones with serial-tracked
+        // inventory -- only the serial-specific pages stay gated below.
+        "sales",
+        "stock-adjustments",
         "reports",
         "report-builder",
         "analytics",
         "admin-settings",
         "admin-plan",
         "send-feedback",
-        ...(business?.inventorySerialized ? ["inventory", "stock-transfers", "stock-adjustments", "inventory-lots"] : []),
+        ...(business?.inventorySerialized ? ["inventory", "stock-transfers", "inventory-lots"] : []),
       ]);
       visibleModules = visibleModules.filter((m: any) => scAllowedKeys.has(m.key));
     }

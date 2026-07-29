@@ -3,11 +3,10 @@ import { connectDB } from "@/lib/mongodb";
 import { Types } from "mongoose";
 import Solution from "@/models/Solution";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
-import { requirePermission } from "@/middleware/permission.guard";
-import { buildPermissionCode } from "@/core/access/actions";
 import { logAction } from "@/lib/audit/logAction";
 import { buildBusinessScopeQuery } from "@/core/catalog/businessScopeFilter";
 import { resolveOwnerOrManagerVendor, resolveVendorTeamMembership } from "@/core/access/vendorAccess.service";
+import { requireSolutionsPermission } from "@/core/access/solutionsAccess";
 
 function permissionErrorResponse(err: any) {
   return NextResponse.json(
@@ -24,7 +23,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
     try {
-      requirePermission(session as any, buildPermissionCode("solutions", "view"));
+      requireSolutionsPermission(session as any, "view");
     } catch (err: any) {
       return permissionErrorResponse(err);
     }
@@ -82,7 +81,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
     try {
-      requirePermission(session as any, buildPermissionCode("solutions", "create"));
+      requireSolutionsPermission(session as any, "create");
     } catch (err: any) {
       return permissionErrorResponse(err);
     }
