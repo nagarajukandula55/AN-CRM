@@ -93,6 +93,9 @@ const EDITABLE_FIELDS = [
   "serviceOrderTerms",
   "estimateTerms",
   "invoiceTerms",
+  // Narrows the workorder "Device Type" dropdown -- see models/Business.ts's
+  // enabledDeviceCategories comment.
+  "enabledDeviceCategories",
   // Business Type / Industry enums + address fields — the edit form used
   // to only show city/state/pincode read-only (they were never actually
   // saveable), and type/industry weren't editable post-creation at all.

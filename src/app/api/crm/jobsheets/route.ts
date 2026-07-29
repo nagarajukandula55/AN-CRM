@@ -125,6 +125,7 @@ export async function POST(req: NextRequest) {
       customerName,
       company,
       gstin,
+      ccoName: ccoNameOverride,
       phone,
       email,
       address,
@@ -268,7 +269,10 @@ export async function POST(req: NextRequest) {
       // CCO name snapshot -- copied from the originating call's CCO when
       // converting a call, else this creating user's own name for a
       // standalone/walk-in job sheet. See CrmJobSheet.ts's field comment.
-      ccoName: (linkedCall as any)?.createdByName || session.user.name || "",
+      // Editable at intake (see console/crm/jobsheets/sc's CCO Name field) --
+      // defaults to the same call/session-derived name as before when the
+      // caller doesn't override it.
+      ccoName: ccoNameOverride?.trim() || (linkedCall as any)?.createdByName || session.user.name || "",
     });
 
     if (linkedCall) {

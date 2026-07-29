@@ -8,7 +8,6 @@ import { validateGSTIN } from '@/lib/validation/gst'
 import { StateSelect, CitySelect, PincodeInput } from '@/components/shared/LocationSelect'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 import { DEVICE_CATEGORIES, DEVICE_CATEGORY_LABELS, type DeviceCategory } from '@/core/catalog/deviceCategory'
-import { DeviceCatalogFields } from '@/components/crm/DeviceCatalogFields'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -55,7 +54,6 @@ function lineTotal(l: LineItem): number {
   return base + base * ((l.taxRate || 0) / 100)
 }
 
-interface Brand { _id: string; name: string; parentId?: string | null; logoUrl?: string }
 interface BOMPart {
   _id: string; partName: string; partCode: string; unit: string; gstRate: number; rate: number; partType?: string
 }
@@ -143,13 +141,14 @@ export default function SCJobSheetScreen() {
   const [intake, setIntake] = useState({
     customerName: '', phone: '', company: '', gstin: '',
     address: '', city: '', state: '', pincode: '',
-    deviceCategory: '' as DeviceCategory | '', brandId: '', pendingBrandName: '', seriesId: '', deviceModelId: '', deviceModel: '', variantId: '', imeiOrSerialNumber: '',
+    deviceCategory: '' as DeviceCategory | '', brandName: '', deviceModel: '', imeiOrSerialNumber: '',
     title: '', remark: '', ccoName: '',
   })
   useEffect(() => { if (currentUserName && !intake.ccoName) setIntake(p => ({ ...p, ccoName: currentUserName })) }, [currentUserName])
 
-  const { data: brandsData } = useSWR(businessId && intake.deviceCategory ? `/api/brands?businessId=${businessId}&category=${intake.deviceCategory}` : null)
-  const brands: Brand[] = brandsData?.brands || brandsData?.data || []
+  const enabledDeviceCategories: DeviceCategory[] = businessData?.business?.enabledDeviceCategories?.length
+    ? businessData.business.enabledDeviceCategories
+    : DEVICE_CATEGORIES
 
   const [creating, setCreating] = useState(false)
   const [intakeError, setIntakeError] = useState<string | null>(null)
@@ -168,7 +167,13 @@ export default function SCJobSheetScreen() {
       const res = await fetch('/api/crm/jobsheets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...intake, businessId }),
+        body: JSON.stringify({
+          customerName: intake.customerName, phone: intake.phone, company: intake.company, gstin: intake.gstin,
+          address: intake.address, city: intake.city, state: intake.state, pincode: intake.pincode,
+          deviceCategory: intake.deviceCategory, pendingBrandName: intake.brandName, deviceModel: intake.deviceModel,
+          imeiOrSerialNumber: intake.imeiOrSerialNumber, title: intake.title, remark: intake.remark, ccoName: intake.ccoName,
+          businessId,
+        }),
       })
       const d = await res.json()
       if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to create job sheet')
@@ -351,8 +356,8 @@ export default function SCJobSheetScreen() {
     }
   }
 
-  const inputCls = "w-full bg-surface border border-border rounded-control px-3 py-2 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-  const labelCls = "block text-xs font-medium text-ink-2 mb-1.5"
+  const inputCls = "w-full bg-surface border border-border rounded-control px-2.5 py-1.5 text-xs text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+  const labelCls = "block text-[11px] font-medium text-ink-2 mb-1"
 
   // ---------- Intake screen ----------
   if (!jobId) {
@@ -361,20 +366,25 @@ export default function SCJobSheetScreen() {
         <PageHeader
           title="New Job Sheet"
           description="This same screen carries the job through repair to closure."
-          actions={<Button variant="secondary" onClick={() => router.push('/console/crm/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>}
+          actions={
+            <>
+              <Button variant="secondary" size="sm" onClick={() => router.push('/console/crm/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
+              <Button type="submit" form="sc-intake-form" size="sm" disabled={creating} icon={creating ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save</Button>
+            </>
+          }
         />
-        <form onSubmit={createJobSheet} className="space-y-4">
+        <form id="sc-intake-form" onSubmit={createJobSheet} className="space-y-3">
           {intakeError && <div className="text-sm text-danger bg-danger-soft border border-danger/20 rounded-control px-4 py-3">{intakeError}</div>}
 
           {/* Two columns so the screen actually uses its width instead of
               reading as one narrow stacked form with empty space beside it
               -- per explicit direction. Customer+Address (who/where) on the
               left, Device+Issue (what's being fixed) on the right. */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-            <div className="space-y-4">
-              <Card className="p-5 space-y-3">
-                <h3 className="text-sm font-semibold text-ink">Customer</h3>
-                <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+            <div className="space-y-3">
+              <Card className="p-4 space-y-2.5">
+                <h3 className="text-xs font-semibold text-ink">Customer</h3>
+                <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className={labelCls}>Customer Name *</label>
                     <input required value={intake.customerName} onChange={e => setIntake(p => ({ ...p, customerName: e.target.value }))} className={inputCls} />
@@ -384,7 +394,7 @@ export default function SCJobSheetScreen() {
                     <input required type="tel" value={intake.phone} onChange={e => setIntake(p => ({ ...p, phone: e.target.value }))} className={inputCls} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className={labelCls}>Company <span className="text-ink-3 font-normal">(B2B customer)</span></label>
                     <input value={intake.company} onChange={e => setIntake(p => ({ ...p, company: e.target.value }))} className={inputCls} />
@@ -396,13 +406,13 @@ export default function SCJobSheetScreen() {
                 </div>
               </Card>
 
-              <Card className="p-5 space-y-3">
-                <h3 className="text-sm font-semibold text-ink">Address</h3>
+              <Card className="p-4 space-y-2.5">
+                <h3 className="text-xs font-semibold text-ink">Address</h3>
                 <div>
                   <label className={labelCls}>Address</label>
                   <input value={intake.address} onChange={e => setIntake(p => ({ ...p, address: e.target.value }))} className={inputCls} />
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className={labelCls}>Pincode</label>
                     <PincodeInput
@@ -425,44 +435,54 @@ export default function SCJobSheetScreen() {
               </Card>
             </div>
 
-            <div className="space-y-4">
-              <Card className="p-5 space-y-3">
-                <h3 className="text-sm font-semibold text-ink">Device</h3>
+            <div className="space-y-3">
+              <Card className="p-4 space-y-2.5">
+                <h3 className="text-xs font-semibold text-ink">Device</h3>
                 <div>
                   <label className={labelCls}>Device Type *</label>
                   <select
                     required
                     value={intake.deviceCategory}
-                    onChange={e => setIntake(p => ({ ...p, deviceCategory: e.target.value as DeviceCategory | '', brandId: '', pendingBrandName: '', seriesId: '', deviceModelId: '', deviceModel: '', variantId: '' }))}
+                    onChange={e => setIntake(p => ({ ...p, deviceCategory: e.target.value as DeviceCategory | '' }))}
                     className={inputCls}
                   >
                     <option value="">Select device type…</option>
-                    {DEVICE_CATEGORIES.map(c => <option key={c} value={c}>{DEVICE_CATEGORY_LABELS[c]}</option>)}
+                    {enabledDeviceCategories.map(c => <option key={c} value={c}>{DEVICE_CATEGORY_LABELS[c]}</option>)}
                   </select>
                 </div>
-                <DeviceCatalogFields
-                  businessId={businessId}
-                  deviceCategory={intake.deviceCategory}
-                  brands={brands}
-                  value={{ brandId: intake.brandId, pendingBrandName: intake.pendingBrandName, seriesId: intake.seriesId, deviceModelId: intake.deviceModelId, deviceModel: intake.deviceModel, variantId: intake.variantId }}
-                  onChange={(patch) => setIntake(p => ({ ...p, ...patch }))}
-                  inputCls={inputCls}
-                  labelCls={labelCls}
-                />
-                <p className="text-xs text-ink-3">Brand/Model not in the list yet? Use "Request to add" above — added straight to your shop's own catalog, no approval needed.</p>
+                {/* Plain text, not the shared Brand/Series/Model/Variant
+                    catalog tree -- that tree's "Request to add" flow is
+                    gated behind CATALOG.CREATE (see
+                    api/catalog/requests/route.ts), a permission this
+                    account genuinely didn't have live, and Series/Variant
+                    aren't needed for a single-tech shop's own free-text
+                    catalog anyway. Posted as pendingBrandName, exactly
+                    like the free-text stand-in the shared tree itself
+                    uses while a request is pending -- SC's own catalog is
+                    self-managed with no approval step regardless. */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={labelCls}>Brand</label>
+                    <input value={intake.brandName} onChange={e => setIntake(p => ({ ...p, brandName: e.target.value }))} className={inputCls} placeholder="e.g. Samsung" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Model</label>
+                    <input value={intake.deviceModel} onChange={e => setIntake(p => ({ ...p, deviceModel: e.target.value }))} className={inputCls} placeholder="e.g. Galaxy M14" />
+                  </div>
+                </div>
                 <div>
                   <label className={labelCls}>IMEI / Serial Number *</label>
                   <input required value={intake.imeiOrSerialNumber} onChange={e => setIntake(p => ({ ...p, imeiOrSerialNumber: e.target.value }))} className={inputCls} />
                 </div>
               </Card>
 
-              <Card className="p-5 space-y-3">
-                <h3 className="text-sm font-semibold text-ink">Issue</h3>
+              <Card className="p-4 space-y-2.5">
+                <h3 className="text-xs font-semibold text-ink">Issue</h3>
                 <div>
                   <label className={labelCls}>Fault in Device *</label>
                   <textarea required rows={3} value={intake.title} onChange={e => setIntake(p => ({ ...p, title: e.target.value }))} className={`${inputCls} resize-none`} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className={labelCls}>Remark</label>
                     <input value={intake.remark} onChange={e => setIntake(p => ({ ...p, remark: e.target.value }))} className={inputCls} />
@@ -475,10 +495,6 @@ export default function SCJobSheetScreen() {
               </Card>
             </div>
           </div>
-
-          <Button type="submit" size="lg" className="w-full max-w-md" disabled={creating} icon={creating ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>
-            Save
-          </Button>
         </form>
       </div>
     )
