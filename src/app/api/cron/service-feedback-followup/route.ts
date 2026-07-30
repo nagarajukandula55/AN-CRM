@@ -1,16 +1,20 @@
 /**
- * GET /api/cron/service-feedback-followup — scheduled sweep (see
- * vercel.json's cron entry) that sends the NPS survey link to every job
- * sheet handed over (or, absent a formal handover, completed) at least an
- * hour ago that hasn't been sent one yet. Per explicit direction: "a
- * feedback page... triggered after 1 hour of delivery of device or
- * completion of service."
+ * GET /api/cron/service-feedback-followup — scheduled sweep that sends the
+ * NPS survey link to every job sheet handed over (or, absent a formal
+ * handover, completed) at least an hour ago that hasn't been sent one yet.
+ * Per explicit direction: "a feedback page... triggered after 1 hour of
+ * delivery of device or completion of service."
+ *
+ * NOT in vercel.json -- Vercel's free Hobby plan only allows a cron to run
+ * once per day, nowhere near the ~15-minute cadence an hour-granularity
+ * follow-up needs. Instead this is called by a free external scheduler
+ * (e.g. cron-job.org) hitting this URL directly every 15 minutes. See the
+ * project's setup notes for the exact URL + CRON_SECRET header to
+ * configure there.
  *
  * Protected by a shared secret (CRON_SECRET env var) rather than a normal
- * session, since this is invoked by Vercel's scheduler, not a logged-in
- * user. Runs every 15 minutes (see vercel.json) -- an hour-granularity
- * requirement doesn't need per-minute precision, and this keeps the sweep
- * cheap.
+ * session, since this is invoked by an external scheduler, not a logged-in
+ * user.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";

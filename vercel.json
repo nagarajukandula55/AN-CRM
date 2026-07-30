@@ -15,10 +15,6 @@
     {
       "path": "/api/cron/run-scheduled-reports",
       "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/service-feedback-followup",
-      "schedule": "*/15 * * * *"
     }
   ]
 }
