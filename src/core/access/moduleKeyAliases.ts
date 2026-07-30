@@ -94,6 +94,10 @@ export const MODULE_KEY_ALIASES: Record<string, string> = {
   // regardless of Business.modules toggles. Same bug class as every
   // other entry in this file.
   "material-catalog": "bom",
+  // Both nav keys are backed by the same "reports" permission --
+  // api/reports/definitions/route.ts and api/analytics/overview/route.ts
+  // (see moduleHierarchy.ts's "reports" entry comment).
+  "report-builder": "reports",
 };
 
 /**

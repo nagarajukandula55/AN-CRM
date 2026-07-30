@@ -47,6 +47,14 @@ export const ACCESS_HIERARCHY: Category[] = [
     modules: [
       { key: "dashboard", label: "Dashboard", description: "See the main summary/KPI dashboard." },
       { key: "analytics", label: "Analytics", description: "View sales, traffic and performance reports and charts." },
+      // Was missing entirely -- api/reports/definitions/route.ts and
+      // api/analytics/overview/route.ts both enforce REPORTS.* codes, but
+      // with no ModuleDefinition entry here, that module key never
+      // appeared in flattenHierarchy() -- so no vendor Owner/Manager (or
+      // SC's full-access grant) could ever actually be granted it,
+      // despite "reports"/"report-builder" already being listed in the SC
+      // sidebar allowlist. See moduleKeyAliases.ts's "report-builder" entry.
+      { key: "reports", label: "Reports & Downloads", description: "Build, save, and export custom reports." },
       { key: "audit", label: "Audit Log", description: "See the history of who changed what, and when." },
     ],
   },

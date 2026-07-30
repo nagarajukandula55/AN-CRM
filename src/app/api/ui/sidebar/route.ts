@@ -139,6 +139,10 @@ export async function POST(req: Request) {
         "crm",
         "crm_jobsheets",
         "material-catalog",
+        // Customer directory (view who's been serviced, contact details,
+        // ledger balance) -- was missing entirely, so SC had no way to
+        // browse its own customers outside a job sheet/invoice.
+        "customers",
         // Revenue from closed workorders is billed through SalesInvoice
         // (see crmJobsheetAccess/close route), so Sales and Stock
         // Adjustments (consuming BOM parts against on-hand quantity) are

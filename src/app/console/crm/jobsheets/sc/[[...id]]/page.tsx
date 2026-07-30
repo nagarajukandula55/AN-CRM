@@ -161,6 +161,8 @@ export default function SCJobSheetScreen() {
     customerName: '', phone: '', company: '', gstin: '',
     address: '', city: '', state: '', pincode: '',
     deviceCategory: '' as DeviceCategory | '', brandName: '', deviceModel: '', imeiOrSerialNumber: '',
+    deviceAppearance: '' as 'GOOD' | 'USED' | 'DENTS' | 'BROKEN' | '',
+    fileBackupDescription: '' as 'YES' | 'NO' | '',
     title: '', remark: '', ccoName: '',
   })
   useEffect(() => { if (currentUserName && !intake.ccoName) setIntake(p => ({ ...p, ccoName: currentUserName })) }, [currentUserName])
@@ -209,6 +211,7 @@ export default function SCJobSheetScreen() {
           address: intake.address, city: intake.city, state: intake.state, pincode: intake.pincode,
           deviceCategory: intake.deviceCategory, pendingBrandName: intake.brandName, deviceModel: intake.deviceModel,
           imeiOrSerialNumber: intake.imeiOrSerialNumber, title: intake.title, remark: intake.remark, ccoName: intake.ccoName,
+          deviceAppearance: intake.deviceAppearance || undefined, fileBackupDescription: intake.fileBackupDescription || undefined,
           businessId,
         }),
       })
@@ -572,6 +575,26 @@ export default function SCJobSheetScreen() {
                 <div>
                   <label className={labelCls}>IMEI / Serial Number *</label>
                   <input required value={intake.imeiOrSerialNumber} onChange={e => setIntake(p => ({ ...p, imeiOrSerialNumber: e.target.value }))} className={inputCls} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={labelCls}>Appearance</label>
+                    <select value={intake.deviceAppearance} onChange={e => setIntake(p => ({ ...p, deviceAppearance: e.target.value as typeof intake.deviceAppearance }))} className={inputCls}>
+                      <option value="">Select…</option>
+                      <option value="GOOD">Good</option>
+                      <option value="USED">Used</option>
+                      <option value="DENTS">Dents</option>
+                      <option value="BROKEN">Broken</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>File Backup Done</label>
+                    <select value={intake.fileBackupDescription} onChange={e => setIntake(p => ({ ...p, fileBackupDescription: e.target.value as typeof intake.fileBackupDescription }))} className={inputCls}>
+                      <option value="">Select…</option>
+                      <option value="YES">Yes</option>
+                      <option value="NO">No</option>
+                    </select>
+                  </div>
                 </div>
               </Card>
 

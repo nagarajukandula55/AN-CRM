@@ -77,6 +77,16 @@ export const VENDOR_MODULE_KEYS = [
   // lib/customerNotify.ts) without needing a Super Admin to do it for
   // them every time.
   "integrations",
+  // Customer directory -- was excluded even though every vendor's own
+  // customers (from job sheets/invoices) need to be browsable.
+  "customers",
+  // Reports/Report Builder/Analytics -- already listed in SC's sidebar
+  // allowlist (api/ui/sidebar/route.ts) but never actually grantable, so
+  // the module never passed filterModulesByPermission's REPORTS.VIEW
+  // check and stayed invisible/forbidden regardless of that allowlist.
+  // "report-builder" aliases to "reports" (see moduleKeyAliases.ts).
+  "reports",
+  "analytics",
 ] as const;
 
 const ALL_ACTION_KEYS = STANDARD_ACTIONS.map((a) => a.key);
