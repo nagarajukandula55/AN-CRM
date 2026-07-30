@@ -180,6 +180,13 @@ const PUBLIC_PREFIXES = [
   // making this one public doesn't also skip JWT/header injection for a
   // real super-admin browsing there directly -- see that route's comment.
   "/api/admin/subscriptions/service",
+  // Public NPS/service-feedback survey (SMS/WhatsApp link sent to a
+  // customer post-handover, see api/cron/service-feedback-followup) --
+  // the feedbackToken itself is the auth mechanism, same reasoning as
+  // /track-workorder above; a customer visiting this link is never
+  // logged into AN-CRM at all.
+  "/feedback/service/",
+  "/api/feedback/service/",
   "/_next",
   "/public",
 ];

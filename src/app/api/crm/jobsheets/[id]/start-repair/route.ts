@@ -13,6 +13,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { requireAssignedEngineer } from "@/core/access/crmJobsheetAccess";
+import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -54,6 +55,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     jobSheet.status = "REPAIR_IN_PROGRESS";
     jobSheet.repairInProgressAt = new Date();
     await jobSheet.save();
+
+    notifyJobSheetStatusChange(jobSheet.businessId.toString(), jobSheet.phone, jobSheet.jobSheetNumber, jobSheet.status);
 
     logAction({
       action: "START_REPAIR",

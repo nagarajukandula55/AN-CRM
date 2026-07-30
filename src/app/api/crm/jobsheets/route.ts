@@ -19,6 +19,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
 // Required for .populate(...) below -- model must be registered before populate can resolve it.
 import "@/models/User";
 import "@/models/Brand";
@@ -282,6 +283,8 @@ export async function POST(req: NextRequest) {
       linkedCall.status = "JOB_CREATED";
       await linkedCall.save();
     }
+
+    notifyJobSheetStatusChange(effectiveBizId, jobSheet.phone, jobSheet.jobSheetNumber, jobSheet.status);
 
     logAction({
       action: "CREATE",

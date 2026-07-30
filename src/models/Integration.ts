@@ -33,9 +33,26 @@ export type IntegrationProvider =
   | 'WHATSAPP'
   | 'SLACK'
   | 'EMAIL'
+  | 'SMS'
   | 'ZENFORGE'
   | CourierProviderKey
   | AiProviderKey;
+
+/** SMS gateways vary in request shape (MSG91: authkey + flow/route API,
+ * Twilio: Account SID + Auth Token + REST API, others similar but
+ * different field names) -- stored as a free-form credentials bag per
+ * gateway, same pattern as CourierConfig/AiProviderConfig below, rather
+ * than hardcoding one gateway's schema. See lib/customerNotify.ts for the
+ * interpretation of these keys per gateway. */
+export type SmsGatewayKey = 'MSG91' | 'TWILIO' | 'OTHER';
+export interface SmsConfig {
+  gateway: SmsGatewayKey;
+  credentials: Record<string, string>;
+  /** DLT-registered sender ID, required for commercial SMS in India
+   * (mandatory for MSG91 and most Indian gateways) -- kept top-level
+   * since every gateway needs it, unlike the rest of `credentials`. */
+  senderId?: string;
+}
 
 export const COURIER_PROVIDER_KEYS: CourierProviderKey[] = [
   'SHIPROCKET',
@@ -145,6 +162,7 @@ export type IntegrationConfig =
   | WhatsAppConfig
   | SlackConfig
   | EmailConfig
+  | SmsConfig
   | CourierConfig
   | ZenforgeConfig
   | AiProviderConfig;
@@ -166,7 +184,7 @@ const IntegrationSchema = new Schema<IIntegration>(
     },
     provider: {
       type: String,
-      enum: ['TELEGRAM', 'WHATSAPP', 'SLACK', 'EMAIL', 'ZENFORGE', ...COURIER_PROVIDER_KEYS, ...AI_PROVIDER_KEYS],
+      enum: ['TELEGRAM', 'WHATSAPP', 'SLACK', 'EMAIL', 'SMS', 'ZENFORGE', ...COURIER_PROVIDER_KEYS, ...AI_PROVIDER_KEYS],
       required: true,
     },
     isActive: {

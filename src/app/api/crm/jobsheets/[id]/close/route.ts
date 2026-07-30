@@ -25,6 +25,7 @@ import { notify } from "@/lib/notify";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -274,6 +275,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       jobSheet.assignedToName = engineerName.trim();
     }
     await jobSheet.save();
+
+    notifyJobSheetStatusChange(jobSheet.businessId.toString(), jobSheet.phone, jobSheet.jobSheetNumber, jobSheet.status);
 
     // Deduct stock now that the invoice is confirmed created -- every
     // check above already passed, so this only fails on a genuine
