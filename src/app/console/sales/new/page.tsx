@@ -4,10 +4,11 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { validateGSTIN } from '@/lib/validation/gst'
-import { ArrowLeft, Plus, Trash2, Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Loader2, Users, X, Search } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { StateSelect, CitySelect, PincodeInput } from '@/components/shared/LocationSelect'
 
 /**
  * Full-page invoice creation, not a modal -- per explicit direction to
@@ -25,6 +26,9 @@ interface Customer {
   email?: string
   phone?: string
   address?: string
+  city?: string
+  state?: string
+  pincode?: string
   gstin?: string
 }
 
@@ -68,7 +72,7 @@ export default function NewSalesInvoicePage() {
 
   const [invoiceType, setInvoiceType] = useState<InvoiceType>('GST')
   const [supplyType, setSupplyType] = useState<'INTRASTATE' | 'INTERSTATE'>('INTRASTATE')
-  const [customer, setCustomer] = useState<Customer>({ name: '', email: '', phone: '', address: '', gstin: '' })
+  const [customer, setCustomer] = useState<Customer>({ name: '', email: '', phone: '', address: '', city: '', state: '', pincode: '', gstin: '' })
   const [notes, setNotes] = useState('')
   const [terms, setTerms] = useState('Payment due within 30 days.')
   const [issueDate, setIssueDate] = useState(todayStr())
@@ -90,10 +94,58 @@ export default function NewSalesInvoicePage() {
   const customerResults: Array<{ _id: string; name: string; phone?: string; email?: string; address?: string }> =
     customerSearchData?.success !== false ? (customerSearchData?.customers ?? []) : []
 
-  function selectCustomer(c: { _id: string; name: string; phone?: string; email?: string; address?: string }) {
-    setCustomer(p => ({ ...p, name: c.name, phone: c.phone || '', email: c.email || '', address: c.address || p.address }))
+  type CustomerRecord = { _id: string; name: string; phone?: string; email?: string; address?: string; city?: string; state?: string; pincode?: string; gstin?: string }
+
+  function applyCustomer(c: CustomerRecord) {
+    setCustomer({
+      name: c.name, phone: c.phone || '', email: c.email || '', address: c.address || '',
+      city: c.city || '', state: c.state || '', pincode: c.pincode || '', gstin: c.gstin || '',
+    })
     setSelectedCustomerId(c._id)
     setShowCustomerResults(false)
+  }
+
+  function selectCustomer(c: { _id: string; name: string; phone?: string; email?: string; address?: string }) {
+    applyCustomer(c)
+  }
+
+  // Browse-all-customers modal -- the inline name/phone search above only
+  // surfaces a match once you've typed 3+ characters; this gives a full
+  // table of every customer on the shared directory to pick from, plus a
+  // way to add a brand new one without leaving the invoice screen.
+  const [showCustomerBrowser, setShowCustomerBrowser] = useState(false)
+  const [browserSearch, setBrowserSearch] = useState('')
+  const { data: browserData, mutate: refetchBrowserCustomers } = useSWR(
+    showCustomerBrowser && businessId ? `/api/customers?businessId=${businessId}${browserSearch.trim() ? `&search=${encodeURIComponent(browserSearch.trim())}` : ''}` : null
+  )
+  const browserCustomers: CustomerRecord[] = browserData?.success !== false ? (browserData?.customers ?? []) : []
+
+  const [showAddCustomer, setShowAddCustomer] = useState(false)
+  const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', email: '', address: '', city: '', state: '', pincode: '' })
+  const [savingCustomer, setSavingCustomer] = useState(false)
+  const [addCustomerError, setAddCustomerError] = useState<string | null>(null)
+
+  async function submitNewCustomer() {
+    if (!newCustomer.name.trim()) { setAddCustomerError('Name is required.'); return }
+    setSavingCustomer(true); setAddCustomerError(null)
+    try {
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newCustomer, businessId, source: 'sales_invoice' }),
+      })
+      const d = await res.json()
+      if (!res.ok || d.success === false) throw new Error(d.error || 'Failed to add customer')
+      applyCustomer(d.customer)
+      refetchBrowserCustomers()
+      setShowAddCustomer(false)
+      setShowCustomerBrowser(false)
+      setNewCustomer({ name: '', phone: '', email: '', address: '', city: '', state: '', pincode: '' })
+    } catch (err: any) {
+      setAddCustomerError(err.message || 'Something went wrong')
+    } finally {
+      setSavingCustomer(false)
+    }
   }
 
   function addItem() {
@@ -145,7 +197,7 @@ export default function NewSalesInvoicePage() {
         fetch('/api/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ businessId, name: customer.name, phone: customer.phone, email: customer.email, address: customer.address, source: 'sales_invoice' }),
+          body: JSON.stringify({ businessId, name: customer.name, phone: customer.phone, email: customer.email, address: customer.address, city: customer.city, state: customer.state, pincode: customer.pincode, source: 'sales_invoice' }),
         }).catch(() => {})
       }
       router.push('/console/sales')
@@ -219,7 +271,12 @@ export default function NewSalesInvoicePage() {
         </div>
 
         <Card className="p-5 space-y-3">
-          <h3 className="text-xs font-semibold text-ink uppercase tracking-wide">Bill To</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-ink uppercase tracking-wide">Bill To</h3>
+            <Button type="button" variant="secondary" size="sm" onClick={() => { setBrowserSearch(''); setShowCustomerBrowser(true) }} icon={<Users className="w-3.5 h-3.5" />}>
+              Browse Customers
+            </Button>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 relative">
               <label className={labelCls}>Company / Customer Name *</label>
@@ -261,7 +318,25 @@ export default function NewSalesInvoicePage() {
             </div>
             <div className="col-span-2">
               <label className={labelCls}>Billing Address</label>
-              <input value={customer.address} onChange={e => setCustomer(p => ({ ...p, address: e.target.value }))} className={inputCls} placeholder="Street, City, State - PIN" />
+              <input value={customer.address} onChange={e => setCustomer(p => ({ ...p, address: e.target.value }))} className={inputCls} placeholder="Street" />
+            </div>
+            <div>
+              <label className={labelCls}>Pincode</label>
+              <PincodeInput
+                value={customer.pincode || ''}
+                onChange={(value) => setCustomer(p => ({ ...p, pincode: value }))}
+                onResolved={({ state, city }) => setCustomer(p => ({ ...p, state: p.state || state, city: p.city || city }))}
+                placeholder="400001"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>State</label>
+              <StateSelect value={customer.state || ''} onChange={(value) => setCustomer(p => ({ ...p, state: value, city: '' }))} className={`${inputCls} appearance-none`} />
+            </div>
+            <div className="col-span-2">
+              <label className={labelCls}>City</label>
+              <CitySelect value={customer.city || ''} state={customer.state || ''} onChange={(value) => setCustomer(p => ({ ...p, city: value }))} className={inputCls} />
             </div>
           </div>
         </Card>
@@ -338,6 +413,103 @@ export default function NewSalesInvoicePage() {
           </Card>
         </div>
       </form>
+
+      {showCustomerBrowser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowCustomerBrowser(false)}>
+          <div className="bg-surface border border-border rounded-card shadow-card-lg w-full max-w-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-sm font-semibold text-ink">Choose Customer</h3>
+              <button onClick={() => setShowCustomerBrowser(false)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-4 border-b border-border flex gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-ink-3 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input value={browserSearch} onChange={e => setBrowserSearch(e.target.value)} placeholder="Search by name, phone, or email…" className={`${inputCls} pl-9`} />
+              </div>
+              <Button type="button" size="sm" onClick={() => { setAddCustomerError(null); setShowAddCustomer(true) }} icon={<Plus className="w-4 h-4" />}>Add Customer</Button>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              {browserCustomers.length === 0 ? (
+                <p className="px-5 py-10 text-sm text-ink-3 text-center">No customers found.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border sticky top-0 bg-surface">
+                      <th className="text-left px-5 py-2 text-xs text-ink-3 font-medium">Name</th>
+                      <th className="text-left px-2 py-2 text-xs text-ink-3 font-medium">Phone</th>
+                      <th className="text-left px-2 py-2 text-xs text-ink-3 font-medium">Email</th>
+                      <th className="text-left px-5 py-2 text-xs text-ink-3 font-medium">City</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {browserCustomers.map(c => (
+                      <tr key={c._id} className="hover:bg-surface-2 cursor-pointer" onClick={() => { applyCustomer(c); setShowCustomerBrowser(false) }}>
+                        <td className="px-5 py-2 text-ink font-medium">{c.name}</td>
+                        <td className="px-2 py-2 text-ink-2">{c.phone || '—'}</td>
+                        <td className="px-2 py-2 text-ink-2">{c.email || '—'}</td>
+                        <td className="px-5 py-2 text-ink-2">{c.city || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddCustomer && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40" onClick={() => setShowAddCustomer(false)}>
+          <div className="bg-surface border border-border rounded-card shadow-card-lg w-full max-w-md p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-ink">Add Customer</h3>
+              <button onClick={() => setShowAddCustomer(false)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
+            </div>
+            {addCustomerError && <div className="text-xs text-danger bg-danger-soft border border-danger/20 rounded-control px-3 py-2">{addCustomerError}</div>}
+            <div>
+              <label className={labelCls}>Name *</label>
+              <input autoFocus value={newCustomer.name} onChange={e => setNewCustomer(p => ({ ...p, name: e.target.value }))} className={inputCls} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className={labelCls}>Phone</label>
+                <input value={newCustomer.phone} onChange={e => setNewCustomer(p => ({ ...p, phone: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Email</label>
+                <input type="email" value={newCustomer.email} onChange={e => setNewCustomer(p => ({ ...p, email: e.target.value }))} className={inputCls} />
+              </div>
+            </div>
+            <div>
+              <label className={labelCls}>Address</label>
+              <input value={newCustomer.address} onChange={e => setNewCustomer(p => ({ ...p, address: e.target.value }))} className={inputCls} />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className={labelCls}>Pincode</label>
+                <PincodeInput
+                  value={newCustomer.pincode}
+                  onChange={(value) => setNewCustomer(p => ({ ...p, pincode: value }))}
+                  onResolved={({ state, city }) => setNewCustomer(p => ({ ...p, state: p.state || state, city: p.city || city }))}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>State</label>
+                <StateSelect value={newCustomer.state} onChange={(value) => setNewCustomer(p => ({ ...p, state: value, city: '' }))} className={`${inputCls} appearance-none`} />
+              </div>
+              <div>
+                <label className={labelCls}>City</label>
+                <CitySelect value={newCustomer.city} state={newCustomer.state} onChange={(value) => setNewCustomer(p => ({ ...p, city: value }))} className={inputCls} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="secondary" size="sm" onClick={() => setShowAddCustomer(false)}>Cancel</Button>
+              <Button size="sm" onClick={submitNewCustomer} disabled={savingCustomer} icon={savingCustomer ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save Customer</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
