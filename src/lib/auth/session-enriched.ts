@@ -9,6 +9,7 @@ import Permission from "@/models/Permission";
 import Business from "@/models/Business";
 import { expandWithAliases } from "@/core/access/moduleKeyAliases";
 import { getOrCreateANGroupBusinessId } from "@/core/access/anGroupBusiness.service";
+import { getVendorAvailableModules, permissionCodesForModules } from "@/core/access/vendorAccess.service";
 import { isSubscriptionBlocked } from "@/core/subscriptions/checkAccess";
 
 /**
@@ -202,6 +203,30 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
           Array.isArray(r.permissions) ? r.permissions : []
         );
 
+        // VENDOR_OWNER/VENDOR_MANAGER are meant to always mean "every
+        // module currently available to this vendor" (see
+        // vendorAccess.service.ts's own comment on those two roles) -- but
+        // the stored Role.permissions array above is only a SNAPSHOT,
+        // written once by ensureVendorCoreRoles() at role-creation time
+        // (or a manual re-sync). Every module added to VENDOR_MODULE_KEYS
+        // since then (Settings, Integrations, Material Catalog's alias --
+        // all fixed this session) never reaches an already-existing
+        // vendor's stored role, so it stays invisible/forbidden no matter
+        // what the code now says it should grant. Reproduced live,
+        // repeatedly, as "Settings still not in sidebar" even after the
+        // module-availability fix. Recomputed live here instead of
+        // trusting the stale snapshot -- self-healing, no separate
+        // re-sync step required, same pattern as STATIC_MODULES's own
+        // self-heal in api/ui/sidebar/route.ts.
+        const vendorStructuralRoles = rolesDocs.filter((r: any) =>
+          typeof r.code === "string" && (r.code.startsWith("VENDOR_OWNER") || r.code.startsWith("VENDOR_MANAGER")) && r.vendorId
+        );
+        const liveVendorPermissions: string[] = [];
+        for (const roleDoc of vendorStructuralRoles) {
+          const available = await getVendorAvailableModules(String((roleDoc as any).businessId)).catch(() => []);
+          liveVendorPermissions.push(...permissionCodesForModules(available.map((m) => m.key)));
+        }
+
         const rolePermissions = await RolePermission.find({
           roleId: { $in: rolesDocs.map((r: any) => r._id) },
         }).lean();
@@ -216,7 +241,7 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
           relationalPermissions = permissionDocs.map((p: any) => p.code);
         }
 
-        permissions = Array.from(new Set([...flatPermissions, ...relationalPermissions]));
+        permissions = Array.from(new Set([...flatPermissions, ...relationalPermissions, ...liveVendorPermissions]));
       }
     }
   } catch {

@@ -110,7 +110,7 @@ export async function getVendorAvailableModules(businessId: string): Promise<Mod
   return flattenHierarchy().filter((m) => vendorKeys.has(m.key) && !disabled.has(m.key));
 }
 
-function permissionCodesForModules(modules: string[]): string[] {
+export function permissionCodesForModules(modules: string[]): string[] {
   const codes: string[] = [];
   for (const moduleKey of modules) {
     for (const action of ALL_ACTION_KEYS) {

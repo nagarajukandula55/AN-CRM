@@ -571,12 +571,23 @@ export default function Sidebar() {
               );
             };
 
+            // SC is a single-login shop with no separate admin/staff
+            // hierarchy at all -- everything under this group for an SC
+            // account is just that one person's own account settings
+            // (Settings, Integrations, Plan & Billing), never actual
+            // platform/user administration. Labelling it "Admin" read as
+            // if it belonged to a role SC doesn't have, per explicit
+            // direction ("admin is not there in SC, only single login").
+            // Cosmetic-only relabel; the underlying permission/visibility
+            // gating is unchanged.
+            const displayLabel = group.label === "Admin" && activeBiz?.operatingMode === "SC" ? "Account" : group.label;
+
             return (
               <div key={group.label} className="mb-4">
                 {/* Section header */}
                 {!isCollapsed && (
                   <p className="px-3 mb-1 text-[9px] uppercase tracking-[0.45em] text-ink-3 font-semibold">
-                    {group.label}
+                    {displayLabel}
                   </p>
                 )}
 
@@ -625,7 +636,7 @@ export default function Sidebar() {
                               }
                               className="flex w-full items-center justify-between rounded-control px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wider text-ink-3 hover:bg-surface-2 hover:text-ink-2 transition-all"
                             >
-                              <span>{sg.label}</span>
+                              <span>{sg.label === "System" && activeBiz?.operatingMode === "SC" ? "General" : sg.label}</span>
                               <ChevronDown
                                 size={10}
                                 className={`transition-transform ${sgOpen || previewing ? "" : "-rotate-90"}`}
