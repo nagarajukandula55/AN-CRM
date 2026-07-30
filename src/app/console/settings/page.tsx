@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import Link from 'next/link'
 import { Building2, Plug, Sparkles, Save, User, ChevronRight, Receipt, Globe2, Plus, Trash2 } from 'lucide-react'
 import { DEVICE_CATEGORIES, DEVICE_CATEGORY_LABELS } from '@/core/catalog/deviceCategory'
+import DocumentNumbersPanel from '@/components/admin/DocumentNumbersPanel'
 
 /**
  * Admin Settings hub — src/app/console/settings.
@@ -35,7 +36,7 @@ import { DEVICE_CATEGORIES, DEVICE_CATEGORY_LABELS } from '@/core/catalog/device
  */
 
 type View = 'business' | 'platform'
-type Tab = 'integrations' | 'ai' | 'invoicing' | 'operations' | 'communication'
+type Tab = 'integrations' | 'ai' | 'invoicing' | 'operations' | 'communication' | 'numbering'
 
 interface SsoMapping {
   _id: string
@@ -241,6 +242,7 @@ export default function AdminSettingsPage() {
 
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'operations', label: 'Operations', icon: <Building2 size={14} /> },
+    { key: 'numbering', label: 'Document Numbers', icon: <Receipt size={14} /> },
     { key: 'invoicing', label: 'Invoicing Rules', icon: <Receipt size={14} /> },
     { key: 'integrations', label: 'Integrations', icon: <Plug size={14} /> },
     { key: 'communication', label: 'Communication Quota', icon: <Globe2 size={14} /> },
@@ -377,6 +379,16 @@ export default function AdminSettingsPage() {
             </Link>
           )}
         </div>
+
+        {tab === 'numbering' && businessId && (
+          <div className="rounded-card border border-border bg-surface p-6">
+            <h3 className="h-section mb-1">Document Numbers</h3>
+            <p className="text-xs text-ink-3 mb-5">
+              Set your own numbering series/format (prefix, financial year, sequence length, etc.) per document type -- Invoice, Quotation, Delivery Challan, Credit/Debit Note, and more.
+            </p>
+            <DocumentNumbersPanel businessId={businessId} />
+          </div>
+        )}
 
         {tab === 'operations' && (
           <div className="rounded-card border border-border bg-surface p-6">

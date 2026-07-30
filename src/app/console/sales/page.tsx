@@ -194,6 +194,24 @@ export default function SalesPage() {
     refetchOrders()
   }
 
+  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null)
+  async function markInvoicePaid(id: string) {
+    setMarkingPaidId(id)
+    try {
+      const res = await fetch(`/api/sales/invoices/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'PAID', paidAt: new Date().toISOString() }),
+      })
+      if (!res.ok) throw new Error('Failed to mark invoice paid')
+      fetchData()
+    } catch {
+      // Best-effort -- the row's status badge just won't change if this fails.
+    } finally {
+      setMarkingPaidId(null)
+    }
+  }
+
   function addItem() {
     setItems(p => [...p, { description: '', hsnCode: '', qty: 1, unit: 'Nos', price: 0, taxPct: invoiceType === 'GST' ? 18 : 0 }])
   }
@@ -412,10 +430,17 @@ export default function SalesPage() {
                       <Badge tone={STATUS_TONE[inv.status] ?? 'neutral'}>{inv.status}</Badge>
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <button onClick={() => setPreview(inv)}
-                        className="w-7 h-7 rounded-control bg-surface-2 flex items-center justify-center hover:bg-surface-3 transition ml-auto">
-                        <Eye size={13} className="text-ink-3" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {['DRAFT', 'SENT'].includes(inv.status) && (
+                          <Button variant="secondary" size="sm" onClick={() => markInvoicePaid(inv._id)} disabled={markingPaidId === inv._id}>
+                            {markingPaidId === inv._id ? 'Marking…' : 'Mark Paid'}
+                          </Button>
+                        )}
+                        <button onClick={() => setPreview(inv)}
+                          className="w-7 h-7 rounded-control bg-surface-2 flex items-center justify-center hover:bg-surface-3 transition">
+                          <Eye size={13} className="text-ink-3" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

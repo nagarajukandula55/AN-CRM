@@ -141,7 +141,7 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
   // the module-based permission filter is applied below.
   const businessModulesPromise =
     !isSuperAdmin && businessContext?.businessId
-      ? Business.findById(businessContext.businessId).select("modules").lean().catch(() => null)
+      ? Business.findById(businessContext.businessId).select("modules operatingMode").lean().catch(() => null)
       : Promise.resolve(null);
 
   try {
@@ -273,6 +273,33 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
   // Now builds a DENY-list instead: only a module EXPLICITLY saved with
   // enabled:false gets stripped; everything else (including keys the
   // array has no opinion on) stays granted.
+  // SC is architecturally single-login with NO role concept at all --
+  // "there is no roles and only single login will be there... we need to
+  // give all the access to single ID only" (explicit direction, distinct
+  // from BRAND which does have Manager/CCO/Engineer roles). Whatever role
+  // documents that login happens to hold (or doesn't) is irrelevant for
+  // an SC business: grant every operational module this business hasn't
+  // explicitly disabled, same module set a vendor Owner/Manager would
+  // get (getVendorAvailableModules already excludes platform-admin-only
+  // modules like Users/Roles/Businesses, which SC has no use for either).
+  // This replaces relying on a Role document actually holding the right
+  // permissions for an SC login -- the same root-cause class as the
+  // Settings/Integrations staleness bug fixed earlier, just for a
+  // business type that was never meant to route through Role/Permission
+  // at all.
+  if (!isSuperAdmin && businessContext?.businessId) {
+    try {
+      const business = await businessModulesPromise;
+      if ((business as any)?.operatingMode === "SC") {
+        const available = await getVendorAvailableModules(String(businessContext.businessId)).catch(() => []);
+        permissions = Array.from(new Set([...permissions, ...permissionCodesForModules(available.map((m) => m.key))]));
+      }
+    } catch {
+      // Fall through -- an SC login keeps whatever it already resolved
+      // above rather than losing access entirely if this lookup fails.
+    }
+  }
+
   if (!isSuperAdmin && businessContext?.businessId && permissions.length > 0) {
     try {
       const business = await businessModulesPromise;
