@@ -151,7 +151,17 @@ export async function POST(req: Request) {
         "analytics",
         "admin-settings",
         "admin-plan",
+        "admin-intg",
         "send-feedback",
+        // Documents SC can also generate directly (not only via a
+        // workorder close) -- Quotations/Estimates before repair,
+        // Delivery Challans when handing a device to a courier, Credit/
+        // Debit Notes for adjustments.
+        "quotations",
+        "delivery-challans",
+        "credit-notes",
+        "debit-notes",
+        "proforma-invoices",
         ...(business?.inventorySerialized ? ["inventory", "stock-transfers", "inventory-lots"] : []),
       ]);
       visibleModules = visibleModules.filter((m: any) => scAllowedKeys.has(m.key));

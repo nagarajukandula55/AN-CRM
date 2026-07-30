@@ -205,6 +205,16 @@ export interface ICrmJobSheet extends Document {
   handedOverAt?: Date;
   handedOverBy?: Types.ObjectId;
 
+  // NPS/service-feedback survey -- feedbackToken is generated at handover
+  // (see api/crm/jobsheets/[id]/handover/route.ts) so the public survey
+  // link (/feedback/service/[token]) exists as soon as there's a delivered
+  // job to survey. feedbackRequestSentAt marks when the follow-up
+  // SMS/WhatsApp was actually sent (1 hour after handedOverAt, see
+  // api/cron/service-feedback-followup/route.ts) so the cron sweep never
+  // sends it twice.
+  feedbackToken?: string;
+  feedbackRequestSentAt?: Date;
+
   invoiceId?: Types.ObjectId; // SalesInvoice created at closure
   invoiceNumber?: string;
 
@@ -321,6 +331,9 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
     paymentMode: { type: String, enum: ["CASH", "UPI", "CARD", "BANK_TRANSFER", "OTHER"] },
     handedOverAt: { type: Date },
     handedOverBy: { type: Schema.Types.ObjectId, ref: "User" },
+
+    feedbackToken: { type: String, index: true },
+    feedbackRequestSentAt: { type: Date },
 
     invoiceId: { type: Schema.Types.ObjectId, ref: "SalesInvoice" },
     invoiceNumber: { type: String },

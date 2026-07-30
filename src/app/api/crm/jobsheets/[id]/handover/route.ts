@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
+import crypto from "crypto";
 import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
 import CrmCall from "@/models/CrmCall";
@@ -15,6 +16,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
 
 const PAYMENT_MODES = new Set(["CASH", "UPI", "CARD", "BANK_TRANSFER", "OTHER"]);
 
@@ -66,7 +68,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     jobSheet.handedOverAt = new Date();
     jobSheet.handedOverBy = new mongoose.Types.ObjectId(userId) as any;
     jobSheet.status = "CLOSED";
+    // Generated now (device-handover time, the actual "delivery" moment
+    // the NPS survey is supposed to fire an hour after -- see explicit
+    // direction) rather than lazily in the follow-up cron, so the token
+    // exists as soon as there's a job to survey.
+    if (!jobSheet.feedbackToken) {
+      jobSheet.feedbackToken = crypto.randomBytes(16).toString("hex");
+    }
     await jobSheet.save();
+
+    notifyJobSheetStatusChange(jobSheet.businessId.toString(), jobSheet.phone, jobSheet.jobSheetNumber, jobSheet.status);
 
     // The SalesInvoice generated at close-time (see close/route.ts) was
     // left at "SENT" forever -- handover never touched it, so a job could

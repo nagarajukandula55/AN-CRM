@@ -71,6 +71,12 @@ export const VENDOR_MODULE_KEYS = [
   // the module can be granted to a vendor role at all). Reported live,
   // repeatedly, as "Settings not in sidebar" for a Service Center account.
   "settings",
+  // Integrations (Telegram/WhatsApp/Email/SMS gateway config) -- a vendor
+  // needs to configure their OWN SMS/WhatsApp credentials for the
+  // customer-facing workorder-status alerts and NPS follow-up (see
+  // lib/customerNotify.ts) without needing a Super Admin to do it for
+  // them every time.
+  "integrations",
 ] as const;
 
 const ALL_ACTION_KEYS = STANDARD_ACTIONS.map((a) => a.key);
