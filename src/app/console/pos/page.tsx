@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Field, Input, Select } from '@/components/ui/Input'
+import { GST_SLABS } from '@/core/gst/gstSlabs'
 import { Badge } from '@/components/ui/Badge'
 
 /**
@@ -181,7 +182,9 @@ export default function PosPage() {
                             <Input type="number" value={item.unitPrice} onChange={(e) => updateItem(i, { unitPrice: Number(e.target.value) })} />
                           </td>
                           <td className="py-1.5 px-2">
-                            <Input type="number" value={item.taxRate} onChange={(e) => updateItem(i, { taxRate: Number(e.target.value) })} />
+                            <Select value={item.taxRate} onChange={(e) => updateItem(i, { taxRate: Number(e.target.value) })}>
+                              {GST_SLABS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
+                            </Select>
                           </td>
                           <td className="py-1.5 px-2">
                             <Input value={item.hsnCode} onChange={(e) => updateItem(i, { hsnCode: e.target.value })} />

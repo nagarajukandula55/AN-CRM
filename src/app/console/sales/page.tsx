@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingPanel } from '@/components/ui/Spinner'
 import { Input } from '@/components/ui/Input'
+import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
+import { GST_SLABS } from '@/core/gst/gstSlabs'
 
 interface Customer {
   name: string
@@ -153,9 +155,8 @@ export default function SalesPage() {
   ])
   const [discount, setDiscount]     = useState(0)
 
-  const { data: meData } = useSWR('/api/auth/me')
-  const businessId: string | null = meData?.activeBusinessId ?? meData?.user?.activeBusinessId ?? null
-  const businessName: string = meData?.activeBusiness?.name ?? meData?.user?.activeBusiness?.name ?? meData?.businessName ?? 'Your Business'
+  const { businessId, businessName: activeBusinessName } = useActiveBusinessId()
+  const businessName: string = activeBusinessName ?? 'Your Business'
 
   // Centralized customer lookup -- typing 3+ chars into Name or Phone
   // searches the shared Customer directory (/api/customers, matched
@@ -725,19 +726,11 @@ export default function SalesPage() {
                             <label className="block text-[10px] text-gray-500 mb-1">
                               {invoiceType === 'GST' ? 'GST Rate %' : 'Tax %'}
                             </label>
-                            {invoiceType === 'GST' ? (
-                              <select value={item.taxPct} onChange={e => updateItem(idx, 'taxPct', parseInt(e.target.value))}
-                                title="Select GST rate"
-                                className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:border-gray-400">
-                                {[0, 5, 12, 18, 28].map(r => <option key={r} value={r}>{r}%</option>)}
-                              </select>
-                            ) : (
-                              <input type="number" min={0} max={100} step={0.5} value={item.taxPct}
-                                onChange={e => updateItem(idx, 'taxPct', parseFloat(e.target.value) || 0)}
-                                onFocus={e => e.target.select()}
-                                placeholder="0"
-                                className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:border-gray-400" />
-                            )}
+                            <select value={item.taxPct} onChange={e => updateItem(idx, 'taxPct', parseFloat(e.target.value))}
+                              title="Select GST rate"
+                              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:border-gray-400">
+                              {GST_SLABS.map(r => <option key={r} value={r}>{r}%</option>)}
+                            </select>
                           </div>
                           <div>
                             <label className="block text-[10px] text-gray-500 mb-1">Amount</label>

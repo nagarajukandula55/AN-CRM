@@ -9,6 +9,8 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { StateSelect, CitySelect, PincodeInput } from '@/components/shared/LocationSelect'
+import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
+import { GST_SLABS } from '@/core/gst/gstSlabs'
 
 /**
  * Full-page invoice creation, not a modal -- per explicit direction to
@@ -82,8 +84,7 @@ export default function NewSalesInvoicePage() {
     { description: '', hsnCode: '', qty: 1, unit: 'Nos', price: 0, taxPct: 18 },
   ])
 
-  const { data: meData } = useSWR('/api/auth/me')
-  const businessId: string | null = meData?.activeBusinessId ?? meData?.user?.activeBusinessId ?? null
+  const { businessId } = useActiveBusinessId()
 
   const [customerQuery, setCustomerQuery] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
@@ -365,7 +366,11 @@ export default function NewSalesInvoicePage() {
                   <td className="px-2 py-1.5"><input value={item.hsnCode} onChange={e => updateItem(i, 'hsnCode', e.target.value)} className={`${inputCls} py-1.5`} /></td>
                   <td className="px-2 py-1.5"><input type="number" min={1} value={item.qty} onChange={e => updateItem(i, 'qty', Number(e.target.value))} className={`${inputCls} py-1.5 text-center`} /></td>
                   <td className="px-2 py-1.5"><input type="number" min={0} value={item.price} onChange={e => updateItem(i, 'price', Number(e.target.value))} className={`${inputCls} py-1.5 text-right`} /></td>
-                  <td className="px-2 py-1.5"><input type="number" min={0} value={item.taxPct} onChange={e => updateItem(i, 'taxPct', Number(e.target.value))} className={`${inputCls} py-1.5 text-right`} /></td>
+                  <td className="px-2 py-1.5">
+                    <select value={item.taxPct} onChange={e => updateItem(i, 'taxPct', Number(e.target.value))} className={`${inputCls} py-1.5 text-right`}>
+                      {GST_SLABS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
+                    </select>
+                  </td>
                   <td className="px-5 py-1.5 text-right tabular text-ink font-medium text-xs">{fmt((item.qty || 0) * (item.price || 0) * (1 + (item.taxPct || 0) / 100))}</td>
                   <td className="px-2 py-1.5">{items.length > 1 && <button type="button" onClick={() => removeItem(i)} className="text-ink-3 hover:text-danger"><Trash2 className="w-4 h-4" /></button>}</td>
                 </tr>

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { LoadingPanel } from '@/components/ui/Spinner'
+import { GST_SLABS } from '@/core/gst/gstSlabs'
 
 /**
  * SC's entire workorder lifecycle -- intake through closure -- on ONE
@@ -138,12 +139,14 @@ export default function SCJobSheetScreen() {
   const defaultLabourCharge: number = businessData?.business?.defaultLabourCharge || 0
   const savedBrands: string[] = businessData?.business?.savedBrands || []
   const savedModels: string[] = businessData?.business?.savedModels || []
+  const savedPaymentCollectors: string[] = businessData?.business?.savedPaymentCollectors || []
 
-  // Persists a new Brand/Model name onto Business.savedBrands/savedModels
-  // (deduped) so it shows up as a dropdown suggestion on every future
-  // workorder -- the mini-modal "add & save" flow asked for, without the
-  // shared approval-gated catalog tree (see intake screen's own comment).
-  async function saveBusinessListValue(field: 'savedBrands' | 'savedModels', value: string) {
+  // Persists a new Brand/Model/Payment-Collector name onto the matching
+  // Business.saved* array (deduped) so it shows up as a dropdown
+  // suggestion on every future workorder -- the mini-modal "add & save"
+  // flow asked for, without the shared approval-gated catalog tree (see
+  // intake screen's own comment).
+  async function saveBusinessListValue(field: 'savedBrands' | 'savedModels' | 'savedPaymentCollectors', value: string) {
     if (!businessId || !value.trim()) return
     const current: string[] = businessData?.business?.[field] || []
     if (current.some(v => v.toLowerCase() === value.trim().toLowerCase())) return
@@ -422,6 +425,8 @@ export default function SCJobSheetScreen() {
 
   const [paymentCollected, setPaymentCollected] = useState('')
   const [paymentMode, setPaymentMode] = useState('CASH')
+  const [paymentCollectedByName, setPaymentCollectedByName] = useState('')
+  const [showHandoverModal, setShowHandoverModal] = useState(false)
 
   async function handover() {
     if (!jobId) return
@@ -430,10 +435,11 @@ export default function SCJobSheetScreen() {
       const res = await fetch(`/api/crm/jobsheets/${jobId}/handover`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentCollected: Number(paymentCollected) || 0, paymentMode }),
+        body: JSON.stringify({ paymentCollected: Number(paymentCollected) || 0, paymentMode, paymentCollectedByName }),
       })
       const d = await res.json()
       if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to hand over')
+      if (paymentCollectedByName.trim()) saveBusinessListValue('savedPaymentCollectors', paymentCollectedByName)
       fetchJob()
     } catch (err: any) {
       setActionError(err.message || 'Something went wrong')
@@ -788,7 +794,11 @@ export default function SCJobSheetScreen() {
                     </td>
                     <td className="px-2 py-1.5"><input disabled={!editable} type="number" min={1} value={l.quantity} onChange={e => updateLine(i, { quantity: Number(e.target.value) })} className={`${inputCls} py-1.5 text-center disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
                     <td className="px-2 py-1.5"><input disabled={!editable} type="number" min={0} value={l.unitPrice} onChange={e => updateLine(i, { unitPrice: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
-                    <td className="px-2 py-1.5"><input disabled={!editable} type="number" min={0} value={l.taxRate} onChange={e => updateLine(i, { taxRate: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
+                    <td className="px-2 py-1.5">
+                      <select disabled={!editable} value={l.taxRate} onChange={e => updateLine(i, { taxRate: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`}>
+                        {GST_SLABS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
+                      </select>
+                    </td>
                     <td className="px-5 py-1.5 text-right tabular text-ink font-medium text-xs">₹{lineTotal(l).toFixed(2)}</td>
                     <td className="px-2 py-1.5">{editable && <button onClick={() => removeLine(i)} className="text-ink-3 hover:text-danger"><Trash2 className="w-4 h-4" /></button>}</td>
                   </tr>
@@ -862,8 +872,30 @@ export default function SCJobSheetScreen() {
               </select>
             </div>
           </div>
-          <Button size="lg" className="w-full" onClick={handover} disabled={saving}>Hand Over to Customer &amp; Close</Button>
+          <Button size="lg" className="w-full" onClick={() => { setPaymentCollectedByName(''); setShowHandoverModal(true) }} disabled={saving}>Hand Over to Customer &amp; Close</Button>
         </Card>
+      )}
+
+      {showHandoverModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowHandoverModal(false)}>
+          <div className="bg-surface border border-border rounded-card shadow-card-lg w-full max-w-sm p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-ink">Payment Collected By</h3>
+              <button onClick={() => setShowHandoverModal(false)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
+            </div>
+            <div>
+              <label className={labelCls}>Name of person who collected the payment</label>
+              <input autoFocus list="payment-collectors-list" value={paymentCollectedByName} onChange={e => setPaymentCollectedByName(e.target.value)} className={inputCls} placeholder="e.g. Nagaraj" />
+              <datalist id="payment-collectors-list">
+                {savedPaymentCollectors.map(name => <option key={name} value={name} />)}
+              </datalist>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="secondary" size="sm" onClick={() => setShowHandoverModal(false)}>Cancel</Button>
+              <Button size="sm" onClick={() => { setShowHandoverModal(false); handover() }} disabled={saving} icon={saving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Confirm Handover</Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {job.status === 'CLOSED' && (
@@ -920,7 +952,9 @@ export default function SCJobSheetScreen() {
               </div>
               <div>
                 <label className={labelCls}>Tax %</label>
-                <input type="number" min={0} value={newPart.gstRate} onChange={e => setNewPart(p => ({ ...p, gstRate: e.target.value }))} className={inputCls} />
+                <select value={newPart.gstRate} onChange={e => setNewPart(p => ({ ...p, gstRate: e.target.value }))} className={inputCls}>
+                  {GST_SLABS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
+                </select>
               </div>
               <div>
                 <label className={labelCls}>Type</label>

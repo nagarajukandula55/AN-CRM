@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const body = await req.json().catch(() => ({}));
-    const { paymentCollected, paymentMode } = body;
+    const { paymentCollected, paymentMode, paymentCollectedByName } = body;
     if (paymentCollected === undefined || isNaN(Number(paymentCollected))) {
       return NextResponse.json({ success: false, message: "paymentCollected is required" }, { status: 400 });
     }
@@ -65,6 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     jobSheet.paymentCollected = Number(paymentCollected);
     jobSheet.paymentMode = paymentMode;
+    if (paymentCollectedByName?.trim()) jobSheet.paymentCollectedByName = paymentCollectedByName.trim();
     jobSheet.handedOverAt = new Date();
     jobSheet.handedOverBy = new mongoose.Types.ObjectId(userId) as any;
     jobSheet.status = "CLOSED";
