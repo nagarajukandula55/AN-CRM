@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { TrendingUp, TrendingDown } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -11,6 +12,13 @@ import { LoadingPanel } from '@/components/ui/Spinner'
  * CrmCall/CrmJobSheet via /api/analytics/overview) after the old version
  * of this page (built on the ecommerce Order model) was removed along
  * with the rest of AN-CRM's leftover ANgroup storefront surface area.
+ *
+ * The Daily/Weekly/Monthly/Yearly section below (api/analytics/trend) adds
+ * the year-on-date comparison view per explicit direction ("Daily, weekly,
+ * monthly and yearly and year as on date comparisons and graphs and also
+ * comparison clusters on both calls and revenue both") -- each bucket is
+ * charted alongside the same bucket exactly one year earlier, for both
+ * revenue and call volume.
  */
 
 interface Overview {
@@ -21,15 +29,55 @@ interface Overview {
   operations: { totalCalls: number; openWorkorders: number; closedWorkorders: number }
 }
 
+interface TrendBucket {
+  label: string
+  revenue: number
+  calls: number
+  priorYearLabel: string
+  priorYearRevenue: number
+  priorYearCalls: number
+}
+
+interface TrendData {
+  granularity: string
+  buckets: TrendBucket[]
+  summary: {
+    revenue: { current: number; priorYear: number; changePct: number | null }
+    calls: { current: number; priorYear: number; changePct: number | null }
+  }
+}
+
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
   PAID: 'success', SENT: 'info', PARTIAL: 'warning', OVERDUE: 'danger', CANCELLED: 'neutral', FAILED: 'danger', DRAFT: 'neutral',
 }
 
+const GRANULARITIES = [
+  { key: 'DAY', label: 'Daily' },
+  { key: 'WEEK', label: 'Weekly' },
+  { key: 'MONTH', label: 'Monthly' },
+  { key: 'YEAR', label: 'Yearly' },
+] as const
+
+function ChangeBadge({ pct }: { pct: number | null }) {
+  if (pct === null) return <span className="text-xs text-ink-3">No prior-year data</span>
+  const up = pct >= 0
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-medium ${up ? 'text-success' : 'text-danger'}`}>
+      {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+      {up ? '+' : ''}{pct.toFixed(1)}% vs. same period last year
+    </span>
+  )
+}
+
 export default function AnalyticsPage() {
   const [data, setData] = useState<Overview | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const [granularity, setGranularity] = useState<typeof GRANULARITIES[number]['key']>('MONTH')
+  const [trend, setTrend] = useState<TrendData | null>(null)
+  const [trendLoading, setTrendLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/analytics/overview', { credentials: 'include' })
@@ -37,6 +85,26 @@ export default function AnalyticsPage() {
       .then((d) => { if (d.success) setData(d) })
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    setTrendLoading(true)
+    fetch(`/api/analytics/trend?granularity=${granularity}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setTrend(d) })
+      .finally(() => setTrendLoading(false))
+  }, [granularity])
+
+  const revenueChartData = trend?.buckets.map((b) => ({
+    label: b.label,
+    'This period': b.revenue,
+    [`Same period last year`]: b.priorYearRevenue,
+  })) || []
+
+  const callsChartData = trend?.buckets.map((b) => ({
+    label: b.label,
+    'This period': b.calls,
+    [`Same period last year`]: b.priorYearCalls,
+  })) || []
 
   return (
     <div className="min-h-screen bg-bg text-ink p-6">
@@ -55,6 +123,75 @@ export default function AnalyticsPage() {
             <StatCard label="Open Workorders" value={String(data.operations.openWorkorders)} />
             <StatCard label="Closed Workorders" value={String(data.operations.closedWorkorders)} />
           </div>
+
+          <Card>
+            <CardBody>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                <div className="h-section">Revenue &amp; Calls — Year-on-Date Comparison</div>
+                <div className="inline-flex rounded-control border border-border-strong bg-surface p-1 gap-1">
+                  {GRANULARITIES.map((g) => (
+                    <button
+                      key={g.key}
+                      onClick={() => setGranularity(g.key)}
+                      className={`px-3 py-1.5 rounded-control text-xs font-medium transition-colors ${
+                        granularity === g.key ? 'bg-accent text-accent-fg' : 'text-ink-2 hover:text-ink'
+                      }`}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {trendLoading ? (
+                <LoadingPanel label="Loading trend…" />
+              ) : !trend ? (
+                <p className="text-sm text-ink-3">Couldn't load trend data.</p>
+              ) : (
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium text-ink-2">Revenue</div>
+                      <ChangeBadge pct={trend.summary.revenue.changePct} />
+                    </div>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={revenueChartData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                          <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                          <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                          <Tooltip formatter={(v) => fmt(Number(v) || 0)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
+                          <Bar dataKey="This period" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="Same period last year" fill="var(--border-strong)" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium text-ink-2">Calls</div>
+                      <ChangeBadge pct={trend.summary.calls.changePct} />
+                    </div>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={callsChartData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                          <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                          <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                          <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
+                          <Bar dataKey="This period" fill="var(--info)" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="Same period last year" fill="var(--border-strong)" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardBody>
+          </Card>
 
           <Card>
             <CardBody>
