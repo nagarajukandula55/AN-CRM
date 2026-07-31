@@ -35,13 +35,19 @@ function remapId(item: Record<string, any>): Record<string, any> {
   return { _id: sourceId || _id, ...rest };
 }
 
-async function fetchAll(dataset: string): Promise<Record<string, any>[]> {
+// searchFilter (e.g. "businessId:<id>") is applied server-side, an exact
+// match on one field - narrows the paginated fetch to just that filter
+// instead of pulling the whole dataset when the caller already knows a
+// single-field exact filter it wants (e.g. "just this business's
+// customers"), same exact-match semantics as findOne() below.
+async function fetchAll(dataset: string, searchFilter?: string): Promise<Record<string, any>[]> {
   if (!CENTRAL_API_URL) throw new Error("CENTRAL_API_URL is not configured");
 
   const items: Record<string, any>[] = [];
   let page = 1;
   while (true) {
-    const res = await fetch(`${CENTRAL_API_URL}/api/v1/${dataset}?page=${page}&limit=${PAGE_SIZE}`, {
+    const searchParam = searchFilter ? `&search=${encodeURIComponent(searchFilter)}` : "";
+    const res = await fetch(`${CENTRAL_API_URL}/api/v1/${dataset}?page=${page}&limit=${PAGE_SIZE}${searchParam}`, {
       headers: headers(),
       cache: "no-store",
     });
@@ -87,4 +93,23 @@ export async function getVendorBySourceId(sourceId: string): Promise<Record<stri
 // single-field exact match, no client-side filtering workaround needed.
 export async function getVendorByVendorCode(vendorCode: string): Promise<Record<string, any> | null> {
   return findOne("vendors", "vendorId", vendorCode);
+}
+
+// Mirrors GET /api/customers' own filtering: optional exact businessId
+// scope (applied server-side, narrows the paginated fetch), optional
+// free-text substring search across name/phone/email (applied client-side
+// — central-api's search is single-field only, this needs a $or across
+// three), sorted newest-first, capped the same way the original Mongoose
+// query was (.limit(500)).
+export async function listCustomers(opts?: { businessId?: string; search?: string }): Promise<Record<string, any>[]> {
+  const all = await fetchAll("customers", opts?.businessId ? `businessId:${opts.businessId}` : undefined);
+  const search = opts?.search?.trim().toLowerCase();
+  const filtered = search
+    ? all.filter((c) =>
+        [c.name, c.phone, c.email].some((v) => typeof v === "string" && v.toLowerCase().includes(search))
+      )
+    : all;
+  return filtered
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, 500);
 }

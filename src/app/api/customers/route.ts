@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Types } from "mongoose";
 import Customer from "@/models/Customer";
+import { listCustomers } from "@/lib/centralApiRead";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
@@ -33,21 +34,11 @@ export async function GET(req: NextRequest) {
     const businessId = searchParams.get("businessId");
     const search = searchParams.get("search");
 
-    await connectDB();
-
-    const query: Record<string, unknown> = {};
-    if (businessId && Types.ObjectId.isValid(businessId)) {
-      query.businessId = new Types.ObjectId(businessId);
-    }
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    const customers = await Customer.find(query).sort({ createdAt: -1 }).limit(500).lean();
+    // Reads from central-api — see src/lib/centralApiRead.ts.
+    const customers = await listCustomers({
+      businessId: businessId && Types.ObjectId.isValid(businessId) ? businessId : undefined,
+      search: search || undefined,
+    });
 
     return NextResponse.json({ success: true, customers, total: customers.length });
   } catch (error: unknown) {

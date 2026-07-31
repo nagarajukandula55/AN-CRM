@@ -12,6 +12,7 @@
  */
 
 import mongoose, { Schema, Model, Document, Types } from "mongoose";
+import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
 export type SubscriptionPlan = "BASIC" | "PRO" | "ULTIMATE";
 export type BillingPeriod = "MONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "YEARLY";
@@ -76,6 +77,37 @@ const SubscriptionSchema = new Schema<ISubscription>(
 );
 
 SubscriptionSchema.index({ businessId: 1, status: 1, createdAt: -1 });
+
+// CENTRAL-API SYNC (dual write, see src/lib/centralApiSync.ts). Best-effort
+// - a central-api outage never fails the local save/update that triggered
+// it. Awaited (async function + await, not fire-and-forget) so a Vercel
+// serverless function can't be frozen mid-sync right after the response is
+// sent - see Business.ts/VendorProfile.ts for the fuller version of this
+// reasoning.
+//
+// Every field that matters for "subscription details, start date to end
+// date" is already native to this schema (startDate, expiryDate,
+// trialEndsAt, plan, billingPeriod, status, amount) and travels through
+// automatically as part of the synced document - same for businessId and,
+// for a sub-vendor addon charge, subVendorOf (the vendor's own _id), which
+// is exactly the join key central-api needs to link a subscription back to
+// its vendor/sub-vendor record in the "vendors" dataset.
+//
+// Covers save()/create() and findOneAndUpdate()/findByIdAndUpdate() - the
+// atomic charge-claim-and-release in api/vendors/[id]/sub-vendors/route.ts
+// uses the latter, so every state transition (PENDING_PAYMENT -> ACTIVE,
+// the claim/release around consumedAt) syncs, not just creation.
+SubscriptionSchema.post("save", async function (doc) {
+  await syncRecordToCentralApi("subscriptions", doc._id.toString(), doc.toObject());
+});
+
+SubscriptionSchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) await syncRecordToCentralApi("subscriptions", doc._id.toString(), doc.toObject());
+});
+
+SubscriptionSchema.post("findOneAndDelete", async function (doc) {
+  if (doc) await deleteRecordFromCentralApi("subscriptions", doc._id.toString());
+});
 
 const Subscription: Model<ISubscription> =
   (mongoose.models.Subscription as Model<ISubscription>) ||

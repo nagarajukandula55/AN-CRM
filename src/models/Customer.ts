@@ -8,6 +8,7 @@
  */
 
 import mongoose, { Schema, Model, Document, Types } from "mongoose";
+import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
 export interface ICustomer extends Document {
   businessId?: Types.ObjectId | null;
@@ -60,6 +61,38 @@ const CustomerSchema = new Schema<ICustomer>(
 
 CustomerSchema.index({ businessId: 1, isActive: 1 });
 CustomerSchema.index({ name: "text", phone: "text", email: "text" });
+
+// CENTRAL-API SYNC (dual write, see src/lib/centralApiSync.ts). Best-effort
+// - a central-api outage never fails the local save/delete that triggered
+// it. Awaited (async function + await, not fire-and-forget) so a Vercel
+// serverless function can't be frozen mid-sync right after the response is
+// sent - see Business.ts/VendorProfile.ts for the fuller version of this
+// reasoning.
+//
+// Covers every write path this model actually has: save()/create()
+// (captureCustomer()'s upsert and the manual-entry POST route both go
+// through this), findOneAndUpdate() (captureCustomer()'s upsert, PUT
+// route), findOneAndDelete()/findByIdAndDelete() (DELETE route), AND
+// insertMany() (the CSV bulk-upload route) - insertMany bypasses normal
+// document save() middleware entirely in Mongoose, so needed its own hook
+// rather than being covered by the save() one above.
+CustomerSchema.post("save", async function (doc) {
+  await syncRecordToCentralApi("customers", doc._id.toString(), doc.toObject());
+});
+
+CustomerSchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) await syncRecordToCentralApi("customers", doc._id.toString(), doc.toObject());
+});
+
+CustomerSchema.post("findOneAndDelete", async function (doc) {
+  if (doc) await deleteRecordFromCentralApi("customers", doc._id.toString());
+});
+
+CustomerSchema.post("insertMany", async function (docs) {
+  for (const doc of docs) {
+    await syncRecordToCentralApi("customers", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
+  }
+});
 
 const Customer: Model<ICustomer> =
   (mongoose.models.Customer as Model<ICustomer>) ||
