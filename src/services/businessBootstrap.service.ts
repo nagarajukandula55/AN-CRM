@@ -83,6 +83,8 @@ export async function bootstrapBusiness(payload: any) {
 
     industry: payload.industry,
     type: payload.type,
+    operatingMode: payload.operatingMode,
+    parentBusinessId: payload.parentBusinessId,
 
     email: payload.email,
     phone: payload.phone,

@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
       businessId: subscription.businessId,
       subscriptionId: subscription._id,
       subVendorOf: subscription.subVendorOf || undefined,
+      subBusinessOf: subscription.subBusinessOf || undefined,
       mode: subscription.mode,
       plan: subscription.plan,
       billingPeriod: subscription.billingPeriod,
@@ -102,7 +103,7 @@ export async function POST(req: NextRequest) {
     // Ultimate-tier plans bundle Email/WhatsApp quota — activate/top-up on
     // successful payment for the business's own primary plan (not a sub-
     // vendor addon charge, which isn't a plan tier at all).
-    if (!subscription.subVendorOf) {
+    if (!subscription.subVendorOf && !subscription.subBusinessOf) {
       const planDef = findPlan(subscription.mode, subscription.plan);
       if (planDef?.commsQuota) {
         await CommunicationQuota.findOneAndUpdate(

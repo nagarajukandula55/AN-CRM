@@ -155,6 +155,7 @@ export async function POST(req: Request) {
         "analytics",
         "admin-settings",
         "admin-plan",
+        "sub-accounts",
         "admin-intg",
         "send-feedback",
         // Documents SC can also generate directly (not only via a

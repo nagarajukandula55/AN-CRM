@@ -3,11 +3,14 @@
  * renewal: creates a Razorpay order and a PENDING_PAYMENT Subscription
  * record, returns what the client needs to open Razorpay Checkout.
  *
- * Body: { plan, billingPeriod, subVendorOf? }
+ * Body: { plan, billingPeriod, subVendorOf?, subBusinessOf? }
  * subVendorOf (a VendorProfile id) marks this as a sub-vendor addon charge
  * rather than the business's own primary plan -- see api/vendors/[id]/
  * sub-vendors/route.ts, which requires one of these verified before it
  * will actually create the sub-vendor.
+ * subBusinessOf (a Business id) is the same idea for an SC business adding
+ * another SC business under itself -- see
+ * api/businesses/[id]/sub-accounts/route.ts.
  */
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
@@ -29,7 +32,12 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { plan, billingPeriod, subVendorOf } = body as { plan: PlanKey; billingPeriod: BillingPeriod; subVendorOf?: string };
+    const { plan, billingPeriod, subVendorOf, subBusinessOf } = body as {
+      plan: PlanKey;
+      billingPeriod: BillingPeriod;
+      subVendorOf?: string;
+      subBusinessOf?: string;
+    };
 
     await connectDB();
 
@@ -53,12 +61,13 @@ export async function POST(req: NextRequest) {
       amount: total * 100, // paise
       currency: "INR",
       receipt: `sub_${Date.now()}`,
-      notes: { plan, billingPeriod, businessId: session.business.businessId, subVendorOf: subVendorOf || "" },
+      notes: { plan, billingPeriod, businessId: session.business.businessId, subVendorOf: subVendorOf || "", subBusinessOf: subBusinessOf || "" },
     });
 
     const subscription = await Subscription.create({
       businessId: new mongoose.Types.ObjectId(session.business.businessId),
       subVendorOf: subVendorOf && mongoose.Types.ObjectId.isValid(subVendorOf) ? new mongoose.Types.ObjectId(subVendorOf) : undefined,
+      subBusinessOf: subBusinessOf && mongoose.Types.ObjectId.isValid(subBusinessOf) ? new mongoose.Types.ObjectId(subBusinessOf) : undefined,
       mode,
       plan,
       billingPeriod,

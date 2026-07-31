@@ -583,6 +583,18 @@ const BusinessSchema = new mongoose.Schema(
       index: true,
     },
 
+    // Set only when this business was created as an SC "add another SC
+    // account" sub-account (see api/businesses/[id]/sub-accounts/route.ts)
+    // -- the parent SC business whose Owner login spun this one up, paying
+    // a separate subscription addon charge for it. Unset for every other
+    // business, including SC businesses created the normal (admin) way.
+    parentBusinessId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Business",
+      default: null,
+      index: true,
+    },
+
     email: {
       type: String,
       default: "",

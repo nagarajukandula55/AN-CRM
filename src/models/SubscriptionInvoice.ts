@@ -17,6 +17,7 @@ export interface ISubscriptionInvoice extends Document {
   businessId: Types.ObjectId;
   subscriptionId: Types.ObjectId;
   subVendorOf?: Types.ObjectId;
+  subBusinessOf?: Types.ObjectId;
   mode: "BRAND" | "SC" | "POS";
   plan: "BASIC" | "PRO" | "ULTIMATE";
   billingPeriod: "MONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "YEARLY";
@@ -37,6 +38,7 @@ const SubscriptionInvoiceSchema = new Schema<ISubscriptionInvoice>(
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true, index: true },
     subscriptionId: { type: Schema.Types.ObjectId, ref: "Subscription", required: true },
     subVendorOf: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null },
+    subBusinessOf: { type: Schema.Types.ObjectId, ref: "Business", default: null },
     mode: { type: String, enum: ["BRAND", "SC", "POS"], required: true },
     plan: { type: String, enum: ["BASIC", "PRO", "ULTIMATE"], required: true },
     billingPeriod: { type: String, enum: ["MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY"], required: true },
