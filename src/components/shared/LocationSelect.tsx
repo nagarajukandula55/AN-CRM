@@ -108,12 +108,9 @@ interface PincodeInputProps {
 
 /**
  * Pincode input backed by GET /api/pincode/[pincode] (server-side lookup
- * against the PincodeEntry MongoDB collection — the full India Post
- * pincode directory, ~19,500 entries, admin-refreshable via
- * /console/pincode-data). The dataset lives in MongoDB rather than a static
- * bundled JSON file because this app deploys on Vercel, whose filesystem
- * is read-only at runtime — see PincodeEntry.ts's comment for the full
- * reasoning. Validates the 6-digit format as you type and, once a
+ * against central-api's shared "pincode" dataset — the full India Post
+ * pincode directory, ~19,500 entries, shared with every AN group
+ * property). Validates the 6-digit format as you type and, once a
  * complete pincode is entered, calls the lookup API and reports the
  * resolved state/city via onResolved so the form can autofill those
  * fields.

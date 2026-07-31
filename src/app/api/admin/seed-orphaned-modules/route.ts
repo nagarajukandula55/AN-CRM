@@ -83,7 +83,6 @@ const ORPHANED_MODULES: Array<{
   // labeled/keyed "admin-settings" for its own display purposes — that's
   // a separate, cosmetic nav key, not the permission-check key.
   { key: "settings", label: "Setting", pluralLabel: "Settings", description: "Business-wide configuration hub.", icon: "Settings", route: "/console/settings", applicableActions: ["view", "edit", "delete", "manage_settings"], sortOrder: 250 },
-  { key: "admin-pincode-data", label: "Pincode Dataset", pluralLabel: "Pincode Data", description: "India pincode autofill dataset management.", icon: "MapPin", route: "/console/pincode-data", applicableActions: ["view", "manage_settings"], sortOrder: 251 },
 
   // ── The following module keys are the REAL targets of live
   // requirePermission(buildPermissionCode(key, action)) calls scattered

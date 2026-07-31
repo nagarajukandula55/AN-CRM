@@ -45,7 +45,6 @@ export const PLATFORM_ONLY_KEYS = [
   "admin-sso",
   "admin-status",
   "admin-modules",
-  "admin-pincode-data",
 ];
 
 export type ModuleTemplateKey =
