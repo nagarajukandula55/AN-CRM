@@ -126,7 +126,7 @@ export default function MaterialCatalogPage() {
                 </Select>
               </Field>
               <Field label="Rate (without tax)">
-                <Input type="number" value={form.rate} onChange={(e) => setForm({ ...form, rate: Number(e.target.value) })} />
+                <Input type="number" onFocus={e => e.target.select()} value={form.rate} onChange={(e) => setForm({ ...form, rate: Number(e.target.value) })} />
               </Field>
               <Field label="Description (optional)">
                 <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />

@@ -176,10 +176,10 @@ export default function PosPage() {
                             <Input value={item.description} onChange={(e) => updateItem(i, { description: e.target.value })} placeholder="Item / service" />
                           </td>
                           <td className="py-1.5 px-2">
-                            <Input type="number" value={item.quantity} onChange={(e) => updateItem(i, { quantity: Number(e.target.value) })} />
+                            <Input type="number" onFocus={e => e.target.select()} value={item.quantity} onChange={(e) => updateItem(i, { quantity: Number(e.target.value) })} />
                           </td>
                           <td className="py-1.5 px-2">
-                            <Input type="number" value={item.unitPrice} onChange={(e) => updateItem(i, { unitPrice: Number(e.target.value) })} />
+                            <Input type="number" onFocus={e => e.target.select()} value={item.unitPrice} onChange={(e) => updateItem(i, { unitPrice: Number(e.target.value) })} />
                           </td>
                           <td className="py-1.5 px-2">
                             <Select value={item.taxRate} onChange={(e) => updateItem(i, { taxRate: Number(e.target.value) })}>
@@ -212,7 +212,7 @@ export default function PosPage() {
               <div className="flex justify-between text-sm"><span className="text-ink-2">Subtotal</span><span className="tabular">₹{totals.subtotal.toLocaleString('en-IN')}</span></div>
               <div className="flex justify-between text-sm"><span className="text-ink-2">Tax</span><span className="tabular">₹{totals.tax.toLocaleString('en-IN')}</span></div>
               <Field label="Discount">
-                <Input type="number" value={discountAmount} onChange={(e) => setDiscountAmount(Number(e.target.value))} />
+                <Input type="number" onFocus={e => e.target.select()} value={discountAmount} onChange={(e) => setDiscountAmount(Number(e.target.value))} />
               </Field>
               <div className="flex justify-between text-base font-medium border-t border-border pt-2">
                 <span>Grand Total</span>

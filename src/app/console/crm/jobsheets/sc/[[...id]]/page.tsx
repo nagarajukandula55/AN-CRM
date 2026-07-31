@@ -792,8 +792,8 @@ export default function SCJobSheetScreen() {
                         {bomParts.map(p => <option key={p._id} value={p.partName} />)}
                       </datalist>
                     </td>
-                    <td className="px-2 py-1.5"><input disabled={!editable} type="number" min={1} value={l.quantity} onChange={e => updateLine(i, { quantity: Number(e.target.value) })} className={`${inputCls} py-1.5 text-center disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
-                    <td className="px-2 py-1.5"><input disabled={!editable} type="number" min={0} value={l.unitPrice} onChange={e => updateLine(i, { unitPrice: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
+                    <td className="px-2 py-1.5"><input disabled={!editable} type="number" onFocus={e => e.target.select()} min={1} value={l.quantity} onChange={e => updateLine(i, { quantity: Number(e.target.value) })} className={`${inputCls} py-1.5 text-center disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
+                    <td className="px-2 py-1.5"><input disabled={!editable} type="number" onFocus={e => e.target.select()} min={0} value={l.unitPrice} onChange={e => updateLine(i, { unitPrice: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
                     <td className="px-2 py-1.5">
                       <select disabled={!editable} value={l.taxRate} onChange={e => updateLine(i, { taxRate: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`}>
                         {GST_SLABS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
@@ -860,7 +860,7 @@ export default function SCJobSheetScreen() {
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <label className={labelCls}>Payment Collected</label>
-              <input type="number" min={0} value={paymentCollected} onChange={e => setPaymentCollected(e.target.value)} className={inputCls} />
+              <input type="number" onFocus={e => e.target.select()} min={0} value={paymentCollected} onChange={e => setPaymentCollected(e.target.value)} className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>Payment Mode</label>
@@ -948,7 +948,7 @@ export default function SCJobSheetScreen() {
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className={labelCls}>Rate *</label>
-                <input type="number" min={0} value={newPart.rate} onChange={e => setNewPart(p => ({ ...p, rate: e.target.value }))} className={inputCls} />
+                <input type="number" onFocus={e => e.target.select()} min={0} value={newPart.rate} onChange={e => setNewPart(p => ({ ...p, rate: e.target.value }))} className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Tax %</label>
