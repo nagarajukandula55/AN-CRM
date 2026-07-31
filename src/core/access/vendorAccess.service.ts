@@ -87,6 +87,17 @@ export const VENDOR_MODULE_KEYS = [
   // "report-builder" aliases to "reports" (see moduleKeyAliases.ts).
   "reports",
   "analytics",
+  // The SC Settings page (and its saved Brand/Model/Payment-Collector
+  // suggestion lists) saves via PATCH /api/businesses/[id], which
+  // enforces BUSINESSES.EDIT -- excluded above as "platform admin", but
+  // that route already scopes a non-super-admin caller to only the
+  // business they're an ACTIVE member of (see its own membership check),
+  // so granting this to a vendor Owner/Manager (or an SC login) doesn't
+  // widen access to any OTHER business, only their own. Without this,
+  // every Settings save and every "add new" Brand/Model/Collector-name
+  // save silently 403'd -- reported live as "brand added via the modal
+  // wasn't available next time" and "model list isn't being recorded."
+  "businesses",
 ] as const;
 
 const ALL_ACTION_KEYS = STANDARD_ACTIONS.map((a) => a.key);

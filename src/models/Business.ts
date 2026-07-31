@@ -722,6 +722,15 @@ const BusinessSchema = new mongoose.Schema(
       default: "",
     },
 
+    // Bank account details shown on printed invoices alongside (or
+    // instead of) the UPI QR above -- display-only, same "workaround, no
+    // gateway" reasoning as upiId: the customer transfers manually and
+    // reconciliation stays manual until a real banking integration exists.
+    bankAccountName: { type: String, default: "", trim: true },
+    bankAccountNumber: { type: String, default: "", trim: true },
+    bankIFSC: { type: String, default: "", trim: true },
+    bankName: { type: String, default: "", trim: true },
+
     // Vendor-wide Terms & Conditions text, editable from the vendor
     // Owner/Manager's own profile/settings page -- kept as the fallback
     // shown on any document type below that has no terms of its own set
@@ -757,6 +766,10 @@ const BusinessSchema = new mongoose.Schema(
     // dropped in favour of plain text for this operating mode).
     savedBrands: [{ type: String, trim: true }],
     savedModels: [{ type: String, trim: true }],
+    // Same save-and-suggest pattern, for the "Payment Collected By" name
+    // typed in at handover -- who physically took the cash, not just
+    // which of the single SC login is running the register.
+    savedPaymentCollectors: [{ type: String, trim: true }],
 
     pincode: {
       type: String,

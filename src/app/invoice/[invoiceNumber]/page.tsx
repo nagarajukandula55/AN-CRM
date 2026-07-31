@@ -412,6 +412,30 @@ export default function InvoicePage() {
 
 </div>
 
+{/* PAYMENT DETAILS -- UPI QR was already computed server-side
+    (templateConfig.paymentQrUrl) but never actually rendered anywhere on
+    this page; bankDetails is new. Only shown when at least one is
+    configured for this business. */}
+{(data?.templateConfig?.paymentQrUrl || data?.bankDetails) && (
+  <div style={{ marginTop: 16, display: "flex", gap: 24, fontSize: 12 }}>
+    {data?.templateConfig?.paymentQrUrl && (
+      <div style={{ textAlign: "center" }}>
+        <img src={data.templateConfig.paymentQrUrl} alt="Pay via UPI" style={{ width: 100, height: 100 }} />
+        <div style={{ marginTop: 4 }}>Scan to Pay (UPI)</div>
+      </div>
+    )}
+    {data?.bankDetails && (
+      <div>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>Bank Details</div>
+        {data.bankDetails.accountName && <div>Account Name: {data.bankDetails.accountName}</div>}
+        {data.bankDetails.bankName && <div>Bank: {data.bankDetails.bankName}</div>}
+        {data.bankDetails.accountNumber && <div>Account No: {data.bankDetails.accountNumber}</div>}
+        {data.bankDetails.ifsc && <div>IFSC: {data.bankDetails.ifsc}</div>}
+      </div>
+    )}
+  </div>
+)}
+
 {/* SIGNATURE */}
 
 <div className="signatureRow">

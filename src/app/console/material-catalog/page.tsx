@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Field, Input, Select } from '@/components/ui/Input'
+import { GST_SLABS } from '@/core/gst/gstSlabs'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingPanel } from '@/components/ui/Spinner'
 
@@ -120,7 +121,9 @@ export default function MaterialCatalogPage() {
                 <Input value={form.hsnCode} onChange={(e) => setForm({ ...form, hsnCode: e.target.value })} placeholder="e.g. 8517" />
               </Field>
               <Field label="Tax % (GST)">
-                <Input type="number" value={form.gstRate} onChange={(e) => setForm({ ...form, gstRate: Number(e.target.value) })} />
+                <Select value={form.gstRate} onChange={(e) => setForm({ ...form, gstRate: Number(e.target.value) })}>
+                  {GST_SLABS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
+                </Select>
               </Field>
               <Field label="Rate (without tax)">
                 <Input type="number" value={form.rate} onChange={(e) => setForm({ ...form, rate: Number(e.target.value) })} />

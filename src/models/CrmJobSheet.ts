@@ -202,6 +202,11 @@ export interface ICrmJobSheet extends Document {
   // Handover (final milestone) -- SC records what was actually collected.
   paymentCollected?: number;
   paymentMode?: "CASH" | "UPI" | "CARD" | "BANK_TRANSFER" | "OTHER";
+  // Free-text name of the staff member who physically collected the
+  // payment -- distinct from handedOverBy (the logged-in user recording
+  // the handover, which is always the single SC login and so never
+  // varies) -- per explicit direction to actually track who took the cash.
+  paymentCollectedByName?: string;
   handedOverAt?: Date;
   handedOverBy?: Types.ObjectId;
 
@@ -329,6 +334,7 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
 
     paymentCollected: { type: Number },
     paymentMode: { type: String, enum: ["CASH", "UPI", "CARD", "BANK_TRANSFER", "OTHER"] },
+    paymentCollectedByName: { type: String, trim: true },
     handedOverAt: { type: Date },
     handedOverBy: { type: Schema.Types.ObjectId, ref: "User" },
 

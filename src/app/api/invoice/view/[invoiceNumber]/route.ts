@@ -183,6 +183,21 @@ export async function GET(
       // "digital document" notice instead of a physical signature.
       signatureUrl: (business as any)?.documentSignatureUrl || "",
 
+      // Display-only bank transfer details -- same manual-reconciliation
+      // "workaround" as the UPI QR above (see core/payments/upiQr.ts's
+      // own comment), for a customer who'd rather bank-transfer than
+      // scan a UPI QR. Only sent through when an account number is
+      // actually set, so a business that hasn't configured this doesn't
+      // print an empty "Bank Details" block.
+      bankDetails: (business as any)?.bankAccountNumber
+        ? {
+            accountName: (business as any)?.bankAccountName || "",
+            accountNumber: (business as any)?.bankAccountNumber || "",
+            ifsc: (business as any)?.bankIFSC || "",
+            bankName: (business as any)?.bankName || "",
+          }
+        : undefined,
+
       templateLayoutKey: savedTemplate?.layoutKey || undefined,
       templateConfig: savedTemplate || paymentQrUrl
         ? {

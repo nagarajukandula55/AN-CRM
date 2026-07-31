@@ -81,6 +81,11 @@ export default function AdminSettingsPage() {
     applyTaxOnB2CBilling: true,
     defaultLabourCharge: 0,
     upiId: '',
+    bankAccountName: '',
+    bankAccountNumber: '',
+    bankIFSC: '',
+    bankName: '',
+    documentSignatureUrl: '',
     workorderTerms: '',
     serviceOrderTerms: '',
     estimateTerms: '',
@@ -88,6 +93,30 @@ export default function AdminSettingsPage() {
     enabledDeviceCategories: [] as string[],
   })
   const [savingOperations, setSavingOperations] = useState(false)
+  const [uploadingSignature, setUploadingSignature] = useState(false)
+  const [signatureUploadError, setSignatureUploadError] = useState<string | null>(null)
+
+  // Same Cloudinary pipeline the Businesses admin page already uses for
+  // logo/favicon uploads (api/assets/upload) -- documentSignatureUrl
+  // existed on the schema but had no upload UI anywhere until now.
+  async function handleSignatureUpload(file: File) {
+    setUploadingSignature(true)
+    setSignatureUploadError(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('name', 'signature')
+      fd.append('category', 'signature')
+      const res = await fetch('/api/assets/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || data.message || 'Failed to upload signature')
+      setOperations((p) => ({ ...p, documentSignatureUrl: data.asset?.fileUrl || '' }))
+    } catch (err: any) {
+      setSignatureUploadError(err?.message || 'Failed to upload signature')
+    } finally {
+      setUploadingSignature(false)
+    }
+  }
 
   const { data: meData } = useSWR('/api/auth/me')
   const isSuperAdmin = !!meData?.user?.isSuperAdmin
@@ -126,6 +155,11 @@ export default function AdminSettingsPage() {
         applyTaxOnB2CBilling: b.applyTaxOnB2CBilling !== false,
         defaultLabourCharge: b.defaultLabourCharge || 0,
         upiId: b.upiId || '',
+        bankAccountName: b.bankAccountName || '',
+        bankAccountNumber: b.bankAccountNumber || '',
+        bankIFSC: b.bankIFSC || '',
+        bankName: b.bankName || '',
+        documentSignatureUrl: b.documentSignatureUrl || '',
         workorderTerms: b.workorderTerms || '',
         serviceOrderTerms: b.serviceOrderTerms || '',
         estimateTerms: b.estimateTerms || '',
@@ -457,6 +491,57 @@ export default function AdminSettingsPage() {
                 <div className="text-xs text-ink-3 mt-1">
                   When set, every printed invoice shows a scannable UPI QR code for this business's own VPA.
                 </div>
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <div className="text-sm font-medium text-ink mb-1">Bank Details</div>
+                <div className="text-xs text-ink-3 mb-3">Shown on printed invoices as an alternative to (or alongside) the UPI QR code.</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-ink-3 mb-1 block">Account Holder Name</label>
+                    <input type="text" value={operations.bankAccountName} onChange={(e) => setOperations({ ...operations, bankAccountName: e.target.value })}
+                      className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-ink-3 mb-1 block">Bank Name</label>
+                    <input type="text" value={operations.bankName} onChange={(e) => setOperations({ ...operations, bankName: e.target.value })}
+                      className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-ink-3 mb-1 block">Account Number</label>
+                    <input type="text" value={operations.bankAccountNumber} onChange={(e) => setOperations({ ...operations, bankAccountNumber: e.target.value })}
+                      className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong font-mono" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-ink-3 mb-1 block">IFSC Code</label>
+                    <input type="text" value={operations.bankIFSC} onChange={(e) => setOperations({ ...operations, bankIFSC: e.target.value.toUpperCase() })}
+                      className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong font-mono" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <div className="text-sm font-medium text-ink mb-1">Signature</div>
+                <div className="text-xs text-ink-3 mb-3">Shown on printed Invoice/Workorder/Service Record documents in the Authorized Signatory slot.</div>
+                <div className="flex items-center gap-4">
+                  {operations.documentSignatureUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={operations.documentSignatureUrl} alt="Signature" className="h-14 w-40 object-contain border border-border rounded-control bg-surface-2" />
+                  ) : (
+                    <div className="h-14 w-40 flex items-center justify-center border border-dashed border-border rounded-control text-xs text-ink-3">No signature set</div>
+                  )}
+                  <label className="text-xs font-medium text-accent hover:underline cursor-pointer">
+                    {uploadingSignature ? 'Uploading…' : 'Upload Signature'}
+                    <input type="file" accept="image/*" className="hidden" disabled={uploadingSignature} onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleSignatureUpload(file)
+                    }} />
+                  </label>
+                  {operations.documentSignatureUrl && (
+                    <button type="button" onClick={() => setOperations({ ...operations, documentSignatureUrl: '' })} className="text-xs text-danger hover:underline">Remove</button>
+                  )}
+                </div>
+                {signatureUploadError && <p className="text-xs text-danger mt-1">{signatureUploadError}</p>}
               </div>
 
               <div className="pt-4 border-t border-border">
