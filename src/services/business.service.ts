@@ -1,4 +1,5 @@
 import Business from "@/models/Business";
+import { getBusinessBySourceId, listBusinesses as listBusinessesFromCentralApi } from "@/lib/centralApiRead";
 
 /* ================= DEFAULT MODULE TEMPLATE ================= */
 const DEFAULT_MODULES = [
@@ -93,11 +94,19 @@ export class BusinessService {
     return await business.save();
   }
 
+  // Reads from central-api — see src/lib/centralApiRead.ts. create() above
+  // (the only Business WRITE in this service) is untouched — still local
+  // Mongo, dual-written to central-api via the model's sync hooks.
   static async getBusinessById(id: string) {
-    return Business.findById(id);
+    return getBusinessBySourceId(id);
   }
 
   static async listBusinesses(includeInactive = false) {
-    return Business.find(includeInactive ? {} : { isActive: true }).sort({ createdAt: -1 });
+    // central-api's search has no boolean-aware matching, so isActive is
+    // filtered here in application code — see centralApiRead.ts.
+    const all = await listBusinessesFromCentralApi();
+    return all
+      .filter((b) => includeInactive || b.isActive)
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   }
 }

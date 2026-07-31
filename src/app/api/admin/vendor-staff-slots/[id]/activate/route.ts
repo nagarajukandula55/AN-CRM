@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import VendorStaffSlot from "@/models/VendorStaffSlot";
-import VendorProfile from "@/models/VendorProfile";
+import { getVendorBySourceId } from "@/lib/centralApiRead";
 import BusinessMember, { BusinessMemberStatus } from "@/models/BusinessMember";
 import User from "@/models/User";
 import { grantVendorStaffAccess } from "@/core/access/vendorAccess.service";
@@ -56,7 +56,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ success: false, error: "This slot is already active" }, { status: 409 });
     }
 
-    const vendor = await VendorProfile.findById(slot.vendorId).lean();
+    // Reads from central-api — see src/lib/centralApiRead.ts.
+    const vendor = await getVendorBySourceId(String(slot.vendorId));
     if (!vendor) {
       return NextResponse.json({ success: false, error: "Vendor not found" }, { status: 404 });
     }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
-import VendorProfile from "@/models/VendorProfile";
+import { getVendorBySourceId } from "@/lib/centralApiRead";
 import BusinessMember, { BusinessMemberStatus } from "@/models/BusinessMember";
 import User from "@/models/User";
 import { logAction } from "@/lib/audit/logAction";
@@ -74,7 +74,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "A role must be assigned to this staff member" }, { status: 400 });
     }
 
-    const vendor = await VendorProfile.findOne({ _id: vendorId, isDeleted: { $ne: true } }).lean();
+    // Reads from central-api — see src/lib/centralApiRead.ts. isDeleted is
+    // filtered here (central-api's search has no boolean-aware matching).
+    const vendorRecord = await getVendorBySourceId(vendorId);
+    const vendor = vendorRecord && !vendorRecord.isDeleted ? vendorRecord : null;
     if (!vendor) {
       return NextResponse.json({ success: false, error: "Vendor not found" }, { status: 404 });
     }

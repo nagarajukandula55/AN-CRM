@@ -1,11 +1,11 @@
 import Notification from "@/models/Notification";
 import User from "@/models/User";
-import VendorProfile from "@/models/VendorProfile";
+import { getVendorBySourceId } from "@/lib/centralApiRead";
 import { sendPushToUser, sendPushToUsers } from "@/services/push.service";
 
 /**
  * Server-side helper for other routes/services to raise a persistent,
- * user-facing notification (shows up in /console/notifications and the
+ * user-facing notification (shows up in /admin/notifications and the
  * sidebar's unread badge) without hand-rolling Notification.create() at
  * every call site. Best-effort: a notification failing to write must never
  * break the actual operation that triggered it.
@@ -60,7 +60,7 @@ export async function notifyVendor({
   link?: string;
 }) {
   try {
-    const vendor = await VendorProfile.findById(vendorId).select("userId").lean<any>();
+    const vendor = await getVendorBySourceId(vendorId); // reads from central-api — see src/lib/centralApiRead.ts
     if (!vendor?.userId) return;
     await notifyUser({ userId: String(vendor.userId), title, message, type, link });
   } catch (err) {
