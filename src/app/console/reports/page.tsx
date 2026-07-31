@@ -2,12 +2,21 @@
 
 /**
  * Reports & Downloads hub. Pulls from ALREADY-EXISTING, real API routes
- * (CRM calls/job sheets, sales invoices, audit logs) rather than inventing
- * a separate reporting datastore — each card fetches its own data on demand
- * and exports it as CSV client-side (Blob + object URL), which needs no
- * server-side file generation or storage and therefore has none of the
- * ephemeral-filesystem problems flagged in the CRM invoice PDF work
- * (see admin/crm/invoices/[id]/page.tsx's top comment).
+ * (CRM calls/job sheets, sales invoices, customers, subscription billing,
+ * audit logs) rather than inventing a separate reporting datastore — each
+ * card fetches its own data on demand and exports it as CSV client-side
+ * (Blob + object URL), which needs no server-side file generation or
+ * storage and therefore has none of the ephemeral-filesystem problems
+ * flagged in the CRM invoice PDF work (see admin/crm/invoices/[id]/page.tsx's
+ * top comment).
+ *
+ * Every card shares one date range and gets its own status filter where the
+ * underlying data has a meaningful status -- per explicit direction ("these
+ * are not even basic... give good number of reports and good filters and
+ * multiple scenarios"), rather than the previous fixed no-filter CSV dumps.
+ * Sales Invoices' date range is applied server-side (the route already
+ * supports from/to); Calls/Job Sheets/Audit Log don't expose date filtering
+ * server-side, so the range is applied client-side against the fetched rows.
  *
  * Gated by the "reports" ModuleDefinition (REPORTS.VIEW / REPORTS.EXPORT)
  * seeded via /api/admin/seed-crm-modules — same permission chain as every
@@ -16,8 +25,11 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, Download, Loader2, PhoneCall, ClipboardList, Receipt, ShieldCheck, Send, Archive } from 'lucide-react'
+import { PhoneCall, ClipboardList, Receipt, ShieldCheck, Send, Archive, Users, CreditCard, Download } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Field, Input, Select } from '@/components/ui/Input'
 
 function toCSV(rows: Record<string, any>[]): string {
   if (rows.length === 0) return ''
@@ -42,14 +54,25 @@ function downloadCSV(filename: string, rows: Record<string, any>[]) {
   URL.revokeObjectURL(url)
 }
 
+// Client-side range filter for endpoints without a from/to query param --
+// applied against whatever date field the caller passes in.
+function inRange(dateStr: string | undefined, from: string, to: string): boolean {
+  if (!dateStr) return false
+  const d = dateStr.slice(0, 10)
+  return d >= from && d <= to
+}
+
 interface ReportCardProps {
   icon: React.ComponentType<{ className?: string }>
   title: string
   description: string
+  statusOptions?: string[]
+  status: string
+  onStatusChange?: (v: string) => void
   onDownload: () => Promise<void>
 }
 
-function ReportCard({ icon: Icon, title, description, onDownload }: ReportCardProps) {
+function ReportCard({ icon: Icon, title, description, statusOptions, status, onStatusChange, onDownload }: ReportCardProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -66,30 +89,29 @@ function ReportCard({ icon: Icon, title, description, onDownload }: ReportCardPr
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6">
-      <div className="flex items-start justify-between mb-4">
-        <div className="w-11 h-11 rounded-xl bg-gray-100 flex items-center justify-center">
-          <Icon className="w-5 h-5 text-gray-700" />
+    <Card>
+      <CardBody>
+        <div className="w-11 h-11 rounded-control bg-surface-2 flex items-center justify-center mb-4">
+          <Icon className="w-5 h-5 text-ink-2" />
         </div>
-      </div>
-      <h3 className="font-semibold text-gray-900 mb-1">{title}</h3>
-      <p className="text-sm text-gray-500 mb-4">{description}</p>
-      {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
-      <button
-        onClick={handleClick}
-        disabled={loading}
-        className="flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-gray-600 disabled:opacity-50"
-      >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-        Download CSV
-      </button>
-    </div>
+        <h3 className="font-semibold text-ink mb-1">{title}</h3>
+        <p className="text-sm text-ink-3 mb-4">{description}</p>
+        {statusOptions && onStatusChange && (
+          <Select value={status} onChange={(e) => onStatusChange(e.target.value)} className="mb-3">
+            <option value="">All statuses</option>
+            {statusOptions.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+          </Select>
+        )}
+        {error && <p className="text-xs text-danger mb-2">{error}</p>}
+        <Button variant="secondary" size="sm" onClick={handleClick} disabled={loading} icon={<Download className="w-4 h-4" />}>
+          {loading ? 'Preparing…' : 'Download CSV'}
+        </Button>
+      </CardBody>
+    </Card>
   )
 }
 
 export default function ReportsPage() {
-  const router = useRouter()
-
   const today = new Date().toISOString().slice(0, 10)
   const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)
   const [from, setFrom] = useState(firstOfMonth)
@@ -98,6 +120,10 @@ export default function ReportsPage() {
   const [zipping, setZipping] = useState(false)
   const [invoiceMsg, setInvoiceMsg] = useState<string | null>(null)
   const [invoiceErr, setInvoiceErr] = useState<string | null>(null)
+
+  const [callStatus, setCallStatus] = useState('')
+  const [jobStatus, setJobStatus] = useState('')
+  const [invoiceStatus, setInvoiceStatus] = useState('')
 
   const { data: meData } = useSWR('/api/auth/me')
   const businessId: string | null = meData?.success
@@ -155,67 +181,58 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
-      <div className="max-w-[1800px] mx-auto px-6 py-10">
-        <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => router.push('/console')} className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-100 transition">
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-semibold">Reports & Downloads</h1>
-            <p className="text-sm text-gray-400">Export data across CRM, sales, and system activity</p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-bg text-ink p-6">
+      <PageHeader title="Reports & Downloads" description="Export data across CRM, sales, billing, and system activity — filtered by date range and status." />
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 mb-8">
-          <h2 className="font-semibold text-gray-900 mb-1">Invoices — Push to GST or Download</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Pick a date range. If you use our GST integration, push every invoice in that range straight to your
-            configured GSP. Not set up yet (or don't want to use it)? Download every invoice in the range as a
-            single ZIP instead.
+      <Card className="mb-6">
+        <CardBody className="flex flex-wrap items-end gap-3">
+          <Field label="From">
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </Field>
+          <Field label="To">
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          </Field>
+          <p className="text-xs text-ink-3 flex-1 min-w-[200px]">Applies to every report below and the GST/ZIP export.</p>
+        </CardBody>
+      </Card>
+
+      <Card className="mb-8">
+        <CardBody>
+          <h2 className="font-semibold text-ink mb-1">Invoices — Push to GST or Download</h2>
+          <p className="text-sm text-ink-3 mb-4">
+            If you use our GST integration, push every invoice in the selected range straight to your configured
+            GSP. Not set up yet (or don't want to use it)? Download every invoice in the range as a single ZIP
+            instead.
           </p>
-          <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <label className="text-xs text-gray-500">From</label>
-              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
-                className="mt-1 block rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500">To</label>
-              <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
-                className="mt-1 block rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-            </div>
-            <button
-              onClick={pushToGst}
-              disabled={pushing || !businessId}
-              className="flex items-center gap-2 rounded-lg bg-gray-900 text-white px-4 py-2 text-sm font-medium disabled:opacity-50"
-            >
-              {pushing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Push to GST
-            </button>
-            <button
-              onClick={downloadZip}
-              disabled={zipping}
-              className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium disabled:opacity-50"
-            >
-              {zipping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
-              Download All Invoices (ZIP)
-            </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={pushToGst} disabled={pushing || !businessId} icon={<Send className="w-4 h-4" />}>
+              {pushing ? 'Pushing…' : 'Push to GST'}
+            </Button>
+            <Button variant="secondary" onClick={downloadZip} disabled={zipping} icon={<Archive className="w-4 h-4" />}>
+              {zipping ? 'Zipping…' : 'Download All Invoices (ZIP)'}
+            </Button>
           </div>
-          {invoiceMsg && <p className="mt-3 text-sm text-emerald-600">{invoiceMsg}</p>}
-          {invoiceErr && <p className="mt-3 text-sm text-red-600">{invoiceErr}</p>}
-        </div>
+          {invoiceMsg && <p className="mt-3 text-sm text-success">{invoiceMsg}</p>}
+          {invoiceErr && <p className="mt-3 text-sm text-danger">{invoiceErr}</p>}
+        </CardBody>
+      </Card>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <ReportCard
-            icon={PhoneCall}
-            title="CRM Calls"
-            description="All call records with status, priority, and follow-up dates."
-            onDownload={async () => {
-              const res = await fetch('/api/crm/calls?limit=1000')
-              const d = await res.json()
-              if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to load calls')
-              const rows = (d.calls || []).map((c: any) => ({
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <ReportCard
+          icon={PhoneCall}
+          title="CRM Calls"
+          description="Call records with status, priority, and follow-up dates — filtered to the date range and status above."
+          statusOptions={['NEW', 'IN_PROGRESS', 'FOLLOW_UP', 'JOB_CREATED', 'CLOSED', 'CANCELLED']}
+          status={callStatus}
+          onStatusChange={setCallStatus}
+          onDownload={async () => {
+            const qs = new URLSearchParams({ limit: '1000', ...(callStatus ? { status: callStatus } : {}) })
+            const res = await fetch(`/api/crm/calls?${qs.toString()}`)
+            const d = await res.json()
+            if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to load calls')
+            const rows = (d.calls || [])
+              .filter((c: any) => inRange(c.createdAt, from, to))
+              .map((c: any) => ({
                 CallNumber: c.callNumber,
                 Customer: c.customerName,
                 Company: c.company || '',
@@ -228,71 +245,139 @@ export default function ReportsPage() {
                 NextFollowUp: c.nextFollowUpAt || '',
                 CreatedAt: c.createdAt,
               }))
-              downloadCSV(`crm_calls_${Date.now()}.csv`, rows)
-            }}
-          />
+            downloadCSV(`crm_calls_${from}_to_${to}.csv`, rows)
+          }}
+        />
 
-          <ReportCard
-            icon={ClipboardList}
-            title="CRM Job Sheets"
-            description="Job sheets with status, assigned staff, and linked invoice."
-            onDownload={async () => {
-              const res = await fetch('/api/crm/jobsheets?limit=1000')
-              const d = await res.json()
-              if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to load job sheets')
-              const rows = (d.jobSheets || []).map((j: any) => ({
+        <ReportCard
+          icon={ClipboardList}
+          title="CRM Job Sheets"
+          description="Workorders with status, assigned engineer, and linked invoice — filtered to the date range and status above."
+          statusOptions={['CREATED', 'REPAIR_STARTED', 'REPAIR_IN_PROGRESS', 'PART_PENDING', 'REPAIR_COMPLETED', 'CLOSED', 'CANCELLED']}
+          status={jobStatus}
+          onStatusChange={setJobStatus}
+          onDownload={async () => {
+            const qs = new URLSearchParams({ limit: '1000', ...(jobStatus ? { status: jobStatus } : {}) })
+            const res = await fetch(`/api/crm/jobsheets?${qs.toString()}`)
+            const d = await res.json()
+            if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to load job sheets')
+            const rows = (d.jobSheets || [])
+              .filter((j: any) => inRange(j.createdAt, from, to))
+              .map((j: any) => ({
                 JobSheetNumber: j.jobSheetNumber,
                 Customer: j.customerName,
+                Phone: j.phone || '',
                 Title: j.title,
                 Status: j.status,
-                AssignedTo: j.assignedTo?.name || '',
+                AssignedTo: j.assignedTo?.name || j.assignedToName || '',
                 InvoiceNumber: j.invoiceNumber || '',
+                IMEIOrSerial: j.imeiOrSerialNumber || '',
                 CreatedAt: j.createdAt,
+                CompletedAt: j.completedAt || '',
               }))
-              downloadCSV(`crm_jobsheets_${Date.now()}.csv`, rows)
-            }}
-          />
+            downloadCSV(`crm_jobsheets_${from}_to_${to}.csv`, rows)
+          }}
+        />
 
-          <ReportCard
-            icon={Receipt}
-            title="Sales Invoices"
-            description="Every invoice with customer, tax breakdown, and payment status."
-            onDownload={async () => {
-              const res = await fetch('/api/sales/invoices?limit=1000')
-              const d = await res.json()
-              if (!res.ok || d.success === false) throw new Error(d.error || d.message || 'Failed to load invoices')
-              const rows = (d.invoices || []).map((inv: any) => ({
+        <ReportCard
+          icon={Receipt}
+          title="Sales Invoices"
+          description="Every invoice with customer, tax breakdown, and payment status — date range applied server-side."
+          statusOptions={['DRAFT', 'ISSUED', 'PAID', 'PARTIALLY_PAID', 'OVERDUE', 'CANCELLED']}
+          status={invoiceStatus}
+          onStatusChange={setInvoiceStatus}
+          onDownload={async () => {
+            const qs = new URLSearchParams({ limit: '1000', from, to, ...(invoiceStatus ? { status: invoiceStatus } : {}) })
+            const res = await fetch(`/api/sales/invoices?${qs.toString()}`)
+            const d = await res.json()
+            if (!res.ok || d.success === false) throw new Error(d.error || d.message || 'Failed to load invoices')
+            const rows = (d.invoices || []).map((inv: any) => ({
+              InvoiceNumber: inv.invoiceNumber,
+              Customer: inv.customer?.name || '',
+              Phone: inv.customer?.phone || '',
+              Type: inv.invoiceType,
+              Status: inv.status,
+              Subtotal: inv.subtotal,
+              TaxTotal: inv.taxTotal,
+              GrandTotal: inv.grandTotal,
+              CreatedAt: inv.createdAt,
+            }))
+            downloadCSV(`sales_invoices_${from}_to_${to}.csv`, rows)
+          }}
+        />
+
+        <ReportCard
+          icon={Users}
+          title="Customer Directory"
+          description="Every captured customer — contact details, source, and logged IMEI/Serial numbers."
+          status=""
+          onDownload={async () => {
+            const res = await fetch(`/api/customers${businessId ? `?businessId=${businessId}` : ''}`)
+            const d = await res.json()
+            if (!res.ok || d.success === false) throw new Error(d.error || 'Failed to load customers')
+            const rows = (d.customers || [])
+              .filter((c: any) => inRange(c.createdAt, from, to))
+              .map((c: any) => ({
+                Name: c.name,
+                Phone: c.phone || '',
+                Email: c.email || '',
+                City: c.city || '',
+                State: c.state || '',
+                IMEIOrSerial: Array.isArray(c.imeiOrSerialNumbers) ? c.imeiOrSerialNumbers.join('; ') : '',
+                Source: c.source || '',
+                CreatedAt: c.createdAt,
+              }))
+            downloadCSV(`customers_${from}_to_${to}.csv`, rows)
+          }}
+        />
+
+        <ReportCard
+          icon={CreditCard}
+          title="Subscription Billing"
+          description="This business's own AN-CRM plan-payment history — plan, period, and amount charged."
+          status=""
+          onDownload={async () => {
+            const res = await fetch('/api/subscriptions/invoices')
+            const d = await res.json()
+            if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to load billing history')
+            const rows = (d.invoices || [])
+              .filter((inv: any) => inRange(inv.createdAt, from, to))
+              .map((inv: any) => ({
                 InvoiceNumber: inv.invoiceNumber,
-                Customer: inv.customer?.name || '',
-                Status: inv.status,
-                Subtotal: inv.subtotal,
+                Plan: inv.plan,
+                BillingPeriod: inv.billingPeriod,
+                Amount: inv.amount,
                 TaxTotal: inv.taxTotal,
                 GrandTotal: inv.grandTotal,
-                IssueDate: inv.issueDate,
+                PeriodStart: inv.periodStart,
+                PeriodEnd: inv.periodEnd,
+                CreatedAt: inv.createdAt,
               }))
-              downloadCSV(`sales_invoices_${Date.now()}.csv`, rows)
-            }}
-          />
+            downloadCSV(`subscription_billing_${from}_to_${to}.csv`, rows)
+          }}
+        />
 
-          <ReportCard
-            icon={ShieldCheck}
-            title="Audit Log"
-            description="Recent create/update/delete activity across the system, for this business."
-            onDownload={async () => {
-              const res = await fetch('/api/audit/logs?limit=1000')
-              const d = await res.json()
-              if (!res.ok) throw new Error(d.error || 'Failed to load audit logs — requires AUDIT.VIEW permission')
-              const rows = (d.logs || d || []).map((l: any) => ({
+        <ReportCard
+          icon={ShieldCheck}
+          title="Audit Log"
+          description="Create/update/delete activity across the system for this business, in the selected date range."
+          status=""
+          onDownload={async () => {
+            const res = await fetch('/api/audit/logs?limit=1000')
+            const d = await res.json()
+            if (!res.ok) throw new Error(d.error || 'Failed to load audit logs — requires AUDIT.VIEW permission')
+            const rows = (d.logs || d || [])
+              .filter((l: any) => inRange(l.createdAt, from, to))
+              .map((l: any) => ({
                 Action: l.action,
                 Entity: l.entity,
                 EntityId: l.entityId || '',
                 By: l.by || l.userEmail || '',
                 CreatedAt: l.createdAt,
               }))
-              downloadCSV(`audit_log_${Date.now()}.csv`, rows)
-            }}
-          />
-        </div>
+            downloadCSV(`audit_log_${from}_to_${to}.csv`, rows)
+          }}
+        />
       </div>
     </div>
   )
