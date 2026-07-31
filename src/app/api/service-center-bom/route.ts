@@ -238,8 +238,16 @@ export async function POST(req: NextRequest) {
       // Atomic per business+vendor counter via the canonical numbering
       // engine -- MAT-0001, MAT-0002, ... scoped so each vendor's part
       // list (or a Brand/POS business's own list, when vendorId is unset)
-      // numbers independently.
-      const scopeKey = `${resolved.businessId}:${resolved.vendorId || "NOVENDOR"}`;
+      // numbers independently. generateScopedDocumentNumber requires an
+      // actual ObjectId-shaped scope key (it casts via `new
+      // Types.ObjectId(scopeKey)` internally) -- this used to pass a
+      // compound "businessId:vendorId" string, which is never a valid
+      // ObjectId and threw "input must be a 24 character hex string..."
+      // on every single Material Catalog save. A real vendor's own id is
+      // already globally unique, so it alone is a valid scope; only fall
+      // back to the business id (also a real ObjectId) when there's no
+      // vendor to scope by.
+      const scopeKey = String(resolved.vendorId || resolved.businessId);
       const generated = await generateScopedDocumentNumber(
         scopeKey,
         "MATERIAL",

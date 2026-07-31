@@ -364,8 +364,8 @@ export default function NewSalesInvoicePage() {
                 <tr key={i}>
                   <td className="px-5 py-1.5"><input required value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} className={`${inputCls} py-1.5`} placeholder="Item / service name" /></td>
                   <td className="px-2 py-1.5"><input value={item.hsnCode} onChange={e => updateItem(i, 'hsnCode', e.target.value)} className={`${inputCls} py-1.5`} /></td>
-                  <td className="px-2 py-1.5"><input type="number" min={1} value={item.qty} onChange={e => updateItem(i, 'qty', Number(e.target.value))} className={`${inputCls} py-1.5 text-center`} /></td>
-                  <td className="px-2 py-1.5"><input type="number" min={0} value={item.price} onChange={e => updateItem(i, 'price', Number(e.target.value))} className={`${inputCls} py-1.5 text-right`} /></td>
+                  <td className="px-2 py-1.5"><input type="number" onFocus={e => e.target.select()} min={1} value={item.qty} onChange={e => updateItem(i, 'qty', Number(e.target.value))} className={`${inputCls} py-1.5 text-center`} /></td>
+                  <td className="px-2 py-1.5"><input type="number" onFocus={e => e.target.select()} min={0} value={item.price} onChange={e => updateItem(i, 'price', Number(e.target.value))} className={`${inputCls} py-1.5 text-right`} /></td>
                   <td className="px-2 py-1.5">
                     <select value={item.taxPct} onChange={e => updateItem(i, 'taxPct', Number(e.target.value))} className={`${inputCls} py-1.5 text-right`}>
                       {GST_SLABS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
@@ -408,7 +408,7 @@ export default function NewSalesInvoicePage() {
               )}
               <div>
                 <label className={labelCls}>Discount</label>
-                <input type="number" min={0} value={discount} onChange={e => setDiscount(Number(e.target.value))} className={inputCls} />
+                <input type="number" onFocus={e => e.target.select()} min={0} value={discount} onChange={e => setDiscount(Number(e.target.value))} className={inputCls} />
               </div>
               <div className="flex justify-between font-semibold text-base border-t border-border pt-2 mt-2">
                 <span className="text-ink">Grand Total</span>
