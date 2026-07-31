@@ -865,24 +865,34 @@ BusinessSchema.index({
 
 /* =========================================================
    CENTRAL-API SYNC (Phase A — dual write, see src/lib/centralApiSync.ts)
-   Best-effort, never blocks or fails the local save/delete that triggers
-   it. Covers save() (create + doc.save()) and findOneAndUpdate() calls
-   that pass {new: true} — an update call that doesn't request the updated
-   doc back isn't synced by this hook; that's an acceptable gap for a
-   dual-write phase whose only job is to get central-api populated, not to
-   be authoritative yet.
+   Best-effort — a central-api outage never fails the local save/delete
+   that triggered it (syncRecordToCentralApi/deleteRecordFromCentralApi
+   swallow their own errors). Covers save() (create + doc.save()) and
+   findOneAndUpdate() calls that pass {new: true} — an update call that
+   doesn't request the updated doc back isn't synced by this hook; that's
+   an acceptable gap for a dual-write phase whose only job is to get
+   central-api populated, not to be authoritative yet.
+
+   These hooks ARE awaited (async function + await, not fire-and-forget):
+   a Vercel serverless function can be frozen the instant its response is
+   sent, which would silently kill an un-awaited sync mid-flight before it
+   ever reaches central-api. Mongoose waits for a post hook's returned
+   promise before resolving the save()/findOneAndUpdate() call, so
+   awaiting here makes the sync attempt (success OR the caught failure)
+   complete before the request handler can finish and the function can
+   freeze.
 ========================================================= */
 
-BusinessSchema.post("save", function (doc) {
-  syncRecordToCentralApi("businesses", doc._id.toString(), doc.toObject());
+BusinessSchema.post("save", async function (doc) {
+  await syncRecordToCentralApi("businesses", doc._id.toString(), doc.toObject());
 });
 
-BusinessSchema.post("findOneAndUpdate", function (doc) {
-  if (doc) syncRecordToCentralApi("businesses", doc._id.toString(), doc.toObject());
+BusinessSchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) await syncRecordToCentralApi("businesses", doc._id.toString(), doc.toObject());
 });
 
-BusinessSchema.post("findOneAndDelete", function (doc) {
-  if (doc) deleteRecordFromCentralApi("businesses", doc._id.toString());
+BusinessSchema.post("findOneAndDelete", async function (doc) {
+  if (doc) await deleteRecordFromCentralApi("businesses", doc._id.toString());
 });
 
 /* =========================================================

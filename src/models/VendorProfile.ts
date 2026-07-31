@@ -375,22 +375,29 @@ VendorProfileSchema.index({ businessId: 1, isDeleted: 1, createdAt: -1 });
 VendorProfileSchema.index({ parentVendorId: 1, isDeleted: 1 });
 
 // CENTRAL-API SYNC (Phase A — dual write, see src/lib/centralApiSync.ts).
-// Best-effort, never blocks or fails the local save/delete that triggers
-// it. businessId AND parentVendorId are both already fields on this
-// schema (parentVendorId is how a sub-vendor points at its parent vendor,
-// which itself carries businessId) — the full business -> vendor ->
-// sub-vendor identification/assignment chain travels through automatically
-// as part of the synced document, no extra wiring needed here.
-VendorProfileSchema.post('save', function (doc) {
-  syncRecordToCentralApi('vendors', doc._id.toString(), doc.toObject());
+// Best-effort — a central-api outage never fails the local save/delete
+// that triggered it. businessId AND parentVendorId are both already
+// fields on this schema (parentVendorId is how a sub-vendor points at its
+// parent vendor, which itself carries businessId) — the full business ->
+// vendor -> sub-vendor identification/assignment chain travels through
+// automatically as part of the synced document, no extra wiring needed
+// here.
+//
+// These hooks ARE awaited (async function + await, not fire-and-forget):
+// a Vercel serverless function can be frozen the instant its response is
+// sent, which would silently kill an un-awaited sync mid-flight before it
+// ever reaches central-api. Mongoose waits for a post hook's returned
+// promise before resolving the save()/findOneAndUpdate() call.
+VendorProfileSchema.post('save', async function (doc) {
+  await syncRecordToCentralApi('vendors', doc._id.toString(), doc.toObject());
 });
 
-VendorProfileSchema.post('findOneAndUpdate', function (doc) {
-  if (doc) syncRecordToCentralApi('vendors', doc._id.toString(), doc.toObject());
+VendorProfileSchema.post('findOneAndUpdate', async function (doc) {
+  if (doc) await syncRecordToCentralApi('vendors', doc._id.toString(), doc.toObject());
 });
 
-VendorProfileSchema.post('findOneAndDelete', function (doc) {
-  if (doc) deleteRecordFromCentralApi('vendors', doc._id.toString());
+VendorProfileSchema.post('findOneAndDelete', async function (doc) {
+  if (doc) await deleteRecordFromCentralApi('vendors', doc._id.toString());
 });
 
 const VendorProfile: Model<IVendorProfile> =
