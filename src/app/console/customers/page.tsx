@@ -14,6 +14,7 @@ interface Customer {
   city?: string
   state?: string
   source?: string
+  imeiOrSerialNumbers?: string[]
   createdAt: string
 }
 
@@ -144,7 +145,7 @@ export default function CustomersPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, phone, or email…"
+              placeholder="Search by name, phone, email, or IMEI/Serial…"
               className="w-full pl-9 pr-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
             />
           </div>
@@ -181,16 +182,17 @@ export default function CustomersPage() {
                 <th className="text-left px-6 py-3 text-gray-400 font-medium">Name</th>
                 <th className="text-left px-6 py-3 text-gray-400 font-medium">Contact</th>
                 <th className="text-left px-6 py-3 text-gray-400 font-medium">Location</th>
+                <th className="text-left px-6 py-3 text-gray-400 font-medium">IMEI/Serial</th>
                 <th className="text-left px-6 py-3 text-gray-400 font-medium">Source</th>
                 <th className="text-left px-6 py-3 text-gray-400 font-medium">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-400">Loading…</td></tr>
+                <tr><td colSpan={6} className="px-6 py-10 text-center text-gray-400">Loading…</td></tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-gray-400">
+                  <td colSpan={6} className="px-6 py-10 text-center text-gray-400">
                     <Users className="w-6 h-6 mx-auto mb-2 text-gray-300" />
                     No customers found
                   </td>
@@ -204,6 +206,11 @@ export default function CustomersPage() {
                       {c.email && <p className="text-xs text-gray-400">{c.email}</p>}
                     </td>
                     <td className="px-6 py-3 text-gray-500">{[c.city, c.state].filter(Boolean).join(', ') || '—'}</td>
+                    <td className="px-6 py-3 text-gray-400 text-xs">
+                      {Array.isArray(c.imeiOrSerialNumbers) && c.imeiOrSerialNumbers.length > 0
+                        ? c.imeiOrSerialNumbers.join(', ')
+                        : '—'}
+                    </td>
                     <td className="px-6 py-3 text-gray-400 text-xs">{c.source || '—'}</td>
                     <td className="px-6 py-3 text-gray-400">{new Date(c.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                   </tr>
