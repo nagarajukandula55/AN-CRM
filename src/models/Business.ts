@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { BUSINESS_TYPES, INDUSTRIES, OPERATING_MODES } from "@/data/businessConstants";
 import { DEVICE_CATEGORIES } from "@/core/catalog/deviceCategory";
+import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
 /* =========================================================
    ACCESS
@@ -860,6 +861,28 @@ const BusinessSchema = new mongoose.Schema(
 // warning on every boot for all three fields.
 BusinessSchema.index({
   email: 1,
+});
+
+/* =========================================================
+   CENTRAL-API SYNC (Phase A — dual write, see src/lib/centralApiSync.ts)
+   Best-effort, never blocks or fails the local save/delete that triggers
+   it. Covers save() (create + doc.save()) and findOneAndUpdate() calls
+   that pass {new: true} — an update call that doesn't request the updated
+   doc back isn't synced by this hook; that's an acceptable gap for a
+   dual-write phase whose only job is to get central-api populated, not to
+   be authoritative yet.
+========================================================= */
+
+BusinessSchema.post("save", function (doc) {
+  syncRecordToCentralApi("businesses", doc._id.toString(), doc.toObject());
+});
+
+BusinessSchema.post("findOneAndUpdate", function (doc) {
+  if (doc) syncRecordToCentralApi("businesses", doc._id.toString(), doc.toObject());
+});
+
+BusinessSchema.post("findOneAndDelete", function (doc) {
+  if (doc) deleteRecordFromCentralApi("businesses", doc._id.toString());
 });
 
 /* =========================================================

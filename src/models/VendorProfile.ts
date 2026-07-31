@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import { DEVICE_CATEGORIES, type DeviceCategory } from '@/core/catalog/deviceCategory';
+import { syncRecordToCentralApi, deleteRecordFromCentralApi } from '@/lib/centralApiSync';
 
 /**
  * Vendor onboarding lifecycle:
@@ -372,6 +373,25 @@ VendorProfileSchema.index({ businessId: 1, status: 1 });
 VendorProfileSchema.index({ businessId: 1, isDeleted: 1, createdAt: -1 });
 // Sub-vendor lookup: "which sub-vendors does this vendor have"
 VendorProfileSchema.index({ parentVendorId: 1, isDeleted: 1 });
+
+// CENTRAL-API SYNC (Phase A — dual write, see src/lib/centralApiSync.ts).
+// Best-effort, never blocks or fails the local save/delete that triggers
+// it. businessId AND parentVendorId are both already fields on this
+// schema (parentVendorId is how a sub-vendor points at its parent vendor,
+// which itself carries businessId) — the full business -> vendor ->
+// sub-vendor identification/assignment chain travels through automatically
+// as part of the synced document, no extra wiring needed here.
+VendorProfileSchema.post('save', function (doc) {
+  syncRecordToCentralApi('vendors', doc._id.toString(), doc.toObject());
+});
+
+VendorProfileSchema.post('findOneAndUpdate', function (doc) {
+  if (doc) syncRecordToCentralApi('vendors', doc._id.toString(), doc.toObject());
+});
+
+VendorProfileSchema.post('findOneAndDelete', function (doc) {
+  if (doc) deleteRecordFromCentralApi('vendors', doc._id.toString());
+});
 
 const VendorProfile: Model<IVendorProfile> =
   mongoose.models.VendorProfile ||
