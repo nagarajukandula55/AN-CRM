@@ -62,14 +62,29 @@ export async function listVendors(): Promise<Record<string, any>[]> {
   return fetchAll("vendors");
 }
 
-export async function getBusinessBySourceId(sourceId: string): Promise<Record<string, any> | null> {
+async function findOne(dataset: string, field: string, value: string): Promise<Record<string, any> | null> {
   if (!CENTRAL_API_URL) throw new Error("CENTRAL_API_URL is not configured");
   const res = await fetch(
-    `${CENTRAL_API_URL}/api/v1/businesses?search=${encodeURIComponent(`sourceId:${sourceId}`)}&limit=1`,
+    `${CENTRAL_API_URL}/api/v1/${dataset}?search=${encodeURIComponent(`${field}:${value}`)}&limit=1`,
     { headers: headers(), cache: "no-store" }
   );
-  if (!res.ok) throw new Error(`central-api businesses lookup failed (${res.status})`);
+  if (!res.ok) throw new Error(`central-api ${dataset} lookup failed (${res.status})`);
   const body = await res.json();
   const item = body.items && body.items[0];
   return item ? remapId(item) : null;
+}
+
+export async function getBusinessBySourceId(sourceId: string): Promise<Record<string, any> | null> {
+  return findOne("businesses", "sourceId", sourceId);
+}
+
+export async function getVendorBySourceId(sourceId: string): Promise<Record<string, any> | null> {
+  return findOne("vendors", "sourceId", sourceId);
+}
+
+// vendorId here is the human-facing vendor code (e.g. "NAT-VND-0001"), a
+// genuine string field — unlike sourceId-based lookups this is a clean
+// single-field exact match, no client-side filtering workaround needed.
+export async function getVendorByVendorCode(vendorCode: string): Promise<Record<string, any> | null> {
+  return findOne("vendors", "vendorId", vendorCode);
 }

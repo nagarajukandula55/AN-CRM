@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { connectDB } from "@/lib/mongodb";
-import VendorProfile from "@/models/VendorProfile";
+import { listVendors } from "@/lib/centralApiRead";
 
 /* =========================================================
  * GET /api/vendors/requests
@@ -16,10 +15,14 @@ import VendorProfile from "@/models/VendorProfile";
  *
  * Only super admins see this today, since a request with no business yet
  * is platform-wide by definition, not owned by any one business's admins.
+ *
+ * Reads from central-api (see src/lib/centralApiRead.ts) instead of local
+ * Mongo — central-api's search has no null/boolean-aware matching, so the
+ * businessId-is-null and isDeleted-is-false filters are applied here in
+ * application code instead of as a query filter.
  * =======================================================*/
 export async function GET(req: NextRequest) {
   try {
-    await connectDB();
     const h = await headers();
     const userId = h.get("x-user-id");
     const isSuperAdmin = h.get("x-is-super-admin") === "true";
@@ -33,12 +36,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const requests = await VendorProfile.find({
-      businessId: null,
-      isDeleted: false,
-    })
-      .sort({ createdAt: -1 })
-      .lean();
+    const all = await listVendors();
+    const requests = all
+      .filter((v) => !v.businessId && !v.isDeleted)
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
     return NextResponse.json({ success: true, requests, data: requests, total: requests.length });
   } catch (error: unknown) {

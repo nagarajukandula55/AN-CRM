@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import SalesInvoice from "@/models/SalesInvoice";
-import Business from "@/models/Business";
+import { getBusinessBySourceId } from "@/lib/centralApiRead";
 import { connectDB } from "@/lib/mongodb";
 import { getDefaultTemplate } from "@/core/invoiceTemplates/service";
 import { getStateCode } from "@/core/gst/stateCodes";
@@ -78,8 +78,9 @@ export async function GET(
     // record via invoice.businessId, falling back to the old env-var
     // values only if a business record can't be found (so this doesn't
     // hard-break for any pre-existing invoice whose businessId is stale).
+    // Reads from central-api — see src/lib/centralApiRead.ts.
     const business = invoice.businessId
-      ? await Business.findById(invoice.businessId).lean()
+      ? await getBusinessBySourceId(String(invoice.businessId))
       : null;
 
     // Also pull this business's saved invoice-template branding (logo,

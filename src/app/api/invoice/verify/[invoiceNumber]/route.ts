@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import SalesInvoice from "@/models/SalesInvoice";
-import Business from "@/models/Business";
+import { getBusinessBySourceId } from "@/lib/centralApiRead";
 import { connectDB } from "@/lib/mongodb";
 
 // This handler used to be a hardcoded stub -- it returned
@@ -43,8 +43,9 @@ export async function GET(
     // had (every invoice showed the same hardcoded "Native" company name
     // regardless of which business actually issued it) -- fixed there by
     // reading the real Business record; do the same here for parity.
+    // Reads from central-api — see src/lib/centralApiRead.ts.
     const business = inv.businessId
-      ? await Business.findById(inv.businessId).lean()
+      ? await getBusinessBySourceId(String(inv.businessId))
       : null;
 
     return NextResponse.json({

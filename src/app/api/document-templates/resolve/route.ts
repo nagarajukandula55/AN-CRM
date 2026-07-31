@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
-import Business from "@/models/Business";
 import Warehouse from "@/models/Warehouse";
+import { getBusinessBySourceId } from "@/lib/centralApiRead";
 import { getTemplateForBusiness } from "@/core/documentTemplates/resolve";
 import { businessToCompany } from "@/core/documentTemplates/adapters";
 import type { DocumentTemplateType } from "@/models/DocumentTemplate";
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
     const [template, business, warehouse] = await Promise.all([
       getTemplateForBusiness(businessId, documentType),
-      Business.findById(businessId).lean(),
+      getBusinessBySourceId(businessId), // reads from central-api — see src/lib/centralApiRead.ts
       warehouseId ? Warehouse.findById(warehouseId).lean() : Promise.resolve(null),
     ]);
 
