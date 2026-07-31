@@ -1,4 +1,5 @@
 import mongoose, { Document, Model, Schema, Types } from "mongoose";
+import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
 /* =========================================================
  * ENUMS
@@ -335,6 +336,67 @@ UserSchema.virtual("isLocked").get(function (this: IUser) {
 /* =========================================================
  * MODEL
  * =======================================================*/
+
+/* =========================================================
+ * CENTRAL-API SYNC (dual write, see src/lib/centralApiSync.ts)
+ * =======================================================*/
+
+// Never sync raw auth secrets to a third system -- explicit WHITELIST
+// (not the usual doc.toObject() used for every other model) of only the
+// fields a cross-app "who exists, and what are they" directory actually
+// needs. password/resetPasswordTokenHash/resetPasswordExpires/
+// sessionVersion/failedLoginAttempts/lockUntil/mustChangePassword are
+// intentionally NEVER included -- central-api's "users" dataset is a
+// read-only DIRECTORY for cross-app visibility, not an auth backend, and
+// this app's own login stays the sole place that ever checks a password.
+// vendorId/parentVendorId are resolved via a VendorProfile lookup (User has
+// no such field itself) so the directory shows, for anyone who's a vendor
+// or sub-vendor login, which business/vendor/parent-vendor they belong to.
+async function buildCentralApiPayload(doc: IUser) {
+  const VendorProfile = (await import("@/models/VendorProfile")).default;
+  const vendor = await VendorProfile.findOne({ userId: doc._id }).select("businessId vendorId parentVendorId").lean();
+
+  return {
+    name: doc.name,
+    email: doc.email,
+    username: doc.username,
+    phone: doc.phone,
+    avatar: doc.avatar,
+    authProvider: doc.authProvider,
+    isActive: doc.isActive,
+    isEmailVerified: doc.isEmailVerified,
+    role: doc.role,
+    accountType: doc.accountType,
+    businessName: doc.businessName,
+    registrationSource: doc.registrationSource,
+    defaultBusinessId: doc.defaultBusinessId,
+    // Set only when this login belongs to a Business (not a vendor/
+    // sub-vendor/pure-customer) -- i.e. an owner/staff account with no
+    // VendorProfile of their own. Vendor logins get businessId from the
+    // vendor lookup below instead, since a vendor's own businessId is the
+    // business they operate under, more specific than defaultBusinessId.
+    businessId: vendor ? (vendor as any).businessId : doc.defaultBusinessId,
+    vendorId: (vendor as any)?._id || null,
+    vendorCode: (vendor as any)?.vendorId || null,
+    parentVendorId: (vendor as any)?.parentVendorId || null,
+    lastLogin: doc.lastLogin,
+    isDeleted: doc.isDeleted,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+}
+
+UserSchema.post("save", async function (doc) {
+  await syncRecordToCentralApi("users", doc._id.toString(), await buildCentralApiPayload(doc));
+});
+
+UserSchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) await syncRecordToCentralApi("users", doc._id.toString(), await buildCentralApiPayload(doc));
+});
+
+UserSchema.post("findOneAndDelete", async function (doc) {
+  if (doc) await deleteRecordFromCentralApi("users", doc._id.toString());
+});
 
 const User: Model<IUser> =
   mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
