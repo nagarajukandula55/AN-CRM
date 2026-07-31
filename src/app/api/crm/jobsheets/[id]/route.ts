@@ -89,6 +89,7 @@ const ALLOWED_FIELDS = [
   "completedAt",
   "assignedTo",
   "lineItems",
+  "taxApplyEnabled",
   "materialsUsed",
   "workPerformed",
   "customerSignatureUrl",

@@ -187,6 +187,9 @@ const PUBLIC_PREFIXES = [
   // logged into AN-CRM at all.
   "/feedback/service/",
   "/api/feedback/service/",
+  // Telegram calls this webhook directly (no session) whenever a user
+  // messages our bot -- see api/telegram/webhook's own comment.
+  "/api/telegram/webhook",
   "/_next",
   "/public",
 ];

@@ -61,12 +61,15 @@ export function jobSheetToRenderData(
   docType: "WORK_ORDER" | "ESTIMATE",
   company: DocumentRenderData["company"]
 ): DocumentRenderData {
+  const taxApplyEnabled = jobSheet.taxApplyEnabled !== false;
   const lineItems = (jobSheet.lineItems || []).filter((l: any) => l.description?.trim());
   const subtotal = lineItems.reduce((s: number, l: any) => s + (l.quantity || 0) * (l.unitPrice || 0), 0);
-  const tax = lineItems.reduce(
-    (s: number, l: any) => s + (l.quantity || 0) * (l.unitPrice || 0) * ((l.taxRate || 0) / 100),
-    0
-  );
+  const tax = taxApplyEnabled
+    ? lineItems.reduce(
+        (s: number, l: any) => s + (l.quantity || 0) * (l.unitPrice || 0) * ((l.taxRate || 0) / 100),
+        0
+      )
+    : 0;
   // pendingBrandName is the free-text stand-in used when the real Brand is
   // still awaiting Super Admin approval (see CrmJobSheet.pendingBrandName) --
   // shown here so the printed document isn't just missing the brand entirely.
@@ -103,14 +106,15 @@ export function jobSheetToRenderData(
             codeOf(l.symptomCodeId) && `Symptom: ${codeOf(l.symptomCodeId)}`,
             codeOf(l.solutionId) && `Solution: ${codeOf(l.solutionId)}`,
           ].filter(Boolean).join(" · ") || undefined;
+          const effRate = taxApplyEnabled ? (l.taxRate || 0) : 0;
           return {
             description: l.description,
             hsnCode: l.hsnCode,
             qty: l.quantity || 0,
             unit: l.unit,
             unitPrice: l.unitPrice || 0,
-            taxRate: l.taxRate || 0,
-            amount: (l.quantity || 0) * (l.unitPrice || 0) * (1 + (l.taxRate || 0) / 100),
+            taxRate: effRate,
+            amount: (l.quantity || 0) * (l.unitPrice || 0) * (1 + effRate / 100),
             diagnosis,
           };
         })
@@ -155,12 +159,15 @@ export function serviceRecordToRenderData(
   company: DocumentRenderData["company"],
   extra: { technicalConsultant?: string; ccoName?: string; hours?: string; hotline?: string }
 ): DocumentRenderData {
+  const taxApplyEnabled = jobSheet.taxApplyEnabled !== false;
   const lineItems = (jobSheet.lineItems || []).filter((l: any) => l.description?.trim());
   const materialTotal = lineItems.reduce((s: number, l: any) => s + (l.quantity || 0) * (l.unitPrice || 0), 0);
-  const tax = lineItems.reduce(
-    (s: number, l: any) => s + (l.quantity || 0) * (l.unitPrice || 0) * ((l.taxRate || 0) / 100),
-    0
-  );
+  const tax = taxApplyEnabled
+    ? lineItems.reduce(
+        (s: number, l: any) => s + (l.quantity || 0) * (l.unitPrice || 0) * ((l.taxRate || 0) / 100),
+        0
+      )
+    : 0;
   const serviceCharge = jobSheet.serviceCharge || 0;
   const grandTotal = materialTotal + tax + serviceCharge;
   const brandName = (typeof jobSheet.brandId === "object" ? jobSheet.brandId?.name : undefined) || jobSheet.pendingBrandName;
@@ -178,15 +185,18 @@ export function serviceRecordToRenderData(
       email: jobSheet.email,
     },
     items: [
-      ...lineItems.map((l: any) => ({
-        description: l.description,
-        hsnCode: l.hsnCode,
-        qty: l.quantity || 0,
-        unit: l.unit,
-        unitPrice: l.unitPrice || 0,
-        taxRate: l.taxRate || 0,
-        amount: (l.quantity || 0) * (l.unitPrice || 0) * (1 + (l.taxRate || 0) / 100),
-      })),
+      ...lineItems.map((l: any) => {
+        const effRate = taxApplyEnabled ? (l.taxRate || 0) : 0;
+        return {
+          description: l.description,
+          hsnCode: l.hsnCode,
+          qty: l.quantity || 0,
+          unit: l.unit,
+          unitPrice: l.unitPrice || 0,
+          taxRate: effRate,
+          amount: (l.quantity || 0) * (l.unitPrice || 0) * (1 + effRate / 100),
+        };
+      }),
       ...(serviceCharge > 0
         ? [{ description: "Repair Labor Cost", qty: 1, unitPrice: serviceCharge, taxRate: 0, amount: serviceCharge }]
         : []),

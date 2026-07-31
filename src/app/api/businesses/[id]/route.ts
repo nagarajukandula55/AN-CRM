@@ -79,6 +79,7 @@ const EDITABLE_FIELDS = [
   // bill (no company name on the customer) -- see models/Business.ts's
   // applyTaxOnB2CBilling comment.
   "applyTaxOnB2CBilling",
+  "telegramChatId",
   // Default rate for the one-click "Add Labour Charge" line on a
   // workorder -- see models/Business.ts's defaultLabourCharge comment.
   // Existed on the schema already, never surfaced in Settings until now.

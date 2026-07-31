@@ -83,6 +83,7 @@ export default function ReportBuilderPage() {
   const [chartType, setChartType] = useState<'TABLE' | 'BAR' | 'LINE' | 'PIE'>('TABLE')
   const [scheduleFreq, setScheduleFreq] = useState('NONE')
   const [recipientEmails, setRecipientEmails] = useState('')
+  const [sendToTelegram, setSendToTelegram] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const [activeReportId, setActiveReportId] = useState<string | null>(null)
@@ -114,6 +115,7 @@ export default function ReportBuilderPage() {
           schedule: {
             frequency: scheduleFreq,
             recipientEmails: recipientEmails.split(',').map((e) => e.trim()).filter(Boolean),
+            sendToTelegram,
           },
         }),
       })
@@ -126,6 +128,7 @@ export default function ReportBuilderPage() {
         setChartType('TABLE')
         setScheduleFreq('NONE')
         setRecipientEmails('')
+        setSendToTelegram(false)
         mutate()
       }
     } finally {
@@ -230,9 +233,15 @@ export default function ReportBuilderPage() {
             </div>
 
             {scheduleFreq !== 'NONE' && (
-              <Field label="Email recipients (comma-separated)">
-                <Input value={recipientEmails} onChange={(e) => setRecipientEmails(e.target.value)} placeholder="you@business.com, team@business.com" />
-              </Field>
+              <>
+                <Field label="Email recipients (comma-separated)">
+                  <Input value={recipientEmails} onChange={(e) => setRecipientEmails(e.target.value)} placeholder="you@business.com, team@business.com" />
+                </Field>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={sendToTelegram} onChange={(e) => setSendToTelegram(e.target.checked)} />
+                  Also send a summary to this business's Telegram (Settings &gt; Operations &gt; Telegram Chat/Group ID)
+                </label>
+              </>
             )}
 
             <Button type="submit" disabled={saving || !name.trim() || fields.length === 0}>

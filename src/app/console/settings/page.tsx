@@ -91,6 +91,7 @@ export default function AdminSettingsPage() {
     estimateTerms: '',
     invoiceTerms: '',
     enabledDeviceCategories: [] as string[],
+    telegramChatId: '',
   })
   const [savingOperations, setSavingOperations] = useState(false)
   const [uploadingSignature, setUploadingSignature] = useState(false)
@@ -165,6 +166,7 @@ export default function AdminSettingsPage() {
         estimateTerms: b.estimateTerms || '',
         invoiceTerms: b.invoiceTerms || '',
         enabledDeviceCategories: b.enabledDeviceCategories || [],
+        telegramChatId: b.telegramChatId || '',
       })
     }
   }, [operationsRes])
@@ -490,6 +492,22 @@ export default function AdminSettingsPage() {
                 />
                 <div className="text-xs text-ink-3 mt-1">
                   When set, every printed invoice shows a scannable UPI QR code for this business's own VPA.
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-ink-3 mb-1 block">Telegram Chat / Group ID</label>
+                <input
+                  type="text"
+                  value={operations.telegramChatId}
+                  onChange={(e) => setOperations({ ...operations, telegramChatId: e.target.value })}
+                  placeholder="e.g. 123456789 or -1001234567890"
+                  className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong"
+                />
+                <div className="text-xs text-ink-3 mt-1">
+                  Daily/weekly/monthly reports and alerts are sent here via our Telegram bot. Don't know your
+                  ID? Message the bot and send <span className="tabular">/tgid</span> — it replies with your
+                  personal chat ID, or add the bot to a group and send the same command there for the group ID.
                 </div>
               </div>
 

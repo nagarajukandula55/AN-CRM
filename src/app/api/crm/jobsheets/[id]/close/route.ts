@@ -142,6 +142,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // invoices are never affected by this toggle, per explicit direction.
     const applyB2CTax = (business as any)?.applyTaxOnB2CBilling !== false;
     const zeroTaxForB2C = !isB2B && !applyB2CTax;
+    // Per-workorder "Tax Apply" toggle (Parts & Service Lines) -- lets a
+    // service center switch tax off for this job regardless of what each
+    // line's own tax rate is set to, without having to zero every line.
+    const taxApplyEnabled = (jobSheet as any).taxApplyEnabled !== false;
 
     /* ── Build invoice items with the same GST-split logic as
        app/api/sales/invoices/route.ts, so CRM-originated invoices are
@@ -149,7 +153,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     let subtotal = 0, cgstTotal = 0, sgstTotal = 0, igstTotal = 0;
 
     const invoiceItems = jobSheet.lineItems.map((item: any) => {
-      const effectiveTaxRate = zeroTaxForB2C ? 0 : (item.taxRate || 0);
+      const effectiveTaxRate = (zeroTaxForB2C || !taxApplyEnabled) ? 0 : (item.taxRate || 0);
       const lineAmt = (item.quantity || 1) * (item.unitPrice || 0);
       const totalGST = lineAmt * (effectiveTaxRate / 100);
 

@@ -583,6 +583,18 @@ const BusinessSchema = new mongoose.Schema(
       index: true,
     },
 
+    // Set only when this business was created as an SC "add another SC
+    // account" sub-account (see api/businesses/[id]/sub-accounts/route.ts)
+    // -- the parent SC business whose Owner login spun this one up, paying
+    // a separate subscription addon charge for it. Unset for every other
+    // business, including SC businesses created the normal (admin) way.
+    parentBusinessId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Business",
+      default: null,
+      index: true,
+    },
+
     email: {
       type: String,
       default: "",
@@ -682,6 +694,16 @@ const BusinessSchema = new mongoose.Schema(
     applyTaxOnB2CBilling: {
       type: Boolean,
       default: true,
+    },
+
+    // Telegram chat/group ID this business wants automated reports and
+    // alerts delivered to -- paired with our own single Telegram bot (see
+    // ANOPS_TELEGRAM_BOT_TOKEN / lib/telegram.ts). A user gets their own
+    // chat id by messaging the bot /tgid (see api/telegram/webhook).
+    telegramChatId: {
+      type: String,
+      trim: true,
+      default: "",
     },
 
     // Default rate for the workorder detail page's one-click "Add Labour

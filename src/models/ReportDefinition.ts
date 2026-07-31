@@ -34,6 +34,10 @@ export interface IReportDefinition extends Document {
   schedule: {
     frequency: ScheduleFrequency;
     recipientEmails: string[];
+    // When on, the same run also posts a compact text summary to this
+    // business's Business.telegramChatId (Settings > Operations) via our
+    // shared Telegram bot -- see api/cron/run-scheduled-reports.
+    sendToTelegram?: boolean;
     lastRunAt?: Date;
     nextRunAt?: Date;
   };
@@ -63,6 +67,7 @@ const ReportDefinitionSchema = new Schema<IReportDefinition>(
     schedule: {
       frequency: { type: String, enum: ["NONE", "DAILY", "WEEKLY", "MONTHLY"], default: "NONE" },
       recipientEmails: { type: [String], default: [] },
+      sendToTelegram: { type: Boolean, default: false },
       lastRunAt: { type: Date },
       nextRunAt: { type: Date },
     },

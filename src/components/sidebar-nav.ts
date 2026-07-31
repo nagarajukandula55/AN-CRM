@@ -156,6 +156,11 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-module-builder", label: "Module Builder", route: "/console/module-builder", icon: "LayoutTemplate" },
       { key: "admin-settings", label: "Settings", route: "/console/settings", icon: "Settings" },
       { key: "admin-plan", label: "Plan & Billing", route: "/console/plan", icon: "Receipt" },
+      // SC-only in practice -- see /console/sub-accounts's own comment and
+      // the scAllowedKeys gate in api/ui/sidebar/route.ts. Shown here in
+      // the same "System" group as Plan & Billing since it's the same
+      // billing-adjacent concern (paying to activate another account).
+      { key: "sub-accounts", label: "SC Sub-Accounts", route: "/console/sub-accounts", icon: "Building2" },
     ]},
     { key: "adm-docs", label: "Documents & Billing", items: [
       { key: "admin-document-templates", label: "Document Templates", route: "/console/document-templates", icon: "FileText" },

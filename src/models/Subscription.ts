@@ -29,6 +29,11 @@ export interface ISubscription extends Document {
   // vendors/route.ts) -- the parent vendor being charged for adding one
   // more sub-vendor under them. Unset for a business's own primary plan.
   subVendorOf?: Types.ObjectId; // ref VendorProfile
+  // Set only for an SC "add another SC account" addon charge (see
+  // api/businesses/[id]/sub-accounts/route.ts) -- the parent SC business
+  // being charged for spinning up one more SC business under itself.
+  // Unset for a business's own primary plan and for subVendorOf charges.
+  subBusinessOf?: Types.ObjectId; // ref Business
   // The operating mode this plan was purchased under (BRAND/SC/POS) --
   // pricing/features are mode-specific (see core/pricing/plans.ts), so the
   // same plan key ("PRO") means a different price/feature set per mode.
@@ -59,6 +64,7 @@ const SubscriptionSchema = new Schema<ISubscription>(
   {
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true, index: true },
     subVendorOf: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
+    subBusinessOf: { type: Schema.Types.ObjectId, ref: "Business", default: null, index: true },
     mode: { type: String, enum: ["BRAND", "SC", "POS"], required: true },
     plan: { type: String, enum: ["BASIC", "PRO", "ULTIMATE"], required: true },
     billingPeriod: { type: String, enum: ["MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY"], required: true },

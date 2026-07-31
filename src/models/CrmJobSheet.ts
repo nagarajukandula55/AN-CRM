@@ -177,6 +177,7 @@ export interface ICrmJobSheet extends Document {
   repairResumedAt?: Date; // PART_PENDING -> REPAIR_IN_PROGRESS (resume-repair)
 
   lineItems: ICrmJobSheetLineItem[];
+  taxApplyEnabled?: boolean;
   materialsUsed?: string;
   workPerformed?: string;
   // Structured solution reference alongside the free-text workPerformed
@@ -320,6 +321,7 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
     },
 
     lineItems: { type: [CrmJobSheetLineItemSchema], default: [] },
+    taxApplyEnabled: { type: Boolean, default: true },
     materialsUsed: { type: String, default: "" },
     serviceCharge: { type: Number, default: 0 },
     workPerformed: { type: String, default: "" },

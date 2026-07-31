@@ -50,9 +50,9 @@ interface LineItem {
 function emptyLine(): LineItem {
   return { description: '', quantity: 1, unit: 'PCS', unitPrice: 0, taxRate: 0 }
 }
-function lineTotal(l: LineItem): number {
+function lineTotal(l: LineItem, taxApplyEnabled: boolean): number {
   const base = (l.quantity || 0) * (l.unitPrice || 0)
-  return base + base * ((l.taxRate || 0) / 100)
+  return base + (taxApplyEnabled ? base * ((l.taxRate || 0) / 100) : 0)
 }
 
 interface BOMPart {
@@ -66,7 +66,7 @@ interface JobSheet {
   address?: string; city?: string; state?: string; pincode?: string
   title: string; product?: string; deviceModel?: string; imeiOrSerialNumber?: string
   brandId?: { name?: string } | string
-  status: string; createdAt: string; lineItems: LineItem[]
+  status: string; createdAt: string; lineItems: LineItem[]; taxApplyEnabled?: boolean
   remark?: string; ccoName?: string; invoiceNumber?: string; invoiceId?: string; cancelReason?: string
   engineerAssignedAt?: string; repairInProgressAt?: string; partPendingAt?: string; repairResumedAt?: string
   completedAt?: string; handedOverAt?: string
@@ -234,6 +234,7 @@ export default function SCJobSheetScreen() {
   const job: JobSheet | null = jobRes?.success ? jobRes.jobSheet : null
 
   const [lineItems, setLineItems] = useState<LineItem[]>([])
+  const [taxApplyEnabled, setTaxApplyEnabled] = useState(true)
   const [remark, setRemark] = useState('')
   const [engineerRemark, setEngineerRemark] = useState('')
   const [solutionId, setSolutionId] = useState('')
@@ -243,6 +244,7 @@ export default function SCJobSheetScreen() {
   useEffect(() => {
     if (job) {
       setLineItems(job.lineItems?.length ? job.lineItems : [])
+      setTaxApplyEnabled(job.taxApplyEnabled !== false)
       setRemark(job.remark || '')
       setSolutionId(typeof job.solutionId === 'object' ? '' : (job.solutionId as string) || '')
     }
@@ -333,7 +335,7 @@ export default function SCJobSheetScreen() {
       const res = await fetch(`/api/crm/jobsheets/${jobId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineItems, remark, workPerformed: engineerRemark, solutionId: solutionId || undefined }),
+        body: JSON.stringify({ lineItems, taxApplyEnabled, remark, workPerformed: engineerRemark, solutionId: solutionId || undefined }),
       })
       const d = await res.json()
       if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to save')
@@ -404,7 +406,7 @@ export default function SCJobSheetScreen() {
       const saveRes = await fetch(`/api/crm/jobsheets/${jobId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineItems, remark, workPerformed: engineerRemark, solutionId: solutionId || undefined }),
+        body: JSON.stringify({ lineItems, taxApplyEnabled, remark, workPerformed: engineerRemark, solutionId: solutionId || undefined }),
       })
       const saveData = await saveRes.json()
       if (!saveRes.ok || saveData.success === false) throw new Error(saveData.message || 'Failed to save line items before closing')
@@ -652,7 +654,7 @@ export default function SCJobSheetScreen() {
     return <LoadingPanel label="Loading workorder…" />
   }
 
-  const total = lineItems.reduce((sum, l) => sum + lineTotal(l), 0)
+  const total = lineItems.reduce((sum, l) => sum + lineTotal(l, taxApplyEnabled), 0)
   const isOpen = job.status !== 'CLOSED' && job.status !== 'CANCELLED'
   const inRepair = job.status === 'REPAIR_STARTED' || job.status === 'REPAIR_IN_PROGRESS'
   // Parts/lines are only editable while repair is actually underway --
@@ -748,7 +750,11 @@ export default function SCJobSheetScreen() {
           <div className="px-5 py-3 border-b border-border flex items-center justify-between flex-wrap gap-2">
             <h3 className="text-sm font-semibold text-ink">Parts &amp; Service Lines</h3>
             {editable && (
-              <div className="flex gap-2">
+              <div className="flex items-center gap-3 flex-wrap">
+                <label className="flex items-center gap-1.5 text-xs text-ink-2">
+                  <input type="checkbox" checked={taxApplyEnabled} onChange={e => setTaxApplyEnabled(e.target.checked)} />
+                  Tax Apply
+                </label>
                 <Button variant="secondary" size="sm" onClick={addLabourCharge} icon={<Plus className="w-4 h-4" />}>Add Service/Labour Charge</Button>
                 <Button variant="secondary" size="sm" onClick={addLine} icon={<Plus className="w-4 h-4" />}>Add Line</Button>
                 <Button
@@ -795,11 +801,11 @@ export default function SCJobSheetScreen() {
                     <td className="px-2 py-1.5"><input disabled={!editable} type="number" onFocus={e => e.target.select()} min={1} value={l.quantity} onChange={e => updateLine(i, { quantity: Number(e.target.value) })} className={`${inputCls} py-1.5 text-center disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
                     <td className="px-2 py-1.5"><input disabled={!editable} type="number" onFocus={e => e.target.select()} min={0} value={l.unitPrice} onChange={e => updateLine(i, { unitPrice: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
                     <td className="px-2 py-1.5">
-                      <select disabled={!editable} value={l.taxRate} onChange={e => updateLine(i, { taxRate: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`}>
+                      <select disabled={!editable || !taxApplyEnabled} value={l.taxRate} onChange={e => updateLine(i, { taxRate: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`}>
                         {GST_SLABS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
                       </select>
                     </td>
-                    <td className="px-5 py-1.5 text-right tabular text-ink font-medium text-xs">₹{lineTotal(l).toFixed(2)}</td>
+                    <td className="px-5 py-1.5 text-right tabular text-ink font-medium text-xs">₹{lineTotal(l, taxApplyEnabled).toFixed(2)}</td>
                     <td className="px-2 py-1.5">{editable && <button onClick={() => removeLine(i)} className="text-ink-3 hover:text-danger"><Trash2 className="w-4 h-4" /></button>}</td>
                   </tr>
                 ))}
@@ -807,7 +813,7 @@ export default function SCJobSheetScreen() {
             </table>
           )}
           <div className="px-5 py-3 border-t border-border flex items-center justify-between bg-surface-2/40">
-            <span className="text-sm text-ink-2">Total</span>
+            <span className="text-sm text-ink-2">Total {!taxApplyEnabled && <span className="text-ink-3">(tax not applied)</span>}</span>
             <span className="text-sm font-semibold text-ink tabular">₹{total.toFixed(2)}</span>
           </div>
         </Card>
