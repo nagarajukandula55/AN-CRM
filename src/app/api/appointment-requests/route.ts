@@ -28,7 +28,7 @@ import Business from "@/models/Business";
 import CrmCall from "@/models/CrmCall";
 import VendorProfile from "@/models/VendorProfile";
 import PublicEmailVerification from "@/models/PublicEmailVerification";
-import PincodeEntry from "@/models/PincodeEntry";
+import { lookupPincode } from "@/lib/centralApiPincode";
 import { generateDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { notify } from "@/lib/notify";
@@ -200,9 +200,7 @@ export async function POST(req: NextRequest) {
     let routedVendorId: string | null = null;
     if (trimmedPincode) {
       try {
-        const pincodeEntry = await PincodeEntry.findOne({ pincode: trimmedPincode })
-          .select("state city")
-          .lean();
+        const pincodeEntry = await lookupPincode(trimmedPincode);
 
         const coverageOr: any[] = [
           { servicePincodes: trimmedPincode },
