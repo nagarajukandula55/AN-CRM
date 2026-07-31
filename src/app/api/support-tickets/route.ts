@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import SupportTicket from "@/models/SupportTicket";
-import Business from "@/models/Business";
+import { listBusinesses } from "@/lib/centralApiRead";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
@@ -40,9 +40,14 @@ export async function GET(req: NextRequest) {
 
     // Business names for display -- the list is now cross-business by
     // default, so each row needs to say which business it belongs to.
-    const businessIds = Array.from(new Set(tickets.map((t: any) => String(t.businessId))));
-    const businesses = await Business.find({ _id: { $in: businessIds } }).select("name").lean();
-    const nameById = new Map(businesses.map((b: any) => [String(b._id), b.name]));
+    // Reads from central-api (Phase B of the Business/Vendor migration —
+    // see src/lib/centralApiRead.ts) instead of local Mongo; a lookup
+    // failure degrades to blank names rather than failing the whole list.
+    const businessIds = new Set(tickets.map((t: any) => String(t.businessId)));
+    const businesses = await listBusinesses().catch(() => []);
+    const nameById = new Map(
+      businesses.filter((b) => businessIds.has(String(b._id))).map((b) => [String(b._id), b.name])
+    );
     const enriched = tickets.map((t: any) => ({ ...t, businessName: nameById.get(String(t.businessId)) || "" }));
 
     return NextResponse.json({ success: true, tickets: enriched });
