@@ -88,7 +88,7 @@ CustomerSchema.post("findOneAndDelete", async function (doc) {
   if (doc) await deleteRecordFromCentralApi("customers", doc._id.toString());
 });
 
-CustomerSchema.post("insertMany", async function (docs) {
+CustomerSchema.post("insertMany", async function (docs: any[]) {
   for (const doc of docs) {
     await syncRecordToCentralApi("customers", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
   }
