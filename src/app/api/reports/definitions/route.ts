@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
       schedule: {
         frequency: schedule?.frequency || "NONE",
         recipientEmails: Array.isArray(schedule?.recipientEmails) ? schedule.recipientEmails : [],
+        sendToTelegram: !!schedule?.sendToTelegram,
       },
       createdBy: new mongoose.Types.ObjectId(session.user.id),
     });

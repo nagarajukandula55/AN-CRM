@@ -43,6 +43,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body.schedule !== undefined) {
       report.schedule.frequency = body.schedule.frequency || "NONE";
       report.schedule.recipientEmails = Array.isArray(body.schedule.recipientEmails) ? body.schedule.recipientEmails : [];
+      report.schedule.sendToTelegram = !!body.schedule.sendToTelegram;
     }
 
     await report.save();

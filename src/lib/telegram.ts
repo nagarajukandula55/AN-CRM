@@ -8,10 +8,10 @@
 
 export async function sendTelegramMessage(
   text: string,
-  options?: { parseMode?: "HTML" | "MarkdownV2" }
+  options?: { parseMode?: "HTML" | "MarkdownV2"; chatId?: string }
 ): Promise<boolean> {
   const token = process.env.ANOPS_TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.ANOPS_TELEGRAM_CHAT_ID;
+  const chatId = options?.chatId || process.env.ANOPS_TELEGRAM_CHAT_ID;
 
   if (!token || !chatId) {
     console.warn("[telegram] ANOPS_TELEGRAM_BOT_TOKEN / ANOPS_TELEGRAM_CHAT_ID not configured -- skipping send.");

@@ -684,6 +684,16 @@ const BusinessSchema = new mongoose.Schema(
       default: true,
     },
 
+    // Telegram chat/group ID this business wants automated reports and
+    // alerts delivered to -- paired with our own single Telegram bot (see
+    // ANOPS_TELEGRAM_BOT_TOKEN / lib/telegram.ts). A user gets their own
+    // chat id by messaging the bot /tgid (see api/telegram/webhook).
+    telegramChatId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
     // Default rate for the workorder detail page's one-click "Add Labour
     // Charge" line, set by the vendor's Owner/Manager (Settings > Business
     // Settings) -- used whenever the vendor has no LABOUR-type

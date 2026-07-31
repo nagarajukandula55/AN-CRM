@@ -12,9 +12,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import ReportDefinition from "@/models/ReportDefinition";
+import Business from "@/models/Business";
 import { runReport } from "@/core/reports/runReport";
 import { DATA_SOURCES } from "@/core/reports/dataSources";
 import { sendGenericEmail } from "@/services/email/resend.service";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 function nextRunFor(frequency: string, from: Date): Date {
   const next = new Date(from);
@@ -38,6 +40,18 @@ function rowsToHtmlTable(rows: Record<string, unknown>[]): string {
   return `<table style="border-collapse:collapse;font-family:sans-serif;font-size:13px;"><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
+// Telegram messages have no room for a full HTML table -- summarize the
+// first handful of rows as plain lines instead, same fields the email
+// table would show, just capped much lower (4096-char message limit).
+function rowsToTelegramText(rows: Record<string, unknown>[]): string {
+  if (rows.length === 0) return "No data for this period.";
+  const columns = Object.keys(rows[0]).filter((k) => k !== "_id").slice(0, 4);
+  return rows
+    .slice(0, 15)
+    .map((row) => columns.map((c) => `${c}: ${String((row as any)[c] ?? "")}`).join(", "))
+    .join("\n");
+}
+
 export async function GET(req: NextRequest) {
   try {
     const authHeader = req.headers.get("authorization");
@@ -55,16 +69,33 @@ export async function GET(req: NextRequest) {
 
     let sentCount = 0;
     for (const report of due) {
-      if (!report.schedule.recipientEmails?.length) continue;
+      const wantsEmail = !!report.schedule.recipientEmails?.length;
+      const wantsTelegram = !!report.schedule.sendToTelegram;
+      if (!wantsEmail && !wantsTelegram) continue;
       try {
         const result = await runReport(report);
-        const html = `<h2>${report.name}</h2><p>${DATA_SOURCES[report.dataSource]?.label} — ${result.rows.length} rows</p>${rowsToHtmlTable(result.rows)}`;
-        await sendGenericEmail({
-          to: report.schedule.recipientEmails,
-          subject: `Scheduled report: ${report.name}`,
-          html,
-          businessId: report.businessId.toString(),
-        });
+
+        if (wantsEmail) {
+          const html = `<h2>${report.name}</h2><p>${DATA_SOURCES[report.dataSource]?.label} — ${result.rows.length} rows</p>${rowsToHtmlTable(result.rows)}`;
+          await sendGenericEmail({
+            to: report.schedule.recipientEmails,
+            subject: `Scheduled report: ${report.name}`,
+            html,
+            businessId: report.businessId.toString(),
+          });
+        }
+
+        if (wantsTelegram) {
+          const business = await Business.findById(report.businessId).select("telegramChatId").lean();
+          const chatId = (business as any)?.telegramChatId;
+          if (chatId) {
+            await sendTelegramMessage(
+              `<b>${report.name}</b>\n${DATA_SOURCES[report.dataSource]?.label} — ${result.rows.length} rows (${report.schedule.frequency.toLowerCase()})\n${rowsToTelegramText(result.rows)}`,
+              { chatId, parseMode: "HTML" }
+            );
+          }
+        }
+
         sentCount++;
       } catch (err) {
         console.error(`Scheduled report ${report._id} failed:`, err);
