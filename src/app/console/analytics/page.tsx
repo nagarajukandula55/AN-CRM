@@ -190,7 +190,9 @@ export default function AnalyticsPage() {
                           <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <Tooltip formatter={(v) => fmt(Number(v) || 0)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
                           <Legend wrapperStyle={{ fontSize: 12 }} />
-                          <Line type="monotone" dataKey="This period" stroke="var(--accent)" strokeWidth={2} dot={{ r: 3 }} />
+                          <Line type="monotone" dataKey="This period" stroke="var(--accent)" strokeWidth={2} dot={{ r: 3 }}>
+                            <LabelList dataKey="This period" position="top" formatter={(v: any) => (v ? fmt(Number(v)) : '')} style={{ fontSize: 10, fill: 'var(--ink-2)' }} />
+                          </Line>
                           <Line type="monotone" dataKey="Same period last year" stroke="var(--border-strong)" strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />
                         </LineChart>
                       </ResponsiveContainer>
@@ -227,7 +229,9 @@ export default function AnalyticsPage() {
                           <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
                           <Legend wrapperStyle={{ fontSize: 12 }} />
-                          <Line type="monotone" dataKey="This period" stroke="var(--info)" strokeWidth={2} dot={{ r: 3 }} />
+                          <Line type="monotone" dataKey="This period" stroke="var(--info)" strokeWidth={2} dot={{ r: 3 }}>
+                            <LabelList dataKey="This period" position="top" formatter={(v: any) => v || ''} style={{ fontSize: 10, fill: 'var(--ink-2)' }} />
+                          </Line>
                           <Line type="monotone" dataKey="Same period last year" stroke="var(--border-strong)" strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />
                         </LineChart>
                       </ResponsiveContainer>

@@ -11,6 +11,7 @@ interface Customer {
   name: string
   phone?: string
   email?: string
+  gstin?: string
   city?: string
   state?: string
   source?: string
@@ -43,7 +44,7 @@ export default function CustomersPage() {
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState('')
 
-  const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', city: '', state: '', pincode: '', notes: '' })
+  const [form, setForm] = useState({ name: '', phone: '', email: '', gstin: '', address: '', city: '', state: '', pincode: '', notes: '' })
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
@@ -77,7 +78,7 @@ export default function CustomersPage() {
       const d = await res.json()
       if (!res.ok || !d.success) throw new Error(d.error || 'Failed to add customer')
       setShowForm(false)
-      setForm({ name: '', phone: '', email: '', address: '', city: '', state: '', pincode: '', notes: '' })
+      setForm({ name: '', phone: '', email: '', gstin: '', address: '', city: '', state: '', pincode: '', notes: '' })
       showToast('Customer added')
       fetchCustomers()
     } catch (err: any) {
@@ -181,6 +182,7 @@ export default function CustomersPage() {
               <tr className="border-b border-gray-200">
                 <th className="text-left px-6 py-3 text-gray-400 font-medium">Name</th>
                 <th className="text-left px-6 py-3 text-gray-400 font-medium">Contact</th>
+                <th className="text-left px-6 py-3 text-gray-400 font-medium">GSTIN</th>
                 <th className="text-left px-6 py-3 text-gray-400 font-medium">Location</th>
                 <th className="text-left px-6 py-3 text-gray-400 font-medium">IMEI/Serial</th>
                 <th className="text-left px-6 py-3 text-gray-400 font-medium">Source</th>
@@ -189,10 +191,10 @@ export default function CustomersPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={6} className="px-6 py-10 text-center text-gray-400">Loading…</td></tr>
+                <tr><td colSpan={7} className="px-6 py-10 text-center text-gray-400">Loading…</td></tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-gray-400">
+                  <td colSpan={7} className="px-6 py-10 text-center text-gray-400">
                     <Users className="w-6 h-6 mx-auto mb-2 text-gray-300" />
                     No customers found
                   </td>
@@ -205,6 +207,7 @@ export default function CustomersPage() {
                       <p>{c.phone}</p>
                       {c.email && <p className="text-xs text-gray-400">{c.email}</p>}
                     </td>
+                    <td className="px-6 py-3 text-gray-500 text-xs">{c.gstin || '—'}</td>
                     <td className="px-6 py-3 text-gray-500">{[c.city, c.state].filter(Boolean).join(', ') || '—'}</td>
                     <td className="px-6 py-3 text-gray-400 text-xs">
                       {Array.isArray(c.imeiOrSerialNumbers) && c.imeiOrSerialNumbers.length > 0
@@ -245,6 +248,11 @@ export default function CustomersPage() {
               <div>
                 <label className="block text-xs text-gray-500 mb-1.5">Email</label>
                 <input type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-400" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1.5">GSTIN</label>
+                <input value={form.gstin} onChange={(e) => setForm((p) => ({ ...p, gstin: e.target.value.toUpperCase() }))}
                   className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-400" />
               </div>
               <div>

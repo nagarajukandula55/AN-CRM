@@ -33,9 +33,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const body = await req.json();
     const updates: Record<string, unknown> = {};
-    for (const field of ["name", "phone", "email", "address", "city", "state", "pincode", "source", "notes", "isActive"]) {
+    for (const field of ["name", "phone", "email", "gstin", "address", "city", "state", "pincode", "source", "notes", "isActive"]) {
       if (body[field] !== undefined) updates[field] = body[field];
     }
+    if (typeof updates.gstin === "string") updates.gstin = updates.gstin.trim().toUpperCase();
 
     await connectDB();
     const customer = await Customer.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true });

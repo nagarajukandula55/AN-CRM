@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   IndianRupee,
   Wallet,
+  Clock,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -163,6 +164,9 @@ export default function CRMPage() {
   }, {})
 
   const openAppointments = appointments.filter(a => OPEN_APPOINTMENT_STATUSES.has(a.status)).length
+  // "Pending" = not yet contacted at all -- the freshest, most actionable
+  // subset of "open" (which also includes calls already in progress).
+  const pendingCalls = appointments.filter(a => a.status === 'NEW').length
   const openWorkorders = workorders.filter(w => OPEN_WORKORDER_STATUSES.has(w.status)).length
   const overdueWorkorders = workorders.filter(w => OPEN_WORKORDER_STATUSES.has(w.status) && ageingDays(w.createdAt) >= 7).length
   const now = new Date()
@@ -235,7 +239,7 @@ export default function CRMPage() {
           the legacy leads list below), only shown once the module-gate
           check confirms CRM is actually enabled for this business. SC has
           no appointment pipeline, so its KPI row is workorder-only. */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className={`grid grid-cols-2 ${isSC ? 'lg:grid-cols-4' : 'lg:grid-cols-5'} gap-4 mb-6`}>
         {(isSC
           ? [
               { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
@@ -244,6 +248,7 @@ export default function CRMPage() {
             ]
           : [
               { icon: PhoneCall, label: 'Open Appointments', value: String(openAppointments) },
+              { icon: Clock, label: 'Pending Calls', value: String(pendingCalls) },
               { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
               { icon: AlertCircle, label: 'Overdue (7d+)', value: String(overdueWorkorders) },
               { icon: CheckCircle2, label: 'Closed This Month', value: String(closedThisMonth) },
