@@ -11,6 +11,7 @@ import Subscription from "@/models/Subscription";
 import Business from "@/models/Business";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { PLANS_BY_MODE, type OperatingMode } from "@/core/pricing/plans";
+import { getAllowedModuleKeys } from "@/core/pricing/planAccess";
 
 const TRIAL_DAYS_DEFAULT = 7;
 
@@ -53,6 +54,7 @@ export async function GET(req: NextRequest) {
         expiryDate: latest.expiryDate,
         daysRemaining,
         blocked,
+        moduleKeys: await getAllowedModuleKeys(mode, latest.plan),
       });
     }
 
@@ -73,6 +75,7 @@ export async function GET(req: NextRequest) {
       expiryDate: trialEndsAt,
       daysRemaining,
       blocked,
+      moduleKeys: await getAllowedModuleKeys(mode, "BASIC"),
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

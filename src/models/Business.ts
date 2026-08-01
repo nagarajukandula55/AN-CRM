@@ -706,6 +706,19 @@ const BusinessSchema = new mongoose.Schema(
       default: "",
     },
 
+    // Automatic whole-business Telegram report (numbers + a chart image),
+    // separate from the per-ReportDefinition Telegram option -- gated by
+    // the "telegram-reports" plan feature (see core/pricing/planAccess.ts)
+    // and driven by api/cron/telegram-business-report.
+    telegramReportFrequency: {
+      type: String,
+      enum: ["NONE", "DAILY", "WEEKLY", "MONTHLY"],
+      default: "NONE",
+    },
+    telegramReportLastSentAt: {
+      type: Date,
+    },
+
     // Default rate for the workorder detail page's one-click "Add Labour
     // Charge" line, set by the vendor's Owner/Manager (Settings > Business
     // Settings) -- used whenever the vendor has no LABOUR-type

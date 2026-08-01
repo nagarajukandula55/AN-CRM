@@ -92,6 +92,7 @@ export default function AdminSettingsPage() {
     invoiceTerms: '',
     enabledDeviceCategories: [] as string[],
     telegramChatId: '',
+    telegramReportFrequency: 'NONE',
   })
   const [savingOperations, setSavingOperations] = useState(false)
   const [uploadingSignature, setUploadingSignature] = useState(false)
@@ -132,6 +133,13 @@ export default function AdminSettingsPage() {
   // meantime; a Super Admin (view === 'platform') still isn't affected.
   const activeBiz = meData?.businesses?.find((b: any) => b._id === businessId) || meData?.businesses?.[0]
   const isSC = activeBiz?.operatingMode === 'SC'
+
+  const { data: planStatus } = useSWR(
+    view === 'business' && tab === 'operations' ? '/api/subscriptions/status' : null
+  )
+  const hasTelegramReportFeature: boolean = Array.isArray(planStatus?.moduleKeys)
+    ? planStatus.moduleKeys.includes('telegram-reports')
+    : true // unknown allowlist (null) means "not gated" -- don't block on a load error
 
   const { data: ssoRes, isLoading: loadingSso, mutate: loadSsoMappings } = useSWR(
     view === 'platform' ? '/api/admin/sso-sources' : null
@@ -175,6 +183,7 @@ export default function AdminSettingsPage() {
         invoiceTerms: b.invoiceTerms || '',
         enabledDeviceCategories: b.enabledDeviceCategories || [],
         telegramChatId: b.telegramChatId || '',
+        telegramReportFrequency: b.telegramReportFrequency || 'NONE',
       })
     }
   }, [operationsRes])
@@ -516,6 +525,30 @@ export default function AdminSettingsPage() {
                   Daily/weekly/monthly reports and alerts are sent here via our Telegram bot. Don't know your
                   ID? Message the bot and send <span className="tabular">/tgid</span> — it replies with your
                   personal chat ID, or add the bot to a group and send the same command there for the group ID.
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-ink-3 mb-1 block">Automatic Business Report</label>
+                {hasTelegramReportFeature ? (
+                  <select
+                    value={operations.telegramReportFrequency}
+                    onChange={(e) => setOperations({ ...operations, telegramReportFrequency: e.target.value })}
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong"
+                  >
+                    <option value="NONE">Off</option>
+                    <option value="DAILY">Daily</option>
+                    <option value="WEEKLY">Weekly</option>
+                    <option value="MONTHLY">Monthly</option>
+                  </select>
+                ) : (
+                  <div className="rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-ink-3">
+                    Not available on your current plan — upgrade from Plan &amp; Billing to unlock automatic Telegram reports.
+                  </div>
+                )}
+                <div className="text-xs text-ink-3 mt-1">
+                  Sends a full business summary (revenue, workorders, a trend chart) to the Chat/Group ID above
+                  on the schedule you pick — separate from any custom Report Builder schedule.
                 </div>
               </div>
 
