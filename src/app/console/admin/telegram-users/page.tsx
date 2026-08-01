@@ -10,12 +10,15 @@ import { LoadingPanel } from '@/components/ui/Spinner'
 
 /**
  * Super Admin directory of every Telegram chat (personal or group) that
- * has ever messaged the bot -- see models/TelegramUser.ts's top comment.
- * Distinct from any one business's Settings > Telegram Chat ID field:
- * this is the platform-wide view of everyone who has touched the bot,
- * whether or not they've finished linking a business yet, and it's the
- * same table dual-written to central-api for reuse across other AN group
- * properties.
+ * has ever messaged the bot, read live from central-api's "telegram_users"
+ * dataset (see api/telegram/users/route.ts) -- central-api records this
+ * directly since it sees every update before relaying it anywhere, so
+ * this app no longer keeps its own local copy. Distinct from any one
+ * business's Settings > Telegram Chat ID field: this is the platform-wide,
+ * cross-site view of everyone who has ever touched the bot, whether or
+ * not they've linked a business yet. Has no "linked business" column --
+ * central-api has no visibility into that, it only exists in each site's
+ * own database.
  */
 
 interface TelegramUserRow {
@@ -26,7 +29,6 @@ interface TelegramUserRow {
   lastName?: string
   username?: string
   title?: string
-  linkedBusinessIds?: { _id: string; name: string }[]
   lastCommand?: string
   messageCount: number
   firstSeenAt: string
@@ -59,7 +61,6 @@ export default function TelegramUsersPage() {
                 <th className="text-left px-5 py-3 text-ink-3 font-medium eyebrow">Contact</th>
                 <th className="text-left px-5 py-3 text-ink-3 font-medium eyebrow">Chat ID</th>
                 <th className="text-left px-5 py-3 text-ink-3 font-medium eyebrow">Type</th>
-                <th className="text-left px-5 py-3 text-ink-3 font-medium eyebrow">Linked Businesses</th>
                 <th className="text-left px-5 py-3 text-ink-3 font-medium eyebrow">Messages</th>
                 <th className="text-left px-5 py-3 text-ink-3 font-medium eyebrow">Last Seen</th>
               </tr>
@@ -83,11 +84,6 @@ export default function TelegramUsersPage() {
                     <td className="px-5 py-3 tabular text-ink-2">{u.chatId}</td>
                     <td className="px-5 py-3">
                       <Badge tone={isGroup ? 'info' : 'neutral'}>{u.chatType}</Badge>
-                    </td>
-                    <td className="px-5 py-3 text-ink-2">
-                      {u.linkedBusinessIds && u.linkedBusinessIds.length > 0
-                        ? u.linkedBusinessIds.map((b) => b.name).join(', ')
-                        : <span className="text-ink-3">Not linked</span>}
                     </td>
                     <td className="px-5 py-3 tabular text-ink-2">{u.messageCount}</td>
                     <td className="px-5 py-3 text-ink-2">{fmtDate(u.lastSeenAt)}</td>
