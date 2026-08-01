@@ -1,8 +1,20 @@
 /**
- * POST /api/telegram/webhook — Telegram calls this whenever a user messages
- * our bot (see lib/telegram.ts for the bot token this shares,
- * ANOPS_TELEGRAM_BOT_TOKEN — one bot serves every business, each business
- * just supplies its own destination chat id in Settings).
+ * POST /api/telegram/webhook — receives Telegram bot updates for this app.
+ * As of the central-api Telegram relay (central-api's app.js
+ * relayToSites()), this route is normally reached via a forward from
+ * central-api rather than a direct call from Telegram: ONE shared bot's
+ * webhook is registered on central-api, and any message from a chat other
+ * than central-api's own designated ops chat gets relayed here verbatim.
+ * That means requests here now carry an `x-api-key` header (central-api
+ * reuses this site's own key, the same one this app already sends as
+ * CENTRAL_API_KEY on outbound calls) instead of Telegram's own
+ * `x-telegram-bot-api-secret-token` -- verified below. Still works as a
+ * standalone direct Telegram webhook (no relay) if CENTRAL_API_KEY isn't
+ * set, for a business running without central-api at all.
+ *
+ * See lib/telegram.ts for the bot token this shares, ANOPS_TELEGRAM_BOT_TOKEN
+ * -- one bot serves every business, each business just supplies its own
+ * destination chat id in Settings.
  *
  * Commands:
  *   /start, /tgid  — replies with the chat id the message came from, which
@@ -37,17 +49,24 @@
  * command that looks up "the business for this chat" loops over all
  * matches rather than assuming exactly one.
  *
- * Public route (see middleware.ts) — Telegram has no way to attach our
- * session cookie/JWT. /tgid and /help need no auth (they only ever echo
- * back the numeric id of whichever chat sent the message, or static text).
- * /today and /report only ever read data for businesses that already
- * chose to link this exact chat id in their own Settings page, which is
- * the access control here -- equivalent to a shared secret only that
- * business's admin could have pasted in.
+ * Public route (see middleware.ts) — neither Telegram nor central-api's
+ * relay can attach our session cookie/JWT. Request-level auth instead: if
+ * CENTRAL_API_KEY is set, every request MUST carry a matching `x-api-key`
+ * header (central-api is the only expected caller in that mode) or it's
+ * rejected outright, before any command logic runs -- otherwise anyone who
+ * finds this URL could feed it fabricated Telegram updates. If
+ * CENTRAL_API_KEY is unset, the route falls back to accepting direct
+ * Telegram calls unauthenticated, same as before the relay existed.
  *
- * One-time setup (not done automatically): register this URL with Telegram
- * by calling
- *   https://api.telegram.org/bot<token>/setWebhook?url=<your-domain>/api/telegram/webhook
+ * One-time setup:
+ *  - With the central-api relay (recommended): set this site's
+ *    botWebhookUrl in central-api's admin dashboard (Sites tab) to
+ *    <your-domain>/api/telegram/webhook -- see central-api's README
+ *    section 13. Nothing to register with Telegram directly.
+ *  - Standalone (no central-api relay): register this URL with Telegram
+ *    directly by calling
+ *    https://api.telegram.org/bot<token>/setWebhook?url=<your-domain>/api/telegram/webhook
+ *    (see /api/telegram/set-webhook for a server-side way to do this).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
@@ -81,6 +100,11 @@ async function sendToChat(chatId: number | string, text: string) {
 
 export async function POST(req: NextRequest) {
   try {
+    const centralApiKey = process.env.CENTRAL_API_KEY;
+    if (centralApiKey && req.headers.get("x-api-key") !== centralApiKey) {
+      return NextResponse.json({ success: false }, { status: 403 });
+    }
+
     const token = process.env.ANOPS_TELEGRAM_BOT_TOKEN;
     if (!token) {
       return NextResponse.json({ success: true });
