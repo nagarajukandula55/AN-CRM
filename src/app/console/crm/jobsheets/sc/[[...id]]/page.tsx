@@ -45,6 +45,7 @@ interface LineItem {
   unit: string
   unitPrice: number
   taxRate: number
+  hsnCode?: string
   serviceCenterBOMId?: string
 }
 function emptyLine(): LineItem {
@@ -56,7 +57,7 @@ function lineTotal(l: LineItem, taxApplyEnabled: boolean): number {
 }
 
 interface BOMPart {
-  _id: string; partName: string; partCode: string; unit: string; gstRate: number; rate: number; partType?: string
+  _id: string; partName: string; partCode: string; unit: string; gstRate: number; rate: number; partType?: string; hsnCode?: string
 }
 interface Solution { _id: string; code: string; description: string }
 
@@ -254,6 +255,13 @@ export default function SCJobSheetScreen() {
   const bomParts: BOMPart[] = bomPartsData?.success ? (bomPartsData.parts || []) : []
 
   const [addPartForLine, setAddPartForLine] = useState<number | null>(null)
+  // Which line's part-picker dropdown is currently open -- replaces the
+  // native <input list>/<datalist> combo, which rendered as an
+  // unstyleable, inconsistent browser widget (the "dropdown not proper"
+  // complaint) and had no way to hook a selection to auto-fill HSN/Rate/
+  // Tax. A real dropdown does both: consistent styling and an onClick that
+  // fills the whole line from the picked BOM part.
+  const [openPartDropdown, setOpenPartDropdown] = useState<number | null>(null)
   const [newPart, setNewPart] = useState({ partName: '', hsnCode: '', rate: '', gstRate: '18', unit: 'PCS', partType: 'SPARE_PART' as BOMPart['partType'] })
   const [savingPart, setSavingPart] = useState(false)
   const [addPartError, setAddPartError] = useState<string | null>(null)
@@ -792,11 +800,48 @@ export default function SCJobSheetScreen() {
               <tbody className="divide-y divide-border">
                 {lineItems.map((l, i) => (
                   <tr key={i}>
-                    <td className="px-5 py-1.5">
-                      <input disabled={!editable} list={`bom-parts-${i}`} value={l.description} onChange={e => updateLine(i, { description: e.target.value })} className={`${inputCls} py-1.5 disabled:opacity-60 disabled:cursor-not-allowed`} placeholder="Part / service name" />
-                      <datalist id={`bom-parts-${i}`}>
-                        {bomParts.map(p => <option key={p._id} value={p.partName} />)}
-                      </datalist>
+                    <td className="px-5 py-1.5 relative">
+                      <input
+                        disabled={!editable}
+                        value={l.description}
+                        onChange={e => { updateLine(i, { description: e.target.value }); setOpenPartDropdown(i) }}
+                        onFocus={() => setOpenPartDropdown(i)}
+                        onBlur={() => setTimeout(() => setOpenPartDropdown(cur => (cur === i ? null : cur)), 150)}
+                        className={`${inputCls} py-1.5 disabled:opacity-60 disabled:cursor-not-allowed`}
+                        placeholder="Part / service name"
+                        autoComplete="off"
+                      />
+                      {editable && openPartDropdown === i && (() => {
+                        const query = l.description.trim().toLowerCase()
+                        const matches = (query ? bomParts.filter(p => p.partName.toLowerCase().includes(query)) : bomParts).slice(0, 20)
+                        if (matches.length === 0) return null
+                        return (
+                          <div className="absolute z-20 mt-1 left-5 right-2 rounded-control border border-border bg-surface shadow-card-lg max-h-56 overflow-y-auto">
+                            {matches.map(p => (
+                              <button
+                                type="button"
+                                key={p._id}
+                                onMouseDown={e => e.preventDefault()}
+                                onClick={() => {
+                                  updateLine(i, {
+                                    description: p.partName,
+                                    hsnCode: p.hsnCode || '',
+                                    unitPrice: p.rate,
+                                    taxRate: p.gstRate,
+                                    unit: p.unit || 'PCS',
+                                    serviceCenterBOMId: p._id,
+                                  })
+                                  setOpenPartDropdown(null)
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-surface-2 text-sm flex items-center justify-between gap-2"
+                              >
+                                <span className="text-ink truncate">{p.partName}</span>
+                                <span className="text-xs text-ink-3 tabular shrink-0">₹{p.rate} · {p.gstRate}%</span>
+                              </button>
+                            ))}
+                          </div>
+                        )
+                      })()}
                     </td>
                     <td className="px-2 py-1.5"><input disabled={!editable} type="number" onFocus={e => e.target.select()} min={1} value={l.quantity} onChange={e => updateLine(i, { quantity: Number(e.target.value) })} className={`${inputCls} py-1.5 text-center disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
                     <td className="px-2 py-1.5"><input disabled={!editable} type="number" onFocus={e => e.target.select()} min={0} value={l.unitPrice} onChange={e => updateLine(i, { unitPrice: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`} /></td>

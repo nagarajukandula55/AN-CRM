@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import {
-  BarChart, Bar, AreaChart, Area, LineChart, Line, PieChart, Pie, Cell,
+  BarChart, Bar, AreaChart, Area, LineChart, Line, PieChart, Pie, Cell, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { TrendingUp, TrendingDown } from 'lucide-react'
@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { LoadingPanel } from '@/components/ui/Spinner'
+import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 
 /**
  * Business-wide analytics, rebuilt on AN-CRM's own data (SalesInvoice/
@@ -25,6 +26,7 @@ import { LoadingPanel } from '@/components/ui/Spinner'
  */
 
 interface Overview {
+  isSC?: boolean
   revenue: { total: number; totalInvoices: number; thisMonth: number; thisMonthInvoices: number }
   bySource: { source: string; revenue: number; count: number }[]
   statusBreakdown: { status: string; count: number }[]
@@ -43,6 +45,7 @@ interface TrendBucket {
 
 interface TrendData {
   granularity: string
+  isSC?: boolean
   buckets: TrendBucket[]
   summary: {
     revenue: { current: number; priorYear: number; changePct: number | null }
@@ -77,6 +80,7 @@ function ChangeBadge({ pct }: { pct: number | null }) {
 }
 
 export default function AnalyticsPage() {
+  const { businessId } = useActiveBusinessId()
   const [data, setData] = useState<Overview | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -85,19 +89,21 @@ export default function AnalyticsPage() {
   const [trendLoading, setTrendLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/analytics/overview', { credentials: 'include' })
+    if (!businessId) return
+    fetch(`/api/analytics/overview?businessId=${businessId}`, { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => { if (d.success) setData(d) })
       .finally(() => setLoading(false))
-  }, [])
+  }, [businessId])
 
   useEffect(() => {
+    if (!businessId) return
     setTrendLoading(true)
-    fetch(`/api/analytics/trend?granularity=${granularity}`, { credentials: 'include' })
+    fetch(`/api/analytics/trend?granularity=${granularity}&businessId=${businessId}`, { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => { if (d.success) setTrend(d) })
       .finally(() => setTrendLoading(false))
-  }, [granularity])
+  }, [granularity, businessId])
 
   const revenueChartData = trend?.buckets.map((b) => ({
     label: b.label,
@@ -124,7 +130,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <StatCard label="Total Revenue" value={fmt(data.revenue.total)} sub={`${data.revenue.totalInvoices} paid invoices`} />
             <StatCard label="This Month" value={fmt(data.revenue.thisMonth)} sub={`${data.revenue.thisMonthInvoices} invoices`} />
-            <StatCard label="Total Calls" value={String(data.operations.totalCalls)} />
+            <StatCard label={data.isSC ? 'Total Workorders' : 'Total Calls'} value={String(data.operations.totalCalls)} />
             <StatCard label="Open Workorders" value={String(data.operations.openWorkorders)} />
             <StatCard label="Closed Workorders" value={String(data.operations.closedWorkorders)} />
           </div>
@@ -132,7 +138,7 @@ export default function AnalyticsPage() {
           <Card>
             <CardBody>
               <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-                <div className="h-section">Revenue &amp; Calls — Year-on-Date Comparison</div>
+                <div className="h-section">Revenue &amp; {trend?.isSC ? 'Workorders' : 'Calls'} — Year-on-Date Comparison</div>
                 <div className="inline-flex rounded-control border border-border-strong bg-surface p-1 gap-1">
                   {GRANULARITIES.map((g) => (
                     <button
@@ -161,41 +167,35 @@ export default function AnalyticsPage() {
                     </div>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={revenueChartData}>
-                          <defs>
-                            <linearGradient id="revCurrent" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.35} />
-                              <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
+                        <ComposedChart data={revenueChartData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                           <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <Tooltip formatter={(v) => fmt(Number(v) || 0)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
                           <Legend wrapperStyle={{ fontSize: 12 }} />
-                          <Area type="monotone" dataKey="Same period last year" stroke="var(--border-strong)" strokeDasharray="4 3" fill="none" />
-                          <Area type="monotone" dataKey="This period" stroke="var(--accent)" strokeWidth={2} fill="url(#revCurrent)" />
-                        </AreaChart>
+                          <Bar dataKey="This period" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={22} />
+                          <Line type="monotone" dataKey="Same period last year" stroke="var(--border-strong)" strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />
+                        </ComposedChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-medium text-ink-2">Calls</div>
+                      <div className="text-sm font-medium text-ink-2">{trend.isSC ? 'Workorders' : 'Calls'}</div>
                       <ChangeBadge pct={trend.summary.calls.changePct} />
                     </div>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={callsChartData}>
+                        <ComposedChart data={callsChartData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                           <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
                           <Legend wrapperStyle={{ fontSize: 12 }} />
-                          <Line type="monotone" dataKey="Same period last year" stroke="var(--border-strong)" strokeDasharray="4 3" dot={false} />
-                          <Line type="monotone" dataKey="This period" stroke="var(--info)" strokeWidth={2} dot={{ r: 3 }} />
-                        </LineChart>
+                          <Bar dataKey="This period" fill="var(--info)" radius={[4, 4, 0, 0]} barSize={22} />
+                          <Line type="monotone" dataKey="Same period last year" stroke="var(--border-strong)" strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />
+                        </ComposedChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
@@ -209,7 +209,7 @@ export default function AnalyticsPage() {
               <div className="h-section mb-4">Revenue Trend (last 6 months)</div>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data.monthlyTrend}>
+                  <ComposedChart data={data.monthlyTrend}>
                     <defs>
                       <linearGradient id="revTrend6mo" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.35} />
@@ -220,8 +220,9 @@ export default function AnalyticsPage() {
                     <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                     <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                     <Tooltip formatter={(v) => fmt(Number(v) || 0)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
-                    <Area type="monotone" dataKey="revenue" stroke="var(--accent)" strokeWidth={2} fill="url(#revTrend6mo)" />
-                  </AreaChart>
+                    <Bar dataKey="revenue" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={28} />
+                    <Area type="monotone" dataKey="revenue" stroke="var(--accent)" strokeWidth={2} fill="url(#revTrend6mo)" fillOpacity={0.5} />
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </CardBody>

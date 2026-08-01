@@ -12,6 +12,7 @@ import { connectDB } from "@/lib/mongodb";
 import SalesInvoice from "@/models/SalesInvoice";
 import CrmCall from "@/models/CrmCall";
 import CrmJobSheet from "@/models/CrmJobSheet";
+import Business from "@/models/Business";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
@@ -82,8 +83,16 @@ export async function GET(req: NextRequest) {
     const jobsheetMatch: Record<string, any> = { isDeleted: { $ne: true } };
     if (businessId) jobsheetMatch.businessId = businessId;
 
+    // SC has no calls/appointment pipeline (workorders only) -- for an SC
+    // business, "totalCalls" is workorder-creation volume instead of
+    // CrmCall count, which would otherwise always read 0 (or, worse,
+    // pick up unrelated data since this route wasn't previously even
+    // scoped to a single business by the frontend). See analytics/page.tsx.
+    const business = businessId ? await Business.findById(businessId).select("operatingMode").lean<any>() : null;
+    const isSC = business?.operatingMode === "SC";
+
     const [totalCalls, openJobsheets, closedJobsheets] = await Promise.all([
-      CrmCall.countDocuments(callMatch),
+      isSC ? CrmJobSheet.countDocuments(jobsheetMatch) : CrmCall.countDocuments(callMatch),
       CrmJobSheet.countDocuments({ ...jobsheetMatch, status: { $nin: ["CLOSED", "CANCELLED"] } }),
       CrmJobSheet.countDocuments({ ...jobsheetMatch, status: { $in: ["CLOSED", "REPAIR_COMPLETED"] } }),
     ]);
@@ -92,6 +101,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      isSC,
       revenue: {
         total: invoiceAgg?.totals?.[0]?.sum || 0,
         totalInvoices: invoiceAgg?.totals?.[0]?.count || 0,

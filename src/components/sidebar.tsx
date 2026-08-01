@@ -538,7 +538,12 @@ export default function Sidebar() {
         )}
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-2 py-3 scrollbar-none">
+        {/* overscroll-contain -- see AdminShell.tsx's identical comment.
+            Without it, scrolling the nav to its end and continuing to
+            scroll can bleed the wheel event through to the main content
+            area behind it, which reads as the page scrolling the wrong
+            direction. */}
+        <nav className="flex-1 overflow-y-auto px-2 py-3 scrollbar-none overscroll-contain">
           {NAV_GROUPS.map((group) => {
             // Collect all items from this group (flat or nested)
             const allItems: NavItem[] = group.items

@@ -26,6 +26,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import SalesInvoice from "@/models/SalesInvoice";
 import CrmCall from "@/models/CrmCall";
+import CrmJobSheet from "@/models/CrmJobSheet";
+import Business from "@/models/Business";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
@@ -77,7 +79,8 @@ async function fetchSeries(
   granularity: Granularity,
   rangeStart: Date,
   rangeEnd: Date,
-  businessId: string | null
+  businessId: string | null,
+  isSC: boolean
 ) {
   const unit = TRUNC_UNIT[granularity];
 
@@ -88,15 +91,19 @@ async function fetchSeries(
   };
   if (businessId) invoiceMatch.businessId = businessId;
 
+  // SC has no calls/appointment pipeline -- its "calls" series is
+  // workorder-creation volume instead (see api/analytics/overview's
+  // identical isSC swap and analytics/page.tsx for the label change).
   const callMatch: Record<string, any> = { createdAt: { $gte: rangeStart, $lte: rangeEnd } };
   if (businessId) callMatch.businessId = businessId;
+  if (isSC) callMatch.isDeleted = { $ne: true };
 
   const [revenueRows, callRows] = await Promise.all([
     SalesInvoice.aggregate([
       { $match: invoiceMatch },
       { $group: { _id: { $dateTrunc: { date: "$createdAt", unit } }, revenue: { $sum: "$grandTotal" } } },
     ]),
-    CrmCall.aggregate([
+    (isSC ? CrmJobSheet : CrmCall).aggregate([
       { $match: callMatch },
       { $group: { _id: { $dateTrunc: { date: "$createdAt", unit } }, calls: { $sum: 1 } } },
     ]),
@@ -128,14 +135,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, message: "granularity must be DAY, WEEK, MONTH, or YEAR" }, { status: 400 });
     }
 
+    const business = businessId ? await Business.findById(businessId).select("operatingMode").lean<any>() : null;
+    const isSC = business?.operatingMode === "SC";
+
     const now = new Date();
     const currentStart = startOfBucketRange(granularity, now);
     const priorStart = shiftYears(currentStart, -1);
     const priorEnd = shiftYears(now, -1);
 
     const [current, prior] = await Promise.all([
-      fetchSeries(granularity, currentStart, now, businessId),
-      fetchSeries(granularity, priorStart, priorEnd, businessId),
+      fetchSeries(granularity, currentStart, now, businessId, isSC),
+      fetchSeries(granularity, priorStart, priorEnd, businessId, isSC),
     ]);
 
     const count = BUCKET_COUNT[granularity];
@@ -169,6 +179,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       granularity,
+      isSC,
       buckets,
       summary: {
         revenue: {

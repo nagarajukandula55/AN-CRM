@@ -155,7 +155,9 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-an-group-staff", label: "Platform Staff", route: "/console/an-group-staff", icon: "Shield" },
     ]},
     { key: "adm-system", label: "System", items: [
-      { key: "admin-intg", label: "Integrations", route: "/console/integrations", icon: "Plug" },
+      // Being moved to Super-Admin-only, configured centrally per
+      // business -- not shown to SC's single login.
+      { key: "admin-intg", label: "Integrations", route: "/console/integrations", icon: "Plug", modes: ["BRAND", "POS"] },
       { key: "admin-status", label: "System Status", route: "/console/system-status", icon: "Activity" },
       { key: "admin-modules", label: "Modules", route: "/console/modules", icon: "Box" },
       { key: "admin-module-builder", label: "Module Builder", route: "/console/module-builder", icon: "LayoutTemplate" },
