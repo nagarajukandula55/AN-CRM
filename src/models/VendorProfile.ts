@@ -393,7 +393,9 @@ VendorProfileSchema.post('save', async function (doc) {
 });
 
 VendorProfileSchema.post('findOneAndUpdate', async function (doc) {
-  if (doc) await syncRecordToCentralApi('vendors', doc._id.toString(), doc.toObject());
+  // See Business.ts's identical hook for why this guards against .lean()
+  // results (no .toObject()) instead of always calling it.
+  if (doc) await syncRecordToCentralApi('vendors', doc._id.toString(), doc.toObject ? doc.toObject() : doc);
 });
 
 VendorProfileSchema.post('findOneAndDelete', async function (doc) {

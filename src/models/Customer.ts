@@ -89,7 +89,9 @@ CustomerSchema.post("save", async function (doc) {
 });
 
 CustomerSchema.post("findOneAndUpdate", async function (doc) {
-  if (doc) await syncRecordToCentralApi("customers", doc._id.toString(), doc.toObject());
+  // See Business.ts's identical hook for why this guards against .lean()
+  // results (no .toObject()) instead of always calling it.
+  if (doc) await syncRecordToCentralApi("customers", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
 });
 
 CustomerSchema.post("findOneAndDelete", async function (doc) {

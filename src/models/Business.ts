@@ -923,7 +923,13 @@ BusinessSchema.post("save", async function (doc) {
 });
 
 BusinessSchema.post("findOneAndUpdate", async function (doc) {
-  if (doc) await syncRecordToCentralApi("businesses", doc._id.toString(), doc.toObject());
+  // doc is a plain object (no .toObject()) when the query used .lean() --
+  // e.g. api/businesses/[id]/route.ts's PATCH handler -- vs. a real
+  // Document otherwise. Both are already plain-object-safe for
+  // syncRecordToCentralApi, so just skip the conversion when it's not
+  // there instead of crashing every lean update ("a.toObject is not a
+  // function", which was silently breaking every Settings save).
+  if (doc) await syncRecordToCentralApi("businesses", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
 });
 
 BusinessSchema.post("findOneAndDelete", async function (doc) {

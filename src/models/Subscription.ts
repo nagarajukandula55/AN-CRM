@@ -108,7 +108,9 @@ SubscriptionSchema.post("save", async function (doc) {
 });
 
 SubscriptionSchema.post("findOneAndUpdate", async function (doc) {
-  if (doc) await syncRecordToCentralApi("subscriptions", doc._id.toString(), doc.toObject());
+  // See Business.ts's identical hook for why this guards against .lean()
+  // results (no .toObject()) instead of always calling it.
+  if (doc) await syncRecordToCentralApi("subscriptions", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
 });
 
 SubscriptionSchema.post("findOneAndDelete", async function (doc) {
