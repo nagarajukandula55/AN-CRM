@@ -1,9 +1,19 @@
 /**
  * POST /api/telegram/set-webhook — Super-Admin-only, calls Telegram's own
  * setWebhook API pointed at this app's own /api/telegram/webhook, using
- * NEXT_PUBLIC_APP_URL rather than a URL typed by hand. Two reasons this
- * exists instead of just telling an admin to hit Telegram's API directly
- * in a browser:
+ * NEXT_PUBLIC_APP_URL rather than a URL typed by hand.
+ *
+ * STANDALONE MODE ONLY. If this app is using the central-api Telegram
+ * relay (see api/telegram/webhook's top comment and central-api's README
+ * section 13), Telegram's webhook should be registered on central-api
+ * instead, with this site's URL set as its botWebhookUrl in central-api's
+ * admin dashboard -- calling THIS route in that setup would overwrite
+ * central-api's registration and break the relay for every other site
+ * sharing that bot. Only use this if this app owns its own bot/webhook
+ * directly, with no relay involved.
+ *
+ * Two reasons this exists instead of just telling an admin to hit
+ * Telegram's API directly in a browser:
  *
  *  1. Typing `https://api.telegram.org/bot<TOKEN>/setWebhook?...` into a
  *     browser address bar leaves the bot token sitting in browser

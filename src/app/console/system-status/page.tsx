@@ -319,6 +319,13 @@ export default function SystemStatusPage() {
             and avoids accidentally registering against a domain that redirects (Telegram won&apos;t
             follow redirects on webhook delivery).
           </p>
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+            If this bot is shared across multiple AN Group sites via central-api&apos;s Telegram
+            relay, don&apos;t use this button — Telegram&apos;s webhook should point at central-api
+            instead, with this site&apos;s URL set as its <span className="font-mono">botWebhookUrl</span> in
+            central-api&apos;s admin dashboard (Sites tab). Registering here would overwrite that and
+            break the relay for every other site sharing the bot.
+          </p>
         </div>
       </div>
 
