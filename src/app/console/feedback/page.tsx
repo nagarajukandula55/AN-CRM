@@ -33,7 +33,11 @@ export default function AdminFeedbackPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const qs = statusFilter !== 'ALL' ? `?status=${statusFilter}` : ''
+  // Storefront contact-us submissions only -- in-app product feedback (bug
+  // reports/enhancement requests about AN-CRM itself) has its own
+  // platform-wide dashboard at /console/admin/product-feedback, so it
+  // doesn't also show up mixed into this per-business inbox.
+  const qs = `?source=contact-form${statusFilter !== 'ALL' ? `&status=${statusFilter}` : ''}`
   const { data, isLoading: loading, error: swrError, mutate: fetchItems } = useSWR(`/api/admin/feedback${qs}`, { keepPreviousData: true })
   const items: FeedbackItem[] = data?.success !== false ? (data?.items || []) : []
   const error: string | null = actionError

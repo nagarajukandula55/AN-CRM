@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { MessageSquare, Send, CheckCircle2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
-import { Field, Textarea } from '@/components/ui/Input'
+import { Field, Textarea, Select } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 
 /**
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button'
  */
 export default function SendFeedbackPage() {
   const [message, setMessage] = useState('')
+  const [type, setType] = useState('OTHER')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
@@ -28,7 +29,7 @@ export default function SendFeedbackPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, type, pageUrl: typeof window !== 'undefined' ? window.location.href : undefined }),
       })
       const data = await res.json()
       if (data.success) {
@@ -60,6 +61,13 @@ export default function SendFeedbackPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              <Field label="Type">
+                <Select value={type} onChange={(e) => setType(e.target.value)}>
+                  <option value="BUG">Bug Report</option>
+                  <option value="ENHANCEMENT">Enhancement Request</option>
+                  <option value="OTHER">Other</option>
+                </Select>
+              </Field>
               <Field label="What's on your mind?">
                 <Textarea
                   value={message}

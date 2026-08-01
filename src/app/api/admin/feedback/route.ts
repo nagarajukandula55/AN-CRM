@@ -24,10 +24,21 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const h = req.headers;
-    const bizId = h.get("x-active-business-id") || req.nextUrl.searchParams.get("businessId");
     const status = req.nextUrl.searchParams.get("status");
+    const source = req.nextUrl.searchParams.get("source");
+    const explicitBizId = req.nextUrl.searchParams.get("businessId");
 
     const isPlatformStaff = session.isSuperAdmin || h.get("x-is-platform-staff") === "true";
+    // Platform staff only scopes to a business when they EXPLICITLY ask via
+    // ?businessId= -- was falling back to x-active-business-id (whichever
+    // business they happen to be scoped into for unrelated admin work),
+    // which meant a Super Admin almost never saw in-app product feedback
+    // (bug reports/enhancement requests) at all unless they happened to be
+    // actively viewing the exact business that submitted it. That's why
+    // submissions looked like they vanished ("said saved but not seen").
+    // A non-platform-staff caller is unaffected -- still always scoped to
+    // their own active business.
+    const bizId = isPlatformStaff ? explicitBizId : (h.get("x-active-business-id") || explicitBizId);
     if (!bizId && !isPlatformStaff) {
       return NextResponse.json({ success: false, message: "businessId is required" }, { status: 400 });
     }
@@ -35,6 +46,7 @@ export async function GET(req: NextRequest) {
     const query: Record<string, unknown> = {};
     if (bizId) query.businessId = bizId;
     if (status && status !== "ALL") query.status = status;
+    if (source) query.source = source;
 
     const items = await Feedback.find(query).sort({ createdAt: -1 }).limit(500).lean();
 
