@@ -46,7 +46,7 @@ export async function GET() {
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
     const data = await res.json();
-    return NextResponse.json({ success: true, info: data?.result });
+    return NextResponse.json({ success: true, info: data?.result, relayEnabled: process.env.TELEGRAM_RELAY_ENABLED === "true" });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err?.message || "Failed to reach Telegram" }, { status: 502 });
   }
@@ -56,6 +56,17 @@ export async function POST() {
   const session = await getEnrichedSession();
   if (!session?.isSuperAdmin) {
     return NextResponse.json({ success: false, error: "Super Admin only" }, { status: 403 });
+  }
+
+  // Hard block, not just a warning -- see this file's top comment. Set
+  // TELEGRAM_RELAY_ENABLED=true once this site's botWebhookUrl is
+  // registered in central-api's Sites tab, so this button can't
+  // accidentally overwrite that registration again.
+  if (process.env.TELEGRAM_RELAY_ENABLED === "true") {
+    return NextResponse.json(
+      { success: false, error: "TELEGRAM_RELAY_ENABLED is set -- this site uses central-api's shared bot relay. Register the webhook from central-api, not here." },
+      { status: 409 }
+    );
   }
 
   const token = process.env.ANOPS_TELEGRAM_BOT_TOKEN;

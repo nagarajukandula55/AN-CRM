@@ -719,6 +719,20 @@ const BusinessSchema = new mongoose.Schema(
       type: Date,
     },
 
+    // One-time linking code shown in Settings > Operations -- the admin
+    // adds the bot to their chat/group and sends "/link <code>" instead of
+    // manually copy-pasting a raw chat id into telegramChatId above (see
+    // api/telegram/webhook's /link handler). Short-lived; cleared once
+    // consumed or expired.
+    telegramLinkCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    telegramLinkCodeExpiresAt: {
+      type: Date,
+    },
+
     // Default rate for the workorder detail page's one-click "Add Labour
     // Charge" line, set by the vendor's Owner/Manager (Settings > Business
     // Settings) -- used whenever the vendor has no LABOUR-type

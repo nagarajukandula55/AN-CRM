@@ -142,6 +142,26 @@ export default function AdminSettingsPage() {
     view === 'business' && tab === 'operations' ? '/api/telegram/bot-info' : null
   )
   const telegramBotUsername: string | null = telegramBotInfo?.success ? telegramBotInfo.username : null
+
+  // "Generate Link Code" -- the easier alternative to copy-pasting a raw
+  // chat id: the admin sends `/link <code>` to the bot (see
+  // api/telegram/webhook's /link handler) and the chat gets linked +
+  // starts receiving reports automatically, no manual paste-and-save step.
+  const [telegramLinkCode, setTelegramLinkCode] = useState<{ code: string; expiresAt: string } | null>(null)
+  const [generatingLinkCode, setGeneratingLinkCode] = useState(false)
+  async function generateTelegramLinkCode() {
+    if (!businessId) return
+    setGeneratingLinkCode(true)
+    try {
+      const res = await fetch(`/api/businesses/${businessId}/telegram-link-code`, { method: 'POST' })
+      const d = await res.json()
+      if (d.success) setTelegramLinkCode({ code: d.code, expiresAt: d.expiresAt })
+    } catch {
+      /* best-effort */
+    } finally {
+      setGeneratingLinkCode(false)
+    }
+  }
   const hasTelegramReportFeature: boolean = Array.isArray(planStatus?.moduleKeys)
     ? planStatus.moduleKeys.includes('telegram-reports')
     : true // unknown allowlist (null) means "not gated" -- don't block on a load error
@@ -543,6 +563,30 @@ export default function AdminSettingsPage() {
                     <Send className="w-3.5 h-3.5" /> Connect to Telegram Bot
                   </a>
                 )}
+
+                <div className="mt-3 rounded-control border border-border bg-surface-2 p-3">
+                  <p className="text-xs font-medium text-ink mb-1">Easiest setup: link with a code</p>
+                  <ol className="text-xs text-ink-3 list-decimal list-inside space-y-0.5 mb-2">
+                    <li>Add the bot to your personal chat or a group (use "Connect to Telegram Bot" above).</li>
+                    <li>Click "Generate Link Code" below.</li>
+                    <li>Send <span className="tabular font-medium text-ink">/link CODE</span> to the bot in that chat.</li>
+                  </ol>
+                  <button
+                    type="button"
+                    onClick={generateTelegramLinkCode}
+                    disabled={generatingLinkCode}
+                    className="text-xs font-medium bg-accent text-accent-fg rounded-control px-3 py-1.5 hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {generatingLinkCode ? 'Generating…' : 'Generate Link Code'}
+                  </button>
+                  {telegramLinkCode && (
+                    <div className="mt-2 text-xs">
+                      <span className="text-ink-3">Send: </span>
+                      <span className="tabular font-semibold text-ink">/link {telegramLinkCode.code}</span>
+                      <span className="text-ink-3"> — expires {new Date(telegramLinkCode.expiresAt).toLocaleTimeString('en-IN')}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
