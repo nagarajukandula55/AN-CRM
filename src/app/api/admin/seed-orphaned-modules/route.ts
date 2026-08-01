@@ -102,7 +102,12 @@ const ORPHANED_MODULES: Array<{
   // POSSIBLE to grant this access to any other role via the access matrix.
   { key: "gst", label: "GST Filing", pluralLabel: "GST", description: "GST configuration and filings.", icon: "FileText", route: "/console/gst", applicableActions: ["view", "create", "edit", "approve"], sortOrder: 300 },
   { key: "dashboard", label: "Dashboard", pluralLabel: "Dashboard", description: "ERP metrics overview.", icon: "LayoutDashboard", route: "/console", applicableActions: ["view"], sortOrder: 1 },
-  { key: "businesses", label: "Business", pluralLabel: "Businesses", description: "Business/tenant records.", icon: "Building2", route: "/console/business", applicableActions: ["view", "create", "edit", "delete"], sortOrder: 301 },
+  // route points at Settings now, not a standalone business list/switcher
+  // page (removed -- top-level business management moved to the ANgroup
+  // app). The "businesses" permission key itself is unchanged since
+  // api/businesses/[id] (edit your own current business, e.g. Settings)
+  // still gates on buildPermissionCode("businesses", "edit").
+  { key: "businesses", label: "Business", pluralLabel: "Businesses", description: "Business/tenant records.", icon: "Building2", route: "/console/settings", applicableActions: ["view", "create", "edit", "delete"], sortOrder: 301 },
   { key: "audit", label: "Audit Log", pluralLabel: "Audit Logs", description: "System-wide create/update/delete activity trail.", icon: "ShieldCheck", route: "/console/reports", applicableActions: ["view", "create"], sortOrder: 302 },
   { key: "finance", label: "Finance Record", pluralLabel: "Finance", description: "Invoices and payments.", icon: "DollarSign", route: "/console/finance", applicableActions: ["view", "create", "edit"], sortOrder: 303 },
   { key: "purchase", label: "Purchase Order", pluralLabel: "Purchase", description: "Purchase orders.", icon: "ShoppingCart", route: "/console/purchase", applicableActions: ["view", "create", "approve"], sortOrder: 304 },
