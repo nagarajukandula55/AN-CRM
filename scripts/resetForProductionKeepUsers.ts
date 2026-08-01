@@ -83,8 +83,24 @@ async function main() {
   }
   const keepUserIds = keepUsers.map((u: any) => u._id);
 
-  const collections = await db.listCollections().toArray();
-  console.log(`\nFound ${collections.length} collections.\n`);
+  const rawCollections = await db.listCollections().toArray();
+  // See fullDatabaseReset.ts's identical guard for why -- some entries
+  // here can be a view/federated reference into a DIFFERENT service's
+  // live database (confirmed real for central-api's "central_data" db),
+  // not actual local data. Never wipe those just because Mongo surfaces
+  // a reference to them on this connection.
+  const collections = rawCollections.filter((c: any) => {
+    if (typeof c.name !== "string") {
+      console.log(`  SKIPPING non-local collection reference: ${JSON.stringify(c.name)}`);
+      return false;
+    }
+    if (c.type === "view") {
+      console.log(`  SKIPPING view "${c.name}"`);
+      return false;
+    }
+    return true;
+  });
+  console.log(`\nFound ${rawCollections.length} collection entries, ${collections.length} are real local collections.\n`);
 
   const plan: { name: string; action: string; count: number }[] = [];
 

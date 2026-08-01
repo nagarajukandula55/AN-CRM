@@ -44,9 +44,29 @@ async function main() {
   const db = mongoose.connection.db;
   if (!db) throw new Error("No active database connection");
 
-  const collections = await db.listCollections().toArray();
+  const rawCollections = await db.listCollections().toArray();
+  // Defense against wiping data that ISN'T actually in this app's own
+  // database: some listCollections() entries can be a view/federated
+  // reference into a DIFFERENT service's live database (confirmed real
+  // for central-api's own "central_data" database) rather than a plain
+  // local collection -- their `name` field comes back as an object like
+  // { db: "central_data", coll: "brands" } instead of a string. A script
+  // whose entire purpose is "wipe MY database for a clean go-live" must
+  // never touch another service's live database just because Mongo
+  // surfaces a reference to it on this connection.
+  const collections = rawCollections.filter((c: any) => {
+    if (typeof c.name !== "string") {
+      console.log(`  SKIPPING non-local collection reference: ${JSON.stringify(c.name)}`);
+      return false;
+    }
+    if (c.type === "view") {
+      console.log(`  SKIPPING view "${c.name}"`);
+      return false;
+    }
+    return true;
+  });
 
-  console.log(`Found ${collections.length} collections.\n`);
+  console.log(`Found ${rawCollections.length} collection entries, ${collections.length} are real local collections.\n`);
 
   const plan: { name: string; action: string; count: number }[] = [];
 
