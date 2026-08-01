@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import BusinessMember from "@/models/BusinessMember";
@@ -30,14 +29,14 @@ export async function POST(req: Request) {
     }
 
     /* ── Find user by email OR username ──────────────────────────────── */
-    // password has select:false — must explicitly request it
+    // Local password is no longer read/checked here -- see the central-api
+    // delegation below -- so `.select("+password")` is no longer needed.
     const user = await User.findOne({
       $or: [
         ...(email    ? [{ email: email.toLowerCase().trim() }] : []),
         ...(username ? [{ username: username.toLowerCase().trim() }] : []),
       ],
     })
-      .select("+password")
       .lean()
       .exec() as any;
 
@@ -45,13 +44,6 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { success: false, message: "User not found" },
         { status: 404 }
-      );
-    }
-
-    if (!user.password) {
-      return NextResponse.json(
-        { success: false, message: "Invalid user record" },
-        { status: 500 }
       );
     }
 
@@ -66,7 +58,45 @@ export async function POST(req: Request) {
       );
     }
 
-    const valid = await bcrypt.compare(password, user.password);
+    // Password verification is delegated to central-api's PlatformUser
+    // store instead of a local bcrypt.compare -- this app's own `User`
+    // document (found above) remains the SOLE source of truth for
+    // everything else below (memberships, roles, homeRoute, isSuperAdmin,
+    // etc.); only "is this password correct" moves off-app. This is also
+    // the wrong-site guard for free: a person who only has an ANgroup or
+    // Native account has no `User` document here at all, so they already
+    // 404'd above regardless of whether central-api would accept their
+    // password.
+    //
+    // Fails closed (503), not open, if CENTRAL_API_URL isn't configured or
+    // central-api is unreachable -- deliberately no local-bcrypt fallback,
+    // since a silent fallback would mean this migration "looks" done but
+    // isn't: an outage at central-api must block login, not quietly
+    // re-enable the old path.
+    if (!process.env.CENTRAL_API_URL) {
+      console.error("[login] CENTRAL_API_URL is not configured -- cannot authenticate.");
+      return NextResponse.json(
+        { success: false, message: "Login is temporarily unavailable. Please try again shortly." },
+        { status: 503 }
+      );
+    }
+
+    let valid = false;
+    try {
+      const centralRes = await fetch(`${process.env.CENTRAL_API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email, password }),
+      });
+      valid = centralRes.ok;
+    } catch (err) {
+      console.error("[login] central-api auth check failed:", (err as any)?.message || err);
+      return NextResponse.json(
+        { success: false, message: "Login is temporarily unavailable. Please try again shortly." },
+        { status: 503 }
+      );
+    }
+
     if (!valid) {
       return NextResponse.json(
         { success: false, message: "Invalid password" },

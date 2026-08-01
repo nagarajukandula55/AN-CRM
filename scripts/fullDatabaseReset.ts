@@ -1,9 +1,14 @@
 /**
- * FULL DATABASE RESET for a clean go-live: empties every collection in the
- * database EXCEPT the system configuration collections that must survive
- * (module registry, permissions, SSO source mappings, and the platform-wide
- * roles like SUPER_ADMIN/AN_ADMIN/CUSTOMER_*). Then recreates exactly one
- * User: a Super Admin with username "admin".
+ * FULL DATABASE RESET for a clean go-live: empties every collection in
+ * AN-CRM's database EXCEPT platform-wide system config (Permission, and
+ * Role/RolePermission/UserRole rows that aren't scoped to a specific
+ * business or vendor). Then recreates exactly one User: a Super Admin
+ * with username "admin".
+ *
+ * This file previously was a stray copy of ANgroup's own identically-named
+ * script (wrong email domain, referenced collections -- moduledefinitions,
+ * ssosourcemappings, pincodeentries -- that don't exist in AN-CRM's schema
+ * at all) -- fixed to actually match this app.
  *
  * Enumerates collections dynamically (not a hand-maintained model list) so
  * nothing gets missed as the schema grows.
@@ -13,11 +18,13 @@
  *
  *   npx tsx --env-file=.env.local scripts/fullDatabaseReset.ts
  *   npx tsx --env-file=.env.local scripts/fullDatabaseReset.ts --confirm
+ *
+ * TAKE A DATABASE BACKUP BEFORE RUNNING WITH --confirm. This is irreversible.
  */
 
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-import { connectDB } from "../src/core/db/mongodb";
+import { connectDB } from "../src/lib/mongodb";
 import User from "../src/models/User";
 import Role from "../src/models/Role";
 import UserRole from "../src/models/UserRole";
@@ -26,21 +33,7 @@ const CONFIRM = process.argv.includes("--confirm");
 
 // Collections that hold system/platform configuration, not business data --
 // these survive the wipe untouched.
-const KEEP_COLLECTIONS = new Set([
-  "moduledefinitions",
-  "permissions",
-  "ssosourcemappings",
-  // India pincode->state/city reference directory (scripts/seedPincodes.ts)
-  // -- static platform reference data, not business data.
-  "pincodeentries",
-  "pincodedatasetmetas",
-]);
-
-// Platform-wide roles (businessId: null, vendorId: null) survive; every
-// business/vendor-scoped role gets wiped along with the businesses/vendors
-// themselves. `roles` and `userroles` are handled specially below rather
-// than via KEEP_COLLECTIONS since they're a partial keep, not all-or-nothing.
-const PARTIAL_COLLECTIONS = new Set(["roles", "userroles", "users"]);
+const KEEP_COLLECTIONS = new Set(["permissions"]);
 
 function generatePassword(): string {
   return require("crypto").randomBytes(9).toString("base64url");
@@ -105,26 +98,26 @@ async function main() {
 
   const superAdmin = await User.create({
     name: "Super Admin",
-    email: "admin@angroup.local",
+    email: "admin@an-crm.local",
     username: "admin",
     password: hashed,
     role: "SUPER_ADMIN",
     isActive: true,
     isEmailVerified: true,
     authProvider: "credentials",
-    mustChangePassword: true,
   } as any);
 
   const superAdminRole = await Role.findOne({ code: "SUPER_ADMIN", businessId: null, vendorId: null });
-  if (!superAdminRole) {
-    throw new Error("SUPER_ADMIN role not found -- run scripts/seedSystemModules.ts first to seed it.");
+  if (superAdminRole) {
+    await UserRole.create({ userId: superAdmin._id, roleId: superAdminRole._id });
+  } else {
+    console.warn("No platform-wide SUPER_ADMIN role found -- created the user but could not attach a role. Check role seeding.");
   }
-  await UserRole.create({ userId: superAdmin._id, roleId: superAdminRole._id });
 
   console.log("\n=== SUPER ADMIN CREDENTIALS (shown once) ===");
-  console.log(`  User ID:  admin`);
+  console.log(`  Username: admin`);
   console.log(`  Password: ${password}`);
-  console.log("You must change this password on first login (mustChangePassword is set).");
+  console.log("Save this now -- it will not be shown again. Change it after first login.");
 
   process.exit(0);
 }

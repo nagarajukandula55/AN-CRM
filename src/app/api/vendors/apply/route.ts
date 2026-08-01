@@ -110,16 +110,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // A caller-supplied businessId (the existing link-based flow) still
+    // wins if present. Otherwise -- the normal case for a public /vendor-
+    // apply signup -- fall back to AN_CRM_MY_BIZ_FLOW_BUSINESS_ID, AN-CRM's
+    // own self-representing Business every vendor who signs up here
+    // belongs under (this app's own product line, "My Biz Flow" -- see
+    // scripts/fixLocalMyBizFlowBusiness.ts for how that record gets set
+    // up). Per explicit direction: which business a signup lands under is
+    // determined by WHICH SITE they signed up on, not left for an admin to
+    // assign later -- a signup from AN-CRM always belongs to AN-CRM's own
+    // business. Falls through to the old "unassigned, admin picks at
+    // approval" behavior only if that env var isn't set at all.
+    const resolvedBusinessId = businessId || process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID;
+
     let business: { _id: unknown; name?: string; brandName?: string } | null = null;
-    if (businessId) {
-      if (!Types.ObjectId.isValid(businessId)) {
+    if (resolvedBusinessId) {
+      if (!Types.ObjectId.isValid(resolvedBusinessId)) {
         return NextResponse.json(
           { success: false, message: "Invalid businessId in link" },
           { status: 400 }
         );
       }
       business = await (Business as any)
-        .findOne({ _id: businessId, isActive: true })
+        .findOne({ _id: resolvedBusinessId, isActive: true })
         .select("_id name brandName")
         .lean();
       if (!business) {
@@ -138,7 +151,7 @@ export async function POST(req: NextRequest) {
       isDeleted: false,
       status: { $nin: ["REJECTED", "INACTIVE"] },
     };
-    if (business) dupeQuery.businessId = new Types.ObjectId(businessId);
+    if (business) dupeQuery.businessId = new Types.ObjectId(resolvedBusinessId);
     else dupeQuery.businessId = null;
     const existing = await VendorProfile.findOne(dupeQuery).lean();
     if (existing) {
@@ -157,12 +170,12 @@ export async function POST(req: NextRequest) {
     // once a business is actually chosen (see review/route.ts).
     let vendorId: string | undefined;
     if (business) {
-      const generated = await generateGlobalDocumentNumber("VENDOR", businessId);
+      const generated = await generateGlobalDocumentNumber("VENDOR", resolvedBusinessId);
       vendorId = generated.value;
     }
 
     const vendor = await VendorProfile.create({
-      businessId: business ? new Types.ObjectId(businessId) : null,
+      businessId: business ? new Types.ObjectId(resolvedBusinessId) : null,
       userId: (applicantUser as any)._id,
       vendorId,
       requestNumber,
