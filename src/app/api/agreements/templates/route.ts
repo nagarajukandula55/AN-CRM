@@ -300,7 +300,23 @@ const INDIAN_LAW_TEMPLATES = [
 <h2>13. INDEPENDENT CONTRACTOR</h2>
 <p>The Service Provider is an independent contractor and nothing in this Agreement shall be construed to create an employer-employee relationship, partnership, or joint venture between the parties.</p>
 
+<h2>14. ASSIGNMENT</h2>
+<p>Neither party shall assign, transfer, or subcontract its rights or obligations under this Agreement without the prior written consent of the other party, except that either party may assign this Agreement to a successor entity in connection with a merger, acquisition, or sale of substantially all of its assets, upon written notice to the other party.</p>
+
+<h2>15. NOTICES</h2>
+<p>All notices under this Agreement shall be in writing and delivered by hand, registered post, or electronic mail to the addresses/email IDs of the parties set out herein (or as subsequently updated by either party in writing), and shall be deemed effective upon receipt.</p>
+
+<h2>16. WAIVER</h2>
+<p>No failure or delay by either party in exercising any right under this Agreement shall operate as a waiver of that right, nor shall any single or partial exercise of a right preclude any other or further exercise of that or any other right.</p>
+
+<h2>17. ELECTRONIC EXECUTION</h2>
+<p>This Agreement may be executed electronically, and an electronic signature, OTP-authenticated acceptance, or digital record of assent shall be deemed a valid and binding signature for all purposes, in accordance with Section 10A of the Information Technology Act, 2000, and shall have the same legal effect as a handwritten signature. This Agreement may be executed in counterparts (including electronic counterparts), each of which shall be deemed an original, and all of which together shall constitute one and the same instrument.</p>
+
+<h2>18. SEVERABILITY</h2>
+<p>If any provision of this Agreement is held to be invalid, illegal, or unenforceable under applicable law, such provision shall be modified to the minimum extent necessary to make it valid and enforceable, and the remaining provisions of this Agreement shall continue in full force and effect.</p>
+
 <p style="margin-top:40px;"><strong>STAMP DUTY NOTICE:</strong> This agreement may be subject to stamp duty as per the Indian Stamp Act, 1899, based on the jurisdiction of execution.</p>
+<p style="margin-top:12px; font-style:italic; color:#666;">This is a standard-form template provided for convenience and has not been reviewed by a qualified advocate for your specific circumstances or jurisdiction. It should be reviewed by independent legal counsel before being used for a real, binding engagement.</p>
 </div>`,
     variables: [
       { key: 'effectiveDate', label: 'Agreement Date', type: 'date', required: true },
@@ -328,6 +344,7 @@ const INDIAN_LAW_TEMPLATES = [
       'Any disputes shall be subject to the exclusive jurisdiction of courts in the specified jurisdiction.',
       'This agreement may be subject to stamp duty as per the Indian Stamp Act, 1899.',
       'Arbitration shall be conducted under the Arbitration and Conciliation Act, 1996.',
+      'Electronic signatures are valid under Section 10A of the Information Technology Act, 2000.',
     ],
   },
   {

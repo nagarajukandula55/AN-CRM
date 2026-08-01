@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { Types } from "mongoose";
+import bcryptjs from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import VendorProfile from "@/models/VendorProfile";
 import Business from "@/models/Business";
-import Agreement from "@/models/Agreement";
+import Agreement, { ISignature } from "@/models/Agreement";
 import { generateGlobalDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
+import { sendAgreementOtpEmail, sendGenericEmail } from "@/services/email/resend.service";
+
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -164,13 +170,54 @@ By signing below, both parties agree to the terms above.`;
       status: "DRAFT",
     });
 
-    // Interim status: the Agreement doc now exists but hasn't been sent
-    // for signing yet — that transition (and the real AGREEMENT_SENT
-    // status) happens in POST /api/agreements/[id]/send. See
-    // VendorProfile.ts's VendorStatus doc comment for the full rationale
-    // (this used to jump straight to AGREEMENT_SENT here, which was
-    // inaccurate whenever the admin approved but hadn't sent yet).
-    vendor.status = "AGREEMENT_DRAFTED";
+    // Per explicit direction: the agreement goes out for signing
+    // IMMEDIATELY on approval, not as a separate manual "hit Send" step —
+    // OTP-emailed to the Vendor party only (not "Company"; the Super
+    // Admin/Owner countersigns in-app later, see
+    // api/agreements/[id]/countersign/route.ts, which is why the Company
+    // party never gets an OTP here). Same OTP-hash-and-store mechanism as
+    // api/agreements/[id]/send/route.ts, just scoped to one party.
+    const vendorParty = agreement.parties.find((p: any) => p.role === "Vendor");
+    if (vendorParty?.email) {
+      const rawOtp = generateOtp();
+      const hashedOtp = await bcryptjs.hash(rawOtp, 10);
+      const otpExpiry = new Date(Date.now() + 30 * 60 * 1000);
+
+      agreement.signatures.push({
+        partyEmail: vendorParty.email,
+        partyName: vendorParty.name,
+        partyRole: "Vendor",
+        otpVerified: false,
+        otp: hashedOtp,
+        otpExpiry,
+      } as ISignature);
+      agreement.status = "PENDING_SIGNATURE";
+      await agreement.save();
+
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const signingLink = `${baseUrl}/agreements/${agreement._id}/sign?email=${encodeURIComponent(vendorParty.email)}`;
+      sendAgreementOtpEmail({
+        to: vendorParty.email,
+        partyName: vendorParty.name,
+        agreementTitle: agreement.title,
+        otp: rawOtp,
+        signingLink,
+        businessId: (vendor.businessId as any)?.toString(),
+      }).catch(() => {});
+
+      // Separate "you've been approved" notice, sent right away — distinct
+      // from the OTP email above (which asks for a signature, not just
+      // informs), per explicit direction that approval itself should be
+      // communicated immediately.
+      sendGenericEmail({
+        to: vendorParty.email,
+        subject: "Your application has been approved",
+        html: `<p>Hi ${vendorParty.name || ""},</p><p>Good news — your application with <strong>${businessDisplay}</strong> has been approved. We've sent you a separate email with a link to review and sign your partner agreement. Once you've signed, please allow us a little time to countersign and confirm — you'll get a confirmation email as soon as that's done.</p>`,
+        businessId: (vendor.businessId as any)?.toString(),
+      }).catch(() => {});
+    }
+
+    vendor.status = vendorParty?.email ? "AGREEMENT_SENT" : "AGREEMENT_DRAFTED";
     vendor.agreementId = agreement._id;
     vendor.reviewedBy = userId as any;
     vendor.reviewedAt = new Date();
@@ -189,8 +236,9 @@ By signing below, both parties agree to the terms above.`;
       success: true,
       vendor,
       agreementId: agreement._id,
-      next:
-        "Agreement generated. Open it in Agreements and hit Send to deliver the OTP signing link to the vendor.",
+      next: vendorParty?.email
+        ? "Agreement generated and sent to the vendor for signing. You'll be able to countersign once they've signed."
+        : "Agreement generated, but the vendor has no email on file — open it in Agreements to add one and send manually.",
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";

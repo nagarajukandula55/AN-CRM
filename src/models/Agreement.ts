@@ -22,6 +22,16 @@ export interface ISignature {
   ipAddress?: string;
 }
 
+export interface IExpiryEvent {
+  action: 'EXTENDED' | 'REINSTATED' | 'EXPIRED';
+  at: Date;
+  by?: mongoose.Schema.Types.ObjectId;
+  previousExpiresAt?: Date;
+  newExpiresAt?: Date;
+  previousStatus?: string;
+  reason?: string;
+}
+
 export interface IAgreement extends Document {
   businessId: mongoose.Schema.Types.ObjectId;
   createdBy: mongoose.Schema.Types.ObjectId;
@@ -37,6 +47,11 @@ export interface IAgreement extends Document {
   pdfUrl?: string;
   notes?: string;
   variables?: Record<string, string>;
+  // Full control over the expiry lifecycle, per explicit direction --
+  // every extend/reinstate/expire event is logged here (who, when, what
+  // changed), separate from the general audit log so an agreement's own
+  // history is visible without cross-referencing logAction records.
+  expiryHistory: IExpiryEvent[];
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -69,6 +84,19 @@ const SignatureSchema = new Schema<ISignature>(
   { _id: false }
 );
 
+const ExpiryEventSchema = new Schema<IExpiryEvent>(
+  {
+    action: { type: String, enum: ['EXTENDED', 'REINSTATED', 'EXPIRED'], required: true },
+    at: { type: Date, required: true, default: Date.now },
+    by: { type: Schema.Types.ObjectId, ref: 'User' },
+    previousExpiresAt: { type: Date },
+    newExpiresAt: { type: Date },
+    previousStatus: { type: String },
+    reason: { type: String },
+  },
+  { _id: false }
+);
+
 const AgreementSchema = new Schema<IAgreement>(
   {
     businessId: { type: Schema.Types.ObjectId, required: true },
@@ -93,6 +121,7 @@ const AgreementSchema = new Schema<IAgreement>(
     pdfUrl: { type: String },
     notes: { type: String },
     variables: { type: Map, of: String, default: {} },
+    expiryHistory: { type: [ExpiryEventSchema], default: [] },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }

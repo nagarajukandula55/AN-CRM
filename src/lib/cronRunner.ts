@@ -17,6 +17,7 @@ export const CRON_JOBS: { key: string; path: string }[] = [
   { key: "run-scheduled-reports", path: "/api/cron/run-scheduled-reports" },
   { key: "service-feedback-followup", path: "/api/cron/service-feedback-followup" },
   { key: "telegram-business-report", path: "/api/cron/telegram-business-report" },
+  { key: "expire-agreements", path: "/api/cron/expire-agreements" },
 ];
 
 function isDue(lastRunAt: Date | undefined, now: Date): boolean {
