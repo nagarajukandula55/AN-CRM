@@ -12,7 +12,7 @@
  *
  *   npx tsx --env-file=.env.local scripts/migrateAgreementTemplatesToCentral.ts
  */
-import { INDIAN_LAW_TEMPLATES } from "../src/app/api/agreements/templates/route";
+import { INDIAN_LAW_TEMPLATES } from "../src/lib/agreementTemplateSeeds";
 
 const CENTRAL_API_URL = process.env.CENTRAL_API_URL;
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
