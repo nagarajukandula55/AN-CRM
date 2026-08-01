@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { syncRecordToCentralApi } from '@/lib/centralApiSync';
 
 export interface IParty {
   name: string;
@@ -99,5 +100,22 @@ const AgreementSchema = new Schema<IAgreement>(
 
 // Agreements are always listed per business, newest first.
 AgreementSchema.index({ businessId: 1, createdAt: -1 });
+
+// CENTRAL-API SYNC (dual write, see src/lib/centralApiSync.ts) -- moves
+// agreement/signup handling to be readable across every AN Group property,
+// same convention as Customer.ts/Business.ts. Best-effort: a central-api
+// outage never fails the local save/update that triggered it.
+//
+// Covers both write paths this model actually has: create() (routes/
+// agreements/route.ts and .../create/route.ts, both go through save()
+// middleware) and findByIdAndUpdate() (the sign routes). No delete or
+// insertMany path exists for Agreement, so no hooks needed for those.
+AgreementSchema.post('save', async function (doc) {
+  await syncRecordToCentralApi('agreements', doc._id.toString(), doc.toObject());
+});
+
+AgreementSchema.post('findOneAndUpdate', async function (doc) {
+  if (doc) await syncRecordToCentralApi('agreements', doc._id.toString(), doc.toObject ? doc.toObject() : doc);
+});
 
 export default mongoose.models.Agreement || mongoose.model<IAgreement>('Agreement', AgreementSchema);
