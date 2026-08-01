@@ -180,6 +180,9 @@ export const NAV_GROUPS: NavGroup[] = [
       // storefront contact-us submissions like the item above. The page
       // itself also gates on isSuperAdmin/isPlatformStaff.
       { key: "admin-product-feedback", label: "Product Feedback", route: "/console/admin/product-feedback", icon: "MessageSquare" },
+      // Super Admin only -- the page and its API route both gate on
+      // isSuperAdmin (see api/telegram/users/route.ts).
+      { key: "admin-telegram-users", label: "Telegram Users", route: "/console/admin/telegram-users", icon: "Send" },
     ]},
   ]},
 ];
