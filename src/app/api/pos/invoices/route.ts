@@ -22,6 +22,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { logAction } from "@/lib/audit/logAction";
+import { captureCustomer } from "@/services/customer.service";
 
 export async function GET(req: NextRequest) {
   try {
@@ -185,6 +186,15 @@ export async function POST(req: NextRequest) {
       entityId: invoice._id.toString(),
       after: { invoiceNumber: invoice.invoiceNumber, grandTotal, paymentMode },
       req,
+    });
+
+    captureCustomer({
+      businessId: businessId?.toString(),
+      name: customer.name,
+      phone: customer.phone,
+      email: customer.email,
+      address: customer.address,
+      sourceModule: "POS_INVOICE",
     });
 
     return NextResponse.json({ success: true, invoice }, { status: 201 });

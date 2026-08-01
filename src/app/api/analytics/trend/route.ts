@@ -1,0 +1,190 @@
+/**
+ * GET /api/analytics/trend?granularity=DAY|WEEK|MONTH|YEAR&businessId=...
+ *
+ * Powers the Analytics page's Daily/Weekly/Monthly/Yearly view with a
+ * year-on-date comparison: for each bucket in the current period (last 30
+ * days / 12 weeks / 12 months / 5 years, depending on granularity), returns
+ * both this period's revenue+calls AND the same bucket exactly one year
+ * earlier -- so the page can render "this week vs. same week last year"
+ * comparison clusters for both series, per explicit direction ("year and
+ * year as on date comparisons and graphs and also comparison clusters on
+ * both calls and revenue both").
+ *
+ * Revenue = SalesInvoice.grandTotal where status PAID (same definition
+ * api/analytics/overview already uses). Calls = CrmCall count, all
+ * statuses (every call logged, not just converted ones -- "calls" here
+ * means call volume, matching how api/analytics/overview's totalCalls is
+ * defined).
+ *
+ * Both the current and prior-year ranges are aggregated with the same
+ * $dateTrunc-based $group so bucket boundaries line up exactly; the prior
+ * range is the current range shifted back exactly one calendar year
+ * (setFullYear(-1)), not a fixed day-count offset, so "Mar 2025" always
+ * lines up with "Mar 2024" even across leap years.
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { connectDB } from "@/lib/mongodb";
+import SalesInvoice from "@/models/SalesInvoice";
+import CrmCall from "@/models/CrmCall";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { requirePermission } from "@/middleware/permission.guard";
+import { buildPermissionCode } from "@/core/access/actions";
+
+type Granularity = "DAY" | "WEEK" | "MONTH" | "YEAR";
+
+const BUCKET_COUNT: Record<Granularity, number> = { DAY: 30, WEEK: 12, MONTH: 12, YEAR: 5 };
+const TRUNC_UNIT: Record<Granularity, "day" | "week" | "month" | "year"> = {
+  DAY: "day",
+  WEEK: "week",
+  MONTH: "month",
+  YEAR: "year",
+};
+
+function shiftYears(d: Date, years: number): Date {
+  const copy = new Date(d);
+  copy.setFullYear(copy.getFullYear() + years);
+  return copy;
+}
+
+function startOfBucketRange(granularity: Granularity, now: Date): Date {
+  const count = BUCKET_COUNT[granularity];
+  const start = new Date(now);
+  if (granularity === "DAY") start.setDate(start.getDate() - (count - 1));
+  else if (granularity === "WEEK") start.setDate(start.getDate() - (count - 1) * 7);
+  else if (granularity === "MONTH") start.setMonth(start.getMonth() - (count - 1), 1);
+  else start.setFullYear(start.getFullYear() - (count - 1), 0, 1);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function bucketLabel(granularity: Granularity, d: Date): string {
+  if (granularity === "DAY") return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  if (granularity === "WEEK") return `Wk of ${d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`;
+  if (granularity === "MONTH") return d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+  return String(d.getFullYear());
+}
+
+function bucketKey(granularity: Granularity, d: Date): string {
+  if (granularity === "YEAR") return String(d.getUTCFullYear());
+  if (granularity === "MONTH") return `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
+  // DAY and WEEK both truncate to a day boundary via $dateTrunc -- WEEK's
+  // truncated value is the Monday (or configured start) of that week, so a
+  // plain ISO-date key works for both.
+  return d.toISOString().slice(0, 10);
+}
+
+async function fetchSeries(
+  granularity: Granularity,
+  rangeStart: Date,
+  rangeEnd: Date,
+  businessId: string | null
+) {
+  const unit = TRUNC_UNIT[granularity];
+
+  const invoiceMatch: Record<string, any> = {
+    isDeleted: { $ne: true },
+    status: "PAID",
+    createdAt: { $gte: rangeStart, $lte: rangeEnd },
+  };
+  if (businessId) invoiceMatch.businessId = businessId;
+
+  const callMatch: Record<string, any> = { createdAt: { $gte: rangeStart, $lte: rangeEnd } };
+  if (businessId) callMatch.businessId = businessId;
+
+  const [revenueRows, callRows] = await Promise.all([
+    SalesInvoice.aggregate([
+      { $match: invoiceMatch },
+      { $group: { _id: { $dateTrunc: { date: "$createdAt", unit } }, revenue: { $sum: "$grandTotal" } } },
+    ]),
+    CrmCall.aggregate([
+      { $match: callMatch },
+      { $group: { _id: { $dateTrunc: { date: "$createdAt", unit } }, calls: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const revenueByKey = new Map(revenueRows.map((r: any) => [bucketKey(granularity, new Date(r._id)), r.revenue as number]));
+  const callsByKey = new Map(callRows.map((r: any) => [bucketKey(granularity, new Date(r._id)), r.calls as number]));
+  return { revenueByKey, callsByKey };
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getEnrichedSession();
+    if (!session?.user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+    try {
+      requirePermission(session as any, buildPermissionCode("reports", "view"));
+    } catch (err: any) {
+      return NextResponse.json({ success: false, message: err.message }, { status: err.code === "FORBIDDEN" ? 403 : 401 });
+    }
+
+    await connectDB();
+
+    const { searchParams } = new URL(req.url);
+    const businessId = searchParams.get("businessId");
+    const granularity = (searchParams.get("granularity") || "MONTH").toUpperCase() as Granularity;
+    if (!BUCKET_COUNT[granularity]) {
+      return NextResponse.json({ success: false, message: "granularity must be DAY, WEEK, MONTH, or YEAR" }, { status: 400 });
+    }
+
+    const now = new Date();
+    const currentStart = startOfBucketRange(granularity, now);
+    const priorStart = shiftYears(currentStart, -1);
+    const priorEnd = shiftYears(now, -1);
+
+    const [current, prior] = await Promise.all([
+      fetchSeries(granularity, currentStart, now, businessId),
+      fetchSeries(granularity, priorStart, priorEnd, businessId),
+    ]);
+
+    const count = BUCKET_COUNT[granularity];
+    const buckets = [];
+    for (let i = 0; i < count; i++) {
+      const d = new Date(currentStart);
+      if (granularity === "DAY") d.setDate(d.getDate() + i);
+      else if (granularity === "WEEK") d.setDate(d.getDate() + i * 7);
+      else if (granularity === "MONTH") d.setMonth(d.getMonth() + i);
+      else d.setFullYear(d.getFullYear() + i);
+
+      const priorD = shiftYears(d, -1);
+      const key = bucketKey(granularity, d);
+      const priorKey = bucketKey(granularity, priorD);
+
+      buckets.push({
+        label: bucketLabel(granularity, d),
+        revenue: current.revenueByKey.get(key) || 0,
+        calls: current.callsByKey.get(key) || 0,
+        priorYearLabel: bucketLabel(granularity, priorD),
+        priorYearRevenue: prior.revenueByKey.get(priorKey) || 0,
+        priorYearCalls: prior.callsByKey.get(priorKey) || 0,
+      });
+    }
+
+    const totalCurrentRevenue = buckets.reduce((s, b) => s + b.revenue, 0);
+    const totalPriorRevenue = buckets.reduce((s, b) => s + b.priorYearRevenue, 0);
+    const totalCurrentCalls = buckets.reduce((s, b) => s + b.calls, 0);
+    const totalPriorCalls = buckets.reduce((s, b) => s + b.priorYearCalls, 0);
+
+    return NextResponse.json({
+      success: true,
+      granularity,
+      buckets,
+      summary: {
+        revenue: {
+          current: totalCurrentRevenue,
+          priorYear: totalPriorRevenue,
+          changePct: totalPriorRevenue > 0 ? ((totalCurrentRevenue - totalPriorRevenue) / totalPriorRevenue) * 100 : null,
+        },
+        calls: {
+          current: totalCurrentCalls,
+          priorYear: totalPriorCalls,
+          changePct: totalPriorCalls > 0 ? ((totalCurrentCalls - totalPriorCalls) / totalPriorCalls) * 100 : null,
+        },
+      },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ success: false, message }, { status: 500 });
+  }
+}

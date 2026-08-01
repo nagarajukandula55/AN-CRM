@@ -15,6 +15,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { captureCustomer } from "@/services/customer.service";
 
 const TERMINAL_STATUSES = new Set(["CLOSED_WON", "CLOSED_LOST", "JOB_CREATED"]);
 
@@ -138,6 +139,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       // CCO name snapshot from the originating call -- see
       // CrmJobSheet.ts's field comment.
       ccoName: (call as any).createdByName || "",
+    });
+
+    captureCustomer({
+      businessId: call.businessId.toString(),
+      name: jobSheet.customerName,
+      phone: jobSheet.phone,
+      email: jobSheet.email,
+      address: jobSheet.address,
+      city: jobSheet.city,
+      state: jobSheet.state,
+      pincode: jobSheet.pincode,
+      sourceModule: "CRM_JOBSHEET",
+      imeiOrSerialNumber: jobSheet.imeiOrSerialNumber,
     });
 
     call.jobSheetId = jobSheet._id as any;

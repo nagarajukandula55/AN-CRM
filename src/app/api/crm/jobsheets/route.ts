@@ -20,6 +20,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
+import { captureCustomer } from "@/services/customer.service";
 // Required for .populate(...) below -- model must be registered before populate can resolve it.
 import "@/models/User";
 import "@/models/Brand";
@@ -283,6 +284,19 @@ export async function POST(req: NextRequest) {
       linkedCall.status = "JOB_CREATED";
       await linkedCall.save();
     }
+
+    captureCustomer({
+      businessId: effectiveBizId,
+      name: jobSheet.customerName,
+      phone: jobSheet.phone,
+      email: jobSheet.email,
+      address: jobSheet.address,
+      city: jobSheet.city,
+      state: jobSheet.state,
+      pincode: jobSheet.pincode,
+      sourceModule: "CRM_JOBSHEET",
+      imeiOrSerialNumber: jobSheet.imeiOrSerialNumber,
+    });
 
     notifyJobSheetStatusChange(effectiveBizId, jobSheet.phone, jobSheet.jobSheetNumber, jobSheet.status);
 

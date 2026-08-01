@@ -16,6 +16,7 @@ import { generateDocumentNumber } from "@/core/numbering/numberingService";
 // shape (whichever loaded first used to silently win for the whole app).
 import SalesInvoice from "@/models/SalesInvoice";
 import { logAction } from "@/lib/audit/logAction";
+import { captureCustomer } from "@/services/customer.service";
 
 /* ── Invoice number generator ─────────────────────────────────────── */
 /**
@@ -219,6 +220,15 @@ export async function POST(req: NextRequest) {
       after: invoice,
       req,
       actor: { id: userId, businessId: effectiveBizId },
+    });
+
+    captureCustomer({
+      businessId: effectiveBizId,
+      name: customer?.name,
+      phone: customer?.phone,
+      email: customer?.email,
+      address: customer?.address,
+      sourceModule: "SALES_INVOICE",
     });
 
     notify({

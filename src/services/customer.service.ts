@@ -27,6 +27,7 @@ export async function captureCustomer({
   sourceModule,
   sourceLabel,
   vendorId,
+  imeiOrSerialNumber,
 }: {
   businessId?: string | null;
   // Optional -- e.g. a newsletter signup only ever has an email, no name.
@@ -41,6 +42,11 @@ export async function captureCustomer({
   sourceModule: string;
   sourceLabel?: string;
   vendorId?: string | null;
+  // A device IMEI/serial just logged against this customer (workorder
+  // intake) -- appended to their running list rather than replacing it,
+  // so a repeat customer's directory entry accumulates every device
+  // they've ever brought in, searchable from api/customers.
+  imeiOrSerialNumber?: string;
 }) {
   try {
     if (!phone?.trim() && !email?.trim()) {
@@ -70,6 +76,7 @@ export async function captureCustomer({
           source: sourceLabel || sourceModule,
           vendorId: vendorId || null,
         },
+        ...(imeiOrSerialNumber?.trim() ? { $addToSet: { imeiOrSerialNumbers: imeiOrSerialNumber.trim() } } : {}),
         $setOnInsert: { isActive: true },
       },
       { upsert: true }

@@ -115,17 +115,19 @@ export async function getVendorByVendorCode(vendorCode: string): Promise<Record<
 
 // Mirrors GET /api/customers' own filtering: optional exact businessId
 // scope (applied server-side, narrows the paginated fetch), optional
-// free-text substring search across name/phone/email (applied client-side
-// — central-api's search is single-field only, this needs a $or across
-// three), sorted newest-first, capped the same way the original Mongoose
-// query was (.limit(500)).
+// free-text substring search across name/phone/email/IMEI-or-serial
+// (applied client-side — central-api's search is single-field only, this
+// needs an $or across several), sorted newest-first, capped the same way
+// the original Mongoose query was (.limit(500)).
 export async function listCustomers(opts?: { businessId?: string; search?: string }): Promise<Record<string, any>[]> {
   const all = await fetchAll("customers", opts?.businessId ? `businessId:${opts.businessId}` : undefined);
   const search = opts?.search?.trim().toLowerCase();
   const filtered = search
-    ? all.filter((c) =>
-        [c.name, c.phone, c.email].some((v) => typeof v === "string" && v.toLowerCase().includes(search))
-      )
+    ? all.filter((c) => {
+        if ([c.name, c.phone, c.email].some((v) => typeof v === "string" && v.toLowerCase().includes(search))) return true;
+        const imeis: unknown = c.imeiOrSerialNumbers;
+        return Array.isArray(imeis) && imeis.some((v) => typeof v === "string" && v.toLowerCase().includes(search));
+      })
     : all;
   return filtered
     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())

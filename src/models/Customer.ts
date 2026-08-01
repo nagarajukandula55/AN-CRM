@@ -34,6 +34,12 @@ export interface ICustomer extends Document {
   // flow (e.g. a vendor's storefront lead) -- null for anything captured
   // directly by the business itself.
   vendorId?: Types.ObjectId | null;
+  // Every IMEI/Serial number this customer's devices have ever been
+  // logged under (across every workorder) -- lets a CCO/engineer find a
+  // customer by device identity, not just contact details, from wherever
+  // they're searching (see api/customers/route.ts's `search` param and
+  // core/customers/searchCustomers.ts).
+  imeiOrSerialNumbers?: string[];
   notes?: string;
   isActive: boolean;
   createdAt: Date;
@@ -53,6 +59,7 @@ const CustomerSchema = new Schema<ICustomer>(
     source: { type: String, trim: true, default: "manual" },
     sourceModule: { type: String, trim: true, index: true },
     vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null },
+    imeiOrSerialNumbers: { type: [String], default: [] },
     notes: { type: String, trim: true },
     isActive: { type: Boolean, default: true },
   },
@@ -61,6 +68,7 @@ const CustomerSchema = new Schema<ICustomer>(
 
 CustomerSchema.index({ businessId: 1, isActive: 1 });
 CustomerSchema.index({ name: "text", phone: "text", email: "text" });
+CustomerSchema.index({ imeiOrSerialNumbers: 1 });
 
 // CENTRAL-API SYNC (dual write, see src/lib/centralApiSync.ts). Best-effort
 // - a central-api outage never fails the local save/delete that triggered
