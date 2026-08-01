@@ -106,7 +106,14 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "finance", label: "Finance", route: "/console/finance", icon: "DollarSign" },
   ]},
   { label: "Business", items: [
-    { key: "businesses", label: "Businesses",   route: "/console/business",   icon: "Building2" },
+    // The top-level Businesses list/switcher page was removed (see
+    // console/business/page.tsx's deletion) -- per explicit direction,
+    // AN-CRM is not where top-level "businesses" (AN Group / E-Commerce /
+    // My Biz Flow) get managed, that lives in the ANgroup app now. Onboarding
+    // a new Brand/POS/SC company happens on the Vendors page below
+    // instead (VendorProfile.appliedAs already carries that distinction).
+    // console/business/[id] (banners etc.) is untouched -- still linked
+    // from Settings for the business you're currently in.
     { key: "vendors",    label: "Vendors",      route: "/console/vendors",    icon: "Truck" },
     { key: "customers",  label: "Customer Data", route: "/console/customers", icon: "Users" },
   ]},
