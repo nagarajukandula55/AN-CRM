@@ -44,7 +44,9 @@ export const NAV_GROUPS: NavGroup[] = [
   ]},
   { label: "CRM", subgroups: [
     { key: "ppl-pipeline", label: "Sales Pipeline", items: [
-      { key: "deals", label: "Deals", route: "/console/deals", icon: "TrendingUp" },
+      // Sales-opportunity pipeline, not applicable to SC (single-login
+      // repair shop, workorders only -- no deals/leads concept there).
+      { key: "deals", label: "Deals", route: "/console/deals", icon: "TrendingUp", modes: ["BRAND"] },
     ]},
     { key: "ppl-crm", label: "Calls & Workorders", items: [
       { key: "crm", label: "CRM Overview", route: "/console/crm", icon: "UserPlus" },
@@ -54,7 +56,10 @@ export const NAV_GROUPS: NavGroup[] = [
       // comment. Keys match the ModuleDefinition.key values exactly
       // ("crm_calls", "crm_jobsheets") so isVisible()'s moduleKeys.has()
       // check lines up with what /api/ui/sidebar actually returns.
-      { key: "crm_calls",     label: "Appointments", route: "/console/crm/calls",     icon: "PhoneCall", modes: ["BRAND", "SC"] },
+      // SC has no appointment pipeline at all -- everything there is a
+      // workorder from intake onward, per explicit direction. BRAND keeps
+      // the full Appointments flow.
+      { key: "crm_calls",     label: "Appointments", route: "/console/crm/calls",     icon: "PhoneCall", modes: ["BRAND"] },
       { key: "crm_jobsheets", label: "Workorders",   route: "/console/crm/jobsheets", icon: "ClipboardList", modes: ["BRAND", "SC"] },
       // Shows every business's tickets by default (a filter dropdown on
       // the page itself narrows it down) rather than depending on the
@@ -167,6 +172,11 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-invoice-templates", label: "Invoice Branding", route: "/console/invoice-templates", icon: "FileText" },
       { key: "admin-gst", label: "GST", route: "/console/gst", icon: "FileText" },
       { key: "admin-feedback", label: "Feedback", route: "/console/feedback", icon: "MessageSquare" },
+      // Super Admin / AN Group only -- platform-wide bug reports and
+      // enhancement requests (Send Feedback), not this-business-only
+      // storefront contact-us submissions like the item above. The page
+      // itself also gates on isSuperAdmin/isPlatformStaff.
+      { key: "admin-product-feedback", label: "Product Feedback", route: "/console/admin/product-feedback", icon: "MessageSquare" },
     ]},
   ]},
 ];

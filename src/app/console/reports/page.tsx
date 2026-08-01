@@ -301,6 +301,7 @@ export default function ReportsPage() {
               TaxTotal: inv.taxTotal,
               GrandTotal: inv.grandTotal,
               CreatedAt: inv.createdAt,
+              PaymentDate: inv.paidAt || '',
             }))
             downloadCSV(`sales_invoices_${from}_to_${to}.csv`, rows)
           }}

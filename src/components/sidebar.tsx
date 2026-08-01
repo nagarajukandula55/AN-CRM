@@ -10,7 +10,7 @@ import {
   Key, UserPlus, ChevronDown, Check, LogOut, ShoppingBag,
   Box, Hash, Truck, Activity, FileText, PhoneCall, ClipboardList,
   BarChart3, Ruler, Tags, Layers, Bot, MapPin, FolderOpen, Settings,
-  ArrowLeftRight, SlidersHorizontal, ShieldCheck, Smartphone, LifeBuoy, Receipt,
+  ArrowLeftRight, SlidersHorizontal, ShieldCheck, Smartphone, LifeBuoy, Receipt, Plus,
 } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
 import { getAuthMe, invalidateAuthMeCache } from "@/lib/authMeCache";
@@ -490,6 +490,23 @@ export default function Sidebar() {
                     </button>
                   );
                 })}
+                {/* Right in the same dropdown that already lists this login's
+                    SC businesses -- an SC account has no Owner/Manager staff
+                    hierarchy, so "add another SC" belongs at the account-
+                    switcher level, not buried in Settings. Only shown when
+                    the CURRENTLY ACTIVE business is itself SC (matches the
+                    dropdown's own scope), per explicit direction ("drop
+                    down of SC name which is currently there to match active
+                    business ther only give option to add sub vendor"). */}
+                {activeBiz?.operatingMode === "SC" && (
+                  <button
+                    onClick={() => { setBizDropdown(false); router.push("/console/sub-accounts"); }}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-surface-2 border-t border-border text-accent"
+                  >
+                    <Plus size={12} className="shrink-0" />
+                    <span className="text-xs font-medium">Add SC Account</span>
+                  </button>
+                )}
               </div>
             )}
           </div>

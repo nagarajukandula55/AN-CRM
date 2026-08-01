@@ -28,8 +28,11 @@ import User from "@/models/User";
 import Business from "@/models/Business";
 import BusinessMember from "@/models/BusinessMember";
 import Subscription from "@/models/Subscription";
+import SubscriptionInvoice from "@/models/SubscriptionInvoice";
 import { bootstrapBusiness } from "@/services/businessBootstrap.service";
 import { generateUniqueUserId } from "@/lib/auth/generateUserId";
+import { generateDocumentNumber } from "@/core/numbering/numberingService";
+import { BILLING_PERIODS } from "@/core/pricing/plans";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { logAction } from "@/lib/audit/logAction";
 
@@ -157,6 +160,52 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         status: "ACTIVE",
         memberType: "OWNER",
         isDefaultBusiness: true,
+      });
+
+      // The charge just consumed above only ever paid to CREATE this
+      // account -- without this, the new business has no Subscription row
+      // of its own and silently falls back to a fresh 7-day trial (see
+      // core/subscriptions/checkAccess.ts), not the plan that was actually
+      // just paid for. This raises the new business's own primary
+      // Subscription (+ invoice, same as api/subscriptions/verify does for
+      // a normal purchase) from that same payment, so it's "released with
+      // its own expiry and validity" per explicit direction, not an
+      // unlicensed trial.
+      const period = BILLING_PERIODS.find((p) => p.key === charge.billingPeriod) || BILLING_PERIODS[0];
+      const now = new Date();
+      const expiryDate = new Date(now);
+      expiryDate.setMonth(expiryDate.getMonth() + period.months);
+
+      const subAccountSubscription = await Subscription.create({
+        businessId: business._id,
+        mode: "SC",
+        plan: charge.plan,
+        billingPeriod: charge.billingPeriod,
+        status: "ACTIVE",
+        amount: charge.amount,
+        startDate: now,
+        expiryDate,
+        razorpayOrderId: charge.razorpayOrderId,
+        razorpayPaymentId: charge.razorpayPaymentId,
+        razorpaySignature: charge.razorpaySignature,
+        createdBy: new mongoose.Types.ObjectId(session.user.id),
+      });
+
+      const taxTotal = Math.round(charge.amount - charge.amount / 1.18);
+      const { value: invoiceNumber } = await generateDocumentNumber(business._id.toString(), "SUBSCRIPTION_INVOICE");
+      await SubscriptionInvoice.create({
+        invoiceNumber,
+        businessId: business._id,
+        subscriptionId: subAccountSubscription._id,
+        mode: "SC",
+        plan: charge.plan,
+        billingPeriod: charge.billingPeriod,
+        amount: charge.amount - taxTotal,
+        taxTotal,
+        grandTotal: charge.amount,
+        periodStart: now,
+        periodEnd: expiryDate,
+        razorpayPaymentId: charge.razorpayPaymentId,
       });
 
       logAction({

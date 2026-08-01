@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Feedback from "@/models/Feedback";
+import Business from "@/models/Business";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { logAction } from "@/lib/audit/logAction";
 
@@ -25,26 +26,31 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { message } = body;
+    const { message, type, pageUrl } = body;
     if (!message?.trim()) {
       return NextResponse.json({ success: false, message: "Feedback message is required" }, { status: 400 });
     }
 
     await connectDB();
 
+    const business = await Business.findById(session.business.businessId).select("name").lean<any>();
+
     const feedback = await Feedback.create({
       businessId: session.business.businessId,
+      businessName: business?.name || "",
       name: session.user.name || "AN-CRM user",
       email: session.user.email,
       message: message.trim(),
       source: "in-app-feedback",
+      type: ["BUG", "ENHANCEMENT", "OTHER"].includes(type) ? type : "OTHER",
+      pageUrl: pageUrl?.trim() || "",
     });
 
     logAction({
       action: "CREATE",
       entity: "Feedback",
       entityId: feedback._id.toString(),
-      after: { source: "in-app-feedback" },
+      after: { source: "in-app-feedback", type: feedback.type },
       req,
     });
 

@@ -31,6 +31,7 @@ interface MaterialEntry {
   gstRate: number
   rate: number
   isSerialized: boolean
+  serialNumber?: string
   isActive: boolean
 }
 
@@ -54,7 +55,9 @@ export default function MaterialCatalogPage() {
     hsnCode: '',
     gstRate: 18,
     rate: 0,
+    priceIncludesTax: false,
     isSerialized: false,
+    serialNumber: '',
   })
 
   const materials: MaterialEntry[] = data?.success ? data.parts || [] : []
@@ -64,6 +67,10 @@ export default function MaterialCatalogPage() {
     setError('')
     if (!form.partName.trim() || !form.hsnCode.trim()) {
       setError('Material description and HSN code are required')
+      return
+    }
+    if (form.isSerialized && !form.serialNumber.trim()) {
+      setError('Serial Number is required for a serial-number-tracked material')
       return
     }
     setSaving(true)
@@ -76,7 +83,7 @@ export default function MaterialCatalogPage() {
       })
       const result = await res.json()
       if (result.success) {
-        setForm({ partName: '', description: '', partType: 'SPARE_PART', hsnCode: '', gstRate: 18, rate: 0, isSerialized: false })
+        setForm({ partName: '', description: '', partType: 'SPARE_PART', hsnCode: '', gstRate: 18, rate: 0, priceIncludesTax: false, isSerialized: false, serialNumber: '' })
         setShowForm(false)
         mutate()
       } else {
@@ -125,17 +132,32 @@ export default function MaterialCatalogPage() {
                   {GST_SLABS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
                 </Select>
               </Field>
-              <Field label="Rate (without tax)">
+              <Field label="Rate">
                 <Input type="number" onFocus={e => e.target.select()} value={form.rate} onChange={(e) => setForm({ ...form, rate: Number(e.target.value) })} />
+              </Field>
+              <Field label="This rate is">
+                <Select value={form.priceIncludesTax ? 'INCLUSIVE' : 'EXCLUSIVE'} onChange={(e) => setForm({ ...form, priceIncludesTax: e.target.value === 'INCLUSIVE' })}>
+                  <option value="EXCLUSIVE">Without tax</option>
+                  <option value="INCLUSIVE">With tax (inclusive)</option>
+                </Select>
               </Field>
               <Field label="Description (optional)">
                 <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </Field>
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.isSerialized} onChange={(e) => setForm({ ...form, isSerialized: e.target.checked })} />
-              Serial-number tracked (SN)
-            </label>
+            <div>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={form.isSerialized} onChange={(e) => setForm({ ...form, isSerialized: e.target.checked, serialNumber: e.target.checked ? form.serialNumber : '' })} />
+                Serial-number tracked (SN)
+              </label>
+              {form.isSerialized && (
+                <div className="mt-2 max-w-xs">
+                  <Field label="Serial Number *">
+                    <Input value={form.serialNumber} onChange={(e) => setForm({ ...form, serialNumber: e.target.value })} placeholder="e.g. SN-00123456" />
+                  </Field>
+                </div>
+              )}
+            </div>
             <Button type="submit" disabled={saving}>
               {saving ? 'Saving…' : 'Save Material'}
             </Button>
@@ -160,6 +182,7 @@ export default function MaterialCatalogPage() {
                   <th className="text-right px-6 py-3 text-ink-3 font-medium">Rate</th>
                   <th className="text-right px-6 py-3 text-ink-3 font-medium">Tax %</th>
                   <th className="text-center px-6 py-3 text-ink-3 font-medium">SN</th>
+                  <th className="text-left px-6 py-3 text-ink-3 font-medium">Serial Number</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -176,6 +199,7 @@ export default function MaterialCatalogPage() {
                     <td className="px-6 py-3 text-center">
                       {m.isSerialized ? <Package className="h-4 w-4 text-accent inline" /> : '—'}
                     </td>
+                    <td className="px-6 py-3 tabular text-ink-3">{m.serialNumber || '—'}</td>
                   </tr>
                 ))}
               </tbody>

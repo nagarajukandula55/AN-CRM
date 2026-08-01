@@ -37,6 +37,7 @@ interface Invoice {
   createdAt: string
   issueDate?: string
   dueDate?: string
+  paidAt?: string
   supplyType?: 'INTRASTATE' | 'INTERSTATE'
   invoiceType?: 'GST' | 'NON_GST'
   cgstTotal?: number
@@ -405,6 +406,7 @@ export default function SalesPage() {
                   <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Invoice #</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Customer</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Date</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Payment Date</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Amount</th>
                   <th className="text-center px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Status</th>
                   <th className="px-5 py-3"></th>
@@ -412,7 +414,7 @@ export default function SalesPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredInvoices.length === 0 ? (
-                  <tr><td colSpan={6}><EmptyState kind="empty" title="No invoices found" /></td></tr>
+                  <tr><td colSpan={7}><EmptyState kind="empty" title="No invoices found" /></td></tr>
                 ) : filteredInvoices.map(inv => (
                   <tr key={inv._id} className="hover:bg-surface-2 transition-colors">
                     <td className="px-5 py-3">
@@ -426,6 +428,7 @@ export default function SalesPage() {
                       {inv.customer?.gstin && <p className="text-xs text-ink-3 tabular">{inv.customer.gstin}</p>}
                     </td>
                     <td className="px-5 py-3 text-ink-3">{fmtDate(inv.createdAt)}</td>
+                    <td className="px-5 py-3 text-ink-3">{inv.paidAt ? fmtDate(inv.paidAt) : '—'}</td>
                     <td className="px-5 py-3 text-right font-medium tabular text-ink">{fmt(getAmount(inv))}</td>
                     <td className="px-5 py-3 text-center">
                       <Badge tone={STATUS_TONE[inv.status] ?? 'neutral'}>{inv.status}</Badge>

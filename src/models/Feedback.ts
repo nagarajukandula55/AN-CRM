@@ -17,6 +17,7 @@
 import mongoose, { Schema, Model, Document } from "mongoose";
 
 export type FeedbackStatus = "NEW" | "READ" | "RESOLVED";
+export type FeedbackType = "BUG" | "ENHANCEMENT" | "OTHER";
 
 export interface IFeedback extends Document {
   businessId: mongoose.Types.ObjectId;
@@ -26,6 +27,20 @@ export interface IFeedback extends Document {
   message: string;
   status: FeedbackStatus;
   source: string;
+  // Only meaningful for source "in-app-feedback" (product feedback about
+  // AN-CRM itself, submitted via console/send-feedback) -- lets the Super
+  // Admin dashboard actually distinguish a bug report from a feature
+  // request instead of everything landing as one undifferentiated blob of
+  // text. Unused (defaults to OTHER) for storefront contact-us submissions.
+  type?: FeedbackType;
+  // Which page the submitter was on when they hit Send Feedback -- concrete
+  // reproduction context for a bug report that "the message is about X" text
+  // alone doesn't give you.
+  pageUrl?: string;
+  // Denormalized at submission time so the Super Admin dashboard can show
+  // "which business" without a join, even though in-app feedback is listed
+  // platform-wide regardless of businessId.
+  businessName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +59,9 @@ const FeedbackSchema = new Schema<IFeedback>(
       index: true,
     },
     source: { type: String, default: "contact-form" },
+    type: { type: String, enum: ["BUG", "ENHANCEMENT", "OTHER"], default: "OTHER", index: true },
+    pageUrl: { type: String, trim: true, default: "" },
+    businessName: { type: String, trim: true, default: "" },
   },
   { timestamps: true }
 );
