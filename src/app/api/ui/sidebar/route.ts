@@ -156,7 +156,6 @@ export async function POST(req: Request) {
         "admin-settings",
         "admin-plan",
         "sub-accounts",
-        "admin-intg",
         "send-feedback",
         // Documents SC can also generate directly (not only via a
         // workorder close) -- Quotations/Estimates before repair,

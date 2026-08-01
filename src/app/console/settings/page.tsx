@@ -55,7 +55,7 @@ interface InvoicingRules {
 
 export default function AdminSettingsPage() {
   const [view, setView] = useState<View>('business')
-  const [tab, setTab] = useState<Tab>('integrations')
+  const [tab, setTab] = useState<Tab>('operations')
   const [msg, setMsg] = useState('')
 
   // Platform (AN Group) -- SSO source mappings
@@ -124,6 +124,14 @@ export default function AdminSettingsPage() {
   const businessId: string | null = meData?.success
     ? (meData.businesses?.find((b: any) => b._id === meData.user?.activeBusinessId) || meData.businesses?.[0])?._id ?? null
     : null
+  // Integrations and AI/ANu are being moved to Super-Admin-only,
+  // configured centrally per business rather than by the business itself
+  // -- per explicit direction ("Integrations remove from SC side and add
+  // super admin only... AI/ANu config also from SC dashboard remove that
+  // because there are super admin level"). Hidden here for SC in the
+  // meantime; a Super Admin (view === 'platform') still isn't affected.
+  const activeBiz = meData?.businesses?.find((b: any) => b._id === businessId) || meData?.businesses?.[0]
+  const isSC = activeBiz?.operatingMode === 'SC'
 
   const { data: ssoRes, isLoading: loadingSso, mutate: loadSsoMappings } = useSWR(
     view === 'platform' ? '/api/admin/sso-sources' : null
@@ -280,9 +288,9 @@ export default function AdminSettingsPage() {
     { key: 'operations', label: 'Operations', icon: <Building2 size={14} /> },
     { key: 'numbering', label: 'Document Numbers', icon: <Receipt size={14} /> },
     { key: 'invoicing', label: 'Invoicing Rules', icon: <Receipt size={14} /> },
-    { key: 'integrations', label: 'Integrations', icon: <Plug size={14} /> },
+    ...(isSC ? [] : [{ key: 'integrations' as Tab, label: 'Integrations', icon: <Plug size={14} /> }]),
     { key: 'communication', label: 'Communication Quota', icon: <Globe2 size={14} /> },
-    { key: 'ai', label: 'AI / ANu', icon: <Sparkles size={14} /> },
+    ...(isSC ? [] : [{ key: 'ai' as Tab, label: 'AI / ANu', icon: <Sparkles size={14} /> }]),
   ]
 
   return (
