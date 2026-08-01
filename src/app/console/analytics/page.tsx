@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import {
   BarChart, Bar, AreaChart, Area, LineChart, Line, PieChart, Pie, Cell, ComposedChart,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList,
 } from 'recharts'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -129,7 +129,7 @@ export default function AnalyticsPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <StatCard label="Total Revenue" value={fmt(data.revenue.total)} sub={`${data.revenue.totalInvoices} paid invoices`} />
-            <StatCard label="This Month" value={fmt(data.revenue.thisMonth)} sub={`${data.revenue.thisMonthInvoices} invoices`} />
+            <StatCard label={`This Month (${new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })})`} value={fmt(data.revenue.thisMonth)} sub={`${data.revenue.thisMonthInvoices} invoices`} />
             <StatCard label={data.isSC ? 'Total Workorders' : 'Total Calls'} value={String(data.operations.totalCalls)} />
             <StatCard label="Open Workorders" value={String(data.operations.openWorkorders)} />
             <StatCard label="Closed Workorders" value={String(data.operations.closedWorkorders)} />
@@ -159,43 +159,77 @@ export default function AnalyticsPage() {
               ) : !trend ? (
                 <p className="text-sm text-ink-3">Couldn't load trend data.</p>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="space-y-5">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-medium text-ink-2">Revenue</div>
+                      <div className="text-sm font-medium text-ink-2">Revenue — Bar</div>
                       <ChangeBadge pct={trend.summary.revenue.changePct} />
                     </div>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={revenueChartData}>
+                        <BarChart data={revenueChartData} margin={{ top: 20, right: 8, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                           <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <Tooltip formatter={(v) => fmt(Number(v) || 0)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
                           <Legend wrapperStyle={{ fontSize: 12 }} />
-                          <Bar dataKey="This period" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={22} />
+                          <Bar dataKey="This period" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={22}>
+                            <LabelList dataKey="This period" position="top" formatter={(v: any) => (v ? fmt(Number(v)) : '')} style={{ fontSize: 10, fill: 'var(--ink-2)' }} />
+                          </Bar>
+                          <Bar dataKey="Same period last year" fill="var(--border-strong)" radius={[4, 4, 0, 0]} barSize={22} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    <div className="text-sm font-medium text-ink-2">Revenue — Line</div>
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={revenueChartData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                          <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                          <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                          <Tooltip formatter={(v) => fmt(Number(v) || 0)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
+                          <Line type="monotone" dataKey="This period" stroke="var(--accent)" strokeWidth={2} dot={{ r: 3 }} />
                           <Line type="monotone" dataKey="Same period last year" stroke="var(--border-strong)" strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />
-                        </ComposedChart>
+                        </LineChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
 
-                  <div>
+                  <div className="space-y-5">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-medium text-ink-2">{trend.isSC ? 'Workorders' : 'Calls'}</div>
+                      <div className="text-sm font-medium text-ink-2">{trend.isSC ? 'Workorders' : 'Calls'} — Bar</div>
                       <ChangeBadge pct={trend.summary.calls.changePct} />
                     </div>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={callsChartData}>
+                        <BarChart data={callsChartData} margin={{ top: 20, right: 8, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                           <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
                           <Legend wrapperStyle={{ fontSize: 12 }} />
-                          <Bar dataKey="This period" fill="var(--info)" radius={[4, 4, 0, 0]} barSize={22} />
+                          <Bar dataKey="This period" fill="var(--info)" radius={[4, 4, 0, 0]} barSize={22}>
+                            <LabelList dataKey="This period" position="top" formatter={(v: any) => v || ''} style={{ fontSize: 10, fill: 'var(--ink-2)' }} />
+                          </Bar>
+                          <Bar dataKey="Same period last year" fill="var(--border-strong)" radius={[4, 4, 0, 0]} barSize={22} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    <div className="text-sm font-medium text-ink-2">{trend.isSC ? 'Workorders' : 'Calls'} — Line</div>
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={callsChartData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                          <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                          <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                          <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
+                          <Line type="monotone" dataKey="This period" stroke="var(--info)" strokeWidth={2} dot={{ r: 3 }} />
                           <Line type="monotone" dataKey="Same period last year" stroke="var(--border-strong)" strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />
-                        </ComposedChart>
+                        </LineChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
@@ -209,7 +243,7 @@ export default function AnalyticsPage() {
               <div className="h-section mb-4">Revenue &amp; {data.isSC ? 'Workorders' : 'Calls'} Trend (last 6 months)</div>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={data.monthlyTrend}>
+                  <ComposedChart data={data.monthlyTrend} margin={{ top: 20, right: 8, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="revTrend6mo" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.35} />
@@ -222,7 +256,9 @@ export default function AnalyticsPage() {
                     <YAxis yAxisId="activity" orientation="right" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                     <Tooltip formatter={(v, name) => (name === 'Revenue' ? fmt(Number(v) || 0) : v)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar yAxisId="revenue" dataKey="revenue" name="Revenue" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={28} />
+                    <Bar yAxisId="revenue" dataKey="revenue" name="Revenue" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={28}>
+                      <LabelList dataKey="revenue" position="top" formatter={(v: any) => (v ? fmt(Number(v)) : '')} style={{ fontSize: 10, fill: 'var(--ink-2)' }} />
+                    </Bar>
                     <Area yAxisId="revenue" type="monotone" dataKey="revenue" name="Revenue" stroke="var(--accent)" strokeWidth={2} fill="url(#revTrend6mo)" fillOpacity={0.5} legendType="none" />
                     <Line yAxisId="activity" type="monotone" dataKey="activity" name={data.isSC ? 'Workorders' : 'Calls'} stroke="var(--info)" strokeWidth={2} dot={{ r: 3 }} />
                   </ComposedChart>
@@ -238,18 +274,23 @@ export default function AnalyticsPage() {
                 {data.bySource.length === 0 ? (
                   <p className="text-sm text-ink-3">No paid invoices yet.</p>
                 ) : (
-                  <div className="flex items-center gap-4">
-                    <div className="h-40 w-40 shrink-0">
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="h-56 w-56 shrink-0">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={data.bySource} dataKey="revenue" nameKey="source" innerRadius={40} outerRadius={70} paddingAngle={2}>
+                          <Pie
+                            data={data.bySource} dataKey="revenue" nameKey="source"
+                            innerRadius={50} outerRadius={90} paddingAngle={2}
+                            label={({ percent }) => `${((percent || 0) * 100).toFixed(0)}%`}
+                            labelLine={false}
+                          >
                             {data.bySource.map((s, i) => <Cell key={s.source} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                           </Pie>
                           <Tooltip formatter={(v) => fmt(Number(v) || 0)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
-                    <div className="space-y-3 flex-1 min-w-0">
+                    <div className="space-y-3 flex-1 min-w-0 w-full">
                       {data.bySource.map((s, i) => (
                         <div key={s.source} className="flex items-center justify-between gap-2">
                           <span className="flex items-center gap-1.5 min-w-0">
@@ -272,18 +313,23 @@ export default function AnalyticsPage() {
                 {data.statusBreakdown.length === 0 ? (
                   <p className="text-sm text-ink-3">No invoices yet.</p>
                 ) : (
-                  <div className="flex items-center gap-4">
-                    <div className="h-40 w-40 shrink-0">
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="h-56 w-56 shrink-0">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={data.statusBreakdown} dataKey="count" nameKey="status" innerRadius={40} outerRadius={70} paddingAngle={2}>
+                          <Pie
+                            data={data.statusBreakdown} dataKey="count" nameKey="status"
+                            innerRadius={50} outerRadius={90} paddingAngle={2}
+                            label={({ value }) => String(value)}
+                            labelLine={false}
+                          >
                             {data.statusBreakdown.map((s, i) => <Cell key={s.status} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                           </Pie>
                           <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
-                    <div className="space-y-3 flex-1 min-w-0">
+                    <div className="space-y-3 flex-1 min-w-0 w-full">
                       {data.statusBreakdown.map((s, i) => (
                         <div key={s.status} className="flex items-center justify-between gap-2">
                           <span className="flex items-center gap-1.5 min-w-0">
