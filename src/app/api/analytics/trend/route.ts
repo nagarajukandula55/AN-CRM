@@ -49,6 +49,19 @@ function shiftYears(d: Date, years: number): Date {
   return copy;
 }
 
+// Monday-aligned, matching $dateTrunc's startOfWeek: "monday" below --
+// without this, the JS-computed bucket boundaries never lined up with
+// where Mongo actually truncated each week to, so every WEEK lookup
+// missed and the chart showed no data at all.
+function alignToMonday(d: Date): Date {
+  const copy = new Date(d);
+  const day = copy.getDay(); // Sun=0..Sat=6
+  const diff = (day + 6) % 7; // days since most recent Monday
+  copy.setDate(copy.getDate() - diff);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
 function startOfBucketRange(granularity: Granularity, now: Date): Date {
   const count = BUCKET_COUNT[granularity];
   const start = new Date(now);
@@ -57,7 +70,7 @@ function startOfBucketRange(granularity: Granularity, now: Date): Date {
   else if (granularity === "MONTH") start.setMonth(start.getMonth() - (count - 1), 1);
   else start.setFullYear(start.getFullYear() - (count - 1), 0, 1);
   start.setHours(0, 0, 0, 0);
-  return start;
+  return granularity === "WEEK" ? alignToMonday(start) : start;
 }
 
 function bucketLabel(granularity: Granularity, d: Date): string {
@@ -104,14 +117,20 @@ async function fetchSeries(
   if (businessObjectId) callMatch.businessId = businessObjectId;
   if (isSC) callMatch.isDeleted = { $ne: true };
 
+  // startOfWeek: "monday" only matters (and is only valid) for unit
+  // "week" -- Mongo rejects it for other units, so it's added
+  // conditionally rather than unconditionally on every $dateTrunc call.
+  const truncSpec: Record<string, any> = { date: "$createdAt", unit };
+  if (unit === "week") truncSpec.startOfWeek = "monday";
+
   const [revenueRows, callRows] = await Promise.all([
     SalesInvoice.aggregate([
       { $match: invoiceMatch },
-      { $group: { _id: { $dateTrunc: { date: "$createdAt", unit } }, revenue: { $sum: "$grandTotal" } } },
+      { $group: { _id: { $dateTrunc: truncSpec }, revenue: { $sum: "$grandTotal" } } },
     ]),
     (isSC ? CrmJobSheet : CrmCall).aggregate([
       { $match: callMatch },
-      { $group: { _id: { $dateTrunc: { date: "$createdAt", unit } }, calls: { $sum: 1 } } },
+      { $group: { _id: { $dateTrunc: truncSpec }, calls: { $sum: 1 } } },
     ]),
   ]);
 

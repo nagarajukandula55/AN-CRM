@@ -4,7 +4,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { validateGSTIN } from '@/lib/validation/gst'
-import { ArrowLeft, Plus, Trash2, Loader2, Users, X, Search } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Loader2, Users, X, Search, QrCode, Landmark, PenLine, Check } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -96,6 +96,8 @@ export default function NewSalesInvoicePage() {
   ])
 
   const { businessId } = useActiveBusinessId()
+  const { data: businessData } = useSWR(businessId ? `/api/businesses/${businessId}` : null)
+  const biz = businessData?.business
 
   const [customerQuery, setCustomerQuery] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
@@ -402,21 +404,36 @@ export default function NewSalesInvoicePage() {
               <textarea rows={3} value={terms} onChange={e => setTerms(e.target.value)} className={`${inputCls} resize-none`} />
             </div>
             <div className="pt-2 border-t border-border">
-              <label className={labelCls}>Show on this invoice</label>
-              <p className="text-xs text-ink-3 mb-2">Bank Details, UPI QR, and Signature are configured once in Settings — uncheck any you don't want printed on this specific invoice.</p>
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-sm text-ink-2">
-                  <input type="checkbox" checked={showPaymentQr} onChange={e => setShowPaymentQr(e.target.checked)} />
-                  UPI Payment QR
-                </label>
-                <label className="flex items-center gap-2 text-sm text-ink-2">
-                  <input type="checkbox" checked={showBankDetails} onChange={e => setShowBankDetails(e.target.checked)} />
-                  Bank Account Details
-                </label>
-                <label className="flex items-center gap-2 text-sm text-ink-2">
-                  <input type="checkbox" checked={showSignature} onChange={e => setShowSignature(e.target.checked)} />
-                  Authorized Signature
-                </label>
+              <label className={labelCls}>On this invoice</label>
+              <p className="text-xs text-ink-3 mb-2">This is how the invoice footer will actually look. Click a tile to include/exclude it here; anything not yet set up in Settings shows as a placeholder you can jump straight to.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <InvoiceFooterTile
+                  icon={<QrCode className="w-4 h-4" />}
+                  label="UPI Payment QR"
+                  configured={!!biz?.upiId}
+                  preview={biz?.upiId}
+                  enabled={showPaymentQr}
+                  onToggle={() => setShowPaymentQr(v => !v)}
+                  onSettings={() => router.push('/console/settings')}
+                />
+                <InvoiceFooterTile
+                  icon={<Landmark className="w-4 h-4" />}
+                  label="Bank Account Details"
+                  configured={!!biz?.bankAccountNumber}
+                  preview={biz?.bankAccountNumber ? `${biz.bankAccountName || ''} · ${biz.bankAccountNumber}`.trim() : undefined}
+                  enabled={showBankDetails}
+                  onToggle={() => setShowBankDetails(v => !v)}
+                  onSettings={() => router.push('/console/settings')}
+                />
+                <InvoiceFooterTile
+                  icon={<PenLine className="w-4 h-4" />}
+                  label="Authorized Signature"
+                  configured={!!biz?.documentSignatureUrl}
+                  imagePreview={biz?.documentSignatureUrl}
+                  enabled={showSignature}
+                  onToggle={() => setShowSignature(v => !v)}
+                  onSettings={() => router.push('/console/settings')}
+                />
               </div>
             </div>
           </Card>
@@ -546,5 +563,58 @@ export default function NewSalesInvoicePage() {
         </div>
       )}
     </div>
+  )
+}
+
+/** One footer element (QR/Bank/Signature) rendered the way it'll actually
+ * look on the printed invoice -- a real preview when configured in
+ * Settings, a dashed "not set up yet" placeholder otherwise. Clicking
+ * toggles inclusion on THIS invoice when configured, or jumps to Settings
+ * when it isn't -- see the Sales Invoice page's own comment on why this
+ * replaced a plain checkbox list. */
+function InvoiceFooterTile({
+  icon, label, configured, preview, imagePreview, enabled, onToggle, onSettings,
+}: {
+  icon: React.ReactNode
+  label: string
+  configured: boolean
+  preview?: string
+  imagePreview?: string
+  enabled: boolean
+  onToggle: () => void
+  onSettings: () => void
+}) {
+  if (!configured) {
+    return (
+      <button
+        type="button"
+        onClick={onSettings}
+        className="flex flex-col items-center justify-center gap-1.5 rounded-control border border-dashed border-border-strong bg-surface-2/40 px-3 py-4 text-center hover:border-accent hover:bg-surface-2 transition-colors"
+      >
+        <Plus className="w-4 h-4 text-ink-3" />
+        <span className="text-xs text-ink-3">Add {label} in Settings</span>
+      </button>
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`flex flex-col items-center justify-center gap-1.5 rounded-control border px-3 py-4 text-center transition-colors ${
+        enabled ? 'border-accent bg-accent-soft' : 'border-border bg-surface hover:border-border-strong'
+      }`}
+    >
+      <div className="flex items-center gap-1.5 text-ink-2">
+        {icon}
+        <span className="text-xs font-medium">{label}</span>
+        {enabled && <Check className="w-3.5 h-3.5 text-accent" />}
+      </div>
+      {imagePreview ? (
+        <img src={imagePreview} alt={label} className="h-8 object-contain" />
+      ) : preview ? (
+        <span className="text-[11px] text-ink-3 truncate max-w-full">{preview}</span>
+      ) : null}
+      <span className="text-[10px] text-ink-3">{enabled ? 'Included' : 'Excluded — click to include'}</span>
+    </button>
   )
 }

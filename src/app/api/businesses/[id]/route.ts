@@ -24,7 +24,16 @@ export async function GET(req: Request, context: any) {
       );
     }
 
-    const business = await BusinessService.getBusinessById(id);
+    // Reads from this app's own MongoDB, not central-api. PATCH below
+    // writes to local Mongo and only best-effort dual-writes to
+    // central-api afterward (see lib/centralApiSync.ts's top comment:
+    // local Mongo is still the source of truth) -- reading through
+    // BusinessService.getBusinessById (central-api) here meant a sync
+    // lag/failure/misconfiguration made every Settings save look like it
+    // silently reverted on refresh, even though the PATCH itself had
+    // already succeeded. Same root cause and same fix as the Customer
+    // Data page's identical bug (see api/customers/route.ts).
+    const business = await Business.findById(id).lean();
 
     if (!business) {
       return NextResponse.json(

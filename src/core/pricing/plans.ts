@@ -78,9 +78,16 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Basic reports + invoice ZIP export for GST filing",
         "Email support",
       ],
+      // report-builder/analytics/reports are all already-existing
+      // features every business has always had -- kept on Basic too so
+      // plan-gating (introduced after these were already in general use)
+      // never retroactively takes something away. Only genuinely NEW
+      // features (sub-accounts, telegram-reports) are actual tier
+      // differentiators for now.
       moduleKeys: [
         "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
-        "stock-adjustments", "reports", "admin-settings", "admin-plan", "send-feedback",
+        "stock-adjustments", "reports", "report-builder", "analytics",
+        "admin-settings", "admin-plan", "send-feedback",
         "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
       ],
     },
@@ -146,9 +153,13 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Basic reports + invoice ZIP export for GST filing",
         "Email support",
       ],
+      // See SC Basic's identical comment -- report-builder/analytics kept
+      // here too so plan-gating never retroactively removes an
+      // already-in-use feature.
       moduleKeys: [
         "crm", "crm_calls", "crm_jobsheets", "material-catalog", "customers", "sales",
-        "reports", "admin-settings", "admin-plan", "admin-intg", "send-feedback",
+        "reports", "report-builder", "analytics", "deals",
+        "admin-settings", "admin-plan", "admin-intg", "send-feedback",
         "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
       ],
     },
@@ -216,7 +227,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Basic reports + invoice ZIP export for GST filing",
         "Email support",
       ],
-      moduleKeys: ["sales", "customers", "material-catalog", "reports", "admin-settings", "admin-plan", "send-feedback"],
+      moduleKeys: ["sales", "customers", "material-catalog", "reports", "report-builder", "analytics", "admin-settings", "admin-plan", "send-feedback"],
     },
     {
       key: "PRO",
