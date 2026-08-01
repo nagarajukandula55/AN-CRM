@@ -40,7 +40,13 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
+      {/* overscroll-behavior: contain stops a wheel-scroll that reaches the
+          end of this container from "bleeding through" to whatever's
+          behind it (the sidebar's own scroll region, or the page) --
+          without it, scrolling down inside main content near a boundary
+          could visibly scroll the sidebar (or vice versa) instead, which
+          reads as "scrolling the wrong direction". */}
+      <main className="flex-1 overflow-y-auto overscroll-contain">
         {children}
       </main>
       <AnuWidget showNotifications />
