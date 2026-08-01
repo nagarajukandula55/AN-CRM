@@ -252,7 +252,7 @@ export default function ReportsPage() {
         <ReportCard
           icon={ClipboardList}
           title="CRM Job Sheets"
-          description="Workorders with status, assigned engineer, and linked invoice — filtered to the date range and status above."
+          description="Workorders with full status timeline, engineer, TAT, and linked invoice — filtered to the date range and status above."
           statusOptions={['CREATED', 'REPAIR_STARTED', 'REPAIR_IN_PROGRESS', 'PART_PENDING', 'REPAIR_COMPLETED', 'CLOSED', 'CANCELLED']}
           status={jobStatus}
           onStatusChange={setJobStatus}
@@ -263,18 +263,36 @@ export default function ReportsPage() {
             if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to load job sheets')
             const rows = (d.jobSheets || [])
               .filter((j: any) => inRange(j.createdAt, from, to))
-              .map((j: any) => ({
-                JobSheetNumber: j.jobSheetNumber,
-                Customer: j.customerName,
-                Phone: j.phone || '',
-                Title: j.title,
-                Status: j.status,
-                AssignedTo: j.assignedTo?.name || j.assignedToName || '',
-                InvoiceNumber: j.invoiceNumber || '',
-                IMEIOrSerial: j.imeiOrSerialNumber || '',
-                CreatedAt: j.createdAt,
-                CompletedAt: j.completedAt || '',
-              }))
+              .map((j: any) => {
+                const tatHours = j.completedAt
+                  ? ((new Date(j.completedAt).getTime() - new Date(j.createdAt).getTime()) / 3600000).toFixed(1)
+                  : ''
+                return {
+                  JobSheetNumber: j.jobSheetNumber,
+                  Customer: j.customerName,
+                  Phone: j.phone || '',
+                  Company: j.company || '',
+                  Title: j.title,
+                  Product: j.product || '',
+                  DeviceModel: j.deviceModel || '',
+                  IMEIOrSerial: j.imeiOrSerialNumber || '',
+                  Status: j.status,
+                  WarrantyStatus: j.warrantyStatus || '',
+                  CCO: j.ccoName || '',
+                  AssignedTo: j.assignedTo?.name || j.assignedToName || '',
+                  InvoiceNumber: j.invoiceNumber || '',
+                  ServiceCharge: j.serviceCharge ?? '',
+                  CreatedAt: j.createdAt,
+                  EngineerAssignedAt: j.engineerAssignedAt || '',
+                  RepairInProgressAt: j.repairInProgressAt || '',
+                  PartPendingAt: j.partPendingAt || '',
+                  RepairResumedAt: j.repairResumedAt || '',
+                  CompletedAt: j.completedAt || '',
+                  HandedOverAt: j.handedOverAt || '',
+                  TATHours: tatHours,
+                  CancelReason: j.cancelReason || '',
+                }
+              })
             downloadCSV(`crm_jobsheets_${from}_to_${to}.csv`, rows)
           }}
         />
