@@ -21,6 +21,16 @@
  *                    the scheduled one in
  *                    api/cron/telegram-business-report, via
  *                    lib/telegramReport.ts's shared builder.
+ *   /runjobs       — manually runs every due scheduled job right now (see
+ *                    lib/cronRunner.ts), as a "run now" alternative to
+ *                    setting up an external scheduler for
+ *                    /api/cron/run-all. This is NOT real cron -- nothing
+ *                    fires unless a human sends this command -- so it only
+ *                    makes sense for someone checking in periodically
+ *                    rather than wanting unattended automation. Restricted
+ *                    to chat ids listed in ANOPS_TELEGRAM_ADMIN_CHAT_IDS
+ *                    (comma-separated) since this touches every business's
+ *                    data, not just the sender's own.
  *
  * A chat can be linked to more than one business (nothing stops the same
  * Telegram chat id being pasted into two businesses' Settings) -- every
@@ -44,6 +54,15 @@ import { connectDB } from "@/lib/mongodb";
 import Business from "@/models/Business";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { buildReportMessage, periodStart, computePeriodNumbers, fmtINR } from "@/lib/telegramReport";
+import { runAllDueCronJobs } from "@/lib/cronRunner";
+
+function isAdminChat(chatId: number | string): boolean {
+  const allowlist = (process.env.ANOPS_TELEGRAM_ADMIN_CHAT_IDS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return allowlist.includes(String(chatId));
+}
 
 const HELP_TEXT = [
   "<b>AN CRM Bot — Commands</b>",
@@ -51,6 +70,7 @@ const HELP_TEXT = [
   "/tgid — show this chat's Telegram ID (paste into Settings > Operations)",
   "/today — quick revenue &amp; activity snapshot, today vs. yesterday",
   "/report — full period report for every business linked to this chat",
+  "/runjobs — (admin only) manually run every due scheduled job now",
   "/help — this list",
 ].join("\n");
 
@@ -86,6 +106,24 @@ export async function POST(req: NextRequest) {
 
     if (command === "/help") {
       await sendToChat(chatId, HELP_TEXT);
+      return NextResponse.json({ success: true });
+    }
+
+    if (command === "/runjobs") {
+      if (!isAdminChat(chatId)) {
+        await sendToChat(chatId, "This command is restricted to platform admins.");
+        return NextResponse.json({ success: true });
+      }
+      await connectDB();
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+      if (!baseUrl) {
+        await sendToChat(chatId, "NEXT_PUBLIC_APP_URL isn't set, so I can't call the job routes. Set it in your env vars first.");
+        return NextResponse.json({ success: true });
+      }
+      await sendToChat(chatId, "Running due jobs now…");
+      const results = await runAllDueCronJobs(baseUrl);
+      const lines = Object.entries(results).map(([key, status]) => `${key}: ${status}`);
+      await sendToChat(chatId, `<b>Job run complete</b>\n<pre>${lines.join("\n")}</pre>`);
       return NextResponse.json({ success: true });
     }
 

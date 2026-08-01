@@ -34,5 +34,19 @@ no-ops until a job is actually due.
 
 That's it — no vercel.json changes needed for new jobs going forward; add
 the job's route + an entry to the `CRON_JOBS` array in
-`src/app/api/cron/run-all/route.ts` and it's covered by the same external
-ping.
+`src/lib/cronRunner.ts` and it's covered by the same external ping.
+
+## Manual alternative: /runjobs on Telegram
+
+If you'd rather not set up an external scheduler, the bot supports a
+manual "run now" command instead: send `/runjobs` to it. This is **not**
+real cron — nothing runs unless you actually send the command — so it
+only makes sense if you're checking in periodically yourself rather than
+wanting unattended automation.
+
+To enable it:
+1. Set `ANOPS_TELEGRAM_ADMIN_CHAT_IDS` in your env vars to your own
+   Telegram chat id (get it via `/tgid`), comma-separated if more than
+   one admin. This command touches every business's data, not just the
+   sender's own, so it's restricted to this allowlist.
+2. Message the bot `/runjobs` any time you want to trigger due jobs.
