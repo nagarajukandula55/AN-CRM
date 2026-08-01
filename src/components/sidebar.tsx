@@ -692,6 +692,27 @@ export default function Sidebar() {
           })}
         </nav>
 
+        {/* Support link -- opens an-helpdesk's public ticket form in a new
+            tab, same app every AN Group site links to (see its own README).
+            NEXT_PUBLIC_HELPDESK_URL keeps the actual domain out of this
+            component so it's one env var to change, not a hardcoded URL. */}
+        {process.env.NEXT_PUBLIC_HELPDESK_URL && (
+          <div className="px-3 pb-2">
+            <a
+              href={process.env.NEXT_PUBLIC_HELPDESK_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center gap-2 rounded-control px-3 py-2 text-xs text-ink-3 hover:text-ink hover:bg-surface-2 transition ${
+                isCollapsed ? "justify-center" : ""
+              }`}
+              title="Get Support"
+            >
+              <LifeBuoy size={14} />
+              {!isCollapsed && <span>Get Support</span>}
+            </a>
+          </div>
+        )}
+
         {/* User footer */}
         <div className="px-3 py-3 border-t border-border">
           {user ? (
