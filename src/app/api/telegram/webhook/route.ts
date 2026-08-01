@@ -55,6 +55,7 @@ import Business from "@/models/Business";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { buildReportMessage, periodStart, computePeriodNumbers, fmtINR } from "@/lib/telegramReport";
 import { runAllDueCronJobs } from "@/lib/cronRunner";
+import { recordTelegramContact } from "@/lib/telegramUsers";
 
 function isAdminChat(chatId: number | string): boolean {
   const allowlist = (process.env.ANOPS_TELEGRAM_ADMIN_CHAT_IDS || "")
@@ -94,6 +95,9 @@ export async function POST(req: NextRequest) {
     }
 
     const command = text.trim().split(/\s+/)[0].toLowerCase();
+
+    await connectDB();
+    await recordTelegramContact(message, command);
 
     if (/^\/(tgid|start)\b/i.test(command)) {
       const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";

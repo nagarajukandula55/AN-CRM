@@ -8,6 +8,7 @@ import {
   XCircle,
   Loader2,
   Database,
+  Send,
 } from 'lucide-react'
 
 interface ModuleDef {
@@ -84,6 +85,56 @@ export default function SystemStatusPage() {
   const [results, setResults] = useState<Record<string, ModuleResult>>({})
   const [running, setRunning] = useState(false)
   const [lastRun, setLastRun] = useState<Date | null>(null)
+
+  // Telegram webhook -- Telegram refuses to follow redirects on webhook
+  // delivery, so a webhook registered against a domain that 307/308s
+  // elsewhere (e.g. an apex domain redirecting to www) silently never
+  // fires. This panel lets a Super Admin check the current registration
+  // and re-register it against this deployment's own NEXT_PUBLIC_APP_URL,
+  // server-side, instead of hand-typing the bot token into a browser URL
+  // bar (see api/telegram/set-webhook's comment).
+  const [webhookInfo, setWebhookInfo] = useState<any>(null)
+  const [webhookLoading, setWebhookLoading] = useState(false)
+  const [webhookRegistering, setWebhookRegistering] = useState(false)
+  const [webhookMsg, setWebhookMsg] = useState<string | null>(null)
+
+  const checkWebhook = useCallback(async () => {
+    setWebhookLoading(true)
+    setWebhookMsg(null)
+    try {
+      const res = await fetch('/api/telegram/set-webhook')
+      const d = await res.json()
+      if (d.success) setWebhookInfo(d.info)
+      else setWebhookMsg(d.error || 'Failed to check webhook')
+    } catch {
+      setWebhookMsg('Failed to reach the server')
+    } finally {
+      setWebhookLoading(false)
+    }
+  }, [])
+
+  async function registerWebhook() {
+    setWebhookRegistering(true)
+    setWebhookMsg(null)
+    try {
+      const res = await fetch('/api/telegram/set-webhook', { method: 'POST' })
+      const d = await res.json()
+      if (d.success) {
+        setWebhookMsg(`Registered: ${d.webhookUrl}`)
+        checkWebhook()
+      } else {
+        setWebhookMsg(d.error || 'Failed to register webhook')
+      }
+    } catch {
+      setWebhookMsg('Failed to reach the server')
+    } finally {
+      setWebhookRegistering(false)
+    }
+  }
+
+  useEffect(() => {
+    checkWebhook()
+  }, [checkWebhook])
 
   const runChecks = useCallback(async () => {
     setRunning(true)
@@ -214,6 +265,60 @@ export default function SystemStatusPage() {
               </div>
             )
           })}
+        </div>
+      </div>
+
+      {/* Telegram webhook */}
+      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Send className="h-4 w-4 text-gray-400" />
+            <h2 className="text-sm font-semibold text-gray-900">Telegram Bot Webhook</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={checkWebhook}
+              disabled={webhookLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {webhookLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              Check
+            </button>
+            <button
+              onClick={registerWebhook}
+              disabled={webhookRegistering}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-gray-900 hover:bg-gray-800 text-white disabled:opacity-50"
+            >
+              {webhookRegistering ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+              Register Webhook
+            </button>
+          </div>
+        </div>
+        <div className="px-5 py-4 text-sm space-y-1.5">
+          {webhookMsg && <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">{webhookMsg}</p>}
+          {webhookInfo ? (
+            <>
+              <p><span className="text-gray-500">Registered URL:</span> <span className="font-mono text-xs">{webhookInfo.url || '(not set)'}</span></p>
+              <p><span className="text-gray-500">Pending updates:</span> {webhookInfo.pending_update_count ?? 0}</p>
+              {webhookInfo.last_error_message && (
+                <p className="text-red-600 text-xs mt-1">
+                  Last error: {webhookInfo.last_error_message}
+                  {webhookInfo.last_error_date && ` (${new Date(webhookInfo.last_error_date * 1000).toLocaleString('en-IN')})`}
+                </p>
+              )}
+              {!webhookInfo.last_error_message && webhookInfo.url && (
+                <p className="text-emerald-700 text-xs mt-1 flex items-center gap-1"><CheckCircle2 size={12} /> No delivery errors reported</p>
+              )}
+            </>
+          ) : (
+            !webhookLoading && <p className="text-xs text-gray-400">No webhook info loaded.</p>
+          )}
+          <p className="text-xs text-gray-400 mt-2">
+            &quot;Register Webhook&quot; points Telegram at this deployment&apos;s own configured domain
+            (NEXT_PUBLIC_APP_URL) server-side — safer than typing the bot token into a browser URL,
+            and avoids accidentally registering against a domain that redirects (Telegram won&apos;t
+            follow redirects on webhook delivery).
+          </p>
         </div>
       </div>
 
