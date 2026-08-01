@@ -80,6 +80,40 @@ export async function listVendors(): Promise<Record<string, any>[]> {
   return fetchAll("vendors");
 }
 
+// Agreement templates are now centrally managed (central-api's
+// "agreementtemplates" dataset, editable from its own admin dashboard) so
+// every AN Group app shares the exact same catalog instead of each keeping
+// its own local copy -- see scripts/migrateAgreementTemplatesToCentral.ts
+// for the one-time migration and api/agreements/templates/route.ts for the
+// consumer side. assignedBusinessIds is a central-api business _id array;
+// empty/missing means "available to every business" (client-side filter,
+// same reasoning as fetchAll()'s comment -- central-api's search can't do
+// array-contains). businessSourceId is THIS app's own local business _id
+// (what everything else in this app already deals in) -- resolved to
+// central-api's business _id via getBusinessBySourceId() first.
+export async function listAgreementTemplates(businessSourceId?: string): Promise<Record<string, any>[]> {
+  // isActive is a boolean field -- central-api's search filter only does
+  // string exact/substring match (a boolean compared against "true" never
+  // matches, per this file's own top comment), so the isActive filter has
+  // to happen client-side here, not via ?search=isActive:true.
+  const all = (await fetchAll("agreementtemplates")).filter((t) => t.isActive !== false);
+  if (!businessSourceId) return all;
+
+  const business = await getBusinessBySourceId(businessSourceId);
+  if (!business) return all.filter((t) => !Array.isArray(t.assignedBusinessIds) || t.assignedBusinessIds.length === 0);
+
+  return all.filter(
+    (t) =>
+      !Array.isArray(t.assignedBusinessIds) ||
+      t.assignedBusinessIds.length === 0 ||
+      t.assignedBusinessIds.includes(business._id)
+  );
+}
+
+export async function getAgreementTemplateByType(type: string): Promise<Record<string, any> | null> {
+  return findOne("agreementtemplates", "type", type);
+}
+
 // Never throws — see fetchAll()'s comment above for why.
 async function findOne(dataset: string, field: string, value: string): Promise<Record<string, any> | null> {
   if (!CENTRAL_API_URL) return null;

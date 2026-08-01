@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import AgreementTemplate from '@/models/AgreementTemplate';
+import { listAgreementTemplates, getAgreementTemplateByType } from '@/lib/centralApiRead';
 
-const INDIAN_LAW_TEMPLATES = [
+// Exported so scripts/migrateAgreementTemplatesToCentral.ts can push this
+// content to central-api without duplicating it by hand -- see this
+// route's own comment below for why these now live there, not here.
+export const INDIAN_LAW_TEMPLATES = [
   {
     type: 'NDA',
     name: 'Non-Disclosure Agreement (NDA)',
@@ -440,28 +442,30 @@ const INDIAN_LAW_TEMPLATES = [
   },
 ];
 
+// GET/POST here now proxy to central-api's "agreementtemplates" dataset
+// instead of a local model + lazy-seed-on-first-call. Per explicit
+// direction: templates are centrally managed (any AN Group app can use
+// them) and assignable to specific businesses from central-api's own
+// admin dashboard, so this app no longer owns or edits the catalog --
+// see lib/centralApiRead.ts's listAgreementTemplates()/
+// getAgreementTemplateByType() and
+// scripts/migrateAgreementTemplatesToCentral.ts for the one-time move of
+// this file's INDIAN_LAW_TEMPLATES content to central-api.
 export async function GET(req: NextRequest) {
   try {
-    await connectDB();
-
     const userId = req.headers.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const count = await AgreementTemplate.countDocuments({ isActive: true });
+    const businessId = req.headers.get('x-business-id') || req.headers.get('x-active-business-id') || undefined;
+    const templates = await listAgreementTemplates(businessId);
+    // Strip content for the list view, matching the previous local-model
+    // behavior (full content only returned by the single-template POST
+    // below).
+    const withoutContent = templates.map(({ content, ...rest }) => rest);
 
-    if (count === 0) {
-      console.log('Seeding agreement templates...');
-      await AgreementTemplate.insertMany(INDIAN_LAW_TEMPLATES);
-      console.log('Agreement templates seeded successfully');
-    }
-
-    const templates = await AgreementTemplate.find({ isActive: true })
-      .select('-content')
-      .lean();
-
-    return NextResponse.json({ templates });
+    return NextResponse.json({ templates: withoutContent });
   } catch (error) {
     console.error('GET /api/agreements/templates error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -470,8 +474,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    await connectDB();
-
     const userId = req.headers.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -482,8 +484,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Template type is required' }, { status: 400 });
     }
 
-    const template = await AgreementTemplate.findOne({ type, isActive: true }).lean();
-    if (!template) {
+    const template = await getAgreementTemplateByType(type);
+    if (!template || template.isActive === false) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     }
 
