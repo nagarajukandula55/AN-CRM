@@ -26,33 +26,49 @@ const DATA_SOURCE_OPTIONS = [
   { value: 'CUSTOMERS', label: 'Customers' },
 ]
 
+// Kept in exact sync with core/reports/dataSources.ts's DATA_SOURCES allowlist
+// -- that file is the real server-side source of truth (runReport.ts trusts
+// nothing else), this is just its field/label pairs for the picker UI.
 const FIELDS_BY_SOURCE: Record<string, { key: string; label: string }[]> = {
   CRM_CALLS: [
     { key: 'callNumber', label: 'Call Number' }, { key: 'customerName', label: 'Customer Name' },
-    { key: 'phone', label: 'Phone' }, { key: 'status', label: 'Status' },
-    { key: 'priority', label: 'Priority' }, { key: 'estimatedValue', label: 'Estimated Value' },
-    { key: 'createdAt', label: 'Created At' },
+    { key: 'phone', label: 'Phone' }, { key: 'email', label: 'Email' },
+    { key: 'company', label: 'Company' }, { key: 'subject', label: 'Subject' },
+    { key: 'status', label: 'Status' }, { key: 'priority', label: 'Priority' },
+    { key: 'source', label: 'Source' }, { key: 'estimatedValue', label: 'Estimated Value' },
+    { key: 'nextFollowUpAt', label: 'Next Follow-Up' }, { key: 'createdAt', label: 'Created At' },
   ],
   CRM_JOBSHEETS: [
     { key: 'jobSheetNumber', label: 'Workorder Number' }, { key: 'customerName', label: 'Customer Name' },
-    { key: 'status', label: 'Status' }, { key: 'assignedToName', label: 'Engineer' },
-    { key: 'ccoName', label: 'CCO' }, { key: 'serviceCharge', label: 'Service Charge' },
-    { key: 'createdAt', label: 'Created At' }, { key: 'completedAt', label: 'Completed At' },
+    { key: 'phone', label: 'Phone' }, { key: 'company', label: 'Company' },
+    { key: 'title', label: 'Title' }, { key: 'product', label: 'Product' },
+    { key: 'deviceModel', label: 'Device Model' }, { key: 'imeiOrSerialNumber', label: 'IMEI / Serial Number' },
+    { key: 'status', label: 'Status' }, { key: 'warrantyStatus', label: 'Warranty Status' },
+    { key: 'assignedToName', label: 'Engineer' }, { key: 'ccoName', label: 'CCO' },
+    { key: 'serviceCharge', label: 'Service Charge' }, { key: 'createdAt', label: 'Created At' },
+    { key: 'engineerAssignedAt', label: 'Engineer Assigned At' }, { key: 'repairInProgressAt', label: 'Repair In Progress At' },
+    { key: 'partPendingAt', label: 'Part Pending At' }, { key: 'repairResumedAt', label: 'Repair Resumed At' },
+    { key: 'completedAt', label: 'Completed At' }, { key: 'handedOverAt', label: 'Handed Over At' },
   ],
   SALES_INVOICES: [
     { key: 'invoiceNumber', label: 'Invoice Number' }, { key: 'invoiceType', label: 'Type' },
-    { key: 'status', label: 'Status' }, { key: 'grandTotal', label: 'Grand Total' },
-    { key: 'taxTotal', label: 'Tax Total' }, { key: 'salesExecutiveName', label: 'Sales Executive' },
-    { key: 'createdAt', label: 'Created At' },
+    { key: 'status', label: 'Status' }, { key: 'subtotal', label: 'Subtotal' },
+    { key: 'grandTotal', label: 'Grand Total' }, { key: 'taxTotal', label: 'Tax Total' },
+    { key: 'discountAmount', label: 'Discount' }, { key: 'salesExecutiveName', label: 'Sales Executive' },
+    { key: 'createdAt', label: 'Created At' }, { key: 'dueDate', label: 'Due Date' },
+    { key: 'paidAt', label: 'Payment Date' },
   ],
   VENDORS: [
     { key: 'vendorId', label: 'Vendor ID' }, { key: 'companyName', label: 'Company Name' },
-    { key: 'appliedAs', label: 'Applied As' }, { key: 'isApproved', label: 'Approved' },
-    { key: 'createdAt', label: 'Created At' },
+    { key: 'contactPerson', label: 'Contact Person' }, { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Phone' }, { key: 'appliedAs', label: 'Applied As' },
+    { key: 'isApproved', label: 'Approved' }, { key: 'createdAt', label: 'Created At' },
   ],
   CUSTOMERS: [
     { key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' },
-    { key: 'email', label: 'Email' }, { key: 'source', label: 'Source' },
+    { key: 'email', label: 'Email' }, { key: 'city', label: 'City' },
+    { key: 'state', label: 'State' }, { key: 'imeiOrSerialNumbers', label: 'IMEI / Serial Numbers' },
+    { key: 'source', label: 'Source' }, { key: 'sourceModule', label: 'Source Module' },
     { key: 'createdAt', label: 'Created At' },
   ],
 }

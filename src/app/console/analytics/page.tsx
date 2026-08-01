@@ -1,6 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import {
+  BarChart, Bar, AreaChart, Area, LineChart, Line, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
@@ -52,6 +55,8 @@ const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
   PAID: 'success', SENT: 'info', PARTIAL: 'warning', OVERDUE: 'danger', CANCELLED: 'neutral', FAILED: 'danger', DRAFT: 'neutral',
 }
+
+const PIE_COLORS = ['#5B3DF5', '#8B5CF6', '#22D3EE', '#34D399', '#F59E0B', '#F43F5E']
 
 const GRANULARITIES = [
   { key: 'DAY', label: 'Daily' },
@@ -148,7 +153,7 @@ export default function AnalyticsPage() {
               ) : !trend ? (
                 <p className="text-sm text-ink-3">Couldn't load trend data.</p>
               ) : (
-                <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="text-sm font-medium text-ink-2">Revenue</div>
@@ -156,15 +161,21 @@ export default function AnalyticsPage() {
                     </div>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={revenueChartData}>
+                        <AreaChart data={revenueChartData}>
+                          <defs>
+                            <linearGradient id="revCurrent" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.35} />
+                              <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                           <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <Tooltip formatter={(v) => fmt(Number(v) || 0)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
                           <Legend wrapperStyle={{ fontSize: 12 }} />
-                          <Bar dataKey="This period" fill="var(--accent)" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="Same period last year" fill="var(--border-strong)" radius={[4, 4, 0, 0]} />
-                        </BarChart>
+                          <Area type="monotone" dataKey="Same period last year" stroke="var(--border-strong)" strokeDasharray="4 3" fill="none" />
+                          <Area type="monotone" dataKey="This period" stroke="var(--accent)" strokeWidth={2} fill="url(#revCurrent)" />
+                        </AreaChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
@@ -176,15 +187,15 @@ export default function AnalyticsPage() {
                     </div>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={callsChartData}>
+                        <LineChart data={callsChartData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                           <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
                           <Legend wrapperStyle={{ fontSize: 12 }} />
-                          <Bar dataKey="This period" fill="var(--info)" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="Same period last year" fill="var(--border-strong)" radius={[4, 4, 0, 0]} />
-                        </BarChart>
+                          <Line type="monotone" dataKey="Same period last year" stroke="var(--border-strong)" strokeDasharray="4 3" dot={false} />
+                          <Line type="monotone" dataKey="This period" stroke="var(--info)" strokeWidth={2} dot={{ r: 3 }} />
+                        </LineChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
@@ -198,13 +209,19 @@ export default function AnalyticsPage() {
               <div className="h-section mb-4">Revenue Trend (last 6 months)</div>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.monthlyTrend}>
+                  <AreaChart data={data.monthlyTrend}>
+                    <defs>
+                      <linearGradient id="revTrend6mo" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.35} />
+                        <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                     <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                     <Tooltip formatter={(v) => fmt(Number(v) || 0)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
-                    <Bar dataKey="revenue" fill="var(--accent)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                    <Area type="monotone" dataKey="revenue" stroke="var(--accent)" strokeWidth={2} fill="url(#revTrend6mo)" />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CardBody>
@@ -217,14 +234,29 @@ export default function AnalyticsPage() {
                 {data.bySource.length === 0 ? (
                   <p className="text-sm text-ink-3">No paid invoices yet.</p>
                 ) : (
-                  <div className="space-y-3">
-                    {data.bySource.map((s) => (
-                      <div key={s.source} className="flex items-center justify-between">
-                        <Badge tone={s.source === 'POS' ? 'info' : 'neutral'}>{s.source}</Badge>
-                        <span className="text-sm tabular text-ink-2">{s.count} invoices</span>
-                        <span className="text-sm tabular font-medium">{fmt(s.revenue)}</span>
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-4">
+                    <div className="h-40 w-40 shrink-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={data.bySource} dataKey="revenue" nameKey="source" innerRadius={40} outerRadius={70} paddingAngle={2}>
+                            {data.bySource.map((s, i) => <Cell key={s.source} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip formatter={(v) => fmt(Number(v) || 0)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="space-y-3 flex-1 min-w-0">
+                      {data.bySource.map((s, i) => (
+                        <div key={s.source} className="flex items-center justify-between gap-2">
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                            <Badge tone={s.source === 'POS' ? 'info' : 'neutral'}>{s.source}</Badge>
+                          </span>
+                          <span className="text-xs tabular text-ink-3">{s.count} inv.</span>
+                          <span className="text-sm tabular font-medium">{fmt(s.revenue)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </CardBody>
@@ -236,13 +268,28 @@ export default function AnalyticsPage() {
                 {data.statusBreakdown.length === 0 ? (
                   <p className="text-sm text-ink-3">No invoices yet.</p>
                 ) : (
-                  <div className="space-y-3">
-                    {data.statusBreakdown.map((s) => (
-                      <div key={s.status} className="flex items-center justify-between">
-                        <Badge tone={STATUS_TONE[s.status] || 'neutral'}>{s.status}</Badge>
-                        <span className="text-sm tabular font-medium">{s.count}</span>
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-4">
+                    <div className="h-40 w-40 shrink-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={data.statusBreakdown} dataKey="count" nameKey="status" innerRadius={40} outerRadius={70} paddingAngle={2}>
+                            {data.statusBreakdown.map((s, i) => <Cell key={s.status} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="space-y-3 flex-1 min-w-0">
+                      {data.statusBreakdown.map((s, i) => (
+                        <div key={s.status} className="flex items-center justify-between gap-2">
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                            <Badge tone={STATUS_TONE[s.status] || 'neutral'}>{s.status}</Badge>
+                          </span>
+                          <span className="text-sm tabular font-medium">{s.count}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </CardBody>
