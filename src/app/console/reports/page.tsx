@@ -25,7 +25,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { PhoneCall, ClipboardList, Receipt, ShieldCheck, Send, Archive, Users, CreditCard, Download } from 'lucide-react'
+import { PhoneCall, ClipboardList, Receipt, ShieldCheck, Archive, Users, CreditCard, Download } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody } from '@/components/ui/Card'
@@ -116,7 +116,6 @@ export default function ReportsPage() {
   const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)
   const [from, setFrom] = useState(firstOfMonth)
   const [to, setTo] = useState(today)
-  const [pushing, setPushing] = useState(false)
   const [zipping, setZipping] = useState(false)
   const [invoiceMsg, setInvoiceMsg] = useState<string | null>(null)
   const [invoiceErr, setInvoiceErr] = useState<string | null>(null)
@@ -129,30 +128,11 @@ export default function ReportsPage() {
   const businessId: string | null = meData?.success
     ? (meData.businesses?.find((b: any) => b._id === meData.user?.activeBusinessId) || meData.businesses?.[0])?._id ?? null
     : null
-
-  async function pushToGst() {
-    setPushing(true)
-    setInvoiceMsg(null)
-    setInvoiceErr(null)
-    try {
-      const period = from.slice(0, 7).split('-').reverse().join('-') // "MM-YYYY"
-      const res = await fetch('/api/gst/push-range', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ businessId, from, to, returnType: 'GSTR1', period }),
-      })
-      const d = await res.json()
-      if (d.success) {
-        setInvoiceMsg(`Pushed ${d.summary.submitted}/${d.summary.total} invoices to GST (${d.summary.failed} failed — see GST page for details).`)
-      } else {
-        setInvoiceErr(d.error || 'Push failed')
-      }
-    } catch (err: any) {
-      setInvoiceErr(err.message || 'Push failed')
-    }
-    setPushing(false)
-  }
+  // SC has no calls concept (workorders only), sees its own subscription
+  // status on Plan & Billing already, and isn't given Audit Log access --
+  // so none of those three report cards apply there.
+  const activeBusiness = meData?.businesses?.find((b: any) => b._id === businessId) || meData?.businesses?.[0]
+  const isSC = activeBusiness?.operatingMode === 'SC'
 
   async function downloadZip() {
     setZipping(true)
@@ -198,16 +178,11 @@ export default function ReportsPage() {
 
       <Card className="mb-8">
         <CardBody>
-          <h2 className="font-semibold text-ink mb-1">Invoices — Push to GST or Download</h2>
+          <h2 className="font-semibold text-ink mb-1">Invoices — Download</h2>
           <p className="text-sm text-ink-3 mb-4">
-            If you use our GST integration, push every invoice in the selected range straight to your configured
-            GSP. Not set up yet (or don't want to use it)? Download every invoice in the range as a single ZIP
-            instead.
+            Download every invoice in the selected range as a single ZIP.
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={pushToGst} disabled={pushing || !businessId} icon={<Send className="w-4 h-4" />}>
-              {pushing ? 'Pushing…' : 'Push to GST'}
-            </Button>
             <Button variant="secondary" onClick={downloadZip} disabled={zipping} icon={<Archive className="w-4 h-4" />}>
               {zipping ? 'Zipping…' : 'Download All Invoices (ZIP)'}
             </Button>
@@ -218,7 +193,7 @@ export default function ReportsPage() {
       </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <ReportCard
+        {!isSC && <ReportCard
           icon={PhoneCall}
           title="CRM Calls"
           description="Call records with status, priority, and follow-up dates — filtered to the date range and status above."
@@ -247,7 +222,7 @@ export default function ReportsPage() {
               }))
             downloadCSV(`crm_calls_${from}_to_${to}.csv`, rows)
           }}
-        />
+        />}
 
         <ReportCard
           icon={ClipboardList}
@@ -350,7 +325,7 @@ export default function ReportsPage() {
           }}
         />
 
-        <ReportCard
+        {!isSC && <ReportCard
           icon={CreditCard}
           title="Subscription Billing"
           description="This business's own AN-CRM plan-payment history — plan, period, and amount charged."
@@ -374,9 +349,9 @@ export default function ReportsPage() {
               }))
             downloadCSV(`subscription_billing_${from}_to_${to}.csv`, rows)
           }}
-        />
+        />}
 
-        <ReportCard
+        {!isSC && <ReportCard
           icon={ShieldCheck}
           title="Audit Log"
           description="Create/update/delete activity across the system for this business, in the selected date range."
@@ -396,7 +371,7 @@ export default function ReportsPage() {
               }))
             downloadCSV(`audit_log_${from}_to_${to}.csv`, rows)
           }}
-        />
+        />}
       </div>
     </div>
   )
