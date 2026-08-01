@@ -87,6 +87,7 @@ function isAdminChat(chatId: number | string): boolean {
 const HELP_TEXT = [
   "<b>AN CRM Bot — Commands</b>",
   "",
+  "/link CODE — link this chat to your business using the code from Settings > Operations, and start receiving reports automatically",
   "/tgid — show this chat's Telegram ID (paste into Settings > Operations)",
   "/today — quick revenue &amp; activity snapshot, today vs. yesterday",
   "/report — full period report for every business linked to this chat",
@@ -123,11 +124,47 @@ export async function POST(req: NextRequest) {
     await connectDB();
     await recordTelegramContact(message, command);
 
+    if (command === "/link") {
+      const code = text.trim().split(/\s+/)[1]?.trim().toUpperCase();
+      if (!code) {
+        await sendToChat(chatId, "Usage: <code>/link CODE</code> — get the code from Settings &gt; Operations &gt; Telegram in the app first.");
+        return NextResponse.json({ success: true });
+      }
+      const business = await Business.findOne({ telegramLinkCode: code, telegramLinkCodeExpiresAt: { $gt: new Date() } });
+      if (!business) {
+        await sendToChat(chatId, "That code is invalid or has expired. Generate a new one from Settings &gt; Operations &gt; Telegram and try again.");
+        return NextResponse.json({ success: true });
+      }
+      business.telegramChatId = String(chatId);
+      business.telegramLinkCode = undefined;
+      business.telegramLinkCodeExpiresAt = undefined;
+      if (!business.telegramReportFrequency || business.telegramReportFrequency === "NONE") {
+        business.telegramReportFrequency = "DAILY";
+      }
+      await business.save();
+
+      const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
+      await sendToChat(
+        chatId,
+        `✅ Linked to <b>${business.name}</b>. ${isGroup ? "This group" : "This chat"} will now receive automated reports (daily by default — change the schedule any time in Settings).\n\nSending your first report now…`
+      );
+
+      try {
+        const isSC = (business.operatingMode || "SC") === "SC";
+        const { text: reportText } = await buildReportMessage(business.name, business.telegramReportFrequency, isSC, String(business._id), new Date());
+        await sendToChat(chatId, reportText);
+      } catch (err) {
+        console.error("[telegram-webhook] /link first-report failed:", err);
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
     if (/^\/(tgid|start)\b/i.test(command)) {
       const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
       const reply = isGroup
-        ? `This group's Telegram ID is:\n<code>${chatId}</code>\n\nPaste it into Settings &gt; Operations &gt; Telegram Chat/Group ID to receive this business's reports here.\n\nSend /help to see everything this bot can do.`
-        : `Your Telegram ID is:\n<code>${chatId}</code>\n\nPaste it into Settings &gt; Operations &gt; Telegram Chat/Group ID to receive your reports and alerts.\n\nSend /help to see everything this bot can do.`;
+        ? `This group's Telegram ID is:\n<code>${chatId}</code>\n\nEasiest setup: in the app go to Settings &gt; Operations &gt; Telegram and click "Generate Link Code", then send <code>/link CODE</code> here — no copy-pasting needed and reports start right away. Or paste this ID directly into the Telegram Chat/Group ID field yourself.\n\nSend /help to see everything this bot can do.`
+        : `Your Telegram ID is:\n<code>${chatId}</code>\n\nEasiest setup: in the app go to Settings &gt; Operations &gt; Telegram and click "Generate Link Code", then send <code>/link CODE</code> here — no copy-pasting needed and reports start right away. Or paste this ID directly into the Telegram Chat/Group ID field yourself.\n\nSend /help to see everything this bot can do.`;
       await sendToChat(chatId, reply);
       return NextResponse.json({ success: true });
     }
