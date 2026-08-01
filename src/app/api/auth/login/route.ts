@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import BusinessMember from "@/models/BusinessMember";
@@ -29,14 +30,15 @@ export async function POST(req: Request) {
     }
 
     /* ── Find user by email OR username ──────────────────────────────── */
-    // Local password is no longer read/checked here -- see the central-api
-    // delegation below -- so `.select("+password")` is no longer needed.
+    // password re-selected -- needed again for the local-fallback check
+    // below (lazy migration for accounts not yet synced to central-api).
     const user = await User.findOne({
       $or: [
         ...(email    ? [{ email: email.toLowerCase().trim() }] : []),
         ...(username ? [{ username: username.toLowerCase().trim() }] : []),
       ],
     })
+      .select("+password")
       .lean()
       .exec() as any;
 
@@ -59,20 +61,26 @@ export async function POST(req: Request) {
     }
 
     // Password verification is delegated to central-api's PlatformUser
-    // store instead of a local bcrypt.compare -- this app's own `User`
-    // document (found above) remains the SOLE source of truth for
-    // everything else below (memberships, roles, homeRoute, isSuperAdmin,
-    // etc.); only "is this password correct" moves off-app. This is also
-    // the wrong-site guard for free: a person who only has an ANgroup or
-    // Native account has no `User` document here at all, so they already
-    // 404'd above regardless of whether central-api would accept their
-    // password.
+    // store first -- this app's own `User` document (found above) remains
+    // the SOLE source of truth for everything else below (memberships,
+    // roles, homeRoute, isSuperAdmin, etc.); only "is this password
+    // correct" moves off-app. This is also the wrong-site guard for free:
+    // a person who only has an ANgroup or Native account has no `User`
+    // document here at all, so they already 404'd above regardless of
+    // whether central-api would accept their password.
     //
-    // Fails closed (503), not open, if CENTRAL_API_URL isn't configured or
-    // central-api is unreachable -- deliberately no local-bcrypt fallback,
-    // since a silent fallback would mean this migration "looks" done but
-    // isn't: an outage at central-api must block login, not quietly
-    // re-enable the old path.
+    // LAZY MIGRATION FALLBACK: a bcrypt hash can't be "moved" into
+    // central-api without knowing the plaintext password, so any account
+    // that predates this cutover has no matching central-api record yet
+    // and would otherwise be locked out permanently, not just once. If
+    // central-api rejects the login, fall back to this app's own local
+    // bcrypt check -- and if THAT succeeds, sync the now-known-correct
+    // password into central-api (POST /api/auth/sync) so this same
+    // person's NEXT login goes through central-api directly. Fails
+    // closed (503), not open, only when CENTRAL_API_URL itself is
+    // unreachable/unconfigured -- a configured central-api that simply
+    // doesn't recognize this account yet is exactly the expected,
+    // handled case, not an outage.
     if (!process.env.CENTRAL_API_URL) {
       console.error("[login] CENTRAL_API_URL is not configured -- cannot authenticate.");
       return NextResponse.json(
@@ -82,6 +90,7 @@ export async function POST(req: Request) {
     }
 
     let valid = false;
+    let centralApiReachable = true;
     try {
       const centralRes = await fetch(`${process.env.CENTRAL_API_URL}/api/auth/login`, {
         method: "POST",
@@ -91,13 +100,28 @@ export async function POST(req: Request) {
       valid = centralRes.ok;
     } catch (err) {
       console.error("[login] central-api auth check failed:", (err as any)?.message || err);
-      return NextResponse.json(
-        { success: false, message: "Login is temporarily unavailable. Please try again shortly." },
-        { status: 503 }
-      );
+      centralApiReachable = false;
+    }
+
+    if (!valid && centralApiReachable && user.password) {
+      const localValid = await bcrypt.compare(password, user.password);
+      if (localValid) {
+        valid = true;
+        fetch(`${process.env.CENTRAL_API_URL}/api/auth/sync`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-api-key": process.env.CENTRAL_API_KEY || "" },
+          body: JSON.stringify({ email: user.email, password, name: user.name }),
+        }).catch((err) => console.error("[login] central-api sync failed:", err?.message || err));
+      }
     }
 
     if (!valid) {
+      if (!centralApiReachable) {
+        return NextResponse.json(
+          { success: false, message: "Login is temporarily unavailable. Please try again shortly." },
+          { status: 503 }
+        );
+      }
       return NextResponse.json(
         { success: false, message: "Invalid password" },
         { status: 401 }

@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/mongodb";
 import Agreement from "@/models/Agreement";
 import { generateDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
 
 /**
  * REMOVED: a local getNextNumber() used to live here — a TENTH
@@ -21,13 +22,25 @@ import { logAction } from "@/lib/audit/logAction";
 export async function POST(req: Request) {
   try {
     await connectDB();
-    const userId = req.headers.get("x-user-id");
-    if (!userId) return NextResponse.json({ success: false, message: "Auth required" }, { status: 401 });
+    const session = await getEnrichedSession();
+    if (!session?.user) return NextResponse.json({ success: false, message: "Auth required" }, { status: 401 });
+    const userId = session.user.id;
 
     const body = await req.json();
 
     if (!body?.businessId) {
       return NextResponse.json({ success: false, message: "businessId is required" }, { status: 400 });
+    }
+
+    // Same rule as api/agreements/route.ts's POST: an agreement can only be
+    // issued for the business the caller is actually operating in, never
+    // an arbitrary client-supplied businessId. Super admins may issue for
+    // any business.
+    if (!session.isSuperAdmin && body.businessId !== session.business?.businessId) {
+      return NextResponse.json(
+        { success: false, message: "You do not have access to issue an agreement for this business." },
+        { status: 403 }
+      );
     }
 
     const { value: number } = await generateDocumentNumber(body.businessId, "AGREEMENT");

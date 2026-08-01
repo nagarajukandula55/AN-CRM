@@ -5,6 +5,7 @@ import VendorProfile from '@/models/VendorProfile';
 import mongoose from 'mongoose';
 import bcryptjs from 'bcryptjs';
 import { logAction } from "@/lib/audit/logAction";
+import { sendGenericEmail } from "@/services/email/resend.service";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -124,6 +125,17 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         // Non-fatal -- the agreement itself is already signed and saved;
         // don't fail the signer's request over this secondary sync.
       }
+    } else if (someSigned && sig.partyRole === 'Vendor') {
+      // The vendor just signed but the company side (Super Admin/Owner
+      // countersign, see api/agreements/[id]/countersign) hasn't yet --
+      // per explicit direction, tell them to expect a confirmation once
+      // that's done rather than leaving them wondering.
+      sendGenericEmail({
+        to: partyEmail,
+        subject: 'Thanks for signing — please wait for confirmation',
+        html: `<p>Hi ${sig.partyName || ''},</p><p>Thanks for signing <strong>${agreement.title}</strong>. We've received your signature and it's now with us for final confirmation. Please allow us a little time — you'll get a confirmation email as soon as it's been countersigned on our end.</p>`,
+        businessId: (agreement as any).businessId?.toString(),
+      }).catch(() => {});
     }
 
     const updatedAgreement = await Agreement.findById(id)

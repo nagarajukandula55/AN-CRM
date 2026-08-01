@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Agreement from '@/models/Agreement';
 import { logAction } from "@/lib/audit/logAction";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
 
 const VALID_TYPES = [
   'NDA',
@@ -19,18 +20,33 @@ const VALID_TYPES = [
 type AgreementType = (typeof VALID_TYPES)[number];
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const userId = request.headers.get('x-user-id');
-  if (!userId) {
+  const session = await getEnrichedSession();
+  if (!session?.user) {
     return NextResponse.json(
-      { success: false, error: 'Unauthorized: x-user-id header is required' },
+      { success: false, error: 'Unauthorized' },
       { status: 401 }
     );
   }
 
   const { searchParams } = new URL(request.url);
 
-  const businessId =
+  // A non-super-admin can only ever list agreements for the business
+  // they're currently operating in -- whatever businessId a client passes
+  // is ignored for them, not trusted, so switching the query param/header
+  // can't read another business's agreements. A super admin may still
+  // filter by an explicit businessId (or omit it to see everything).
+  const requestedBusinessId =
     request.headers.get('x-business-id') ?? searchParams.get('businessId');
+  const businessId = session.isSuperAdmin
+    ? requestedBusinessId
+    : session.business?.businessId;
+
+  if (!session.isSuperAdmin && !businessId) {
+    return NextResponse.json(
+      { success: false, error: 'No active business selected' },
+      { status: 400 }
+    );
+  }
 
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10));
   const limit = Math.max(1, parseInt(searchParams.get('limit') ?? '10', 10));
@@ -38,10 +54,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   await connectDB();
 
-  const filter: Record<string, unknown> = {
-    isDeleted: false,
-    businessId,
-  };
+  const filter: Record<string, unknown> = { isDeleted: false };
+  // businessId is only omitted when a super admin didn't request a
+  // specific one -- in that case they legitimately see every business's
+  // agreements, so the field is left out of the filter entirely rather
+  // than set to null/undefined (which would match nothing).
+  if (businessId) filter.businessId = businessId;
 
   if (status) {
     filter.status = status;
@@ -66,13 +84,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const userId = request.headers.get('x-user-id');
-  if (!userId) {
+  const session = await getEnrichedSession();
+  if (!session?.user) {
     return NextResponse.json(
-      { success: false, error: 'Unauthorized: x-user-id header is required' },
+      { success: false, error: 'Unauthorized' },
       { status: 401 }
     );
   }
+  const userId = session.user.id;
 
   let body: {
     title?: string;
@@ -132,6 +151,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json(
       { success: false, error: 'businessId is required' },
       { status: 400 }
+    );
+  }
+
+  // An agreement can only ever be issued for the business the caller is
+  // actually operating in -- a client-supplied businessId that doesn't
+  // match their active business is rejected outright, not silently
+  // trusted. Super admins may issue for any business.
+  if (!session.isSuperAdmin && businessId !== session.business?.businessId) {
+    return NextResponse.json(
+      { success: false, error: 'You do not have access to issue an agreement for this business.' },
+      { status: 403 }
     );
   }
 
