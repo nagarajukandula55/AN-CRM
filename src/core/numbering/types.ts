@@ -215,7 +215,23 @@ export interface GeneratedNumber {
  * UNIVERSAL_TOKENS) — adding {vendorNumber}/{businessNumber} as well would
  * just be two names for the same value.
  */
-export const DOCUMENT_NUMBER_TOKENS: Partial<Record<DocumentType, string>> = {
+// Deliberately excluded from DOCUMENT_NUMBER_TOKENS below: VENDOR and
+// BUSINESS already have a cross-reference token under a different, older
+// name (see numberingService.ts's {vendorId}/{businessCode} built-ins) --
+// adding {vendorNumber}/{businessNumber} as well would just be two names
+// for the same value.
+type TokenExemptType = "VENDOR" | "BUSINESS";
+
+/**
+ * A full Record (not Partial) over every DocumentType except the two
+ * exempted above -- deliberately, so this FAILS TO COMPILE the moment a
+ * new entry is added to DOCUMENT_TYPES above without either giving it a
+ * token here or adding it to TokenExemptType. This is what closes the gap
+ * that let B2B_ORDER and VENDOR_BILLING_INVOICE silently ship with no
+ * cross-reference token at all (discovered auditing this file -- neither
+ * was in the exemption comment, so both were just missed when added).
+ */
+export const DOCUMENT_NUMBER_TOKENS: Record<Exclude<DocumentType, TokenExemptType>, string> = {
   INVOICE: "invoiceNumber",
   SALES_ORDER: "salesOrderNumber",
   PURCHASE_ORDER: "purchaseOrderNumber",
@@ -248,4 +264,6 @@ export const DOCUMENT_NUMBER_TOKENS: Partial<Record<DocumentType, string>> = {
   PROFORMA_INVOICE: "proformaInvoiceNumber",
   ROLE: "roleNumber",
   SUBSCRIPTION_INVOICE: "subscriptionInvoiceNumber",
+  B2B_ORDER: "b2bOrderNumber",
+  VENDOR_BILLING_INVOICE: "vendorBillingInvoiceNumber",
 };
