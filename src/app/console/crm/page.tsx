@@ -97,9 +97,28 @@ export default function CRMPage() {
 
   const { data: meData } = useSWR('/api/auth/me')
   const businessId: string | null = meData ? ((meData.user ?? meData).activeBusinessId ?? meData.businesses?.[0]?._id ?? null) : null
+  // SC has no appointment/lead pipeline of its own -- it's a single-login
+  // repair shop where everything IS a workorder from intake onward, per
+  // explicit direction ("For SC type there is not appointment system so
+  // don't keep anything for this type ... only workorders everywhere").
+  // Every other operating mode (Brand/POS) keeps the full Appointments +
+  // Leads pipeline unchanged.
+  const activeBusiness = meData?.businesses?.find((b: any) => b._id === businessId) || meData?.businesses?.[0]
+  const isSC = activeBusiness?.operatingMode === 'SC'
 
-  const { data: leadsData, isLoading: loading, mutate: fetchLeads } = useSWR('/api/crm/leads')
+  // Was missing businessId entirely -- fetched every lead across every
+  // business in the system regardless of which one was active, which is
+  // why this page's Leads section looked like it "wasn't fetching
+  // properly" (wrong/empty/mismatched data depending on what leads
+  // happened to exist elsewhere).
+  const { data: leadsData, isLoading: loadingLeads, mutate: fetchLeads } = useSWR(
+    !isSC && businessId ? `/api/crm/leads?businessId=${businessId}` : null
+  )
   const leads: Lead[] = leadsData ? (Array.isArray(leadsData) ? leadsData : (leadsData.leads ?? [])) : []
+  // For SC, nothing gates on the (disabled) leads fetch -- the page's
+  // loading state instead waits on whichever business/workorder data is
+  // actually being shown.
+  const loading = isSC ? !gateChecked : loadingLeads
 
   useEffect(() => {
     if (!businessId) return
@@ -120,7 +139,7 @@ export default function CRMPage() {
       .finally(() => setGateChecked(true))
   }, [businessId])
 
-  const { data: appointmentsData } = useSWR(businessId ? `/api/crm/calls?businessId=${businessId}&limit=100` : null)
+  const { data: appointmentsData } = useSWR(!isSC && businessId ? `/api/crm/calls?businessId=${businessId}&limit=100` : null)
   const appointments: Appointment[] = appointmentsData?.calls || []
 
   const { data: workordersData } = useSWR(businessId ? `/api/crm/jobsheets?businessId=${businessId}&limit=100` : null)
@@ -154,7 +173,7 @@ export default function CRMPage() {
   }).length
 
   const recentActivity = [
-    ...appointments.map(a => ({ id: a._id, kind: 'Appointment' as const, title: a.customerName, sub: a.subject || a.status, date: a.createdAt, href: `/console/crm/calls/${a._id}` })),
+    ...(isSC ? [] : appointments.map(a => ({ id: a._id, kind: 'Appointment' as const, title: a.customerName, sub: a.subject || a.status, date: a.createdAt, href: `/console/crm/calls/${a._id}` }))),
     ...workorders.map(w => ({ id: w._id, kind: 'Workorder' as const, title: w.jobSheetNumber, sub: w.title, date: w.createdAt, href: `/console/crm/jobsheets/${w._id}` })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8)
 
@@ -208,20 +227,28 @@ export default function CRMPage() {
     <div className="min-h-screen bg-bg text-ink p-6">
       <PageHeader
         title="CRM Overview"
-        description="Appointments, workorders, revenue and analytics in one place"
-        actions={<Button onClick={() => setShowForm(true)} icon={<Plus className="w-4 h-4" />}>New Lead</Button>}
+        description={isSC ? 'Workorders, revenue and analytics in one place' : 'Appointments, workorders, revenue and analytics in one place'}
+        actions={!isSC ? <Button onClick={() => setShowForm(true)} icon={<Plus className="w-4 h-4" />}>New Lead</Button> : undefined}
       />
 
       {/* Real dashboard KPIs, sourced from Appointments + Workorders (not
           the legacy leads list below), only shown once the module-gate
-          check confirms CRM is actually enabled for this business. */}
+          check confirms CRM is actually enabled for this business. SC has
+          no appointment pipeline, so its KPI row is workorder-only. */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {[
-          { icon: PhoneCall, label: 'Open Appointments', value: String(openAppointments) },
-          { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
-          { icon: AlertCircle, label: 'Overdue (7d+)', value: String(overdueWorkorders) },
-          { icon: CheckCircle2, label: 'Closed This Month', value: String(closedThisMonth) },
-        ].map(({ icon: Icon, label, value }) => (
+        {(isSC
+          ? [
+              { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
+              { icon: AlertCircle, label: 'Overdue (7d+)', value: String(overdueWorkorders) },
+              { icon: CheckCircle2, label: 'Closed This Month', value: String(closedThisMonth) },
+            ]
+          : [
+              { icon: PhoneCall, label: 'Open Appointments', value: String(openAppointments) },
+              { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
+              { icon: AlertCircle, label: 'Overdue (7d+)', value: String(overdueWorkorders) },
+              { icon: CheckCircle2, label: 'Closed This Month', value: String(closedThisMonth) },
+            ]
+        ).map(({ icon: Icon, label, value }) => (
           <Card key={label} className="p-6">
             <div className="flex items-center justify-between mb-3">
               <span className="text-ink-3 text-sm">{label}</span>
@@ -259,11 +286,14 @@ export default function CRMPage() {
       {/* Lightweight analytics -- status breakdown bars for appointments
           and workorders, computed client-side from the same data already
           fetched above, no chart library needed. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        {[
-          { title: 'Appointments by Status', data: appointmentStatusBreakdown, total: appointments.length },
-          { title: 'Workorders by Status', data: workorderStatusBreakdown, total: workorders.length },
-        ].map(({ title, data, total }) => (
+      <div className={`grid grid-cols-1 ${isSC ? '' : 'sm:grid-cols-2'} gap-4 mb-6`}>
+        {(isSC
+          ? [{ title: 'Workorders by Status', data: workorderStatusBreakdown, total: workorders.length }]
+          : [
+              { title: 'Appointments by Status', data: appointmentStatusBreakdown, total: appointments.length },
+              { title: 'Workorders by Status', data: workorderStatusBreakdown, total: workorders.length },
+            ]
+        ).map(({ title, data, total }) => (
           <Card key={title} className="p-6">
             <p className="eyebrow mb-4">{title}</p>
             {Object.keys(data).length === 0 ? (
@@ -317,32 +347,37 @@ export default function CRMPage() {
       {/* Full call-entry -> job sheet -> invoice -> closure lifecycle
           lives under these two sections — the lead list above is kept for
           backward compatibility (existing /api/crm/leads data) but new
-          work should flow through Appointments -> Workorders. */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <Link href="/console/crm/appointments">
-          <Card className="p-6 hover:shadow-card-lg hover:border-border-strong transition group flex items-center gap-4">
-            <div className="w-11 h-11 rounded-control bg-warning-soft text-warning flex items-center justify-center">
-              <PhoneCall className="w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-ink">Appointment Requests</h3>
-              <p className="text-sm text-ink-3">Public website bookings, pincode routing &amp; vendor assignment</p>
-            </div>
-            <ArrowRight className="w-4 h-4 text-ink-3 group-hover:text-ink-2 transition" />
-          </Card>
-        </Link>
-        <Link href="/console/crm/calls">
-          <Card className="p-6 hover:shadow-card-lg hover:border-border-strong transition group flex items-center gap-4">
-            <div className="w-11 h-11 rounded-control bg-info-soft text-info flex items-center justify-center">
-              <PhoneCall className="w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-ink">Appointments</h3>
-              <p className="text-sm text-ink-3">Appointment entry, disposition, and follow-ups</p>
-            </div>
-            <ArrowRight className="w-4 h-4 text-ink-3 group-hover:text-ink-2 transition" />
-          </Card>
-        </Link>
+          work should flow through Appointments -> Workorders. SC skips
+          straight to Workorders -- it has no appointment pipeline. */}
+      <div className={`grid grid-cols-1 ${isSC ? '' : 'sm:grid-cols-3'} gap-4 mb-8`}>
+        {!isSC && (
+          <>
+            <Link href="/console/crm/appointments">
+              <Card className="p-6 hover:shadow-card-lg hover:border-border-strong transition group flex items-center gap-4">
+                <div className="w-11 h-11 rounded-control bg-warning-soft text-warning flex items-center justify-center">
+                  <PhoneCall className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-ink">Appointment Requests</h3>
+                  <p className="text-sm text-ink-3">Public website bookings, pincode routing &amp; vendor assignment</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-ink-3 group-hover:text-ink-2 transition" />
+              </Card>
+            </Link>
+            <Link href="/console/crm/calls">
+              <Card className="p-6 hover:shadow-card-lg hover:border-border-strong transition group flex items-center gap-4">
+                <div className="w-11 h-11 rounded-control bg-info-soft text-info flex items-center justify-center">
+                  <PhoneCall className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-ink">Appointments</h3>
+                  <p className="text-sm text-ink-3">Appointment entry, disposition, and follow-ups</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-ink-3 group-hover:text-ink-2 transition" />
+              </Card>
+            </Link>
+          </>
+        )}
         <Link href="/console/crm/jobsheets">
           <Card className="p-6 hover:shadow-card-lg hover:border-border-strong transition group flex items-center gap-4">
             <div className="w-11 h-11 rounded-control bg-success-soft text-success flex items-center justify-center">
@@ -363,8 +398,9 @@ export default function CRMPage() {
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* Stats -- legacy Leads pipeline, not applicable to SC (no lead
+          concept at all there). */}
+      {!isSC && <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { icon: Users, label: 'Total Leads', value: String(total), filterValue: null },
           { icon: TrendingUp, label: 'Won', value: String(won), filterValue: 'WON' },
@@ -397,19 +433,19 @@ export default function CRMPage() {
             </button>
           );
         })}
-      </div>
+      </div>}
 
       {/* Status Filter */}
-      <div className="flex gap-1 flex-wrap mb-6">
+      {!isSC && <div className="flex gap-1 flex-wrap mb-6">
         {STATUSES.map((s) => (
           <Button key={s} variant={statusFilter === s ? 'primary' : 'secondary'} size="sm" onClick={() => setStatusFilter(s)}>
             {s}
           </Button>
         ))}
-      </div>
+      </div>}
 
       {/* Leads Table */}
-      <Card className="overflow-hidden overflow-x-auto">
+      {!isSC && <Card className="overflow-hidden overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
@@ -441,10 +477,10 @@ export default function CRMPage() {
             )}
           </tbody>
         </table>
-      </Card>
+      </Card>}
 
       {/* Slide-over: New Lead */}
-      {showForm && (
+      {!isSC && showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <div className="relative w-full max-w-3xl max-h-[90vh] bg-surface border border-border rounded-card flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-6 py-5 border-b border-border">
