@@ -7,6 +7,7 @@
  */
 
 import mongoose, { Schema, Document, Model } from "mongoose";
+import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
 export interface ICurrency extends Document {
   code: string; // ISO 4217, e.g. "INR", "USD" -- primary key, not _id
@@ -28,6 +29,16 @@ const CurrencySchema = new Schema<ICurrency>(
   },
   { timestamps: true, versionKey: false }
 );
+
+CurrencySchema.post("save", async function (doc) {
+  await syncRecordToCentralApi("currencies", doc._id.toString(), doc.toObject());
+});
+CurrencySchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) await syncRecordToCentralApi("currencies", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
+});
+CurrencySchema.post("findOneAndDelete", async function (doc) {
+  if (doc) await deleteRecordFromCentralApi("currencies", doc._id.toString());
+});
 
 const Currency: Model<ICurrency> =
   mongoose.models.Currency || mongoose.model<ICurrency>("Currency", CurrencySchema);

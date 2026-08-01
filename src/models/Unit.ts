@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
+import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
 export interface IUnit extends Document {
   businessId: mongoose.Types.ObjectId;
@@ -34,6 +35,16 @@ const UnitSchema = new Schema<IUnit>(
 UnitSchema.index({ businessId: 1, name: 1 });
 UnitSchema.index({ businessId: 1, symbol: 1 });
 UnitSchema.index({ businessId: 1, isDeleted: 1 });
+
+UnitSchema.post("save", async function (doc) {
+  await syncRecordToCentralApi("units", doc._id.toString(), doc.toObject());
+});
+UnitSchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) await syncRecordToCentralApi("units", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
+});
+UnitSchema.post("findOneAndDelete", async function (doc) {
+  if (doc) await deleteRecordFromCentralApi("units", doc._id.toString());
+});
 
 const Unit: Model<IUnit> =
   mongoose.models.Unit || mongoose.model<IUnit>("Unit", UnitSchema);

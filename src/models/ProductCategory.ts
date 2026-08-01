@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 import { BUSINESS_SCOPES, type BusinessScope } from "@/core/catalog/businessScope";
+import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
 export interface IProductCategory extends Document {
   businessId: mongoose.Types.ObjectId;
@@ -34,6 +35,16 @@ const ProductCategorySchema = new Schema<IProductCategory>(
 
 ProductCategorySchema.index({ businessId: 1, name: 1 });
 ProductCategorySchema.index({ businessId: 1, isDeleted: 1 });
+
+ProductCategorySchema.post("save", async function (doc) {
+  await syncRecordToCentralApi("product_categories", doc._id.toString(), doc.toObject());
+});
+ProductCategorySchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) await syncRecordToCentralApi("product_categories", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
+});
+ProductCategorySchema.post("findOneAndDelete", async function (doc) {
+  if (doc) await deleteRecordFromCentralApi("product_categories", doc._id.toString());
+});
 
 const ProductCategory: Model<IProductCategory> =
   mongoose.models.ProductCategory ||

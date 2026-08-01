@@ -8,6 +8,7 @@
  * not a rebuild — see docs/marketplace-app/region-theme-design.md.
  */
 import mongoose, { Schema, Model, Document } from "mongoose";
+import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
 export interface IRegionThemePalette {
   primary: string;
@@ -68,6 +69,16 @@ const RegionThemeSchema = new Schema<IRegionTheme>(
   },
   { timestamps: true }
 );
+
+RegionThemeSchema.post("save", async function (doc) {
+  await syncRecordToCentralApi("region_themes", doc._id.toString(), doc.toObject());
+});
+RegionThemeSchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) await syncRecordToCentralApi("region_themes", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
+});
+RegionThemeSchema.post("findOneAndDelete", async function (doc) {
+  if (doc) await deleteRecordFromCentralApi("region_themes", doc._id.toString());
+});
 
 const RegionTheme: Model<IRegionTheme> =
   (mongoose.models.RegionTheme as Model<IRegionTheme>) ||

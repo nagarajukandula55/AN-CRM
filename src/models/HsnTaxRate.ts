@@ -12,6 +12,7 @@
  */
 
 import mongoose, { Schema, Model, Document, Types } from "mongoose";
+import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
 export interface IHsnTaxRate extends Document {
   businessId?: Types.ObjectId | null;
@@ -37,6 +38,16 @@ const HsnTaxRateSchema = new Schema<IHsnTaxRate>(
 );
 
 HsnTaxRateSchema.index({ businessId: 1, hsnCode: 1 }, { unique: true });
+
+HsnTaxRateSchema.post("save", async function (doc) {
+  await syncRecordToCentralApi("hsn_tax_rates", doc._id.toString(), doc.toObject());
+});
+HsnTaxRateSchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) await syncRecordToCentralApi("hsn_tax_rates", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
+});
+HsnTaxRateSchema.post("findOneAndDelete", async function (doc) {
+  if (doc) await deleteRecordFromCentralApi("hsn_tax_rates", doc._id.toString());
+});
 
 const HsnTaxRate: Model<IHsnTaxRate> =
   (mongoose.models.HsnTaxRate as Model<IHsnTaxRate>) ||

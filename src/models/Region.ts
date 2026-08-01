@@ -10,6 +10,7 @@
  * carry their own enabled flag so a state can go live city-by-city.
  */
 import mongoose, { Schema, Model, Document } from "mongoose";
+import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
 export interface IRegionCity {
   name: string;
@@ -52,6 +53,16 @@ const RegionSchema = new Schema<IRegion>(
   },
   { timestamps: true }
 );
+
+RegionSchema.post("save", async function (doc) {
+  await syncRecordToCentralApi("regions", doc._id.toString(), doc.toObject());
+});
+RegionSchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) await syncRecordToCentralApi("regions", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
+});
+RegionSchema.post("findOneAndDelete", async function (doc) {
+  if (doc) await deleteRecordFromCentralApi("regions", doc._id.toString());
+});
 
 const Region: Model<IRegion> =
   (mongoose.models.Region as Model<IRegion>) || mongoose.model<IRegion>("Region", RegionSchema);

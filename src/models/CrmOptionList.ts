@@ -7,6 +7,7 @@
  * near-identical collections -- same shape either way (code + label).
  */
 import mongoose, { Schema, Model, Document, Types } from "mongoose";
+import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
 export type CrmOptionListType = "APPOINTMENT_TYPE" | "REQUEST_TYPE";
 
@@ -35,6 +36,16 @@ const CrmOptionListSchema = new Schema<ICrmOptionList>(
 
 CrmOptionListSchema.index({ businessId: 1, listType: 1, isActive: 1 });
 CrmOptionListSchema.index({ businessId: 1, listType: 1, code: 1 }, { unique: true });
+
+CrmOptionListSchema.post("save", async function (doc) {
+  await syncRecordToCentralApi("crm_option_lists", doc._id.toString(), doc.toObject());
+});
+CrmOptionListSchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) await syncRecordToCentralApi("crm_option_lists", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
+});
+CrmOptionListSchema.post("findOneAndDelete", async function (doc) {
+  if (doc) await deleteRecordFromCentralApi("crm_option_lists", doc._id.toString());
+});
 
 const CrmOptionList: Model<ICrmOptionList> =
   (mongoose.models.CrmOptionList as Model<ICrmOptionList>) ||

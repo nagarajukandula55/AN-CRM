@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 import { BUSINESS_SCOPES, type BusinessScope } from "@/core/catalog/businessScope";
+import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
 export interface IMaterialCategory extends Document {
   businessId: mongoose.Types.ObjectId;
@@ -36,6 +37,16 @@ const MaterialCategorySchema = new Schema<IMaterialCategory>(
 
 MaterialCategorySchema.index({ businessId: 1, name: 1 });
 MaterialCategorySchema.index({ businessId: 1, isDeleted: 1 });
+
+MaterialCategorySchema.post("save", async function (doc) {
+  await syncRecordToCentralApi("material_categories", doc._id.toString(), doc.toObject());
+});
+MaterialCategorySchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) await syncRecordToCentralApi("material_categories", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
+});
+MaterialCategorySchema.post("findOneAndDelete", async function (doc) {
+  if (doc) await deleteRecordFromCentralApi("material_categories", doc._id.toString());
+});
 
 const MaterialCategory: Model<IMaterialCategory> =
   mongoose.models.MaterialCategory ||
