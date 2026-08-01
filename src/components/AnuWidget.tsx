@@ -12,7 +12,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bot, X, Send, GraduationCap, Bell, Check, CheckCheck, Trash2, Info, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { Bot, X, Send, GraduationCap, Bell, Check, CheckCheck, Trash2, Info, AlertTriangle, CheckCircle, XCircle, SendHorizonal } from "lucide-react";
 import { getAuthMe } from "@/lib/authMeCache";
 
 interface ChatMessage {
@@ -73,6 +73,18 @@ export default function AnuWidget({ showNotifications = false }: { showNotificat
   const [teachSummary, setTeachSummary] = useState("");
   const [teachSaving, setTeachSaving] = useState(false);
   const [teachMsg, setTeachMsg] = useState<string | null>(null);
+
+  // "Connect that Telegram bot to our entire website" -- the bot's
+  // @username is resolved server-side (api/telegram/bot-info, via
+  // Telegram's own getMe) rather than hardcoded here, so this link never
+  // drifts from whichever bot ANOPS_TELEGRAM_BOT_TOKEN actually points at.
+  const [telegramUsername, setTelegramUsername] = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/telegram/bot-info")
+      .then((r) => r.json())
+      .then((d) => setTelegramUsername(d.success ? d.username : null))
+      .catch(() => {});
+  }, []);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -258,6 +270,17 @@ export default function AnuWidget({ showNotifications = false }: { showNotificat
                     </span>
                   )}
                 </button>
+              )}
+              {telegramUsername && !notifOpen && (
+                <a
+                  href={`https://t.me/${telegramUsername}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Connect to Telegram Bot"
+                  className="p-1.5 rounded-control hover:bg-white/10 transition"
+                >
+                  <SendHorizonal size={15} />
+                </a>
               )}
               {isSuperAdmin && !notifOpen && (
                 <button
