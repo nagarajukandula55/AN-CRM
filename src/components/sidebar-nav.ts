@@ -161,6 +161,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-status", label: "System Status", route: "/console/system-status", icon: "Activity" },
       { key: "admin-modules", label: "Modules", route: "/console/modules", icon: "Box" },
       { key: "admin-module-builder", label: "Module Builder", route: "/console/module-builder", icon: "LayoutTemplate" },
+      { key: "admin-plan-features", label: "Plan Features", route: "/console/admin/plan-features", icon: "Sparkles" },
       { key: "admin-settings", label: "Settings", route: "/console/settings", icon: "Settings" },
       { key: "admin-plan", label: "Plan & Billing", route: "/console/plan", icon: "Receipt" },
       // SC-only in practice -- see /console/sub-accounts's own comment and

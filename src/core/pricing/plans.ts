@@ -45,6 +45,19 @@ export interface Plan {
   features: string[];
   /** Communication quota bundled at this tier — shown as a callout, feeds CommunicationQuota allocation on activation. */
   commsQuota?: { emailPerMonth: number; whatsappPerMonth: number };
+  /**
+   * Which sidebar module keys (matches sidebar-nav.ts STATIC_MODULES keys)
+   * this tier unlocks, plus a handful of synthetic feature keys that gate
+   * something other than a nav item (e.g. "telegram-reports" — the
+   * automatic daily/weekly/monthly Telegram business report). Enforced in
+   * api/ui/sidebar/route.ts on top of the existing permission system, not
+   * instead of it -- a business must both hold the permission AND have it
+   * included in their plan. Editable at runtime by Super Admin via
+   * /console/admin/plan-features (PlanFeatureConfig overrides this
+   * static default when a DB row exists for mode+plan) -- see
+   * core/pricing/planAccess.ts.
+   */
+  moduleKeys: string[];
 }
 
 export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
@@ -65,6 +78,11 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Basic reports + invoice ZIP export for GST filing",
         "Email support",
       ],
+      moduleKeys: [
+        "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
+        "stock-adjustments", "reports", "admin-settings", "admin-plan", "send-feedback",
+        "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
+      ],
     },
     {
       key: "PRO",
@@ -81,6 +99,12 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Fault code / symptom code / solution library (private)",
         "Priority support",
       ],
+      moduleKeys: [
+        "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
+        "stock-adjustments", "reports", "admin-settings", "admin-plan", "send-feedback",
+        "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
+        "report-builder", "analytics",
+      ],
     },
     {
       key: "ULTIMATE",
@@ -95,6 +119,12 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Email + WhatsApp customer notifications (quota below)",
         "Scheduled report delivery by email",
         "Dedicated onboarding + SLA support",
+      ],
+      moduleKeys: [
+        "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
+        "stock-adjustments", "reports", "admin-settings", "admin-plan", "send-feedback",
+        "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
+        "report-builder", "analytics", "sub-accounts", "telegram-reports",
       ],
       commsQuota: { emailPerMonth: 2000, whatsappPerMonth: 1000 },
     },
@@ -116,6 +146,11 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Basic reports + invoice ZIP export for GST filing",
         "Email support",
       ],
+      moduleKeys: [
+        "crm", "crm_calls", "crm_jobsheets", "material-catalog", "customers", "sales",
+        "reports", "admin-settings", "admin-plan", "admin-intg", "send-feedback",
+        "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
+      ],
     },
     {
       key: "PRO",
@@ -133,6 +168,12 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "UPI payment QR on invoices",
         "Priority support",
       ],
+      moduleKeys: [
+        "crm", "crm_calls", "crm_jobsheets", "material-catalog", "customers", "sales",
+        "reports", "admin-settings", "admin-plan", "admin-intg", "send-feedback",
+        "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
+        "deals", "report-builder", "analytics",
+      ],
     },
     {
       key: "ULTIMATE",
@@ -149,6 +190,12 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Multi-currency (when enabled)",
         "AI-IVR call routing (add-on)",
         "Dedicated onboarding + SLA support, API access",
+      ],
+      moduleKeys: [
+        "crm", "crm_calls", "crm_jobsheets", "material-catalog", "customers", "sales",
+        "reports", "admin-settings", "admin-plan", "admin-intg", "send-feedback",
+        "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
+        "deals", "report-builder", "analytics", "sub-accounts", "telegram-reports", "admin-modules",
       ],
       commsQuota: { emailPerMonth: 10000, whatsappPerMonth: 5000 },
     },
@@ -169,6 +216,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Basic reports + invoice ZIP export for GST filing",
         "Email support",
       ],
+      moduleKeys: ["sales", "customers", "material-catalog", "reports", "admin-settings", "admin-plan", "send-feedback"],
     },
     {
       key: "PRO",
@@ -185,6 +233,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Shared Material catalog",
         "Priority support",
       ],
+      moduleKeys: ["sales", "customers", "material-catalog", "reports", "admin-settings", "admin-plan", "send-feedback", "report-builder", "analytics"],
     },
     {
       key: "ULTIMATE",
@@ -200,6 +249,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Scheduled report delivery by email",
         "Dedicated onboarding + SLA support, API access",
       ],
+      moduleKeys: ["sales", "customers", "material-catalog", "reports", "admin-settings", "admin-plan", "send-feedback", "report-builder", "analytics", "sub-accounts", "telegram-reports"],
       commsQuota: { emailPerMonth: 5000, whatsappPerMonth: 2500 },
     },
   ],
