@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
-import { Building2, Plug, Sparkles, Save, User, ChevronRight, Receipt, Globe2, Plus, Trash2 } from 'lucide-react'
+import { Building2, Plug, Sparkles, Save, User, ChevronRight, Receipt, Globe2, Plus, Trash2, Send } from 'lucide-react'
 import { DEVICE_CATEGORIES, DEVICE_CATEGORY_LABELS } from '@/core/catalog/deviceCategory'
 import DocumentNumbersPanel from '@/components/admin/DocumentNumbersPanel'
 
@@ -137,6 +137,11 @@ export default function AdminSettingsPage() {
   const { data: planStatus } = useSWR(
     view === 'business' && tab === 'operations' ? '/api/subscriptions/status' : null
   )
+
+  const { data: telegramBotInfo } = useSWR(
+    view === 'business' && tab === 'operations' ? '/api/telegram/bot-info' : null
+  )
+  const telegramBotUsername: string | null = telegramBotInfo?.success ? telegramBotInfo.username : null
   const hasTelegramReportFeature: boolean = Array.isArray(planStatus?.moduleKeys)
     ? planStatus.moduleKeys.includes('telegram-reports')
     : true // unknown allowlist (null) means "not gated" -- don't block on a load error
@@ -525,7 +530,19 @@ export default function AdminSettingsPage() {
                   Daily/weekly/monthly reports and alerts are sent here via our Telegram bot. Don't know your
                   ID? Message the bot and send <span className="tabular">/tgid</span> — it replies with your
                   personal chat ID, or add the bot to a group and send the same command there for the group ID.
+                  Once linked, send <span className="tabular">/today</span> or <span className="tabular">/report</span> to
+                  the bot any time for an on-demand summary.
                 </div>
+                {telegramBotUsername && (
+                  <a
+                    href={`https://t.me/${telegramBotUsername}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-accent hover:underline"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Connect to Telegram Bot
+                  </a>
+                )}
               </div>
 
               <div>
