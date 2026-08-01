@@ -96,8 +96,73 @@ export default function NewSalesInvoicePage() {
   ])
 
   const { businessId } = useActiveBusinessId()
-  const { data: businessData } = useSWR(businessId ? `/api/businesses/${businessId}` : null)
+  const { data: businessData, mutate: refetchBusiness } = useSWR(businessId ? `/api/businesses/${businessId}` : null)
   const biz = businessData?.business
+
+  // Inline "set this up right here" modal for the footer tiles below,
+  // instead of sending the user away to Settings mid-invoice. Each modal
+  // PATCHes only its own fields to /api/businesses/:id and refreshes biz
+  // so the tile immediately shows the real preview.
+  const [footerModal, setFooterModal] = useState<null | 'qr' | 'bank' | 'signature'>(null)
+  const [footerForm, setFooterForm] = useState({ upiId: '', bankAccountName: '', bankAccountNumber: '', bankIFSC: '', bankName: '', documentSignatureUrl: '' })
+  const [savingFooter, setSavingFooter] = useState(false)
+  const [footerError, setFooterError] = useState<string | null>(null)
+  const [uploadingSignature, setUploadingSignature] = useState(false)
+
+  function openFooterModal(kind: 'qr' | 'bank' | 'signature') {
+    setFooterForm({
+      upiId: biz?.upiId || '',
+      bankAccountName: biz?.bankAccountName || '',
+      bankAccountNumber: biz?.bankAccountNumber || '',
+      bankIFSC: biz?.bankIFSC || '',
+      bankName: biz?.bankName || '',
+      documentSignatureUrl: biz?.documentSignatureUrl || '',
+    })
+    setFooterError(null)
+    setFooterModal(kind)
+  }
+
+  async function handleSignatureUpload(file: File) {
+    setUploadingSignature(true)
+    setFooterError(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('name', 'signature')
+      fd.append('category', 'signature')
+      const res = await fetch('/api/assets/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || data.message || 'Failed to upload signature')
+      setFooterForm(p => ({ ...p, documentSignatureUrl: data.asset?.fileUrl || '' }))
+    } catch (err: any) {
+      setFooterError(err?.message || 'Failed to upload signature')
+    } finally {
+      setUploadingSignature(false)
+    }
+  }
+
+  async function saveFooterModal() {
+    if (!businessId) return
+    setSavingFooter(true); setFooterError(null)
+    try {
+      const fields = footerModal === 'qr' ? { upiId: footerForm.upiId }
+        : footerModal === 'bank' ? { bankAccountName: footerForm.bankAccountName, bankAccountNumber: footerForm.bankAccountNumber, bankIFSC: footerForm.bankIFSC, bankName: footerForm.bankName }
+        : { documentSignatureUrl: footerForm.documentSignatureUrl }
+      const res = await fetch(`/api/businesses/${businessId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      })
+      const d = await res.json()
+      if (!res.ok || d.success === false) throw new Error(d.error || d.message || 'Failed to save')
+      await refetchBusiness()
+      setFooterModal(null)
+    } catch (err: any) {
+      setFooterError(err.message || 'Something went wrong')
+    } finally {
+      setSavingFooter(false)
+    }
+  }
 
   const [customerQuery, setCustomerQuery] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
@@ -135,7 +200,7 @@ export default function NewSalesInvoicePage() {
   const browserCustomers: CustomerRecord[] = browserData?.success !== false ? (browserData?.customers ?? []) : []
 
   const [showAddCustomer, setShowAddCustomer] = useState(false)
-  const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', email: '', address: '', city: '', state: '', pincode: '' })
+  const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', email: '', gstin: '', address: '', city: '', state: '', pincode: '' })
   const [savingCustomer, setSavingCustomer] = useState(false)
   const [addCustomerError, setAddCustomerError] = useState<string | null>(null)
 
@@ -154,7 +219,7 @@ export default function NewSalesInvoicePage() {
       refetchBrowserCustomers()
       setShowAddCustomer(false)
       setShowCustomerBrowser(false)
-      setNewCustomer({ name: '', phone: '', email: '', address: '', city: '', state: '', pincode: '' })
+      setNewCustomer({ name: '', phone: '', email: '', gstin: '', address: '', city: '', state: '', pincode: '' })
     } catch (err: any) {
       setAddCustomerError(err.message || 'Something went wrong')
     } finally {
@@ -212,7 +277,7 @@ export default function NewSalesInvoicePage() {
         fetch('/api/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ businessId, name: customer.name, phone: customer.phone, email: customer.email, address: customer.address, city: customer.city, state: customer.state, pincode: customer.pincode, source: 'sales_invoice' }),
+          body: JSON.stringify({ businessId, name: customer.name, phone: customer.phone, email: customer.email, gstin: customer.gstin, address: customer.address, city: customer.city, state: customer.state, pincode: customer.pincode, source: 'sales_invoice' }),
         }).catch(() => {})
       }
       router.push('/console/sales')
@@ -414,7 +479,7 @@ export default function NewSalesInvoicePage() {
                   preview={biz?.upiId}
                   enabled={showPaymentQr}
                   onToggle={() => setShowPaymentQr(v => !v)}
-                  onSettings={() => router.push('/console/settings')}
+                  onSettings={() => openFooterModal('qr')}
                 />
                 <InvoiceFooterTile
                   icon={<Landmark className="w-4 h-4" />}
@@ -423,7 +488,7 @@ export default function NewSalesInvoicePage() {
                   preview={biz?.bankAccountNumber ? `${biz.bankAccountName || ''} · ${biz.bankAccountNumber}`.trim() : undefined}
                   enabled={showBankDetails}
                   onToggle={() => setShowBankDetails(v => !v)}
-                  onSettings={() => router.push('/console/settings')}
+                  onSettings={() => openFooterModal('bank')}
                 />
                 <InvoiceFooterTile
                   icon={<PenLine className="w-4 h-4" />}
@@ -432,7 +497,7 @@ export default function NewSalesInvoicePage() {
                   imagePreview={biz?.documentSignatureUrl}
                   enabled={showSignature}
                   onToggle={() => setShowSignature(v => !v)}
-                  onSettings={() => router.push('/console/settings')}
+                  onSettings={() => openFooterModal('signature')}
                 />
               </div>
             </div>
@@ -533,6 +598,10 @@ export default function NewSalesInvoicePage() {
               </div>
             </div>
             <div>
+              <label className={labelCls}>GSTIN</label>
+              <input value={newCustomer.gstin} onChange={e => setNewCustomer(p => ({ ...p, gstin: e.target.value.toUpperCase() }))} className={inputCls} />
+            </div>
+            <div>
               <label className={labelCls}>Address</label>
               <input value={newCustomer.address} onChange={e => setNewCustomer(p => ({ ...p, address: e.target.value }))} className={inputCls} />
             </div>
@@ -558,6 +627,79 @@ export default function NewSalesInvoicePage() {
             <div className="flex justify-end gap-2 pt-1">
               <Button variant="secondary" size="sm" onClick={() => setShowAddCustomer(false)}>Cancel</Button>
               <Button size="sm" onClick={submitNewCustomer} disabled={savingCustomer} icon={savingCustomer ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save Customer</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {footerModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40" onClick={() => setFooterModal(null)}>
+          <div className="bg-surface border border-border rounded-card shadow-card-lg w-full max-w-md p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-ink">
+                {footerModal === 'qr' ? 'UPI Payment QR' : footerModal === 'bank' ? 'Bank Account Details' : 'Authorized Signature'}
+              </h3>
+              <button onClick={() => setFooterModal(null)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
+            </div>
+            {footerError && <div className="text-xs text-danger bg-danger-soft border border-danger/20 rounded-control px-3 py-2">{footerError}</div>}
+
+            {footerModal === 'qr' && (
+              <div>
+                <label className={labelCls}>UPI ID</label>
+                <input autoFocus value={footerForm.upiId} onChange={e => setFooterForm(p => ({ ...p, upiId: e.target.value }))} placeholder="yourbusiness@upi" className={inputCls} />
+                <p className="text-xs text-ink-3 mt-1">A scannable QR is generated from this UPI ID on the printed invoice.</p>
+              </div>
+            )}
+
+            {footerModal === 'bank' && (
+              <div className="space-y-2">
+                <div>
+                  <label className={labelCls}>Account Holder Name</label>
+                  <input autoFocus value={footerForm.bankAccountName} onChange={e => setFooterForm(p => ({ ...p, bankAccountName: e.target.value }))} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Bank Name</label>
+                  <input value={footerForm.bankName} onChange={e => setFooterForm(p => ({ ...p, bankName: e.target.value }))} className={inputCls} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={labelCls}>Account Number</label>
+                    <input value={footerForm.bankAccountNumber} onChange={e => setFooterForm(p => ({ ...p, bankAccountNumber: e.target.value }))} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>IFSC</label>
+                    <input value={footerForm.bankIFSC} onChange={e => setFooterForm(p => ({ ...p, bankIFSC: e.target.value.toUpperCase() }))} className={inputCls} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {footerModal === 'signature' && (
+              <div>
+                <label className={labelCls}>Signature Image</label>
+                {footerForm.documentSignatureUrl ? (
+                  <img src={footerForm.documentSignatureUrl} alt="Signature" className="h-14 w-40 object-contain border border-border rounded-control bg-surface-2 mb-2" />
+                ) : (
+                  <div className="h-14 w-40 flex items-center justify-center border border-dashed border-border rounded-control text-xs text-ink-3 mb-2">No signature set</div>
+                )}
+                <div className="flex items-center gap-3">
+                  <label className="inline-flex">
+                    <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleSignatureUpload(f) }} />
+                    <span className="text-xs px-3 py-1.5 rounded-control border border-border cursor-pointer hover:border-accent text-ink-2 inline-flex items-center gap-1.5">
+                      {uploadingSignature ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                      {uploadingSignature ? 'Uploading…' : 'Upload image'}
+                    </span>
+                  </label>
+                  {footerForm.documentSignatureUrl && (
+                    <button type="button" onClick={() => setFooterForm(p => ({ ...p, documentSignatureUrl: '' }))} className="text-xs text-danger hover:underline">Remove</button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="secondary" size="sm" onClick={() => setFooterModal(null)}>Cancel</Button>
+              <Button size="sm" onClick={saveFooterModal} disabled={savingFooter} icon={savingFooter ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save</Button>
             </div>
           </div>
         </div>

@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     if (businessId && Types.ObjectId.isValid(businessId)) filter.businessId = businessId;
     if (search?.trim()) {
       const re = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-      filter.$or = [{ name: re }, { phone: re }, { email: re }, { imeiOrSerialNumbers: re }];
+      filter.$or = [{ name: re }, { phone: re }, { email: re }, { gstin: re }, { imeiOrSerialNumbers: re }];
     }
 
     const customers = await Customer.find(filter).sort({ createdAt: -1 }).limit(500).lean();
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { businessId, name, phone, email, address, city, state, pincode, source, notes } = body;
+    const { businessId, name, phone, email, gstin, address, city, state, pincode, source, notes } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ success: false, error: "name is required" }, { status: 400 });
@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
       name: name.trim(),
       phone: phone?.trim(),
       email: email?.trim(),
+      gstin: gstin?.trim()?.toUpperCase(),
       address: address?.trim(),
       city: city?.trim(),
       state: state?.trim(),
