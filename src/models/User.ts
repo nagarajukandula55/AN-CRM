@@ -352,7 +352,7 @@ UserSchema.virtual("isLocked").get(function (this: IUser) {
 // vendorId/parentVendorId are resolved via a VendorProfile lookup (User has
 // no such field itself) so the directory shows, for anyone who's a vendor
 // or sub-vendor login, which business/vendor/parent-vendor they belong to.
-async function buildCentralApiPayload(doc: IUser) {
+export async function buildCentralApiPayload(doc: IUser) {
   const VendorProfile = (await import("@/models/VendorProfile")).default;
   const vendor = await VendorProfile.findOne({ userId: doc._id }).select("businessId vendorId parentVendorId").lean();
 
