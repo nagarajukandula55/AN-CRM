@@ -92,8 +92,11 @@ export async function GET(
 
     // UPI payment QR -- only generated when this business has a VPA
     // configured (Settings > Operations). See core/payments/upiQr.ts.
+    // showPaymentQr/showBankDetails/showSignature default true (unset on
+    // any invoice created before this per-invoice opt-out existed), so
+    // existing invoices keep printing these exactly as before.
     const upiId = (business as any)?.upiId?.trim();
-    const paymentQrUrl = upiId
+    const paymentQrUrl = upiId && invoice.showPaymentQr !== false
       ? await generateUpiQrDataUrl({
           vpa: upiId,
           payeeName: (business as any)?.legalName || (business as any)?.name || "Business",
@@ -181,7 +184,7 @@ export async function GET(
       // Business Settings > Signature (Business.documentSignatureUrl).
       // Blank means no signature image prints; the page shows a
       // "digital document" notice instead of a physical signature.
-      signatureUrl: (business as any)?.documentSignatureUrl || "",
+      signatureUrl: invoice.showSignature !== false ? (business as any)?.documentSignatureUrl || "" : "",
 
       // Display-only bank transfer details -- same manual-reconciliation
       // "workaround" as the UPI QR above (see core/payments/upiQr.ts's
@@ -189,7 +192,7 @@ export async function GET(
       // scan a UPI QR. Only sent through when an account number is
       // actually set, so a business that hasn't configured this doesn't
       // print an empty "Bank Details" block.
-      bankDetails: (business as any)?.bankAccountNumber
+      bankDetails: (business as any)?.bankAccountNumber && invoice.showBankDetails !== false
         ? {
             accountName: (business as any)?.bankAccountName || "",
             accountNumber: (business as any)?.bankAccountNumber || "",

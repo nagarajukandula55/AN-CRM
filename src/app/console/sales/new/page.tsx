@@ -77,6 +77,17 @@ export default function NewSalesInvoicePage() {
   const [customer, setCustomer] = useState<Customer>({ name: '', email: '', phone: '', address: '', city: '', state: '', pincode: '', gstin: '' })
   const [notes, setNotes] = useState('')
   const [terms, setTerms] = useState('Payment due within 30 days.')
+  // Bank Details / UPI QR / Signature are all set once in Settings and, by
+  // default, appear on every printed invoice automatically -- these three
+  // let the invoice creator opt any of them out for THIS invoice
+  // specifically (e.g. a B2B invoice where the customer already has bank
+  // details on file), per explicit direction ("add those in Sales Invoice
+  // creation page so that users can select from there directly if
+  // required"). All default true so existing automatic behavior is
+  // unchanged unless someone actively unchecks one.
+  const [showPaymentQr, setShowPaymentQr] = useState(true)
+  const [showBankDetails, setShowBankDetails] = useState(true)
+  const [showSignature, setShowSignature] = useState(true)
   const [issueDate, setIssueDate] = useState(todayStr())
   const [dueDate, setDueDate] = useState('')
   const [discount, setDiscount] = useState(0)
@@ -180,6 +191,7 @@ export default function NewSalesInvoicePage() {
         })),
         discountAmount: discount,
         notes, terms,
+        showPaymentQr, showBankDetails, showSignature,
         issueDate: issueDate || todayStr(),
         dueDate: dueDate || undefined,
         status: 'DRAFT',
@@ -388,6 +400,24 @@ export default function NewSalesInvoicePage() {
             <div>
               <label className={labelCls}>Terms &amp; Conditions</label>
               <textarea rows={3} value={terms} onChange={e => setTerms(e.target.value)} className={`${inputCls} resize-none`} />
+            </div>
+            <div className="pt-2 border-t border-border">
+              <label className={labelCls}>Show on this invoice</label>
+              <p className="text-xs text-ink-3 mb-2">Bank Details, UPI QR, and Signature are configured once in Settings — uncheck any you don't want printed on this specific invoice.</p>
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm text-ink-2">
+                  <input type="checkbox" checked={showPaymentQr} onChange={e => setShowPaymentQr(e.target.checked)} />
+                  UPI Payment QR
+                </label>
+                <label className="flex items-center gap-2 text-sm text-ink-2">
+                  <input type="checkbox" checked={showBankDetails} onChange={e => setShowBankDetails(e.target.checked)} />
+                  Bank Account Details
+                </label>
+                <label className="flex items-center gap-2 text-sm text-ink-2">
+                  <input type="checkbox" checked={showSignature} onChange={e => setShowSignature(e.target.checked)} />
+                  Authorized Signature
+                </label>
+              </div>
             </div>
           </Card>
 

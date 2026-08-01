@@ -137,6 +137,17 @@ export interface ISalesInvoice extends Document {
    * boolean rather than a `status` value.
    */
   isLocked?: boolean;
+  /**
+   * Bank Details / UPI QR / Signature are business-wide settings (Settings
+   * > Operations) that, by default, print on every invoice automatically
+   * -- these three let a specific invoice opt any of them out (e.g. a B2B
+   * invoice for a customer who already has bank details on file). All
+   * default true so unset (pre-existing) invoices keep the old always-on
+   * behavior -- see api/invoice/view/[invoiceNumber]/route.ts.
+   */
+  showPaymentQr?: boolean;
+  showBankDetails?: boolean;
+  showSignature?: boolean;
   /** Soft-delete flag — added during the Invoice.ts merge so finance
    * routes filtering on `isDeleted: false` actually match documents. */
   isDeleted?: boolean;
@@ -235,6 +246,9 @@ const InvoiceSchema = new Schema<ISalesInvoice>(
     currency: { type: String, default: "INR" },
     notes: { type: String },
     terms: { type: String },
+    showPaymentQr: { type: Boolean, default: true },
+    showBankDetails: { type: Boolean, default: true },
+    showSignature: { type: Boolean, default: true },
     dueDate: { type: Date },
     issueDate: { type: Date, default: Date.now },
 
