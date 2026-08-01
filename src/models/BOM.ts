@@ -77,6 +77,11 @@ export interface IBOM extends Document {
   // false preserves current behaviour (a plain price-list entry, no serial
   // tracking) for every existing part.
   isSerialized: boolean;
+  // The actual serial number for this entry, collected at catalog-entry
+  // time when isSerialized is on -- required there (enforced in
+  // api/service-center-bom/route.ts) since a serial-tracked part with no
+  // recorded serial number defeats the point of tracking it.
+  serialNumber?: string;
   // Optional link to a real Inventory-tracked Material -- only consulted
   // when the business has Business.inventorySerialized = true; lets the
   // workorder repair flow check real stock before allowing this part to be
@@ -106,6 +111,7 @@ const BOMSchema = new Schema<IBOM>(
     rate: { type: Number, required: true, min: 0 },
     warrantyDays: { type: Number, min: 0 },
     isSerialized: { type: Boolean, default: false },
+    serialNumber: { type: String, trim: true },
     materialId: { type: Schema.Types.ObjectId, ref: "Material", default: null },
     isActive: { type: Boolean, default: true },
   },

@@ -201,9 +201,9 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const {
-      partName, hsnCode, rate, vendorId: explicitVendorId,
+      partName, hsnCode, rate, priceIncludesTax, vendorId: explicitVendorId,
       brandId, deviceModelId, description, partType, unit, gstRate, warrantyDays, materialId,
-      isSerialized, partCode: manualPartCode,
+      isSerialized, serialNumber, partCode: manualPartCode,
     } = body;
 
     if (!partName?.trim() || !hsnCode?.trim() || rate === undefined || rate === null) {
@@ -212,6 +212,24 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    if (isSerialized && !serialNumber?.trim()) {
+      return NextResponse.json(
+        { success: false, error: "Serial Number is required for a serial-number-tracked material" },
+        { status: 400 }
+      );
+    }
+
+    // BOM.rate is always stored tax-EXCLUSIVE (see the model's own field
+    // comment -- every downstream tax calculation assumes this). The form
+    // lets the user enter either basis; when they entered a tax-inclusive
+    // price, back it out here so the stored rate stays canonical instead
+    // of double-taxing (or under-taxing) every workorder/invoice line this
+    // material is later added to.
+    const effectiveGstRate = gstRate !== undefined ? Number(gstRate) : 18;
+    const enteredRate = Number(rate);
+    const canonicalRate = priceIncludesTax
+      ? enteredRate / (1 + effectiveGstRate / 100)
+      : enteredRate;
 
     await connectDB();
     const resolved = await resolveVendorAndBusiness(session.user.id, explicitVendorId, session.business?.businessId);
@@ -277,10 +295,11 @@ export async function POST(req: NextRequest) {
       partType: ["SPARE_PART", "LABOUR", "CONSUMABLE"].includes(partType) ? partType : "SPARE_PART",
       unit: unit?.trim() || "pcs",
       hsnCode: hsnCode.trim(),
-      gstRate: gstRate !== undefined ? Number(gstRate) : 18,
-      rate: Number(rate),
+      gstRate: effectiveGstRate,
+      rate: canonicalRate,
       warrantyDays: warrantyDays !== undefined ? Number(warrantyDays) : undefined,
       isSerialized: !!isSerialized,
+      serialNumber: isSerialized ? serialNumber.trim() : undefined,
       materialId: materialId && mongoose.Types.ObjectId.isValid(materialId) ? materialId : undefined,
     });
 
