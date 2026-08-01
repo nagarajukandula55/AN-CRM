@@ -64,56 +64,56 @@ interface SeedModule {
 // Order matches sidebar.tsx's nav order exactly, so sortOrder produces the
 // same visual ordering admins already expect.
 const SYSTEM_MODULES: SeedModule[] = [
-  { key: "dashboard", label: "Dashboard", pluralLabel: "Dashboard", route: "/admin", icon: "LayoutDashboard", sortOrder: 10 },
+  { key: "dashboard", label: "Dashboard", pluralLabel: "Dashboard", route: "/console", icon: "LayoutDashboard", sortOrder: 10 },
 
-  { key: "orders", label: "Order", pluralLabel: "Orders", route: "/admin/orders", icon: "ShoppingBag", sortOrder: 20 },
-  { key: "sales", label: "Sale", pluralLabel: "Sales", route: "/admin/sales", icon: "TrendingUp", sortOrder: 21 },
-  { key: "coupons", label: "Coupon", pluralLabel: "Coupons", route: "/admin/coupons", icon: "Hash", sortOrder: 22 },
+  { key: "orders", label: "Order", pluralLabel: "Orders", route: "/console/orders", icon: "ShoppingBag", sortOrder: 20 },
+  { key: "sales", label: "Sale", pluralLabel: "Sales", route: "/console/sales", icon: "TrendingUp", sortOrder: 21 },
+  { key: "coupons", label: "Coupon", pluralLabel: "Coupons", route: "/console/coupons", icon: "Hash", sortOrder: 22 },
 
-  { key: "inventory", label: "Inventory Item", pluralLabel: "Inventory", route: "/admin/inventory", icon: "Package", sortOrder: 30 },
-  { key: "products", label: "Product", pluralLabel: "Products", route: "/admin/products", icon: "Box", sortOrder: 31 },
-  { key: "warehouses", label: "Warehouse", pluralLabel: "Warehouses", route: "/admin/warehouses", icon: "Building2", sortOrder: 32 },
-  { key: "materials", label: "Material", pluralLabel: "Materials", route: "/admin/materials", icon: "Box", sortOrder: 33 },
+  { key: "inventory", label: "Inventory Item", pluralLabel: "Inventory", route: "/console/inventory", icon: "Package", sortOrder: 30 },
+  { key: "products", label: "Product", pluralLabel: "Products", route: "/console/products", icon: "Box", sortOrder: 31 },
+  { key: "warehouses", label: "Warehouse", pluralLabel: "Warehouses", route: "/console/warehouses", icon: "Building2", sortOrder: 32 },
+  { key: "materials", label: "Material", pluralLabel: "Materials", route: "/console/materials", icon: "Box", sortOrder: 33 },
 
-  { key: "purchase", label: "Purchase", pluralLabel: "Purchases", route: "/admin/purchase", icon: "ShoppingCart", sortOrder: 40 },
-  { key: "purchase_orders", label: "Purchase Order", pluralLabel: "Purchase Orders", route: "/admin/purchase-orders", icon: "ShoppingCart", sortOrder: 41 },
+  { key: "purchase", label: "Purchase", pluralLabel: "Purchases", route: "/console/purchase", icon: "ShoppingCart", sortOrder: 40 },
+  { key: "purchase_orders", label: "Purchase Order", pluralLabel: "Purchase Orders", route: "/console/purchase-orders", icon: "ShoppingCart", sortOrder: 41 },
 
-  { key: "bom", label: "Bill of Materials", pluralLabel: "Bills of Materials", route: "/admin/bom", icon: "Box", sortOrder: 50 },
-  { key: "production", label: "Production Run", pluralLabel: "Production", route: "/admin/production", icon: "Package", sortOrder: 51 },
+  { key: "bom", label: "Bill of Materials", pluralLabel: "Bills of Materials", route: "/console/bom", icon: "Box", sortOrder: 50 },
+  { key: "production", label: "Production Run", pluralLabel: "Production", route: "/console/production", icon: "Package", sortOrder: 51 },
 
-  { key: "finance", label: "Finance Record", pluralLabel: "Finance", route: "/admin/finance", icon: "DollarSign", sortOrder: 60 },
+  { key: "finance", label: "Finance Record", pluralLabel: "Finance", route: "/console/finance", icon: "DollarSign", sortOrder: 60 },
 
-  { key: "businesses", label: "Business", pluralLabel: "Businesses", route: "/admin/business", icon: "Building2", sortOrder: 70 },
-  { key: "vendors", label: "Vendor", pluralLabel: "Vendors", route: "/admin/vendors", icon: "Truck", sortOrder: 71 },
-  { key: "vendor_products", label: "Vendor Product", pluralLabel: "Vendor Products", route: "/admin/vendor-products", icon: "Truck", sortOrder: 72 },
+  { key: "businesses", label: "Business", pluralLabel: "Businesses", route: "/console/business", icon: "Building2", sortOrder: 70 },
+  { key: "vendors", label: "Vendor", pluralLabel: "Vendors", route: "/console/vendors", icon: "Truck", sortOrder: 71 },
+  { key: "vendor_products", label: "Vendor Product", pluralLabel: "Vendor Products", route: "/console/vendor-products", icon: "Truck", sortOrder: 72 },
 
-  { key: "hr", label: "HR Overview", pluralLabel: "HR Overview", route: "/admin/hr", icon: "UserCheck", sortOrder: 80 },
-  { key: "employees", label: "Employee", pluralLabel: "Employees", route: "/admin/employees", icon: "Users", sortOrder: 81 },
-  { key: "hr_leave", label: "Leave", pluralLabel: "Leave", route: "/admin/hr/leave", icon: "UserCheck", sortOrder: 82 },
-  { key: "hr_payroll", label: "Payroll", pluralLabel: "Payroll", route: "/admin/hr/payroll", icon: "DollarSign", sortOrder: 83 },
+  { key: "hr", label: "HR Overview", pluralLabel: "HR Overview", route: "/console/hr", icon: "UserCheck", sortOrder: 80 },
+  { key: "employees", label: "Employee", pluralLabel: "Employees", route: "/console/employees", icon: "Users", sortOrder: 81 },
+  { key: "hr_leave", label: "Leave", pluralLabel: "Leave", route: "/console/hr/leave", icon: "UserCheck", sortOrder: 82 },
+  { key: "hr_payroll", label: "Payroll", pluralLabel: "Payroll", route: "/console/hr/payroll", icon: "DollarSign", sortOrder: 83 },
 
-  { key: "crm", label: "Lead", pluralLabel: "CRM", route: "/admin/crm", icon: "UserPlus", sortOrder: 90 },
+  { key: "crm", label: "Lead", pluralLabel: "CRM", route: "/console/crm", icon: "UserPlus", sortOrder: 90 },
 
-  { key: "agreements", label: "Agreement", pluralLabel: "Agreements", route: "/admin/agreements", icon: "FileSignature", sortOrder: 100 },
-  { key: "document_numbers", label: "Document Number Config", pluralLabel: "Document Numbers", route: "/admin/document-numbers", icon: "Hash", sortOrder: 101 },
+  { key: "agreements", label: "Agreement", pluralLabel: "Agreements", route: "/console/agreements", icon: "FileSignature", sortOrder: 100 },
+  { key: "document_numbers", label: "Document Number Config", pluralLabel: "Document Numbers", route: "/console/document-numbers", icon: "Hash", sortOrder: 101 },
 
-  { key: "social", label: "Social Post", pluralLabel: "Social Media", route: "/admin/social", icon: "Share2", sortOrder: 110 },
-  { key: "ai_image", label: "AI Image", pluralLabel: "AI Studio", route: "/admin/ai-image", icon: "Sparkles", sortOrder: 111 },
-  { key: "designs", label: "Design", pluralLabel: "Designs", route: "/admin/designs", icon: "Sparkles", sortOrder: 112 },
+  { key: "social", label: "Social Post", pluralLabel: "Social Media", route: "/console/social", icon: "Share2", sortOrder: 110 },
+  { key: "ai_image", label: "AI Image", pluralLabel: "AI Studio", route: "/console/ai-image", icon: "Sparkles", sortOrder: 111 },
+  { key: "designs", label: "Design", pluralLabel: "Designs", route: "/console/designs", icon: "Sparkles", sortOrder: 112 },
 
-  { key: "chat", label: "Chat Message", pluralLabel: "Team Chat", route: "/admin/chat", icon: "MessageSquare", sortOrder: 120 },
-  { key: "notifications", label: "Notification", pluralLabel: "Notifications", route: "/admin/notifications", icon: "Bell", sortOrder: 121 },
+  { key: "chat", label: "Chat Message", pluralLabel: "Team Chat", route: "/console/chat", icon: "MessageSquare", sortOrder: 120 },
+  { key: "notifications", label: "Notification", pluralLabel: "Notifications", route: "/console/notifications", icon: "Bell", sortOrder: 121 },
 
-  { key: "users", label: "User", pluralLabel: "User Management", route: "/admin/users", icon: "UserCog", sortOrder: 130 },
-  { key: "access", label: "Access Grant", pluralLabel: "Access Control", route: "/admin/access", icon: "Key", sortOrder: 131 },
-  { key: "roles", label: "Role", pluralLabel: "Roles & Permissions", route: "/admin/roles", icon: "Shield", sortOrder: 132 },
+  { key: "users", label: "User", pluralLabel: "User Management", route: "/console/users", icon: "UserCog", sortOrder: 130 },
+  { key: "access", label: "Access Grant", pluralLabel: "Access Control", route: "/console/access", icon: "Key", sortOrder: 131 },
+  { key: "roles", label: "Role", pluralLabel: "Roles & Permissions", route: "/console/roles", icon: "Shield", sortOrder: 132 },
 
-  { key: "integrations", label: "Integration", pluralLabel: "Integrations", route: "/admin/integrations", icon: "Plug", sortOrder: 140 },
-  { key: "sso", label: "SSO Config", pluralLabel: "SSO / Auth", route: "/admin/sso", icon: "Key", sortOrder: 141 },
-  { key: "system_status", label: "System Status", pluralLabel: "System Status", route: "/admin/system-status", icon: "Activity", sortOrder: 142 },
+  { key: "integrations", label: "Integration", pluralLabel: "Integrations", route: "/console/integrations", icon: "Plug", sortOrder: 140 },
+  { key: "sso", label: "SSO Config", pluralLabel: "SSO / Auth", route: "/console/sso", icon: "Key", sortOrder: 141 },
+  { key: "system_status", label: "System Status", pluralLabel: "System Status", route: "/console/system-status", icon: "Activity", sortOrder: 142 },
 
-  { key: "stock_adjustments", label: "Stock Adjustment", pluralLabel: "Stock Adjustments", route: "/admin/stock-adjustments", icon: "Package", sortOrder: 150 },
-  { key: "stock_transfers", label: "Stock Transfer", pluralLabel: "Stock Transfers", route: "/admin/stock-transfers", icon: "Package", sortOrder: 151 },
+  { key: "stock_adjustments", label: "Stock Adjustment", pluralLabel: "Stock Adjustments", route: "/console/stock-adjustments", icon: "Package", sortOrder: 150 },
+  { key: "stock_transfers", label: "Stock Transfer", pluralLabel: "Stock Transfers", route: "/console/stock-transfers", icon: "Package", sortOrder: 151 },
 
   // The following 4 keys originally came from business.service.ts's
   // DEFAULT_MODULES template (used only when a brand-new Business document
@@ -128,23 +128,23 @@ const SYSTEM_MODULES: SeedModule[] = [
   // module's convention (the old DEFAULT_MODULES template used root-level
   // routes like "/ai", which are now orphaned and can eventually be deleted
   // once confirmed nothing external links to them).
-  { key: "ai", label: "AI Workspace", pluralLabel: "AI Workspace", route: "/admin/ai", icon: "Brain", sortOrder: 900 },
-  { key: "logistics", label: "Logistics", pluralLabel: "Logistics", route: "/admin/logistics", icon: "Truck", sortOrder: 901 },
-  { key: "analytics", label: "Analytics", pluralLabel: "Analytics", route: "/admin/analytics", icon: "BarChart3", sortOrder: 902 },
-  { key: "settings", label: "Setting", pluralLabel: "Settings", route: "/admin/settings", icon: "Settings", sortOrder: 903 },
+  { key: "ai", label: "AI Workspace", pluralLabel: "AI Workspace", route: "/console/ai", icon: "Brain", sortOrder: 900 },
+  { key: "logistics", label: "Logistics", pluralLabel: "Logistics", route: "/console/logistics", icon: "Truck", sortOrder: 901 },
+  { key: "analytics", label: "Analytics", pluralLabel: "Analytics", route: "/console/analytics", icon: "BarChart3", sortOrder: 902 },
+  { key: "settings", label: "Setting", pluralLabel: "Settings", route: "/console/settings", icon: "Settings", sortOrder: 903 },
 
   // Added during the permission-code convention migration: app/api/audit/logs
   // was already a LIVE route (audit.view / audit.create checks) with no
   // backing ModuleDefinition at all — a real module-registry gap, not just
   // a naming-convention mismatch. Added so AUDIT.VIEW / AUDIT.CREATE resolve
   // to a real seeded module like every other permission code does.
-  { key: "audit", label: "Audit Log", pluralLabel: "Audit Logs", route: "/admin/audit", icon: "History", sortOrder: 160, applicableActions: ["view", "create", "export"] },
+  { key: "audit", label: "Audit Log", pluralLabel: "Audit Logs", route: "/console/audit", icon: "History", sortOrder: 160, applicableActions: ["view", "create", "export"] },
 
   // Added per explicit user request: GST filing — pushing invoices directly
   // to the GST portal, plus ANu assisting with GST processes and pending
   // filings. This is the UI/permission surface for that; see core/gst/ for
   // the service layer.
-  { key: "gst", label: "GST Filing", pluralLabel: "GST Filing", route: "/admin/gst", icon: "Landmark", sortOrder: 161 },
+  { key: "gst", label: "GST Filing", pluralLabel: "GST Filing", route: "/console/gst", icon: "Landmark", sortOrder: 161 },
 ];
 
 async function main() {
