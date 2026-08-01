@@ -945,8 +945,36 @@ BusinessSchema.index({
    freeze.
 ========================================================= */
 
+/**
+ * An AN-CRM "Business" (a tenant company running BRAND/POS/SC) is NOT a
+ * top-level business in the AN Group hierarchy -- it's a VENDOR of the
+ * "Service Flow" business, the same relationship a shopnative.in seller
+ * has to "E-Commerce". This used to sync into central-api's "businesses"
+ * dataset (as if each tenant were its own top-level business, which was
+ * wrong -- see the AN Group / Service Flow / E-Commerce three-tier
+ * discussion this replaced); now it syncs into "vendors" instead, tagged
+ * with the parent business id and its operatingMode as the vendor type.
+ *
+ * CENTRAL_API_SERVICE_FLOW_BUSINESS_ID is central-api's own _id for the
+ * "Service Flow" row under "businesses" (created once via the admin
+ * dashboard, NOT this app's own id for anything) -- sync is skipped
+ * entirely until this is set, same "not configured yet" convention as
+ * CENTRAL_API_URL itself, rather than writing rows with a missing/null
+ * parent that would need manual cleanup later.
+ */
+function centralApiVendorPayload(doc: any) {
+  return {
+    ...doc,
+    businessId: process.env.CENTRAL_API_SERVICE_FLOW_BUSINESS_ID,
+    parentId: null,
+    vendorType: doc.operatingMode || null,
+    source: "an-crm",
+  };
+}
+
 BusinessSchema.post("save", async function (doc) {
-  await syncRecordToCentralApi("businesses", doc._id.toString(), doc.toObject());
+  if (!process.env.CENTRAL_API_SERVICE_FLOW_BUSINESS_ID) return;
+  await syncRecordToCentralApi("vendors", doc._id.toString(), centralApiVendorPayload(doc.toObject()));
 });
 
 BusinessSchema.post("findOneAndUpdate", async function (doc) {
@@ -956,11 +984,13 @@ BusinessSchema.post("findOneAndUpdate", async function (doc) {
   // syncRecordToCentralApi, so just skip the conversion when it's not
   // there instead of crashing every lean update ("a.toObject is not a
   // function", which was silently breaking every Settings save).
-  if (doc) await syncRecordToCentralApi("businesses", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
+  if (!doc || !process.env.CENTRAL_API_SERVICE_FLOW_BUSINESS_ID) return;
+  await syncRecordToCentralApi("vendors", doc._id.toString(), centralApiVendorPayload(doc.toObject ? doc.toObject() : doc));
 });
 
 BusinessSchema.post("findOneAndDelete", async function (doc) {
-  if (doc) await deleteRecordFromCentralApi("businesses", doc._id.toString());
+  if (!doc || !process.env.CENTRAL_API_SERVICE_FLOW_BUSINESS_ID) return;
+  await deleteRecordFromCentralApi("vendors", doc._id.toString());
 });
 
 /* =========================================================
