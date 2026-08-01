@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Types } from "mongoose";
 import Customer from "@/models/Customer";
-import { listCustomers } from "@/lib/centralApiRead";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
@@ -34,11 +33,25 @@ export async function GET(req: NextRequest) {
     const businessId = searchParams.get("businessId");
     const search = searchParams.get("search");
 
-    // Reads from central-api — see src/lib/centralApiRead.ts.
-    const customers = await listCustomers({
-      businessId: businessId && Types.ObjectId.isValid(businessId) ? businessId : undefined,
-      search: search || undefined,
-    });
+    await connectDB();
+
+    // Reads from this app's own MongoDB, not central-api -- this is the
+    // real write target for every capture path (captureCustomer(), the
+    // manual POST below), and central-api's copy is only a best-effort
+    // dual-write (see lib/centralApiSync.ts's top comment: local Mongo is
+    // still the source of truth). Reading from central-api instead meant a
+    // sync lag/failure/misconfiguration silently showed stale or partial
+    // records here -- e.g. a customer captured seconds ago from a
+    // workorder intake with a fresh IMEI/city/state, and the directory
+    // still showing those columns blank.
+    const filter: Record<string, any> = { isActive: true };
+    if (businessId && Types.ObjectId.isValid(businessId)) filter.businessId = businessId;
+    if (search?.trim()) {
+      const re = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      filter.$or = [{ name: re }, { phone: re }, { email: re }, { imeiOrSerialNumbers: re }];
+    }
+
+    const customers = await Customer.find(filter).sort({ createdAt: -1 }).limit(500).lean();
 
     return NextResponse.json({ success: true, customers, total: customers.length });
   } catch (error: unknown) {
