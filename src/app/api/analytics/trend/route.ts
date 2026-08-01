@@ -23,6 +23,7 @@
  * lines up with "Mar 2024" even across leap years.
  */
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import SalesInvoice from "@/models/SalesInvoice";
 import CrmCall from "@/models/CrmCall";
@@ -84,18 +85,23 @@ async function fetchSeries(
 ) {
   const unit = TRUNC_UNIT[granularity];
 
+  // aggregate() bypasses Mongoose's query-casting layer (unlike .find()),
+  // so a plain string businessId here never matched the real ObjectId
+  // field -- both series silently read all-zero for any scoped business.
+  const businessObjectId = businessId && mongoose.Types.ObjectId.isValid(businessId) ? new mongoose.Types.ObjectId(businessId) : null;
+
   const invoiceMatch: Record<string, any> = {
     isDeleted: { $ne: true },
     status: "PAID",
     createdAt: { $gte: rangeStart, $lte: rangeEnd },
   };
-  if (businessId) invoiceMatch.businessId = businessId;
+  if (businessObjectId) invoiceMatch.businessId = businessObjectId;
 
   // SC has no calls/appointment pipeline -- its "calls" series is
   // workorder-creation volume instead (see api/analytics/overview's
   // identical isSC swap and analytics/page.tsx for the label change).
   const callMatch: Record<string, any> = { createdAt: { $gte: rangeStart, $lte: rangeEnd } };
-  if (businessId) callMatch.businessId = businessId;
+  if (businessObjectId) callMatch.businessId = businessObjectId;
   if (isSC) callMatch.isDeleted = { $ne: true };
 
   const [revenueRows, callRows] = await Promise.all([

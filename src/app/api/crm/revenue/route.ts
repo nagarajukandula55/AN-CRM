@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import SalesInvoice from "@/models/SalesInvoice";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
@@ -38,7 +39,12 @@ export async function GET(req: NextRequest) {
       sourceOrderId: { $regex: "^CRM_JOBSHEET:" },
       isDeleted: { $ne: true },
     };
-    if (businessId) match.businessId = businessId;
+    // aggregate() bypasses Mongoose's query-casting layer (unlike
+    // .find()), so a plain string businessId here never matched the real
+    // ObjectId field -- CRM Overview's revenue figures silently read 0.
+    if (businessId && mongoose.Types.ObjectId.isValid(businessId)) {
+      match.businessId = new mongoose.Types.ObjectId(businessId);
+    }
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);

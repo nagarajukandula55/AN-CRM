@@ -8,6 +8,7 @@
  * for a business-wide view.
  */
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import SalesInvoice from "@/models/SalesInvoice";
 import CrmCall from "@/models/CrmCall";
@@ -33,8 +34,13 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const businessId = searchParams.get("businessId");
+    // aggregate() bypasses Mongoose's normal query-casting layer (unlike
+    // .find()/.countDocuments()), so a plain string businessId here NEVER
+    // matched the real ObjectId field -- revenue silently read 0 for every
+    // business the moment this route started actually being scoped to one.
+    const businessObjectId = businessId && mongoose.Types.ObjectId.isValid(businessId) ? new mongoose.Types.ObjectId(businessId) : null;
     const invoiceMatch: Record<string, any> = { isDeleted: { $ne: true } };
-    if (businessId) invoiceMatch.businessId = businessId;
+    if (businessObjectId) invoiceMatch.businessId = businessObjectId;
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -90,14 +96,39 @@ export async function GET(req: NextRequest) {
     // scoped to a single business by the frontend). See analytics/page.tsx.
     const business = businessId ? await Business.findById(businessId).select("operatingMode").lean<any>() : null;
     const isSC = business?.operatingMode === "SC";
+    const activityModel: any = isSC ? CrmJobSheet : CrmCall;
+    const activityMatch = isSC ? jobsheetMatch : callMatch;
 
-    const [totalCalls, openJobsheets, closedJobsheets] = await Promise.all([
-      isSC ? CrmJobSheet.countDocuments(jobsheetMatch) : CrmCall.countDocuments(callMatch),
+    const [totalCalls, openJobsheets, closedJobsheets, monthlyActivity] = await Promise.all([
+      activityModel.countDocuments(activityMatch),
       CrmJobSheet.countDocuments({ ...jobsheetMatch, status: { $nin: ["CLOSED", "CANCELLED"] } }),
       CrmJobSheet.countDocuments({ ...jobsheetMatch, status: { $in: ["CLOSED", "REPAIR_COMPLETED"] } }),
+      activityModel.aggregate([
+        { $match: { ...activityMatch, ...(businessObjectId ? { businessId: businessObjectId } : {}), createdAt: { $gte: sixMonthsAgo } } },
+        { $group: { _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }, count: { $sum: 1 } } },
+        { $sort: { "_id.year": 1, "_id.month": 1 } },
+      ]),
     ]);
 
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const activityByKey = new Map<string, number>(monthlyActivity.map((m: any) => [`${m._id.year}-${m._id.month}`, m.count]));
+    const revenueByKey = new Map<string, number>((invoiceAgg?.monthlyTrend || []).map((m: any) => [`${m._id.year}-${m._id.month}`, m.revenue]));
+
+    // Built as 6 explicit buckets (not just "whichever months invoiceAgg
+    // happened to have PAID rows for") so a month with workorders/calls
+    // but no revenue yet (or vice versa) still shows up instead of being
+    // silently dropped from one series.
+    const monthlyTrend: { label: string; revenue: number; activity: number }[] = [];
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(sixMonthsAgo);
+      d.setMonth(d.getMonth() + i);
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      monthlyTrend.push({
+        label: `${monthNames[d.getMonth()]} ${d.getFullYear()}`,
+        revenue: revenueByKey.get(key) || 0,
+        activity: activityByKey.get(key) || 0,
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -110,10 +141,7 @@ export async function GET(req: NextRequest) {
       },
       bySource: (invoiceAgg?.bySource || []).map((s: any) => ({ source: s._id, revenue: s.sum, count: s.count })),
       statusBreakdown: (invoiceAgg?.statusBreakdown || []).map((s: any) => ({ status: s._id, count: s.count })),
-      monthlyTrend: (invoiceAgg?.monthlyTrend || []).map((m: any) => ({
-        label: `${monthNames[m._id.month - 1]} ${m._id.year}`,
-        revenue: m.revenue,
-      })),
+      monthlyTrend,
       operations: {
         totalCalls,
         openWorkorders: openJobsheets,
