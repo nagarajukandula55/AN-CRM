@@ -9,6 +9,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { notifyUser } from "@/services/notification.service";
+import { getActivePlanKey, getAllowedModuleKeys } from "@/core/pricing/planAccess";
 
 export async function GET(req: Request, context: any) {
   try {
@@ -80,6 +81,7 @@ const EDITABLE_FIELDS = [
   // applyTaxOnB2CBilling comment.
   "applyTaxOnB2CBilling",
   "telegramChatId",
+  "telegramReportFrequency",
   // Default rate for the one-click "Add Labour Charge" line on a
   // workorder -- see models/Business.ts's defaultLabourCharge comment.
   // Existed on the schema already, never surfaced in Settings until now.
@@ -182,6 +184,23 @@ export async function PATCH(req: Request, context: any) {
     const updates: Record<string, unknown> = {};
     for (const field of EDITABLE_FIELDS) {
       if (body[field] !== undefined) updates[field] = body[field];
+    }
+
+    // Server-side enforcement of the "telegram-reports" plan feature --
+    // the Settings UI already hides this control when the plan doesn't
+    // include it, but that alone is bypassable via a direct API call.
+    if (updates.telegramReportFrequency && updates.telegramReportFrequency !== "NONE") {
+      const existingBiz = await Business.findById(id).select("operatingMode").lean<any>();
+      if (existingBiz?.operatingMode) {
+        const plan = await getActivePlanKey(id);
+        const allowed = await getAllowedModuleKeys(existingBiz.operatingMode, plan);
+        if (allowed && !allowed.includes("telegram-reports")) {
+          return NextResponse.json(
+            { success: false, message: "Automatic Telegram reports aren't included in your current plan" },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     if (Object.keys(updates).length === 0) {

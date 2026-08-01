@@ -6,6 +6,7 @@ import { listModulesForBusiness } from "@/core/module-registry/moduleDefinition.
 import { filterModulesByPermission } from "@/core/access/filterModulesByPermission";
 import { expandWithAliases } from "@/core/access/moduleKeyAliases";
 import { STATIC_MODULES } from "@/components/sidebar-nav";
+import { getAllowedModuleKeysForBusiness } from "@/core/pricing/planAccess";
 
 /**
  * MIGRATED from UserBusinessAccess/accessKeys to the Permission-based access
@@ -169,6 +170,18 @@ export async function POST(req: Request) {
         ...(business?.inventorySerialized ? ["inventory", "stock-transfers", "inventory-lots"] : []),
       ]);
       visibleModules = visibleModules.filter((m: any) => scAllowedKeys.has(m.key));
+    }
+
+    // Plan-gating: a module a business is otherwise permitted to see can
+    // still be hidden if their current plan (Subscription.plan, or Basic
+    // while on trial) doesn't include it -- see core/pricing/planAccess.ts.
+    // Exempts a super admin, same as every other filter above.
+    if (business?.operatingMode && !session.isSuperAdmin) {
+      const allowedKeys = await getAllowedModuleKeysForBusiness(String(business._id), business.operatingMode);
+      if (allowedKeys) {
+        const allowedSet = new Set(allowedKeys);
+        visibleModules = visibleModules.filter((m: any) => allowedSet.has(m.key));
+      }
     }
 
     if (visibleModules.length === 0 && !session.isSuperAdmin) {

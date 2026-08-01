@@ -30,7 +30,7 @@ interface Overview {
   revenue: { total: number; totalInvoices: number; thisMonth: number; thisMonthInvoices: number }
   bySource: { source: string; revenue: number; count: number }[]
   statusBreakdown: { status: string; count: number }[]
-  monthlyTrend: { label: string; revenue: number }[]
+  monthlyTrend: { label: string; revenue: number; activity: number }[]
   operations: { totalCalls: number; openWorkorders: number; closedWorkorders: number }
 }
 
@@ -206,7 +206,7 @@ export default function AnalyticsPage() {
 
           <Card>
             <CardBody>
-              <div className="h-section mb-4">Revenue Trend (last 6 months)</div>
+              <div className="h-section mb-4">Revenue &amp; {data.isSC ? 'Workorders' : 'Calls'} Trend (last 6 months)</div>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={data.monthlyTrend}>
@@ -218,10 +218,13 @@ export default function AnalyticsPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
-                    <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
-                    <Tooltip formatter={(v) => fmt(Number(v) || 0)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
-                    <Bar dataKey="revenue" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={28} />
-                    <Area type="monotone" dataKey="revenue" stroke="var(--accent)" strokeWidth={2} fill="url(#revTrend6mo)" fillOpacity={0.5} />
+                    <YAxis yAxisId="revenue" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                    <YAxis yAxisId="activity" orientation="right" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                    <Tooltip formatter={(v, name) => (name === 'Revenue' ? fmt(Number(v) || 0) : v)} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar yAxisId="revenue" dataKey="revenue" name="Revenue" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={28} />
+                    <Area yAxisId="revenue" type="monotone" dataKey="revenue" name="Revenue" stroke="var(--accent)" strokeWidth={2} fill="url(#revTrend6mo)" fillOpacity={0.5} legendType="none" />
+                    <Line yAxisId="activity" type="monotone" dataKey="activity" name={data.isSC ? 'Workorders' : 'Calls'} stroke="var(--info)" strokeWidth={2} dot={{ r: 3 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
