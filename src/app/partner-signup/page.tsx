@@ -316,11 +316,11 @@ export default function PartnerSignupPage() {
                 <span className="font-semibold text-gray-900">
                   ✅ Your account has been created
                 </span>{" "}
-                — your User ID is{" "}
+                — log in anytime with your email,{" "}
                 <span className="font-mono font-semibold text-violet-700">
-                  {state.username}
+                  {email}
                 </span>
-                . You can log in with this right away.
+                , and the password you set.
               </p>
               <p>
                 <span className="font-semibold text-gray-900">
@@ -367,13 +367,13 @@ export default function PartnerSignupPage() {
               Your account was created — but the business application didn&apos;t go through
             </h2>
             <p className="mt-2 text-sm text-gray-500">
-              Good news: your login <span className="font-mono font-semibold text-violet-700">{state.username}</span> exists
+              Good news: your login <span className="font-mono font-semibold text-violet-700">{email}</span> exists
               and works right now. However, we couldn&apos;t submit your
               business application: {state.message}
             </p>
             <p className="mt-2 text-sm text-gray-500">
               Please complete your business application separately using
-              your new User ID.
+              your email to log in.
             </p>
             <Link href="/vendor-apply" className={`${neonButtonPrimary} mt-6`}>
               Complete Business Application

@@ -8,6 +8,7 @@ import { generateGlobalDocumentNumber } from "@/core/numbering/numberingService"
 import { logAction } from "@/lib/audit/logAction";
 import { notifySuperAdmins } from "@/services/notification.service";
 import { activateVendorWithTrial } from "@/services/vendorActivation.service";
+import { sendGenericEmail } from "@/services/email/resend.service";
 
 /**
  * POST /api/vendors/apply — PUBLIC vendor signup request.
@@ -225,6 +226,28 @@ export async function POST(req: NextRequest) {
           err instanceof Error ? err.message : err
         );
       }
+    }
+
+    // Applicant-facing confirmation -- previously only super admins got
+    // notified; the applicant themselves never received anything, so
+    // there was no record they could point to that the submission actually
+    // went through. Fire-and-forget, same as every other email send in
+    // this flow -- must never fail the request.
+    if (vendor.email) {
+      sendGenericEmail({
+        to: vendor.email,
+        subject: trialActivated
+          ? "Your partner application was approved — check your inbox for the agreement"
+          : `We received your partner application — ${requestNumber}`,
+        html: trialActivated
+          ? `<p>Hi ${String(contactPerson).trim()},</p>
+             <p>Thanks for applying to become a partner${business ? ` with ${business.brandName || business.name}` : ""}. Your application (request <strong>${requestNumber}</strong>) was approved instantly.</p>
+             <p>You should receive a separate email shortly with your partner agreement to sign, and another with your portal login details. Your 7-day trial has already started.</p>`
+          : `<p>Hi ${String(contactPerson).trim()},</p>
+             <p>Thanks for applying to become a partner${business ? ` with ${business.brandName || business.name}` : ""}. We've received your application.</p>
+             <p>Your request number is <strong>${requestNumber}</strong> — please quote it in any follow-up. Our team will review your details and contact you with the partner agreement.</p>`,
+        businessId: resolvedBusinessId ? String(resolvedBusinessId) : undefined,
+      }).catch((err) => console.error("Vendor application confirmation email failed:", err));
     }
 
     await notifySuperAdmins({

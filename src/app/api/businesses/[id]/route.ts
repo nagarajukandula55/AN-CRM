@@ -146,6 +146,14 @@ const EDITABLE_FIELDS = [
   // documents — see core/vendorCompliance.ts's VENDOR_DOC_CATALOG and the
   // "Vendor Documents" section on this business's edit page.
   "vendorDocumentRequirements",
+  // Per-vendor-type (BRAND/SC/POS) module access restriction -- see
+  // models/Business.ts's VendorTypeModulesSchema and the "Vendor Type
+  // Module Access" section on this business's edit page. Admin-configurable,
+  // nothing hardcoded.
+  "vendorTypeModules",
+  // Marketplace toggles (enableB2B/enableB2C/skipVendorApproval/etc) —
+  // see models/Business.ts's MarketplaceSchema.
+  "marketplace",
 ] as const;
 
 export async function PATCH(req: Request, context: any) {

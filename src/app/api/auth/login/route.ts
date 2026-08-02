@@ -8,6 +8,7 @@ import UserRole from "@/models/UserRole";
 import Role from "@/models/Role";
 import { signToken } from "@/lib/auth/jwt";
 import { resolveOwnerOrManagerVendor } from "@/core/access/vendorAccess.service";
+import VendorProfile from "@/models/VendorProfile";
 
 // Anyone holding ONLY these floor roles has no admin-panel business at
 // all -- they should never see the /console shell, just their own storefront
@@ -286,11 +287,29 @@ export async function POST(req: Request) {
     // instead, without touching hasVendorAccess itself or Owner/Manager's
     // existing landing.
     const isEngineerOrCco = memberships.some((m) => ["ENGINEER", "CCO"].includes(m.memberType));
+
+    // A vendor applicant with no BusinessMember yet (application still
+    // under review, or trial activation failed) has zero memberships just
+    // like a plain storefront customer -- isMinimalOnly below would bounce
+    // them to shopnative.in, which is wrong: they applied through AN-CRM
+    // and should see their application's status here, not get sent to an
+    // unrelated storefront.
+    const pendingVendorApplication = !hasVendorAccess
+      ? await VendorProfile.findOne({
+          email: user.email,
+          isDeleted: false,
+          status: { $nin: ["ACTIVE", "APPROVED", "REJECTED"] },
+        })
+          .select("_id")
+          .lean()
+      : null;
+
     const isMinimalOnly =
       roleCodes.length > 0 &&
       roleCodes.every((c: string) => MINIMAL_FLOOR_ROLE_CODES.includes(c)) &&
       memberships.length === 0 &&
-      !isSuperAdmin;
+      !isSuperAdmin &&
+      !pendingVendorApplication;
 
     // Single active session -- bump sessionVersion so any token issued by a
     // previous login (a different device/browser still holding an
@@ -331,6 +350,7 @@ export async function POST(req: Request) {
       homeRoute,
       hasVendorAccess,
       isEngineerOrCco,
+      pendingVendorApplication: !!pendingVendorApplication,
     };
 
     /* ── Set httpOnly cookie + return token in JSON ──────────────────── */

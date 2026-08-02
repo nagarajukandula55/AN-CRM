@@ -140,10 +140,10 @@ export async function POST() {
       isDeleted: { $ne: true },
       businessId: { $ne: null },
     })
-      .select("_id businessId")
+      .select("_id businessId appliedAs")
       .lean();
     for (const v of activeVendors as any[]) {
-      await ensureVendorCoreRoles(String(v._id), String(v.businessId)).catch(() => {});
+      await ensureVendorCoreRoles(String(v._id), String(v.businessId), v.appliedAs).catch(() => {});
     }
 
     // 6. Zero-role accounts get deactivated (caller excluded by the

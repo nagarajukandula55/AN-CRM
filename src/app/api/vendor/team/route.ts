@@ -47,7 +47,7 @@ export async function GET() {
         .populate("userId", "name email username")
         .sort({ createdAt: -1 })
         .lean(),
-      getVendorAvailableModules(businessId),
+      getVendorAvailableModules(businessId, (vendor as any).appliedAs),
       getVendorStaffAccessMap(String((vendor as any)._id), businessId),
     ]);
 

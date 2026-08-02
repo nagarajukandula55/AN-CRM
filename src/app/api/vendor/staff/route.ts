@@ -62,7 +62,7 @@ export async function GET() {
     // existing vendor's Owner could be stuck with no real permissions
     // until something re-ran this).
     if (vendor.businessId) {
-      await createDefaultVendorRoles(String(vendor._id), String(vendor.businessId)).catch(() => {});
+      await createDefaultVendorRoles(String(vendor._id), String(vendor.businessId), (vendor as any).appliedAs).catch(() => {});
     }
 
     const members = await BusinessMember.find({ vendorId: vendor._id, isDeleted: { $ne: true } })
