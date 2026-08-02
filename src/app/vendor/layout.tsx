@@ -186,7 +186,10 @@ export default async function VendorLayout({
 
     if (ownerOrManagerVendor) {
       if (businessIdForModules) {
-        const availableModules = await getVendorAvailableModules(businessIdForModules)
+        const availableModules = await getVendorAvailableModules(
+          businessIdForModules,
+          (ownerOrManagerVendor as any).appliedAs
+        )
         const availableKeys = new Set(availableModules.map((m) => m.key))
         visibleItems = navItems.filter((item) => item.modules === null || item.modules.some((m) => availableKeys.has(m)))
       }
@@ -194,9 +197,10 @@ export default async function VendorLayout({
       // Owner/Manager) -- fall through with the full, unfiltered navItems
       // rather than guessing.
     } else if (userId && membership?.vendorId) {
+      const staffVendor = await VendorProfile.findById(membership.vendorId).select('appliedAs').lean<any>()
       const [accessMap, availableModules] = await Promise.all([
         getVendorStaffAccessMap(String(membership.vendorId), String(membership.businessId)),
-        getVendorAvailableModules(String(membership.businessId)),
+        getVendorAvailableModules(String(membership.businessId), staffVendor?.appliedAs),
       ])
       const availableKeys = new Set(availableModules.map((m) => m.key))
       const granted = new Set(accessMap[String(userId).toLowerCase()]?.modules || [])

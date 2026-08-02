@@ -17,7 +17,8 @@ import { ensureVendorCoreRoles } from "./vendorAccess.service";
 
 export async function createDefaultVendorRoles(
   vendorProfileId: string,
-  businessId: string
+  businessId: string,
+  appliedAs?: string
 ): Promise<void> {
-  await ensureVendorCoreRoles(vendorProfileId, businessId);
+  await ensureVendorCoreRoles(vendorProfileId, businessId, appliedAs);
 }

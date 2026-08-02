@@ -118,8 +118,13 @@ function flattenHierarchy(): ModuleEntry[] {
  * modules[] has never heard of stays available; see session-enriched.ts's
  * matching filter for why absent must never mean disabled).
  */
-export async function getVendorAvailableModules(businessId: string): Promise<ModuleEntry[]> {
-  const business = await Business.findById(businessId).select("modules").lean<any>();
+export async function getVendorAvailableModules(
+  businessId: string,
+  appliedAs?: string
+): Promise<ModuleEntry[]> {
+  const business = await Business.findById(businessId)
+    .select("modules vendorTypeModules")
+    .lean<any>();
   const businessModules = Array.isArray(business?.modules) ? business.modules : [];
   const disabled = expandWithAliases(
     businessModules
@@ -128,7 +133,25 @@ export async function getVendorAvailableModules(businessId: string): Promise<Mod
   );
 
   const vendorKeys = new Set<string>(VENDOR_MODULE_KEYS);
-  return flattenHierarchy().filter((m) => vendorKeys.has(m.key) && !disabled.has(m.key));
+  let result = flattenHierarchy().filter((m) => vendorKeys.has(m.key) && !disabled.has(m.key));
+
+  // Per-vendor-type restriction (admin-configurable via
+  // Business.vendorTypeModules, never hardcoded): if this business has an
+  // entry for `appliedAs` with a non-empty moduleKeys list, intersect the
+  // result down to just those keys. No entry (or an empty list) for this
+  // type = no extra restriction, exactly as before.
+  if (appliedAs) {
+    const typeEntries = Array.isArray(business?.vendorTypeModules) ? business.vendorTypeModules : [];
+    const typeEntry = typeEntries.find(
+      (t: any) => String(t?.appliedAs).toUpperCase() === String(appliedAs).toUpperCase()
+    );
+    if (typeEntry && Array.isArray(typeEntry.moduleKeys) && typeEntry.moduleKeys.length > 0) {
+      const allowed = new Set<string>(typeEntry.moduleKeys.map((k: any) => String(k)));
+      result = result.filter((m) => allowed.has(m.key));
+    }
+  }
+
+  return result;
 }
 
 export function permissionCodesForModules(modules: string[]): string[] {
@@ -153,8 +176,12 @@ export function permissionCodesForModules(modules: string[]): string[] {
  * architecture, staff access is granted per-module per-user by the
  * vendor, not picked from a fixed menu of job titles.
  */
-export async function ensureVendorCoreRoles(vendorProfileId: string, businessId: string): Promise<void> {
-  const available = await getVendorAvailableModules(businessId);
+export async function ensureVendorCoreRoles(
+  vendorProfileId: string,
+  businessId: string,
+  appliedAs?: string
+): Promise<void> {
+  const available = await getVendorAvailableModules(businessId, appliedAs);
   const codes = permissionCodesForModules(available.map((m) => m.key));
 
   for (const def of [
@@ -203,10 +230,17 @@ export async function grantVendorStaffAccess(opts: {
 }): Promise<void> {
   const { userId, businessId, vendorId, modules, isManager, grantedBy } = opts;
 
+  // Bound by this vendor's own type (BRAND/SC/POS) restriction, if the
+  // business has configured one -- not just the business-wide set.
+  const vendorProfile = await VendorProfile.findById(vendorId).select("appliedAs").lean<any>();
+  const appliedAs = vendorProfile?.appliedAs;
+
   // Never allow a grant outside what this vendor's business makes
   // available — the UI only offers valid options, but the API enforces it
   // independently.
-  const available = new Set((await getVendorAvailableModules(businessId)).map((m) => m.key));
+  const available = new Set(
+    (await getVendorAvailableModules(businessId, appliedAs)).map((m) => m.key)
+  );
   const granted = modules.filter((m) => available.has(m));
 
   const staffRoleCode = `${STAFF_ROLE_PREFIX}${userId}`.toUpperCase();
@@ -250,7 +284,7 @@ export async function grantVendorStaffAccess(opts: {
 
   // Manager toggle — grants/revokes the vendor's structural Manager role.
   if (typeof isManager === "boolean") {
-    await ensureVendorCoreRoles(vendorId, businessId);
+    await ensureVendorCoreRoles(vendorId, businessId, appliedAs);
     const managerRole = await Role.findOne({ code: "VENDOR_MANAGER", businessId, vendorId });
     if (managerRole) {
       if (isManager) {

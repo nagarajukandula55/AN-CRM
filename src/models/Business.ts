@@ -109,6 +109,19 @@ const VendorDocRequirementSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Per-vendor-type (VendorProfile.appliedAs) module access, admin-configurable
+// (nothing hardcoded). An entry with an empty/missing moduleKeys array means
+// "no restriction beyond the business-wide Business.modules[] deny-list" --
+// backward compatible with vendors of any type when no entry exists at all.
+// See core/access/vendorAccess.service.ts's getVendorAvailableModules.
+const VendorTypeModulesSchema = new mongoose.Schema(
+  {
+    appliedAs: { type: String, enum: ["BRAND", "SC", "POS"], required: true },
+    moduleKeys: { type: [String], default: [] },
+  },
+  { _id: false }
+);
+
 /* =========================================================
    NUMBERING
 ========================================================= */
@@ -887,6 +900,11 @@ const BusinessSchema = new mongoose.Schema(
 
     vendorDocumentRequirements: {
       type: [VendorDocRequirementSchema],
+      default: [],
+    },
+
+    vendorTypeModules: {
+      type: [VendorTypeModulesSchema],
       default: [],
     },
 

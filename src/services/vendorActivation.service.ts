@@ -75,7 +75,11 @@ async function provisionVendorLogin(
 
   vendor.userId = user._id as any;
 
-  await createDefaultVendorRoles(vendor._id.toString(), (vendor.businessId as any).toString());
+  await createDefaultVendorRoles(
+    vendor._id.toString(),
+    (vendor.businessId as any).toString(),
+    vendor.appliedAs
+  );
   const ownerRole = await Role.findOne({
     code: "VENDOR_OWNER",
     businessId: vendor.businessId,
