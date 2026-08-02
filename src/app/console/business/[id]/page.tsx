@@ -82,6 +82,16 @@ interface Business {
   logo?: string;
   favicon?: string;
   vendorDocumentRequirements?: { key: string; mandatory: boolean }[];
+  vendorTypeModules?: { appliedAs: "BRAND" | "SC" | "POS"; moduleKeys: string[] }[];
+  marketplace?: {
+    enableB2B?: boolean;
+    enableB2C?: boolean;
+    enableVendorPortal?: boolean;
+    enableManufacturing?: boolean;
+    enableWarehouse?: boolean;
+    enableB2BPartnerOrdering?: boolean;
+    skipVendorApproval?: boolean;
+  };
 }
 
 interface ModuleToggle {
@@ -127,6 +137,8 @@ type EditableForm = {
   logo: string;
   favicon: string;
   vendorDocumentRequirements: { key: string; mandatory: boolean }[];
+  vendorTypeModules: { appliedAs: "BRAND" | "SC" | "POS"; moduleKeys: string[] }[];
+  skipVendorApproval: boolean;
 };
 
 // Build the full module-toggle list for this business: every canonical
@@ -193,8 +205,16 @@ function toForm(biz: Business): EditableForm {
     logo: biz.logo || "",
     favicon: biz.favicon || "",
     vendorDocumentRequirements: Array.isArray(biz.vendorDocumentRequirements) ? biz.vendorDocumentRequirements : [],
+    vendorTypeModules: Array.isArray(biz.vendorTypeModules) ? biz.vendorTypeModules : [],
+    skipVendorApproval: !!biz.marketplace?.skipVendorApproval,
   };
 }
+
+const VENDOR_TYPE_TABS: { key: "BRAND" | "SC" | "POS"; label: string }[] = [
+  { key: "BRAND", label: "Brand" },
+  { key: "SC", label: "Service Center" },
+  { key: "POS", label: "POS" },
+];
 
 export default function BusinessDetailPage() {
   const params = useParams();
@@ -213,6 +233,12 @@ export default function BusinessDetailPage() {
 
   const [deleting, setDeleting] = useState(false);
   const deletingRef = useRef(false);
+
+  const [vendorTypeTab, setVendorTypeTab] = useState<"BRAND" | "SC" | "POS">("BRAND");
+  const { data: vendorModulesRes, isLoading: vendorModulesLoading } = useSWR("/api/vendor-modules");
+  const vendorModuleOptions: { key: string; label: string }[] = vendorModulesRes?.success
+    ? vendorModulesRes.modules
+    : [];
 
   // Uploads via the same Cloudinary pipeline already used elsewhere
   // (api/assets/upload/route.js) and stores the returned secure URL onto
@@ -294,7 +320,18 @@ export default function BusinessDetailPage() {
       const res = await fetch(`/api/businesses/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        // marketplace.skipVendorApproval is edited via the flat
+        // `skipVendorApproval` form field for simplicity, but the API only
+        // accepts the whole `marketplace` object (see EDITABLE_FIELDS on
+        // api/businesses/[id]/route.ts) — merge it in here rather than
+        // teaching the PATCH route a new flat field.
+        body: JSON.stringify({
+          ...form,
+          marketplace: {
+            ...(business?.marketplace || {}),
+            skipVendorApproval: form.skipVendorApproval,
+          },
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -958,6 +995,104 @@ export default function BusinessDetailPage() {
               );
             })}
           </div>
+        </section>
+
+        <section className="bg-surface border border-border rounded-card p-6 space-y-4 lg:col-span-2 shadow-card">
+          <div>
+            <h2 className="h-section">Vendor Type Module Access</h2>
+            <p className="mt-1 text-xs text-ink-3">
+              Restrict which modules a vendor of a given type (Brand / Service Center / POS)
+              can be granted, on top of this business's own Modules selection above. No
+              modules selected = this vendor type gets everything the business allows —
+              this is purely a further narrowing, never a way to grant something the
+              business itself has disabled.
+            </p>
+          </div>
+          <div className="flex gap-2 border-b border-border">
+            {VENDOR_TYPE_TABS.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setVendorTypeTab(t.key)}
+                className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition ${
+                  vendorTypeTab === t.key
+                    ? "border-accent text-accent"
+                    : "border-transparent text-ink-3 hover:text-ink-2"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {vendorModulesLoading ? (
+            <p className="text-xs text-ink-3">Loading modules…</p>
+          ) : (
+            <>
+              <p className="text-[11px] text-ink-3">
+                {(() => {
+                  const entry = form.vendorTypeModules.find((e) => e.appliedAs === vendorTypeTab);
+                  const count = entry?.moduleKeys.length || 0;
+                  return count === 0
+                    ? `No modules selected for ${vendorTypeTab} — gets every module this business allows.`
+                    : `${count} module${count === 1 ? "" : "s"} selected for ${vendorTypeTab}.`;
+                })()}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {vendorModuleOptions.map((mod) => {
+                  const entry = form.vendorTypeModules.find((e) => e.appliedAs === vendorTypeTab);
+                  const checked = !!entry?.moduleKeys.includes(mod.key);
+                  return (
+                    <label
+                      key={mod.key}
+                      className="flex items-center gap-2 rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-ink-2"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const isChecked = e.target.checked;
+                          const others = form.vendorTypeModules.filter((en) => en.appliedAs !== vendorTypeTab);
+                          const currentKeys = entry?.moduleKeys || [];
+                          const nextKeys = isChecked
+                            ? [...currentKeys, mod.key]
+                            : currentKeys.filter((k) => k !== mod.key);
+                          setForm({
+                            ...form,
+                            vendorTypeModules: [...others, { appliedAs: vendorTypeTab, moduleKeys: nextKeys }],
+                          });
+                        }}
+                      />
+                      <span>{mod.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </section>
+
+        <section className="bg-surface border border-border rounded-card p-6 space-y-3 lg:col-span-2 shadow-card">
+          <h2 className="h-section">Vendor Approval</h2>
+          <label className="flex items-start gap-3 rounded-control border border-border bg-surface-2 px-3 py-3 text-sm text-ink-2">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={form.skipVendorApproval}
+              onChange={(e) => setForm({ ...form, skipVendorApproval: e.target.checked })}
+            />
+            <span>
+              <span className="font-medium text-ink">
+                Skip vendor approval — activate accounts, agreement, and trial instantly on application
+              </span>
+              <p className="mt-1 text-xs text-ink-3">
+                When on, a vendor application submitted for this business skips the normal
+                admin-review-then-agreement flow entirely: portal login, partner agreement
+                (emailed for signature), and a 7-day trial start all happen immediately at
+                submission. Off by default — existing businesses keep the manual approval
+                flow unless explicitly opted in here.
+              </p>
+            </span>
+          </label>
         </section>
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4 lg:col-span-2">

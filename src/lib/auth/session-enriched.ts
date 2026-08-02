@@ -7,6 +7,7 @@ import UserRole from "@/models/UserRole";
 import RolePermission from "@/models/RolePermission";
 import Permission from "@/models/Permission";
 import Business from "@/models/Business";
+import VendorProfile from "@/models/VendorProfile";
 import { expandWithAliases } from "@/core/access/moduleKeyAliases";
 import { getOrCreateANGroupBusinessId } from "@/core/access/anGroupBusiness.service";
 import { getVendorAvailableModules, permissionCodesForModules } from "@/core/access/vendorAccess.service";
@@ -223,7 +224,14 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
         );
         const liveVendorPermissions: string[] = [];
         for (const roleDoc of vendorStructuralRoles) {
-          const available = await getVendorAvailableModules(String((roleDoc as any).businessId)).catch(() => []);
+          const vendorForRole = await VendorProfile.findById((roleDoc as any).vendorId)
+            .select("appliedAs")
+            .lean<any>()
+            .catch(() => null);
+          const available = await getVendorAvailableModules(
+            String((roleDoc as any).businessId),
+            vendorForRole?.appliedAs
+          ).catch(() => []);
           liveVendorPermissions.push(...permissionCodesForModules(available.map((m) => m.key)));
         }
 

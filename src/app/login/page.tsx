@@ -64,6 +64,10 @@ function LoginForm() {
       // send them to their actual storefront instead.
       const landingPage = data.user?.mustChangePassword
         ? '/update-password'
+        // Applied as a vendor but no BusinessMember yet (review pending, or
+        // instant-trial activation hasn't landed) -- show them their
+        // application status here instead of bouncing to shopnative.in.
+        : data.user?.pendingVendorApplication ? '/vendor-application-status'
         : data.user?.isMinimalOnly ? 'https://shopnative.in'
         // A vendor's own Owner/Manager belongs on /vendor regardless of
         // homeRoute -- they can ALSO hold an unrelated business-wide role
