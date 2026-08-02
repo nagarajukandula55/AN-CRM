@@ -157,6 +157,7 @@ export const ACCESS_HIERARCHY: Category[] = [
     modules: [
       { key: "businesses", label: "Businesses", description: "Create and manage tenant businesses on the platform." },
       { key: "vendors", label: "Vendors", description: "Onboard and manage vendor accounts and their approval." },
+      { key: "vendor-subscriptions", label: "Vendor Subscriptions", description: "View and edit vendor trial/paid subscription dates (console/vendor-subscriptions)." },
       { key: "agreements", label: "Agreements", description: "Draft, send and sign business/vendor agreements." },
       { key: "banners", label: "Banners", description: "Manage storefront homepage banners/promotions." },
     ],
