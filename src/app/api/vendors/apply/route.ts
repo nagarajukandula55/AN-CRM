@@ -7,6 +7,7 @@ import { Types } from "mongoose";
 import { generateGlobalDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { notifySuperAdmins } from "@/services/notification.service";
+import { activateVendorWithTrial } from "@/services/vendorActivation.service";
 
 /**
  * POST /api/vendors/apply — PUBLIC vendor signup request.
@@ -123,7 +124,7 @@ export async function POST(req: NextRequest) {
     // approval" behavior only if that env var isn't set at all.
     const resolvedBusinessId = businessId || process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID;
 
-    let business: { _id: unknown; name?: string; brandName?: string } | null = null;
+    let business: { _id: unknown; name?: string; brandName?: string; marketplace?: { skipVendorApproval?: boolean } } | null = null;
     if (resolvedBusinessId) {
       if (!Types.ObjectId.isValid(resolvedBusinessId)) {
         return NextResponse.json(
@@ -133,7 +134,7 @@ export async function POST(req: NextRequest) {
       }
       business = await (Business as any)
         .findOne({ _id: resolvedBusinessId, isActive: true })
-        .select("_id name brandName")
+        .select("_id name brandName marketplace.skipVendorApproval")
         .lean();
       if (!business) {
         return NextResponse.json(
@@ -205,22 +206,48 @@ export async function POST(req: NextRequest) {
       req,
     });
 
+    // Skip-approval instant-trial path: only possible when a business was
+    // actually resolved (it's a per-business toggle) AND that business has
+    // opted in via marketplace.skipVendorApproval (see Business.ts). Runs
+    // inline, synchronously, right here -- it must never fail the request
+    // itself, since the VendorProfile above is already saved either way.
+    let trialActivated = false;
+    if (business?.marketplace?.skipVendorApproval) {
+      try {
+        const result = await activateVendorWithTrial(vendor as any, String(resolvedBusinessId));
+        trialActivated = result.ok;
+        if (!result.ok) {
+          console.error("Instant vendor trial activation failed:", result.error);
+        }
+      } catch (err: unknown) {
+        console.error(
+          "Instant vendor trial activation threw:",
+          err instanceof Error ? err.message : err
+        );
+      }
+    }
+
     await notifySuperAdmins({
-      title: "New vendor application",
-      message: `${String(companyName).trim()} applied (request ${requestNumber}) and needs review${business ? ` for ${business.brandName || business.name}` : ""}.`,
+      title: trialActivated ? "New vendor auto-activated (trial)" : "New vendor application",
+      message: `${String(companyName).trim()} applied (request ${requestNumber})${
+        trialActivated ? " and was auto-activated on a 7-day trial" : " and needs review"
+      }${business ? ` for ${business.brandName || business.name}` : ""}.`,
       type: "warning",
-      link: "/console/vendors",
+      link: trialActivated ? "/console/vendor-subscriptions" : "/console/vendors",
     });
 
     return NextResponse.json(
       {
         success: true,
-        message: business
+        message: trialActivated
+          ? "Application submitted and approved instantly — check your email for your partner agreement (to sign) and your portal login details. Your 7-day trial has started."
+          : business
           ? "Application submitted successfully. The team will review your details and contact you for the partner agreement."
           : `Application submitted successfully. Your request number is ${requestNumber} — please quote it in any follow-up. The team will review your documents, assign you to the appropriate business, and contact you for the partner agreement.`,
         applicationId: vendor.vendorId || requestNumber,
         requestNumber,
         business: business?.brandName || business?.name,
+        trialActivated,
       },
       { status: 201 }
     );

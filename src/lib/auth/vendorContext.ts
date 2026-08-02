@@ -1,6 +1,7 @@
 import VendorProfile, { IVendorProfile } from "@/models/VendorProfile";
 import BusinessMember from "@/models/BusinessMember";
 import Business from "@/models/Business";
+import { isVendorBlockedByExpiredTrial } from "@/lib/vendor/checkTrialAccess";
 
 /**
  * Resolves which vendor a logged-in user should be scoped to when hitting
@@ -70,6 +71,18 @@ export async function resolveVendorContext(
     if (business && (business as any).marketplace?.enableVendorPortal === false) {
       return null;
     }
+  }
+
+  // Instant-trial vendors (see Business.ts's marketplace.skipVendorApproval
+  // and services/vendorActivation.service.ts's activateVendorWithTrial) get
+  // full portal access for exactly 7 days -- past that, with no paid
+  // subscription, they're blocked the same as "not a vendor" here (every
+  // existing caller of resolveVendorContext already handles null with a
+  // 403/empty response). src/app/vendor/layout.tsx does the same check
+  // separately to show a clear "trial expired" page instead of a bare
+  // redirect, since it can't rely on this generic null.
+  if (await isVendorBlockedByExpiredTrial(result.vendor._id.toString())) {
+    return null;
   }
 
   return result;

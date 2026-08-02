@@ -115,6 +115,7 @@ export const NAV_GROUPS: NavGroup[] = [
     // console/business/[id] (banners etc.) is untouched -- still linked
     // from Settings for the business you're currently in.
     { key: "vendors",    label: "Vendors",      route: "/console/vendors",    icon: "Truck" },
+    { key: "vendor-subscriptions", label: "Vendor Subscriptions", route: "/console/vendor-subscriptions", icon: "CreditCard" },
     { key: "customers",  label: "Customer Data", route: "/console/customers", icon: "Users" },
   ]},
   { label: "Documents", items: [

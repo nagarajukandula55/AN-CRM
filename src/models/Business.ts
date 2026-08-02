@@ -430,6 +430,19 @@ const MarketplaceSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    // When on, a vendor application submitted at POST /api/vendors/apply
+    // for this business skips the normal admin-review-then-agreement flow
+    // entirely -- see services/vendorActivation.service.ts's
+    // activateVendorWithTrial, called inline from apply/route.ts. The
+    // agreement is emailed for signature, the portal login is created, and
+    // a 7-day TRIAL Subscription starts immediately, all at submit time.
+    // Off by default -- existing businesses keep the manual approval flow
+    // unless an admin explicitly opts in.
+    skipVendorApproval: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     _id: false,
