@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/mongodb";
 import BusinessMember from "@/models/BusinessMember";
 import Business from "@/models/Business";
 import { logAction, actorFromPayload } from "@/lib/audit/logAction";
+import { resolveCentralRoleForBusiness } from "@/lib/auth/resolveCentralRole";
 
 /**
  * POST /api/auth/switch-business
@@ -66,6 +67,12 @@ export async function POST(req: Request) {
       businessIds = [...businessIds, businessId];
     }
 
+    // Re-resolve centralRole for the NEW active business -- same fix
+    // applied to ANgroup's identical route: this previously carried no
+    // centralRole at all after a switch, so sidebar page restrictions
+    // stayed wrong (or vanished) until the next full login.
+    const centralRole = await resolveCentralRoleForBusiness(payload.email, businessId);
+
     const newToken = signToken({
       id:               payload.id,
       email:            payload.email,
@@ -76,6 +83,7 @@ export async function POST(req: Request) {
       businessIds,
       activeBusinessId: businessId,
       organizationId:   payload.organizationId,
+      centralRole,
     });
 
     const res = NextResponse.json({
