@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { headers as nextHeaders } from "next/headers";
 import { connectDB } from "@/core/db/mongodb";
 import Business from "@/models/Business";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
@@ -7,6 +8,7 @@ import { filterModulesByPermission } from "@/core/access/filterModulesByPermissi
 import { expandWithAliases } from "@/core/access/moduleKeyAliases";
 import { STATIC_MODULES } from "@/components/sidebar-nav";
 import { getAllowedModuleKeysForBusiness } from "@/core/pricing/planAccess";
+import { resolveAllowedPageKeys, ALWAYS_ALLOWED_KEYS } from "@/lib/access/centralAllowedPages";
 
 /**
  * MIGRATED from UserBusinessAccess/accessKeys to the Permission-based access
@@ -170,6 +172,25 @@ export async function POST(req: Request) {
         ...(business?.inventorySerialized ? ["inventory", "stock-transfers", "inventory-lots"] : []),
       ]);
       visibleModules = visibleModules.filter((m: any) => scAllowedKeys.has(m.key));
+    }
+
+    // Central-api role's allowedPages -- a SEPARATE, admin-configured
+    // restriction layered on top of everything above (see
+    // lib/access/centralAllowedPages.ts's own comment). Never applied to
+    // a super admin. A null return (no central role recorded, role not
+    // in the catalog, or no pages configured for it yet) means "don't
+    // additionally restrict" -- this can only ever narrow visibleModules
+    // further, and only once an admin has actually configured a role's
+    // pages via the Roles & Access business-settings panel.
+    if (!session.isSuperAdmin) {
+      const headersList = await nextHeaders();
+      const centralRole = headersList.get("x-central-role");
+      const allowedPageKeys = await resolveAllowedPageKeys(businessId, centralRole);
+      if (allowedPageKeys) {
+        visibleModules = visibleModules.filter(
+          (m: any) => ALWAYS_ALLOWED_KEYS.has(m.key) || allowedPageKeys.has(m.key)
+        );
+      }
     }
 
     // Plan-gating: a module a business is otherwise permitted to see can

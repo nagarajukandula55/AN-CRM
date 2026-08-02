@@ -91,6 +91,12 @@ export async function POST(req: Request) {
 
     let valid = false;
     let centralApiReachable = true;
+    // businessAccess from central-api's own login response -- used below
+    // (once activeBusinessId is known) to find this person's role name
+    // for that specific business, so the sidebar can look up its
+    // allowedPages. Not used for authorization here -- only for that
+    // lookup key.
+    let centralBusinessAccess: { businessId: string; role: string }[] = [];
     try {
       const centralRes = await fetch(`${process.env.CENTRAL_API_URL}/api/auth/login`, {
         method: "POST",
@@ -98,6 +104,10 @@ export async function POST(req: Request) {
         body: JSON.stringify({ email: user.email, password }),
       });
       valid = centralRes.ok;
+      if (valid) {
+        const centralBody = await centralRes.json().catch(() => null);
+        centralBusinessAccess = centralBody?.user?.businessAccess || [];
+      }
     } catch (err) {
       console.error("[login] central-api auth check failed:", (err as any)?.message || err);
       centralApiReachable = false;
@@ -167,6 +177,30 @@ export async function POST(req: Request) {
       activeBusinessId = user.defaultBusinessId.toString();
     } else if (businessIds.length > 0) {
       activeBusinessId = businessIds[0];
+    }
+
+    // Resolve this person's central-api role name for activeBusinessId --
+    // central-api's businessAccess is keyed by ITS OWN business _id, not
+    // this app's local one, so activeBusinessId has to be resolved via
+    // sourceId first (same join every other central-api read in this app
+    // already does). Best-effort: any failure here just leaves
+    // centralRole null, which sidebar filtering treats as unrestricted --
+    // never blocks login.
+    let centralRole: string | null = null;
+    if (activeBusinessId && centralBusinessAccess.length > 0 && process.env.CENTRAL_API_URL) {
+      try {
+        const bizRes = await fetch(
+          `${process.env.CENTRAL_API_URL}/api/v1/businesses?search=${encodeURIComponent(`sourceId:${activeBusinessId}`)}&limit=1`,
+          { headers: { "x-api-key": process.env.CENTRAL_API_KEY || "" } }
+        );
+        const bizBody = await bizRes.json().catch(() => null);
+        const centralBusinessId = bizBody?.items?.[0]?._id;
+        if (centralBusinessId) {
+          centralRole = centralBusinessAccess.find((a) => a.businessId === centralBusinessId)?.role || null;
+        }
+      } catch (err) {
+        console.error("[login] failed to resolve centralRole:", (err as any)?.message || err);
+      }
     }
 
     // Super admin gets all business access — no restriction
@@ -278,6 +312,7 @@ export async function POST(req: Request) {
       organizationId:   user.organizationId?.toString(),
       mustChangePassword: !!user.mustChangePassword,
       sessionVersion,
+      centralRole,
     });
 
     const safeUser = {

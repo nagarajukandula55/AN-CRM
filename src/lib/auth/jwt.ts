@@ -41,6 +41,18 @@ export interface JWTPayload {
   activeBusinessId?: string;
   organizationId?: string;
   mustChangePassword?: boolean;
+  /** This user's role name (free text, admin-defined -- see central-api's
+   * role catalog / this app's own Roles & Access business-settings panel)
+   * for the CURRENT activeBusinessId, as returned in central-api's own
+   * /api/auth/login response body. Used only to look up that role's
+   * allowedPages when filtering the sidebar (api/ui/sidebar/route.ts) --
+   * this is a SEPARATE, coarser concept from this app's own local Role/
+   * Permission system (`role` above, `permissions` resolved via
+   * getEnrichedSession()), which remains the actual authorization source
+   * of truth for API access. Null/absent means "no central role recorded
+   * for this business" -- sidebar filtering treats that as unrestricted,
+   * same as an untagged business or an empty allowedPages list. */
+  centralRole?: string | null;
   /** User.sessionVersion at the time this token was issued -- bumped on
    * every login so an older, still-unexpired token from a previous device
    * fails the sessionVersion check in getEnrichedSession (single active

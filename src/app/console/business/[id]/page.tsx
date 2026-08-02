@@ -26,6 +26,7 @@ import { STATIC_MODULES } from "@/components/sidebar";
 import { useToast } from "@/components/shared/Toast";
 import { MODULE_TEMPLATE_OPTIONS, isEnabledUnderTemplate, describeBusinessUsage, type ModuleTemplateKey } from "@/core/access/moduleTemplates";
 import DocumentNumbersPanel from "@/components/admin/DocumentNumbersPanel";
+import RolesAndAccessPanel from "@/components/admin/RolesAndAccessPanel";
 import DocumentTemplateSelectorPanel from "@/components/admin/DocumentTemplateSelectorPanel";
 import ProductCategoriesPanel from "@/components/admin/ProductCategoriesPanel";
 import { IconPicker } from "@/components/ui/IconPicker";
@@ -1050,6 +1051,15 @@ export default function BusinessDetailPage() {
             per business.
           </p>
           <DocumentNumbersPanel businessId={id} />
+        </section>
+
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4 lg:col-span-2">
+          <h2 className="font-bold text-lg">Roles &amp; Access</h2>
+          <p className="text-xs text-gray-400">
+            Define this business&apos;s roles (e.g. Owner, Manager, Warehouse Staff) and which pages each one can
+            access. Shared with every AN Group app via central-api.
+          </p>
+          <RolesAndAccessPanel businessId={id} />
         </section>
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4 lg:col-span-2">
