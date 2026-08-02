@@ -28,6 +28,7 @@ interface JWTPayload {
   organizationId?: string;
   mustChangePassword?: boolean;
   sessionVersion?: number;
+  centralRole?: string | null;
 }
 
 // Allowed while mustChangePassword is set -- everything else 403s/redirects
@@ -312,6 +313,7 @@ export async function middleware(req: NextRequest) {
     requestHeaders.set("x-business-ids", payload.businessIds.join(","));
   }
   if (payload.isSuperAdmin) requestHeaders.set("x-super-admin-access", "true");
+  if (payload.centralRole) requestHeaders.set("x-central-role", payload.centralRole);
 
   return applyCors(NextResponse.next({ request: { headers: requestHeaders } }), origin);
 }
