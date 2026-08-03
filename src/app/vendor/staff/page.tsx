@@ -64,6 +64,11 @@ export default function VendorStaffPage() {
     enableServiceCenter: !!data?.vendor?.enableServiceCenter,
     enableWarehouse: !!data?.vendor?.enableWarehouse,
   };
+  // SC vendors are single-ID only, by explicit direction -- the applicant
+  // who signed up IS the whole account, no team beneath them. The API
+  // (grantVendorStaffAccess) already rejects this server-side; hiding the
+  // option here just avoids sending someone through a form that will fail.
+  const isSingleIdOnly = data?.vendor?.appliedAs === "SC";
   const [showForm, setShowForm] = useState(false);
   // "existing" attaches an already-registered account by their user ID
   // (the original flow, requires Super Admin to have attached them
@@ -167,8 +172,16 @@ export default function VendorStaffPage() {
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader
           title="Staff"
-          description="Add existing users as staff by their user ID and assign them a role."
-          actions={<Button onClick={() => { setMode("existing"); setShowForm(true); }} icon={<Plus size={16} />}>Add Staff</Button>}
+          description={
+            isSingleIdOnly
+              ? "This account is single-ID only — no team can be added beneath it."
+              : "Add existing users as staff by their user ID and assign them a role."
+          }
+          actions={
+            isSingleIdOnly ? null : (
+              <Button onClick={() => { setMode("existing"); setShowForm(true); }} icon={<Plus size={16} />}>Add Staff</Button>
+            )
+          }
         />
 
         {createdCreds && (

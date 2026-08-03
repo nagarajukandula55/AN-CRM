@@ -1,0 +1,30 @@
+From 707372d02245b8bd17a7e19afbcef6c8b9d53f71 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 31 Jul 2026 13:12:54 +0000
+Subject: [PATCH] Fix TS build error: type insertMany hook's docs param as
+ any[]
+
+Mongoose's typed post("insertMany") overload doesn't guarantee docs is
+iterable, so `for (const doc of docs)` failed strict type-checking on
+Vercel's build ("must have a [Symbol.iterator]() method"). Explicit any[]
+matches how the hook is actually invoked at runtime.
+---
+ src/models/Customer.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/models/Customer.ts b/src/models/Customer.ts
+index d3c45af..d4222fc 100644
+--- a/src/models/Customer.ts
++++ b/src/models/Customer.ts
+@@ -88,7 +88,7 @@ CustomerSchema.post("findOneAndDelete", async function (doc) {
+   if (doc) await deleteRecordFromCentralApi("customers", doc._id.toString());
+ });
+ 
+-CustomerSchema.post("insertMany", async function (docs) {
++CustomerSchema.post("insertMany", async function (docs: any[]) {
+   for (const doc of docs) {
+     await syncRecordToCentralApi("customers", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
+   }
+-- 
+2.43.0
+

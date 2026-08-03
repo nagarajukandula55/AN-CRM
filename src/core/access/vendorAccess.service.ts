@@ -235,6 +235,16 @@ export async function grantVendorStaffAccess(opts: {
   const vendorProfile = await VendorProfile.findById(vendorId).select("appliedAs").lean<any>();
   const appliedAs = vendorProfile?.appliedAs;
 
+  // SC vendors are single-ID only, by explicit direction -- the applicant
+  // who signed up IS the whole account, no staff/team beneath them (unlike
+  // BRAND/POS, where the Owner/Manager can build out a team). Any grant
+  // attempt for an SC vendor (from the vendor's own Team & Access UI, or an
+  // admin) is rejected outright, not just filtered down to zero modules --
+  // the caller should never have offered this in the first place.
+  if (appliedAs === "SC") {
+    throw new Error("This vendor is single-ID only (SC) -- staff access cannot be granted.");
+  }
+
   // Never allow a grant outside what this vendor's business makes
   // available — the UI only offers valid options, but the API enforces it
   // independently.

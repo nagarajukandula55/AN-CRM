@@ -138,6 +138,7 @@ export async function GET() {
         enableStoreFront: !!(vendor as any).enableStoreFront,
         enableServiceCenter: !!(vendor as any).enableServiceCenter,
         enableWarehouse: !!(vendor as any).enableWarehouse,
+        appliedAs: (vendor as any).appliedAs || null,
       },
     });
   } catch (error: unknown) {
