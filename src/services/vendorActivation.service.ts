@@ -12,6 +12,7 @@ import { createDefaultVendorRoles } from "@/core/access/vendorDefaultRoles.servi
 import { generateUniqueUserId } from "@/lib/auth/generateUserId";
 import { logAction } from "@/lib/audit/logAction";
 import { sendAccountCredentialsEmail, sendAgreementOtpEmail } from "@/services/email/resend.service";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -275,7 +276,9 @@ By signing below, both parties agree to the terms above.`;
         otp: rawOtp,
         signingLink,
         businessId,
-      }).catch(() => {});
+      })
+        .then(() => sendTelegramMessage(`📄 <b>Agreement emailed</b>\n${vendorParty.name} (${vendorParty.email}) — trial onboarding`))
+        .catch((err) => sendTelegramMessage(`⚠️ <b>Agreement email FAILED</b>\n${vendorParty.name} (${vendorParty.email}): ${err?.message || err}`).catch(() => {}));
     }
 
     vendor.agreementId = agreement._id as any;
@@ -285,6 +288,9 @@ By signing below, both parties agree to the terms above.`;
 
     const { tempPassword } = await provisionVendorLogin(vendor, String(vendor.userId || "system"));
     await vendor.save();
+    if (tempPassword) {
+      sendTelegramMessage(`🔑 <b>Credentials emailed</b>\n${vendor.companyName} (${vendor.email}) — new login provisioned`).catch(() => {});
+    }
 
     const now = new Date();
     const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -302,10 +308,12 @@ By signing below, both parties agree to the terms above.`;
       createdBy: vendor.userId,
     });
 
+    sendTelegramMessage(`✅ <b>Vendor activated on 7-day trial</b>\n${vendor.companyName} (${vendor.appliedAs || "BRAND"}) — ${vendor.email}`).catch(() => {});
     return { ok: true, vendor, tempPassword };
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Unknown error";
     console.error("activateVendorWithTrial failed:", msg);
+    sendTelegramMessage(`🚨 <b>Vendor trial activation FAILED</b>\n${vendor.companyName} (${vendor.email}): ${msg}`).catch(() => {});
     try {
       logAction({
         action: "UPDATE",

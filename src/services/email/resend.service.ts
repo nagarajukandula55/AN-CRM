@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { buildInvoiceEmailTemplate } from "./invoiceEmail.template";
 import Integration from "@/models/Integration";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 /**
  * Three-tier lookup: (1) that business's own Resend credentials, set via
@@ -50,6 +51,12 @@ async function resolveResendCreds(businessId?: string): Promise<{ apiKey: string
     } catch (err) {
       console.error("EMAIL: failed to load central-api shared Resend config, falling back to env", err);
     }
+  }
+
+  if (!process.env.RESEND_API_KEY) {
+    sendTelegramMessage(
+      "🚨 <b>No Resend API key configured anywhere</b> (business-specific, central-api shared, or local env) — every email send is failing right now."
+    ).catch(() => {});
   }
 
   return {
