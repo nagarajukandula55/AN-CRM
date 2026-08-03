@@ -1,27 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import Subscription from "@/models/Subscription";
 import { logAction } from "@/lib/audit/logAction";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { requirePermission } from "@/middleware/permission.guard";
+import { buildPermissionCode } from "@/core/access/actions";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 /**
  * PATCH /api/vendor-subscriptions/[id] — admin-only edit of a vendor's
  * trial/subscription dates (and optionally status), e.g. manually
- * extending a trial past its original 7 days. Same x-user-id admin-auth
- * pattern as api/vendors/[id]/finalize/route.ts -- no separate
- * super-admin-only gate exists at this layer for this admin console
- * section, matching that route.
+ * extending a trial past its original 7 days. Gated on businesses.edit,
+ * same as api/businesses/[id]/route.ts -- a plain x-user-id header check
+ * let ANY logged-in user, including a vendor, rewrite any vendor's trial
+ * dates or force status to ACTIVE, defeating the trial paywall entirely.
  */
 export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
     await connectDB();
-    const h = await headers();
-    const userId = h.get("x-user-id");
-    if (!userId) {
+    const session = await getEnrichedSession();
+    if (!session?.user) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
+    try {
+      requirePermission(session as any, buildPermissionCode("businesses", "edit"));
+    } catch (err: any) {
+      return NextResponse.json(
+        { success: false, error: err.message },
+        { status: err.code === "FORBIDDEN" ? 403 : 401 }
+      );
+    }
+    const userId = session.user.id;
 
     const { id } = await context.params;
     const body = await req.json();
