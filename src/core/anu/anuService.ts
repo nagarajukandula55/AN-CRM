@@ -158,6 +158,40 @@ export async function askAnu(input: AnuQueryInput): Promise<AnuQueryResult> {
     chain.push({ name: "openrouter", call: () => callOpenRouter(openrouterCfg.apiKey, openrouterCfg.model, systemPrompt, input.messages) });
   }
 
+  // Shared fallback: if this business hasn't configured its own AI
+  // provider (or none of them worked above), fall back to central-api's
+  // shared "ANU_AI" integration — one platform-wide provider/key/model,
+  // dashboard-configurable, so a business doesn't need its own API key
+  // just to get Anu working (same central-source-of-truth pattern as
+  // Resend, see services/email/resend.service.ts). Only attempted if the
+  // chain is otherwise empty or every per-business provider above fails.
+  if (process.env.CENTRAL_API_URL) {
+    try {
+      const res = await fetch(`${process.env.CENTRAL_API_URL}/api/v1/integrations/anu_ai`, {
+        headers: { "x-api-key": process.env.CENTRAL_API_KEY || "" },
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const body = await res.json();
+        const cfg = body?.configured ? body.config : null;
+        if (cfg?.apiKey && cfg?.provider) {
+          const callers: Record<ProviderName, (key: string, model: string) => Promise<string>> = {
+            anthropic: (key, model) => callAnthropic(key, model, systemPrompt, input.messages),
+            openai: (key, model) => callOpenAI(key, model, systemPrompt, input.messages),
+            google: (key, model) => callGoogle(key, model, systemPrompt, input.messages),
+            openrouter: (key, model) => callOpenRouter(key, model, systemPrompt, input.messages),
+          };
+          const caller = callers[cfg.provider as ProviderName];
+          if (caller) {
+            chain.push({ name: cfg.provider as ProviderName, call: () => caller(cfg.apiKey, cfg.model) });
+          }
+        }
+      }
+    } catch (err) {
+      console.error("ANU: failed to load central-api shared AI config", err);
+    }
+  }
+
   const failures: string[] = [];
   for (const provider of chain) {
     try {

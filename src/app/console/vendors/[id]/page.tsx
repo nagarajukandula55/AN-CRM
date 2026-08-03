@@ -212,6 +212,13 @@ export default function VendorDetailPage() {
   const [addingStaff, setAddingStaff] = useState(false)
   const [staffError, setStaffError] = useState<string | null>(null)
 
+  // Manual trigger for the instant-trial activation path -- for a pending
+  // application that should get instant-trial treatment right now even
+  // though the automatic trigger (skip-approval on apply) didn't fire.
+  const [activatingTrial, setActivatingTrial] = useState(false)
+  const [trialActivationResult, setTrialActivationResult] = useState<{ email: string; temporaryPassword: string | null } | null>(null)
+  const [trialActivationError, setTrialActivationError] = useState<string | null>(null)
+
   // Owner (VendorProfile.userId) and Manager (a real VENDOR_MANAGER role
   // grant, not just the cosmetic vendorRole label "Add Staff Member" sets)
   // -- both search-and-assign against the same existing-user search
@@ -261,6 +268,26 @@ export default function VendorDetailPage() {
       /* rollback handled by SWR optimisticData/rollbackOnError */
     } finally {
       setSavingCategories(false)
+    }
+  }
+
+  async function handleActivateTrial() {
+    setActivatingTrial(true)
+    setTrialActivationError(null)
+    setTrialActivationResult(null)
+    try {
+      const res = await fetch(`/api/vendors/${id}/activate-trial`, { method: 'POST' })
+      const data = await res.json()
+      if (!data.success) {
+        setTrialActivationError(data.error || 'Activation failed')
+        return
+      }
+      setTrialActivationResult({ email: data.login.email, temporaryPassword: data.login.temporaryPassword })
+      await refetchVendor()
+    } catch (err) {
+      setTrialActivationError(err instanceof Error ? err.message : 'Activation failed')
+    } finally {
+      setActivatingTrial(false)
     }
   }
 
@@ -409,6 +436,15 @@ export default function VendorDetailPage() {
               {vendor.vendorId || 'No vendor ID assigned yet'} · {businessLabel(vendor.businessId)}
             </p>
           </div>
+          {!isApproved && vendor.status !== 'ACTIVE' && (
+            <button
+              onClick={handleActivateTrial}
+              disabled={activatingTrial}
+              className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition shrink-0"
+            >
+              {activatingTrial ? 'Activating…' : 'Activate on Trial'}
+            </button>
+          )}
           <button
             onClick={() => router.push(`/console/vendors/${id}/coverage`)}
             className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50 transition shrink-0"
@@ -416,6 +452,23 @@ export default function VendorDetailPage() {
             Service Area Coverage
           </button>
         </div>
+
+        {trialActivationResult && (
+          <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <p className="font-semibold">Vendor activated on a 7-day trial.</p>
+            <p className="mt-1">
+              Login: <span className="font-mono">{trialActivationResult.email}</span>
+              {trialActivationResult.temporaryPassword && (
+                <> &nbsp;•&nbsp; Temp password: <span className="font-mono">{trialActivationResult.temporaryPassword}</span> (shown once — share it securely now)</>
+              )}
+            </p>
+          </div>
+        )}
+        {trialActivationError && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {trialActivationError}
+          </div>
+        )}
 
         {/* Owner (VendorProfile.userId, structural) and Manager (a real
             VENDOR_MANAGER role grant) -- previously neither was settable
