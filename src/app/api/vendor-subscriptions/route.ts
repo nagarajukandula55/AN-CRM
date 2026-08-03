@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import Subscription from "@/models/Subscription";
 import VendorProfile from "@/models/VendorProfile";
 import Business from "@/models/Business";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { requirePermission } from "@/middleware/permission.guard";
+import { buildPermissionCode } from "@/core/access/actions";
 
 /**
  * GET /api/vendor-subscriptions — admin-only list of every vendor
@@ -16,10 +18,17 @@ import Business from "@/models/Business";
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
-    const h = await headers();
-    const userId = h.get("x-user-id");
-    if (!userId) {
+    const session = await getEnrichedSession();
+    if (!session?.user) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+    try {
+      requirePermission(session as any, buildPermissionCode("businesses", "view"));
+    } catch (err: any) {
+      return NextResponse.json(
+        { success: false, error: err.message },
+        { status: err.code === "FORBIDDEN" ? 403 : 401 }
+      );
     }
 
     const subscriptions = await (Subscription as any)

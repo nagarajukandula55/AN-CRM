@@ -25,6 +25,20 @@ function LoginForm() {
     if (searchParams?.get('reason') === 'inactivity') setInactivityNotice(true)
   }, [searchParams])
 
+  useEffect(() => {
+    const ssoError = searchParams?.get('error')
+    if (ssoError === 'sso_failed') setError('AN Group sign-in failed or your session expired. Please try again.')
+    else if (ssoError === 'sso_unavailable') setError('AN Group sign-in is temporarily unavailable. Please sign in with email and password instead.')
+    else if (ssoError === 'sso_missing_token') setError('AN Group sign-in link was invalid. Please try again.')
+  }, [searchParams])
+
+  const centralPortalUrl = process.env.NEXT_PUBLIC_CENTRAL_PORTAL_URL
+  function handleSsoSignIn() {
+    if (!centralPortalUrl) return
+    const redirectUri = `${window.location.origin}/api/auth/sso/callback`
+    window.location.href = `${centralPortalUrl}?redirectUri=${encodeURIComponent(redirectUri)}`
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -198,6 +212,19 @@ function LoginForm() {
               )}
             </button>
           </form>
+
+          {centralPortalUrl && (
+            <div className="mt-6 pt-6 border-t border-border">
+              <button
+                type="button"
+                onClick={handleSsoSignIn}
+                className="w-full rounded-control border border-border-strong bg-surface-2 px-4 py-3 text-sm font-medium text-ink hover:bg-surface-3 transition-colors flex items-center justify-center gap-2"
+              >
+                <ShieldCheck className="h-4 w-4 text-accent" />
+                Sign in with AN Group
+              </button>
+            </div>
+          )}
 
           <div className="mt-6 pt-6 border-t border-border">
             <p className="text-xs text-ink-3 text-center">

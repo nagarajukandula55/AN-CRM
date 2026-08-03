@@ -22,6 +22,7 @@ export enum AuthProvider {
   CREDENTIALS = "credentials",
   GOOGLE = "google",
   MICROSOFT = "microsoft",
+  SSO = "sso",
 }
 
 /* =========================================================
