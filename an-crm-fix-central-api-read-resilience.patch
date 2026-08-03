@@ -1,0 +1,111 @@
+From e22d5a38c2c99afd832c287cb15184ca1097fba5 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 31 Jul 2026 18:30:06 +0000
+Subject: [PATCH] =?UTF-8?q?Fix:=20centralApiRead=20never=20throws=20?=
+ =?UTF-8?q?=E2=80=94=20fixes=20invoice/workorder=20print=20500s=20on=20cen?=
+ =?UTF-8?q?tral-api=20hiccups?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Same bug and fix as angroup's centralApiRead.ts (kept in lockstep) --
+fetchAll()/findOne() threw on any failure, and api/document-templates/
+resolve (used by every print page) called getBusinessBySourceId() inside a
+Promise.all with no try/catch, so a central-api hiccup 500'd invoice and
+workorder printing together. Now degrades to empty/null instead, matching
+the write-side's existing best-effort contract.
+---
+ src/lib/centralApiRead.ts | 66 +++++++++++++++++++++++++--------------
+ 1 file changed, 42 insertions(+), 24 deletions(-)
+
+diff --git a/src/lib/centralApiRead.ts b/src/lib/centralApiRead.ts
+index d51ee1f..08f6133 100644
+--- a/src/lib/centralApiRead.ts
++++ b/src/lib/centralApiRead.ts
+@@ -40,24 +40,36 @@ function remapId(item: Record<string, any>): Record<string, any> {
+ // instead of pulling the whole dataset when the caller already knows a
+ // single-field exact filter it wants (e.g. "just this business's
+ // customers"), same exact-match semantics as findOne() below.
++// Never throws — a central-api outage or misconfiguration must degrade to
++// "no data from central-api" (empty list / null), not fail whatever request
++// triggered this read. This bit us for real: document-templates/resolve
++// (used by every print page — invoice, workorder, service record) called
++// getBusinessBySourceId() inside a Promise.all with no try/catch, so a
++// single central-api hiccup 500'd invoice AND workorder printing at once.
++// Same best-effort contract centralApiSync.ts already has on the write side.
+ async function fetchAll(dataset: string, searchFilter?: string): Promise<Record<string, any>[]> {
+-  if (!CENTRAL_API_URL) throw new Error("CENTRAL_API_URL is not configured");
++  if (!CENTRAL_API_URL) return [];
+ 
+-  const items: Record<string, any>[] = [];
+-  let page = 1;
+-  while (true) {
+-    const searchParam = searchFilter ? `&search=${encodeURIComponent(searchFilter)}` : "";
+-    const res = await fetch(`${CENTRAL_API_URL}/api/v1/${dataset}?page=${page}&limit=${PAGE_SIZE}${searchParam}`, {
+-      headers: headers(),
+-      cache: "no-store",
+-    });
+-    if (!res.ok) throw new Error(`central-api ${dataset} fetch failed (${res.status})`);
+-    const body = await res.json();
+-    items.push(...(body.items || []));
+-    if (!body.items || body.items.length < PAGE_SIZE || page >= (body.totalPages || 1)) break;
+-    page += 1;
++  try {
++    const items: Record<string, any>[] = [];
++    let page = 1;
++    while (true) {
++      const searchParam = searchFilter ? `&search=${encodeURIComponent(searchFilter)}` : "";
++      const res = await fetch(`${CENTRAL_API_URL}/api/v1/${dataset}?page=${page}&limit=${PAGE_SIZE}${searchParam}`, {
++        headers: headers(),
++        cache: "no-store",
++      });
++      if (!res.ok) throw new Error(`central-api ${dataset} fetch failed (${res.status})`);
++      const body = await res.json();
++      items.push(...(body.items || []));
++      if (!body.items || body.items.length < PAGE_SIZE || page >= (body.totalPages || 1)) break;
++      page += 1;
++    }
++    return items.map(remapId);
++  } catch (err) {
++    console.error(`[centralApiRead] fetchAll(${dataset}) failed:`, (err as any)?.message || err);
++    return [];
+   }
+-  return items.map(remapId);
+ }
+ 
+ export async function listBusinesses(): Promise<Record<string, any>[]> {
+@@ -68,16 +80,22 @@ export async function listVendors(): Promise<Record<string, any>[]> {
+   return fetchAll("vendors");
+ }
+ 
++// Never throws — see fetchAll()'s comment above for why.
+ async function findOne(dataset: string, field: string, value: string): Promise<Record<string, any> | null> {
+-  if (!CENTRAL_API_URL) throw new Error("CENTRAL_API_URL is not configured");
+-  const res = await fetch(
+-    `${CENTRAL_API_URL}/api/v1/${dataset}?search=${encodeURIComponent(`${field}:${value}`)}&limit=1`,
+-    { headers: headers(), cache: "no-store" }
+-  );
+-  if (!res.ok) throw new Error(`central-api ${dataset} lookup failed (${res.status})`);
+-  const body = await res.json();
+-  const item = body.items && body.items[0];
+-  return item ? remapId(item) : null;
++  if (!CENTRAL_API_URL) return null;
++  try {
++    const res = await fetch(
++      `${CENTRAL_API_URL}/api/v1/${dataset}?search=${encodeURIComponent(`${field}:${value}`)}&limit=1`,
++      { headers: headers(), cache: "no-store" }
++    );
++    if (!res.ok) throw new Error(`central-api ${dataset} lookup failed (${res.status})`);
++    const body = await res.json();
++    const item = body.items && body.items[0];
++    return item ? remapId(item) : null;
++  } catch (err) {
++    console.error(`[centralApiRead] findOne(${dataset}, ${field}:${value}) failed:`, (err as any)?.message || err);
++    return null;
++  }
+ }
+ 
+ export async function getBusinessBySourceId(sourceId: string): Promise<Record<string, any> | null> {
+-- 
+2.43.0
+

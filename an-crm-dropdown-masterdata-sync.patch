@@ -1,0 +1,251 @@
+From 5572550128f4b7739bd60b4f75481c22f32f76d9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 1 Aug 2026 07:27:18 +0000
+Subject: [PATCH] Add central-api dual-write sync for 8 dropdown/master-data
+ models
+
+Same fix and reasoning as angroup's identical commit (kept in lockstep):
+Unit, Currency, MaterialCategory, ProductCategory, CrmOptionList,
+HsnTaxRate, Region, RegionTheme.
+---
+ src/models/CrmOptionList.ts    | 11 +++++++++++
+ src/models/Currency.ts         | 11 +++++++++++
+ src/models/HsnTaxRate.ts       | 11 +++++++++++
+ src/models/MaterialCategory.ts | 11 +++++++++++
+ src/models/ProductCategory.ts  | 11 +++++++++++
+ src/models/Region.ts           | 11 +++++++++++
+ src/models/RegionTheme.ts      | 11 +++++++++++
+ src/models/Unit.ts             | 11 +++++++++++
+ 8 files changed, 88 insertions(+)
+
+diff --git a/src/models/CrmOptionList.ts b/src/models/CrmOptionList.ts
+index 66e3fba..2b8d7fa 100644
+--- a/src/models/CrmOptionList.ts
++++ b/src/models/CrmOptionList.ts
+@@ -7,6 +7,7 @@
+  * near-identical collections -- same shape either way (code + label).
+  */
+ import mongoose, { Schema, Model, Document, Types } from "mongoose";
++import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
+ 
+ export type CrmOptionListType = "APPOINTMENT_TYPE" | "REQUEST_TYPE";
+ 
+@@ -36,6 +37,16 @@ const CrmOptionListSchema = new Schema<ICrmOptionList>(
+ CrmOptionListSchema.index({ businessId: 1, listType: 1, isActive: 1 });
+ CrmOptionListSchema.index({ businessId: 1, listType: 1, code: 1 }, { unique: true });
+ 
++CrmOptionListSchema.post("save", async function (doc) {
++  await syncRecordToCentralApi("crm_option_lists", doc._id.toString(), doc.toObject());
++});
++CrmOptionListSchema.post("findOneAndUpdate", async function (doc) {
++  if (doc) await syncRecordToCentralApi("crm_option_lists", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
++});
++CrmOptionListSchema.post("findOneAndDelete", async function (doc) {
++  if (doc) await deleteRecordFromCentralApi("crm_option_lists", doc._id.toString());
++});
++
+ const CrmOptionList: Model<ICrmOptionList> =
+   (mongoose.models.CrmOptionList as Model<ICrmOptionList>) ||
+   mongoose.model<ICrmOptionList>("CrmOptionList", CrmOptionListSchema);
+diff --git a/src/models/Currency.ts b/src/models/Currency.ts
+index 4bb6b73..f06943b 100644
+--- a/src/models/Currency.ts
++++ b/src/models/Currency.ts
+@@ -7,6 +7,7 @@
+  */
+ 
+ import mongoose, { Schema, Document, Model } from "mongoose";
++import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
+ 
+ export interface ICurrency extends Document {
+   code: string; // ISO 4217, e.g. "INR", "USD" -- primary key, not _id
+@@ -29,6 +30,16 @@ const CurrencySchema = new Schema<ICurrency>(
+   { timestamps: true, versionKey: false }
+ );
+ 
++CurrencySchema.post("save", async function (doc) {
++  await syncRecordToCentralApi("currencies", doc._id.toString(), doc.toObject());
++});
++CurrencySchema.post("findOneAndUpdate", async function (doc) {
++  if (doc) await syncRecordToCentralApi("currencies", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
++});
++CurrencySchema.post("findOneAndDelete", async function (doc) {
++  if (doc) await deleteRecordFromCentralApi("currencies", doc._id.toString());
++});
++
+ const Currency: Model<ICurrency> =
+   mongoose.models.Currency || mongoose.model<ICurrency>("Currency", CurrencySchema);
+ 
+diff --git a/src/models/HsnTaxRate.ts b/src/models/HsnTaxRate.ts
+index 46752a4..be434cd 100644
+--- a/src/models/HsnTaxRate.ts
++++ b/src/models/HsnTaxRate.ts
+@@ -12,6 +12,7 @@
+  */
+ 
+ import mongoose, { Schema, Model, Document, Types } from "mongoose";
++import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
+ 
+ export interface IHsnTaxRate extends Document {
+   businessId?: Types.ObjectId | null;
+@@ -38,6 +39,16 @@ const HsnTaxRateSchema = new Schema<IHsnTaxRate>(
+ 
+ HsnTaxRateSchema.index({ businessId: 1, hsnCode: 1 }, { unique: true });
+ 
++HsnTaxRateSchema.post("save", async function (doc) {
++  await syncRecordToCentralApi("hsn_tax_rates", doc._id.toString(), doc.toObject());
++});
++HsnTaxRateSchema.post("findOneAndUpdate", async function (doc) {
++  if (doc) await syncRecordToCentralApi("hsn_tax_rates", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
++});
++HsnTaxRateSchema.post("findOneAndDelete", async function (doc) {
++  if (doc) await deleteRecordFromCentralApi("hsn_tax_rates", doc._id.toString());
++});
++
+ const HsnTaxRate: Model<IHsnTaxRate> =
+   (mongoose.models.HsnTaxRate as Model<IHsnTaxRate>) ||
+   mongoose.model<IHsnTaxRate>("HsnTaxRate", HsnTaxRateSchema);
+diff --git a/src/models/MaterialCategory.ts b/src/models/MaterialCategory.ts
+index 500e091..3524aca 100644
+--- a/src/models/MaterialCategory.ts
++++ b/src/models/MaterialCategory.ts
+@@ -1,5 +1,6 @@
+ import mongoose, { Schema, Document, Model } from "mongoose";
+ import { BUSINESS_SCOPES, type BusinessScope } from "@/core/catalog/businessScope";
++import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
+ 
+ export interface IMaterialCategory extends Document {
+   businessId: mongoose.Types.ObjectId;
+@@ -37,6 +38,16 @@ const MaterialCategorySchema = new Schema<IMaterialCategory>(
+ MaterialCategorySchema.index({ businessId: 1, name: 1 });
+ MaterialCategorySchema.index({ businessId: 1, isDeleted: 1 });
+ 
++MaterialCategorySchema.post("save", async function (doc) {
++  await syncRecordToCentralApi("material_categories", doc._id.toString(), doc.toObject());
++});
++MaterialCategorySchema.post("findOneAndUpdate", async function (doc) {
++  if (doc) await syncRecordToCentralApi("material_categories", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
++});
++MaterialCategorySchema.post("findOneAndDelete", async function (doc) {
++  if (doc) await deleteRecordFromCentralApi("material_categories", doc._id.toString());
++});
++
+ const MaterialCategory: Model<IMaterialCategory> =
+   mongoose.models.MaterialCategory ||
+   mongoose.model<IMaterialCategory>("MaterialCategory", MaterialCategorySchema);
+diff --git a/src/models/ProductCategory.ts b/src/models/ProductCategory.ts
+index a5cc743..4348397 100644
+--- a/src/models/ProductCategory.ts
++++ b/src/models/ProductCategory.ts
+@@ -1,5 +1,6 @@
+ import mongoose, { Schema, Document, Model } from "mongoose";
+ import { BUSINESS_SCOPES, type BusinessScope } from "@/core/catalog/businessScope";
++import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
+ 
+ export interface IProductCategory extends Document {
+   businessId: mongoose.Types.ObjectId;
+@@ -35,6 +36,16 @@ const ProductCategorySchema = new Schema<IProductCategory>(
+ ProductCategorySchema.index({ businessId: 1, name: 1 });
+ ProductCategorySchema.index({ businessId: 1, isDeleted: 1 });
+ 
++ProductCategorySchema.post("save", async function (doc) {
++  await syncRecordToCentralApi("product_categories", doc._id.toString(), doc.toObject());
++});
++ProductCategorySchema.post("findOneAndUpdate", async function (doc) {
++  if (doc) await syncRecordToCentralApi("product_categories", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
++});
++ProductCategorySchema.post("findOneAndDelete", async function (doc) {
++  if (doc) await deleteRecordFromCentralApi("product_categories", doc._id.toString());
++});
++
+ const ProductCategory: Model<IProductCategory> =
+   mongoose.models.ProductCategory ||
+   mongoose.model<IProductCategory>("ProductCategory", ProductCategorySchema);
+diff --git a/src/models/Region.ts b/src/models/Region.ts
+index 722959a..46eb58a 100644
+--- a/src/models/Region.ts
++++ b/src/models/Region.ts
+@@ -10,6 +10,7 @@
+  * carry their own enabled flag so a state can go live city-by-city.
+  */
+ import mongoose, { Schema, Model, Document } from "mongoose";
++import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
+ 
+ export interface IRegionCity {
+   name: string;
+@@ -53,6 +54,16 @@ const RegionSchema = new Schema<IRegion>(
+   { timestamps: true }
+ );
+ 
++RegionSchema.post("save", async function (doc) {
++  await syncRecordToCentralApi("regions", doc._id.toString(), doc.toObject());
++});
++RegionSchema.post("findOneAndUpdate", async function (doc) {
++  if (doc) await syncRecordToCentralApi("regions", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
++});
++RegionSchema.post("findOneAndDelete", async function (doc) {
++  if (doc) await deleteRecordFromCentralApi("regions", doc._id.toString());
++});
++
+ const Region: Model<IRegion> =
+   (mongoose.models.Region as Model<IRegion>) || mongoose.model<IRegion>("Region", RegionSchema);
+ 
+diff --git a/src/models/RegionTheme.ts b/src/models/RegionTheme.ts
+index df40518..f175004 100644
+--- a/src/models/RegionTheme.ts
++++ b/src/models/RegionTheme.ts
+@@ -8,6 +8,7 @@
+  * not a rebuild — see docs/marketplace-app/region-theme-design.md.
+  */
+ import mongoose, { Schema, Model, Document } from "mongoose";
++import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
+ 
+ export interface IRegionThemePalette {
+   primary: string;
+@@ -69,6 +70,16 @@ const RegionThemeSchema = new Schema<IRegionTheme>(
+   { timestamps: true }
+ );
+ 
++RegionThemeSchema.post("save", async function (doc) {
++  await syncRecordToCentralApi("region_themes", doc._id.toString(), doc.toObject());
++});
++RegionThemeSchema.post("findOneAndUpdate", async function (doc) {
++  if (doc) await syncRecordToCentralApi("region_themes", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
++});
++RegionThemeSchema.post("findOneAndDelete", async function (doc) {
++  if (doc) await deleteRecordFromCentralApi("region_themes", doc._id.toString());
++});
++
+ const RegionTheme: Model<IRegionTheme> =
+   (mongoose.models.RegionTheme as Model<IRegionTheme>) ||
+   mongoose.model<IRegionTheme>("RegionTheme", RegionThemeSchema);
+diff --git a/src/models/Unit.ts b/src/models/Unit.ts
+index 4d48df4..a008679 100644
+--- a/src/models/Unit.ts
++++ b/src/models/Unit.ts
+@@ -1,4 +1,5 @@
+ import mongoose, { Schema, Document, Model } from "mongoose";
++import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
+ 
+ export interface IUnit extends Document {
+   businessId: mongoose.Types.ObjectId;
+@@ -35,6 +36,16 @@ UnitSchema.index({ businessId: 1, name: 1 });
+ UnitSchema.index({ businessId: 1, symbol: 1 });
+ UnitSchema.index({ businessId: 1, isDeleted: 1 });
+ 
++UnitSchema.post("save", async function (doc) {
++  await syncRecordToCentralApi("units", doc._id.toString(), doc.toObject());
++});
++UnitSchema.post("findOneAndUpdate", async function (doc) {
++  if (doc) await syncRecordToCentralApi("units", doc._id.toString(), doc.toObject ? doc.toObject() : doc);
++});
++UnitSchema.post("findOneAndDelete", async function (doc) {
++  if (doc) await deleteRecordFromCentralApi("units", doc._id.toString());
++});
++
+ const Unit: Model<IUnit> =
+   mongoose.models.Unit || mongoose.model<IUnit>("Unit", UnitSchema);
+ 
+-- 
+2.43.0
+

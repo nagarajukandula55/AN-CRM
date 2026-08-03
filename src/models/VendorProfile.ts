@@ -251,7 +251,13 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     // safe — it just won't show up in any single business's vendor list
     // until approved.
     businessId:   { type: Schema.Types.ObjectId, ref: 'Business', default: null },
-    vendorId:     { type: String, unique: true },
+    // sparse -- vendorId is only assigned once a business is resolved (see
+    // api/vendors/apply/route.ts), so multiple pending applications
+    // legitimately have no vendorId yet. A plain `unique: true` index
+    // treats every missing value as the same null and collides on the
+    // second such document (E11000 dup key on vendorId_1), which is
+    // exactly what happened in production.
+    vendorId:     { type: String, unique: true, sparse: true },
     parentVendorId: { type: Schema.Types.ObjectId, ref: 'VendorProfile', default: null, index: true },
     subVendorBilling: {
       subVendorPlan: { type: String, enum: ["NONE", "ALLOWED", "BLOCKED"], default: "NONE" },
