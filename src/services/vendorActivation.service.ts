@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import bcryptjs from "bcryptjs";
+import mongoose from "mongoose";
 import VendorProfile, { IVendorProfile } from "@/models/VendorProfile";
 import Agreement, { ISignature } from "@/models/Agreement";
 import User from "@/models/User";
@@ -45,7 +46,12 @@ async function provisionVendorLogin(
     user = await User.create({
       name: vendor.contactPerson || vendor.companyName,
       email: vendor.email,
-      username: await generateUniqueUserId(),
+      // Vendor's own login is their vendorId (e.g. "VND-2026-27-0003"),
+      // not a random generated username -- per explicit direction, so the
+      // ID they're already given to quote everywhere IS their login.
+      // Falls back to a generated one only in the unexpected case a
+      // vendor reaches activation with no vendorId assigned yet.
+      username: vendor.vendorId || (await generateUniqueUserId()),
       password: hashed,
       phone: vendor.phone || undefined,
       role: "VENDOR",
@@ -60,13 +66,18 @@ async function provisionVendorLogin(
     await user.save();
   }
 
+  // invitedBy is an ObjectId ref -- the "system" placeholder passed when
+  // there's no real actor (public self-signup, no admin involved) isn't a
+  // valid ObjectId and crashed the whole activation with a BSON cast
+  // error. Only set it when actorId is a genuine ObjectId.
+  const invitedBy = mongoose.isValidObjectId(actorId) ? actorId : undefined;
   await BusinessMember.updateOne(
     { userId: user._id, businessId: vendor.businessId },
     {
       $set: {
         status: BusinessMemberStatus.ACTIVE,
         memberType: "VENDOR",
-        invitedBy: actorId,
+        ...(invitedBy ? { invitedBy } : {}),
         isDeleted: false,
       },
       $setOnInsert: { isDefaultBusiness: true, joinedAt: new Date() },
