@@ -221,6 +221,12 @@ export async function POST(req: NextRequest) {
     let skipApproval = business?.marketplace?.skipVendorApproval || false;
     if (resolvedBusinessId) {
       const centralConfig = await getVendorOnboardingConfig(String(resolvedBusinessId));
+      console.log(
+        "[vendors/apply] skip-approval check — resolvedBusinessId:", String(resolvedBusinessId),
+        "| central config found:", !!centralConfig,
+        "| central skipVendorApproval:", centralConfig?.skipVendorApproval,
+        "| local fallback skipVendorApproval:", business?.marketplace?.skipVendorApproval
+      );
       if (centralConfig) skipApproval = centralConfig.skipVendorApproval;
     }
     if (skipApproval) {
