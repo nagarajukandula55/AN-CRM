@@ -136,6 +136,57 @@ export async function getBusinessBySourceId(sourceId: string): Promise<Record<st
   return findOne("businesses", "sourceId", sourceId);
 }
 
+export interface VendorOnboardingConfig {
+  skipVendorApproval: boolean;
+  vendorTypeModules: { appliedAs: string; moduleKeys: string[] }[];
+  documents: Record<string, any>[];
+  steps: Record<string, any>[];
+}
+
+// Central-api is the single source of truth for per-business vendor
+// onboarding settings (skip-approval, vendor-type module access, document
+// requirements, onboarding steps) -- editable from its own dashboard's
+// Access tab, shared across every consuming app instead of each keeping
+// its own local copy (same pattern as agreement templates). businessId
+// here is THIS app's own local Business._id; resolved to central-api's
+// business _id via sourceId first, same join every other helper in this
+// file uses. Never throws -- returns null on any failure (central-api
+// unreachable, business not yet synced, etc.), so callers fall back to
+// local config rather than breaking vendor apply/activation.
+export async function getVendorOnboardingConfig(businessId: string): Promise<VendorOnboardingConfig | null> {
+  if (!CENTRAL_API_URL || !businessId) return null;
+  try {
+    // getBusinessBySourceId() remaps _id back to the local sourceId (by
+    // design, for callers that want the local shape) -- this needs
+    // central-api's OWN raw _id instead, same direct-search approach
+    // api/auth/login/route.ts's centralRole resolution already uses.
+    const bizRes = await fetch(
+      `${CENTRAL_API_URL}/api/v1/businesses?search=${encodeURIComponent(`sourceId:${businessId}`)}&limit=1`,
+      { headers: headers(), cache: "no-store" }
+    );
+    if (!bizRes.ok) throw new Error(`central-api business lookup failed (${bizRes.status})`);
+    const bizBody = await bizRes.json();
+    const centralBusinessId = bizBody?.items?.[0]?._id;
+    if (!centralBusinessId) return null;
+
+    const res = await fetch(`${CENTRAL_API_URL}/api/v1/vendor-onboarding-config/business/${centralBusinessId}`, {
+      headers: headers(),
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error(`central-api vendor-onboarding-config fetch failed (${res.status})`);
+    const body = await res.json();
+    return {
+      skipVendorApproval: !!body.skipVendorApproval,
+      vendorTypeModules: Array.isArray(body.vendorTypeModules) ? body.vendorTypeModules : [],
+      documents: Array.isArray(body.documents) ? body.documents : [],
+      steps: Array.isArray(body.steps) ? body.steps : [],
+    };
+  } catch (err) {
+    console.error(`[centralApiRead] getVendorOnboardingConfig(${businessId}) failed:`, (err as any)?.message || err);
+    return null;
+  }
+}
+
 export async function getVendorBySourceId(sourceId: string): Promise<Record<string, any> | null> {
   return findOne("vendors", "sourceId", sourceId);
 }
