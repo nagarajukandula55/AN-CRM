@@ -3,13 +3,14 @@ import { buildInvoiceEmailTemplate } from "./invoiceEmail.template";
 import Integration from "@/models/Integration";
 
 /**
- * Previously always used the platform-global RESEND_API_KEY/RESEND_FROM
- * env vars, ignoring the per-business Integration(provider: EMAIL) config
- * the admin Integrations UI already lets each business configure. Now
- * looks up that business's own Resend credentials first (set via the
- * Email tab in /console/integrations, emailProvider: 'RESEND'), and only
- * falls back to the global env vars if the business hasn't configured its
- * own key yet — so nothing breaks for businesses that haven't set this up.
+ * Three-tier lookup: (1) that business's own Resend credentials, set via
+ * the Email tab in /console/integrations — takes priority since a
+ * business may deliberately want its own sender identity; (2) central-
+ * api's shared platform-wide Resend integration (single source of truth
+ * across every AN Group site, dashboard-configurable, no env var edit
+ * needed) — see routes/integrations.js; (3) this app's own
+ * RESEND_API_KEY/RESEND_FROM env vars, the original fallback, kept so
+ * nothing breaks if central-api is unreachable or not yet configured.
  */
 async function resolveResendCreds(businessId?: string): Promise<{ apiKey: string; from: string }> {
   if (businessId) {
@@ -30,6 +31,27 @@ async function resolveResendCreds(businessId?: string): Promise<{ apiKey: string
       console.error("EMAIL: failed to load business Resend config, falling back to global", err);
     }
   }
+
+  if (process.env.CENTRAL_API_URL) {
+    try {
+      const res = await fetch(`${process.env.CENTRAL_API_URL}/api/v1/integrations/resend`, {
+        headers: { "x-api-key": process.env.CENTRAL_API_KEY || "" },
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const body = await res.json();
+        if (body?.configured && body?.config?.apiKey) {
+          return {
+            apiKey: body.config.apiKey,
+            from: body.config.fromEmail || process.env.RESEND_FROM || "",
+          };
+        }
+      }
+    } catch (err) {
+      console.error("EMAIL: failed to load central-api shared Resend config, falling back to env", err);
+    }
+  }
+
   return {
     apiKey: process.env.RESEND_API_KEY || "",
     from: process.env.RESEND_FROM || "",
