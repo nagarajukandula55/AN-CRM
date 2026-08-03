@@ -75,6 +75,11 @@ const PUBLIC_EXACT = new Set([
   // status-update PATCH) must NOT become public as a side effect of a
   // prefix match, so it stays out of PUBLIC_PREFIXES.
   "/api/contact",
+  // Has its OWN secret-token auth internally (SUPER_ADMIN_BOOTSTRAP_SECRET,
+  // see the route itself) precisely because there's no session yet to
+  // require -- exact, not prefix, so no other /api/admin/* route
+  // accidentally becomes public.
+  "/api/admin/bootstrap-super-admin",
 ]);
 
 /* ── Public prefixes ────────────────────────────────────────────────────── */
