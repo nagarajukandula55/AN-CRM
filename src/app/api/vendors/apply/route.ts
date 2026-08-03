@@ -10,6 +10,7 @@ import { notifySuperAdmins } from "@/services/notification.service";
 import { activateVendorWithTrial } from "@/services/vendorActivation.service";
 import { sendGenericEmail } from "@/services/email/resend.service";
 import { getVendorOnboardingConfig } from "@/lib/centralApiRead";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 /**
  * POST /api/vendors/apply — PUBLIC vendor signup request.
@@ -274,6 +275,12 @@ export async function POST(req: NextRequest) {
       type: "warning",
       link: trialActivated ? "/console/vendor-subscriptions" : "/console/vendors",
     });
+
+    sendTelegramMessage(
+      `🆕 <b>Vendor application received</b>\n${String(companyName).trim()} (${appliedAs || "?"}) — ${requestNumber}${
+        business ? ` for ${business.brandName || business.name}` : ""
+      }`
+    ).catch(() => {});
 
     return NextResponse.json(
       {
