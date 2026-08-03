@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ success: false, error: "This application has no business assigned yet" }, { status: 400 });
     }
 
-    const result = await activateVendorWithTrial(vendor, String(vendor.businessId));
+    const result = await activateVendorWithTrial(vendor, String(vendor.businessId), { skipAgreement: true });
     if (!result.ok) {
       return NextResponse.json({ success: false, error: result.error }, { status: 400 });
     }

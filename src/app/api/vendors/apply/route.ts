@@ -125,7 +125,11 @@ export async function POST(req: NextRequest) {
     // assign later -- a signup from AN-CRM always belongs to AN-CRM's own
     // business. Falls through to the old "unassigned, admin picks at
     // approval" behavior only if that env var isn't set at all.
-    const resolvedBusinessId = businessId || process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID;
+    // .trim() -- a copy-pasted env var value with a trailing space/newline
+    // is invisible in most dashboard UIs but fails Types.ObjectId.isValid()
+    // (or resolves to a nonexistent id), reproduced in production tonight
+    // with the same class of bug on SUPER_ADMIN_BOOTSTRAP_SECRET.
+    const resolvedBusinessId = businessId || process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID?.trim();
 
     let business: { _id: unknown; name?: string; brandName?: string; marketplace?: { skipVendorApproval?: boolean } } | null = null;
     if (resolvedBusinessId) {
@@ -232,7 +236,7 @@ export async function POST(req: NextRequest) {
     }
     if (skipApproval) {
       try {
-        const result = await activateVendorWithTrial(vendor as any, String(resolvedBusinessId));
+        const result = await activateVendorWithTrial(vendor as any, String(resolvedBusinessId), { skipAgreement: true });
         trialActivated = result.ok;
         if (!result.ok) {
           console.error("Instant vendor trial activation failed:", result.error);

@@ -205,7 +205,8 @@ export async function activateVendorAfterAgreement(
  */
 export async function activateVendorWithTrial(
   vendor: IVendorProfile,
-  businessId: string
+  businessId: string,
+  opts?: { skipAgreement?: boolean }
 ): Promise<
   | { ok: true; vendor: IVendorProfile; tempPassword: string | null }
   | { ok: false; error: string }
@@ -213,7 +214,25 @@ export async function activateVendorWithTrial(
   try {
     const vendorDisplay = vendor.contactPerson || vendor.companyName;
 
-    const content = `VENDOR PARTNER AGREEMENT (TRIAL ONBOARDING)
+    // Login provisioned FIRST, before the agreement -- the agreement's
+    // createdBy needs a real User _id, and vendor.userId doesn't exist yet
+    // for a first-time applicant (crashed in production with "Agreement
+    // validation failed: createdBy: Path `createdBy` is required" for
+    // exactly this reason: the old ordering created the Agreement before
+    // any login existed).
+    const { tempPassword } = await provisionVendorLogin(vendor, String(vendor.userId || "system"));
+    await vendor.save();
+    if (tempPassword) {
+      sendTelegramMessage(`🔑 <b>Credentials emailed</b>\n${vendor.companyName} (${vendor.email}) — new login provisioned`).catch(() => {});
+    }
+
+    // skipAgreement -- per explicit direction: activation shouldn't be
+    // blocked on the agreement draft/OTP-email/signature step at all.
+    // Vendor goes straight to ACTIVE with no Agreement record and no
+    // agreementId; a real agreement can still be drafted later the normal
+    // way (api/vendors/[id]/review/route.ts) if ever needed.
+    if (!opts?.skipAgreement) {
+      const content = `VENDOR PARTNER AGREEMENT (TRIAL ONBOARDING)
 
 This Vendor Partner Agreement ("Agreement") is entered into between the Company and ${vendorDisplay} ("the Vendor").
 
@@ -233,64 +252,60 @@ The Vendor has been onboarded under this Business's instant-trial vendor program
 
 By signing below, both parties agree to the terms above.`;
 
-    const agreement = await (Agreement as any).create({
-      businessId,
-      createdBy: vendor.userId,
-      title: `Vendor Partner Agreement — ${vendorDisplay}`,
-      type: "VENDOR",
-      content,
-      parties: [
-        {
-          name: vendor.contactPerson || vendor.companyName,
-          email: vendor.email,
-          role: "Vendor",
-        },
-      ],
-      signatures: [],
-      status: "DRAFT",
-    });
-
-    const vendorParty = agreement.parties.find((p: any) => p.role === "Vendor");
-    if (vendorParty?.email) {
-      const rawOtp = generateOtp();
-      const hashedOtp = await bcryptjs.hash(rawOtp, 10);
-      const otpExpiry = new Date(Date.now() + 30 * 60 * 1000);
-
-      agreement.signatures.push({
-        partyEmail: vendorParty.email,
-        partyName: vendorParty.name,
-        partyRole: "Vendor",
-        otpVerified: false,
-        otp: hashedOtp,
-        otpExpiry,
-      } as ISignature);
-      agreement.status = "PENDING_SIGNATURE";
-      await agreement.save();
-
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      const signingLink = `${baseUrl}/agreements/${agreement._id}/sign?email=${encodeURIComponent(vendorParty.email)}`;
-      sendAgreementOtpEmail({
-        to: vendorParty.email,
-        partyName: vendorParty.name,
-        agreementTitle: agreement.title,
-        otp: rawOtp,
-        signingLink,
+      const agreement = await (Agreement as any).create({
         businessId,
-      })
-        .then(() => sendTelegramMessage(`📄 <b>Agreement emailed</b>\n${vendorParty.name} (${vendorParty.email}) — trial onboarding`))
-        .catch((err) => sendTelegramMessage(`⚠️ <b>Agreement email FAILED</b>\n${vendorParty.name} (${vendorParty.email}): ${err?.message || err}`).catch(() => {}));
+        createdBy: vendor.userId,
+        title: `Vendor Partner Agreement — ${vendorDisplay}`,
+        type: "VENDOR",
+        content,
+        parties: [
+          {
+            name: vendor.contactPerson || vendor.companyName,
+            email: vendor.email,
+            role: "Vendor",
+          },
+        ],
+        signatures: [],
+        status: "DRAFT",
+      });
+
+      const vendorParty = agreement.parties.find((p: any) => p.role === "Vendor");
+      if (vendorParty?.email) {
+        const rawOtp = generateOtp();
+        const hashedOtp = await bcryptjs.hash(rawOtp, 10);
+        const otpExpiry = new Date(Date.now() + 30 * 60 * 1000);
+
+        agreement.signatures.push({
+          partyEmail: vendorParty.email,
+          partyName: vendorParty.name,
+          partyRole: "Vendor",
+          otpVerified: false,
+          otp: hashedOtp,
+          otpExpiry,
+        } as ISignature);
+        agreement.status = "PENDING_SIGNATURE";
+        await agreement.save();
+
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const signingLink = `${baseUrl}/agreements/${agreement._id}/sign?email=${encodeURIComponent(vendorParty.email)}`;
+        sendAgreementOtpEmail({
+          to: vendorParty.email,
+          partyName: vendorParty.name,
+          agreementTitle: agreement.title,
+          otp: rawOtp,
+          signingLink,
+          businessId,
+        })
+          .then(() => sendTelegramMessage(`📄 <b>Agreement emailed</b>\n${vendorParty.name} (${vendorParty.email}) — trial onboarding`))
+          .catch((err) => sendTelegramMessage(`⚠️ <b>Agreement email FAILED</b>\n${vendorParty.name} (${vendorParty.email}): ${err?.message || err}`).catch(() => {}));
+      }
+
+      vendor.agreementId = agreement._id as any;
     }
 
-    vendor.agreementId = agreement._id as any;
     vendor.status = "ACTIVE";
     vendor.isApproved = true;
     await vendor.save();
-
-    const { tempPassword } = await provisionVendorLogin(vendor, String(vendor.userId || "system"));
-    await vendor.save();
-    if (tempPassword) {
-      sendTelegramMessage(`🔑 <b>Credentials emailed</b>\n${vendor.companyName} (${vendor.email}) — new login provisioned`).catch(() => {});
-    }
 
     const now = new Date();
     const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
