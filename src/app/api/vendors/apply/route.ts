@@ -9,6 +9,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { notifySuperAdmins } from "@/services/notification.service";
 import { activateVendorWithTrial } from "@/services/vendorActivation.service";
 import { sendGenericEmail } from "@/services/email/resend.service";
+import { getVendorOnboardingConfig } from "@/lib/centralApiRead";
 
 /**
  * POST /api/vendors/apply — PUBLIC vendor signup request.
@@ -208,12 +209,21 @@ export async function POST(req: NextRequest) {
     });
 
     // Skip-approval instant-trial path: only possible when a business was
-    // actually resolved (it's a per-business toggle) AND that business has
-    // opted in via marketplace.skipVendorApproval (see Business.ts). Runs
-    // inline, synchronously, right here -- it must never fail the request
-    // itself, since the VendorProfile above is already saved either way.
+    // actually resolved (it's a per-business toggle). Central-api is now
+    // the single source of truth for this setting (its own dashboard's
+    // Access tab), shared across every consuming app -- checked first;
+    // Business.marketplace.skipVendorApproval (local) is only the
+    // fallback for when central-api is unreachable/not yet configured for
+    // this business, not the primary store anymore. Runs inline,
+    // synchronously, right here -- it must never fail the request itself,
+    // since the VendorProfile above is already saved either way.
     let trialActivated = false;
-    if (business?.marketplace?.skipVendorApproval) {
+    let skipApproval = business?.marketplace?.skipVendorApproval || false;
+    if (resolvedBusinessId) {
+      const centralConfig = await getVendorOnboardingConfig(String(resolvedBusinessId));
+      if (centralConfig) skipApproval = centralConfig.skipVendorApproval;
+    }
+    if (skipApproval) {
       try {
         const result = await activateVendorWithTrial(vendor as any, String(resolvedBusinessId));
         trialActivated = result.ok;

@@ -27,6 +27,7 @@ import { buildPermissionCode, STANDARD_ACTIONS } from "./actions";
 import { ACCESS_HIERARCHY, ModuleEntry } from "./moduleHierarchy";
 import { expandWithAliases } from "./moduleKeyAliases";
 import { stripFloorRoles } from "./floorRoles.service";
+import { getVendorOnboardingConfig } from "@/lib/centralApiRead";
 
 /** Modules a vendor's team can ever be granted — operational modules only.
  * Platform/administration modules (businesses, users, roles, access,
@@ -135,13 +136,19 @@ export async function getVendorAvailableModules(
   const vendorKeys = new Set<string>(VENDOR_MODULE_KEYS);
   let result = flattenHierarchy().filter((m) => vendorKeys.has(m.key) && !disabled.has(m.key));
 
-  // Per-vendor-type restriction (admin-configurable via
-  // Business.vendorTypeModules, never hardcoded): if this business has an
-  // entry for `appliedAs` with a non-empty moduleKeys list, intersect the
-  // result down to just those keys. No entry (or an empty list) for this
-  // type = no extra restriction, exactly as before.
+  // Per-vendor-type restriction: central-api is the single source of
+  // truth for this (its own dashboard's Access tab), shared across every
+  // consuming app -- checked first; Business.vendorTypeModules (local) is
+  // only the fallback for when central-api is unreachable/not yet
+  // configured for this business, not the primary store anymore. If this
+  // business has an entry for `appliedAs` with a non-empty moduleKeys
+  // list, intersect the result down to just those keys. No entry (or an
+  // empty list) for this type = no extra restriction.
   if (appliedAs) {
-    const typeEntries = Array.isArray(business?.vendorTypeModules) ? business.vendorTypeModules : [];
+    let typeEntries = Array.isArray(business?.vendorTypeModules) ? business.vendorTypeModules : [];
+    const centralConfig = await getVendorOnboardingConfig(businessId);
+    if (centralConfig) typeEntries = centralConfig.vendorTypeModules;
+
     const typeEntry = typeEntries.find(
       (t: any) => String(t?.appliedAs).toUpperCase() === String(appliedAs).toUpperCase()
     );
