@@ -1003,9 +1003,33 @@ function centralApiVendorPayload(doc: any) {
   };
 }
 
+// Separate, independent sync into central-api's own top-level "businesses"
+// dataset -- NOT the "vendors" sync above (that's a different, unrelated
+// hierarchy concept: this app's tenants viewed as vendors of a "Service
+// Flow" parent business). This one is what every later per-business
+// cross-app feature (shared integration overrides, report-field-config,
+// vendor-onboarding-config, role-catalog) actually reads via
+// resolveCentralBusinessId()'s sourceId search -- that lookup had nothing
+// populating it until now, so all of those per-business overrides were
+// silently non-functional for AN-CRM specifically. Gated only on
+// CENTRAL_API_URL/KEY being configured (unlike the vendors sync above,
+// this has no dependency on the Service Flow hierarchy).
+function centralApiBusinessPayload(doc: any) {
+  return {
+    name: doc.name,
+    brandName: doc.brandName,
+    operatingMode: doc.operatingMode,
+    isActive: doc.isActive,
+    isPlatform: doc.isPlatform,
+    app: "an-crm",
+  };
+}
+
 BusinessSchema.post("save", async function (doc) {
+  const plain = doc.toObject();
+  await syncRecordToCentralApi("businesses", doc._id.toString(), centralApiBusinessPayload(plain));
   if (!process.env.CENTRAL_API_SERVICE_FLOW_BUSINESS_ID) return;
-  await syncRecordToCentralApi("vendors", doc._id.toString(), centralApiVendorPayload(doc.toObject()));
+  await syncRecordToCentralApi("vendors", doc._id.toString(), centralApiVendorPayload(plain));
 });
 
 BusinessSchema.post("findOneAndUpdate", async function (doc) {
@@ -1015,12 +1039,17 @@ BusinessSchema.post("findOneAndUpdate", async function (doc) {
   // syncRecordToCentralApi, so just skip the conversion when it's not
   // there instead of crashing every lean update ("a.toObject is not a
   // function", which was silently breaking every Settings save).
-  if (!doc || !process.env.CENTRAL_API_SERVICE_FLOW_BUSINESS_ID) return;
-  await syncRecordToCentralApi("vendors", doc._id.toString(), centralApiVendorPayload(doc.toObject ? doc.toObject() : doc));
+  if (!doc) return;
+  const plain = doc.toObject ? doc.toObject() : doc;
+  await syncRecordToCentralApi("businesses", doc._id.toString(), centralApiBusinessPayload(plain));
+  if (!process.env.CENTRAL_API_SERVICE_FLOW_BUSINESS_ID) return;
+  await syncRecordToCentralApi("vendors", doc._id.toString(), centralApiVendorPayload(plain));
 });
 
 BusinessSchema.post("findOneAndDelete", async function (doc) {
-  if (!doc || !process.env.CENTRAL_API_SERVICE_FLOW_BUSINESS_ID) return;
+  if (!doc) return;
+  await deleteRecordFromCentralApi("businesses", doc._id.toString());
+  if (!process.env.CENTRAL_API_SERVICE_FLOW_BUSINESS_ID) return;
   await deleteRecordFromCentralApi("vendors", doc._id.toString());
 });
 

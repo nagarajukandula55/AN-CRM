@@ -9,7 +9,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { notifySuperAdmins } from "@/services/notification.service";
 import { activateVendorWithTrial } from "@/services/vendorActivation.service";
 import { sendGenericEmail } from "@/services/email/resend.service";
-import { getVendorOnboardingConfig } from "@/lib/centralApiRead";
+import { getVendorOnboardingConfig, getPlatformBusinessId } from "@/lib/centralApiRead";
 import { sendTelegramMessage } from "@/lib/telegram";
 
 /**
@@ -116,20 +116,24 @@ export async function POST(req: NextRequest) {
 
     // A caller-supplied businessId (the existing link-based flow) still
     // wins if present. Otherwise -- the normal case for a public /vendor-
-    // apply signup -- fall back to AN_CRM_MY_BIZ_FLOW_BUSINESS_ID, AN-CRM's
-    // own self-representing Business every vendor who signs up here
-    // belongs under (this app's own product line, "My Biz Flow" -- see
-    // scripts/fixLocalMyBizFlowBusiness.ts for how that record gets set
-    // up). Per explicit direction: which business a signup lands under is
+    // apply signup -- resolve AN-CRM's own self-representing Business
+    // (every vendor who signs up here belongs under it) via central-api's
+    // platform-business registry FIRST (admin-editable live, no redeploy
+    // needed when it drifts -- see routes/platformBusiness.js), falling
+    // back to the AN_CRM_MY_BIZ_FLOW_BUSINESS_ID env var only if
+    // central-api is unreachable or that app isn't registered there yet.
+    // Per explicit direction: which business a signup lands under is
     // determined by WHICH SITE they signed up on, not left for an admin to
-    // assign later -- a signup from AN-CRM always belongs to AN-CRM's own
-    // business. Falls through to the old "unassigned, admin picks at
-    // approval" behavior only if that env var isn't set at all.
+    // assign later. Falls through to the old "unassigned, admin picks at
+    // approval" behavior only if neither source has anything.
     // .trim() -- a copy-pasted env var value with a trailing space/newline
     // is invisible in most dashboard UIs but fails Types.ObjectId.isValid()
     // (or resolves to a nonexistent id), reproduced in production tonight
     // with the same class of bug on SUPER_ADMIN_BOOTSTRAP_SECRET.
-    let resolvedBusinessId = businessId || process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID?.trim();
+    let resolvedBusinessId =
+      businessId ||
+      (await getPlatformBusinessId("an-crm")) ||
+      process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID?.trim();
 
     let business: { _id: unknown; name?: string; brandName?: string; marketplace?: { skipVendorApproval?: boolean } } | null = null;
     if (resolvedBusinessId) {
