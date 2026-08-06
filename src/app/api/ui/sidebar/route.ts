@@ -9,6 +9,8 @@ import { expandWithAliases } from "@/core/access/moduleKeyAliases";
 import { STATIC_MODULES } from "@/components/sidebar-nav";
 import { getAllowedModuleKeysForBusiness } from "@/core/pricing/planAccess";
 import { resolveAllowedPageKeys, ALWAYS_ALLOWED_KEYS } from "@/lib/access/centralAllowedPages";
+import { resolveVendorContext } from "@/lib/auth/vendorContext";
+import { getVendorOnboardingConfig } from "@/lib/centralApiRead";
 
 /**
  * MIGRATED from UserBusinessAccess/accessKeys to the Permission-based access
@@ -126,19 +128,28 @@ export async function POST(req: Request) {
       }
     }
 
-    // SC (Service Center) businesses are single-login, workorder-first by
-    // spec, but still share the modules every operating mode has in
-    // common -- BOM, Inventory (when serialization is enabled), Reports,
-    // Settings and Profile, per explicit direction ("All the category
-    // parts will have BOM in common, Inventory (If they Enable
-    // Serialization) Reports and setting and profile view pages"). So the
-    // collapse keeps that common set alongside the workorder screen,
-    // rather than showing ONLY crm_jobsheets. Applied last, after every
-    // other filter, so it always wins regardless of what permissions/
-    // business-module config would otherwise have shown. Exempts a super
-    // admin, who needs full nav to administer every business.
-    if (business?.operatingMode === "SC" && !session.isSuperAdmin) {
-      const scAllowedKeys = new Set([
+    // Vendor-type-aware module restriction: a single business (e.g. "My
+    // Biz Flow") can host BRAND/SC/POS vendors together, so this can no
+    // longer key off Business.operatingMode -- that collapsed EVERY
+    // user's sidebar in a mixed business to whatever one mode happened to
+    // be set, regardless of which type of vendor was actually logged in.
+    // Keyed on the CALLING USER's own vendor type (VendorProfile.appliedAs
+    // via resolveVendorContext) instead. Central-api's vendorTypeModules
+    // (Access tab, per business, editable per appliedAs) is the primary
+    // source -- "if I add pages to it those pages only reflect here to
+    // people with that type" -- so an admin can grant/restrict BRAND/POS
+    // the same way SC already was, without a code change. The hardcoded
+    // SC set below is kept ONLY as the safety-net default for SC when no
+    // central config has been set yet, preserving existing behavior.
+    const vendorContext = session.isSuperAdmin ? null : await resolveVendorContext(session.user.id);
+    const appliedAs = (vendorContext?.vendor as any)?.appliedAs as string | undefined;
+    if (appliedAs && !session.isSuperAdmin) {
+      const onboardingConfig = await getVendorOnboardingConfig(businessId);
+      const centralEntry = onboardingConfig?.vendorTypeModules?.find((v) => v.appliedAs === appliedAs);
+      // No central config yet: only SC has a safety-net default (preserves
+      // pre-existing behavior). BRAND/POS with no central config configured
+      // yet are left unrestricted here rather than guessing a wrong list.
+      const defaultKeys = appliedAs === "SC" ? [
         "crm",
         "crm_jobsheets",
         "material-catalog",
@@ -170,8 +181,12 @@ export async function POST(req: Request) {
         "debit-notes",
         "proforma-invoices",
         ...(business?.inventorySerialized ? ["inventory", "stock-transfers", "inventory-lots"] : []),
-      ]);
-      visibleModules = visibleModules.filter((m: any) => scAllowedKeys.has(m.key));
+      ] : [];
+      const typeAllowedKeys = centralEntry?.moduleKeys?.length ? centralEntry.moduleKeys : defaultKeys;
+      if (typeAllowedKeys.length > 0) {
+        const typeAllowedSet = new Set(typeAllowedKeys);
+        visibleModules = visibleModules.filter((m: any) => typeAllowedSet.has(m.key));
+      }
     }
 
     // Central-api role's allowedPages -- a SEPARATE, admin-configured
