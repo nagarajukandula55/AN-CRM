@@ -234,6 +234,16 @@ export async function POST(req: NextRequest) {
       );
       if (centralConfig) skipApproval = centralConfig.skipVendorApproval;
     }
+    // Per explicit direction: instant, no-approval activation is an SC-only
+    // path -- "for SC ... direct vendor entry creation should happen but
+    // for remaining both types [BRAND/POS] just take details but inform
+    // them to wait ... send this for Approval." The per-business
+    // skipVendorApproval toggle above still governs WHETHER SC gets this
+    // (an admin can still require review for SC too), but it can never
+    // auto-activate a BRAND or POS applicant regardless of that toggle.
+    if (skipApproval && appliedAs !== "SC") {
+      skipApproval = false;
+    }
     if (skipApproval) {
       try {
         const result = await activateVendorWithTrial(vendor as any, String(resolvedBusinessId), { skipAgreement: true });

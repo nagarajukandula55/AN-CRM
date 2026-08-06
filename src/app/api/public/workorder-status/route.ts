@@ -34,9 +34,20 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
+    // Phone lookup was a brittle exact-string match against however the
+    // number happened to get typed at intake (spaces, +91 prefix, dashes)
+    // -- a customer typing their number differently than the CCO originally
+    // did would silently get "not found". Normalize to just the last 10
+    // digits on both sides instead (India mobile numbers are 10 digits;
+    // stripping everything else and matching the tail is robust to any
+    // formatting either side used).
     const query: Record<string, unknown> = { isDeleted: false };
-    if (jobSheetNumber) query.jobSheetNumber = jobSheetNumber;
-    else query.phone = phone;
+    if (jobSheetNumber) {
+      query.jobSheetNumber = jobSheetNumber;
+    } else if (phone) {
+      const digits = phone.replace(/\D/g, "").slice(-10);
+      query.phone = digits.length === 10 ? new RegExp(`${digits}$`) : phone;
+    }
 
     const jobSheet = await CrmJobSheet.findOne(query)
       .sort({ createdAt: -1 })

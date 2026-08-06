@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Eye,
@@ -103,6 +104,24 @@ function PasswordInput({
 }
 
 export default function PartnerSignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <PartnerSignupPageInner />
+    </Suspense>
+  );
+}
+
+function PartnerSignupPageInner() {
+  const searchParams = useSearchParams();
+  // Homepage's type-split signup buttons ("Sign up as SC/Brand/POS") link
+  // here with ?type=SC|BRAND|POS -- pre-selects and locks step 2's
+  // "applying as" field so the visitor never has to pick it again, and the
+  // page can show type-specific messaging (SC = instant, BRAND/POS =
+  // reviewed) from the very first screen instead of only after submit.
+  const typeParam = searchParams.get("type");
+  const preselectedType: "BRAND" | "SC" | "POS" | "" =
+    typeParam === "BRAND" || typeParam === "SC" || typeParam === "POS" ? typeParam : "";
+
   const [step, setStep] = useState<Step>(1);
   const [error, setError] = useState("");
   const [state, setState] = useState<SubmitState>({ kind: "idle" });
@@ -120,7 +139,7 @@ export default function PartnerSignupPage() {
   const [category, setCategory] = useState("");
   // Which operating mode they're applying to run as -- per explicit
   // direction ("in the signup page add Type they are applying").
-  const [appliedAs, setAppliedAs] = useState<"BRAND" | "SC" | "POS" | "">("");
+  const [appliedAs, setAppliedAs] = useState<"BRAND" | "SC" | "POS" | "">(preselectedType);
   const [gstRegistered, setGstRegistered] = useState(true);
   const [gstNumber, setGstNumber] = useState("");
   const [panNumber, setPanNumber] = useState("");
@@ -501,18 +520,39 @@ export default function PartnerSignupPage() {
                       </select>
                     </Field>
                     <Field label="What are you applying as?" required>
-                      <select
-                        className={neonInputCls}
-                        value={appliedAs}
-                        onChange={(e) => setAppliedAs(e.target.value as "BRAND" | "SC" | "POS" | "")}
-                      >
-                        <option value="">Select…</option>
-                        <option value="BRAND">Brand (multi-role, call center + appointments)</option>
-                        <option value="SC">Service Center (single login, workorder flow)</option>
-                        <option value="POS">Sales / POS (billing counter, store to enterprise)</option>
-                      </select>
+                      {preselectedType ? (
+                        <div className={`${neonInputCls} flex items-center justify-between bg-violet-50/60 text-gray-700`}>
+                          <span>
+                            {preselectedType === "BRAND" && "Brand (multi-role, call center + appointments)"}
+                            {preselectedType === "SC" && "Service Center (single login, workorder flow)"}
+                            {preselectedType === "POS" && "Sales / POS (billing counter, store to enterprise)"}
+                          </span>
+                          <Link href="/partner-signup" className="text-xs text-violet-600 hover:text-cyan-600 shrink-0 ml-2">
+                            Change
+                          </Link>
+                        </div>
+                      ) : (
+                        <select
+                          className={neonInputCls}
+                          value={appliedAs}
+                          onChange={(e) => setAppliedAs(e.target.value as "BRAND" | "SC" | "POS" | "")}
+                        >
+                          <option value="">Select…</option>
+                          <option value="BRAND">Brand (multi-role, call center + appointments)</option>
+                          <option value="SC">Service Center (single login, workorder flow)</option>
+                          <option value="POS">Sales / POS (billing counter, store to enterprise)</option>
+                        </select>
+                      )}
                     </Field>
                   </div>
+
+                  {appliedAs && (
+                    <div className={`rounded-xl border px-4 py-3 text-xs ${appliedAs === "SC" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+                      {appliedAs === "SC"
+                        ? "Service Center applications activate instantly (where enabled) — you'll get portal access and a 7-day trial right after submitting, no waiting on review."
+                        : "Brand and POS applications are reviewed by our team before activation — we'll take your details now and follow up shortly with next steps, so there's no need to wait here."}
+                    </div>
+                  )}
 
                   <div>
                     <p className="mb-2 text-xs font-medium text-gray-600">
