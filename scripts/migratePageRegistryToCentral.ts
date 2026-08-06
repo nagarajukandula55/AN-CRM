@@ -15,12 +15,41 @@
  *
  *   npx tsx --env-file=.env.local scripts/migratePageRegistryToCentral.ts
  */
+import fs from "fs";
+import path from "path";
 import { connectDB } from "../src/lib/mongodb";
 import ModuleDefinition from "../src/core/module-registry/ModuleDefinition.model";
 
 const CENTRAL_API_URL = process.env.CENTRAL_API_URL;
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 const APP_NAME = "an-crm";
+const APP_DIR = path.join(__dirname, "..", "src", "app");
+
+// Walks every literal page.tsx under src/app and derives its route --
+// this is the actual complete page list (149+ routes as of this writing),
+// vs. the curated ~55 ModuleDefinition nav entries below, which only cover
+// pages deliberately added to a sidebar/module list. "Register every page,
+// not just a few" -- this closes that gap: every route.tsx-backed page
+// gets a pageregistry row even if it never got a ModuleDefinition. Route
+// groups (parens) are stripped (they don't appear in the URL); dynamic
+// segments ([id], [[...id]]) are kept as literal placeholders so the
+// registry entry reads like a real route pattern, not a resolved URL.
+function walkPages(dir: string, base = ""): { route: string; segment: string }[] {
+  const out: { route: string; segment: string }[] = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith("_") || entry.name === "api" || entry.name === "node_modules") continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      const isGroup = entry.name.startsWith("(") && entry.name.endsWith(")");
+      out.push(...walkPages(full, isGroup ? base : `${base}/${entry.name}`));
+    } else if (entry.name === "page.tsx" || entry.name === "page.ts") {
+      const route = base || "/";
+      const segment = route.split("/").filter(Boolean).pop() || "home";
+      out.push({ route, segment });
+    }
+  }
+  return out;
+}
 
 async function main() {
   if (!CENTRAL_API_URL) throw new Error("CENTRAL_API_URL is not set");
@@ -75,6 +104,45 @@ async function main() {
         body: JSON.stringify(payload),
       });
       console.log(`  created ${m.route}`);
+    }
+  }
+
+  console.log(`\nModule-registry sync done (${modules.length} rows). Now scanning every literal page.tsx route...`);
+
+  // Second pass: every literal page.tsx, minus routes already covered
+  // above by a ModuleDefinition (avoid a duplicate row for the same
+  // route -- the module-registry entry has a cleaner curated label).
+  const allPages = walkPages(APP_DIR);
+  const coveredRoutes = new Set((modules as any[]).map((m) => m.route));
+  const uncovered = allPages.filter((p) => !coveredRoutes.has(p.route));
+  console.log(`Found ${allPages.length} total page(s), ${uncovered.length} not already in the module registry.`);
+
+  const existingRes2 = await fetch(`${CENTRAL_API_URL}/api/v1/pageregistry?limit=1000&search=app:${APP_NAME}`, { headers });
+  const existing2 = existingRes2.ok ? (await existingRes2.json()).items || [] : [];
+  const existingByRoute2 = new Map(existing2.map((p: any) => [p.route, p]));
+
+  for (const p of uncovered) {
+    const payload = {
+      app: APP_NAME,
+      pageKey: p.route.replace(/\//g, ".").replace(/^\.+/, "") || "home",
+      route: p.route,
+      label: `AN-CRM: ${p.segment}`,
+    };
+    const existingRow: any = existingByRoute2.get(p.route);
+    if (existingRow?._id) {
+      await fetch(`${CENTRAL_API_URL}/api/v1/pageregistry/${existingRow._id}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(payload),
+      });
+      console.log(`  updated ${p.route}`);
+    } else {
+      await fetch(`${CENTRAL_API_URL}/api/v1/pageregistry`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+      console.log(`  created ${p.route}`);
     }
   }
 
