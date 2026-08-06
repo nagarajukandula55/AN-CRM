@@ -69,9 +69,30 @@ export async function sendCustomerSms(businessId: string, to: string, message: s
   if (!to?.trim()) return;
   try {
     await connectDB();
+    let cfg: SmsConfig | null = null;
     const integration = await Integration.findOne({ businessId, provider: "SMS", isActive: true }).lean<any>();
-    if (!integration) return; // no gateway configured yet -- silent no-op, not an error
-    const cfg = integration.config as SmsConfig;
+    if (integration) {
+      cfg = integration.config as SmsConfig;
+    } else if (process.env.CENTRAL_API_URL) {
+      // No business-specific gateway configured -- fall back to
+      // central-api's shared SMS integration (same generic
+      // PlatformIntegration mechanism as Resend/AI/Telegram), so a
+      // business doesn't need its own gateway account just to send
+      // customer SMS at all.
+      try {
+        const res = await fetch(`${process.env.CENTRAL_API_URL}/api/v1/integrations/sms`, {
+          headers: { "x-api-key": process.env.CENTRAL_API_KEY || "" },
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const body = await res.json();
+          if (body?.configured) cfg = body.config as SmsConfig;
+        }
+      } catch (err) {
+        console.error("[customerNotify:sms] failed to load central-api shared SMS config", err);
+      }
+    }
+    if (!cfg) return; // no gateway configured anywhere -- silent no-op, not an error
     if (cfg.gateway === "MSG91") await sendViaMsg91(cfg.credentials || {}, cfg.senderId, to, message);
     else if (cfg.gateway === "TWILIO") await sendViaTwilio(cfg.credentials || {}, to, message);
     else console.warn(`[customerNotify:sms] Unsupported gateway "${cfg.gateway}" configured for business ${businessId}`);
@@ -93,10 +114,25 @@ export async function sendCustomerWhatsApp(businessId: string, to: string, messa
   if (!to?.trim()) return;
   try {
     await connectDB();
+    let cfg: { phoneNumberId?: string; accessToken?: string } | null = null;
     const integration = await Integration.findOne({ businessId, provider: "WHATSAPP", isActive: true }).lean<any>();
-    if (!integration) return;
-    const cfg = integration.config as { phoneNumberId?: string; accessToken?: string };
-    if (!cfg.phoneNumberId || !cfg.accessToken) return;
+    if (integration) {
+      cfg = integration.config;
+    } else if (process.env.CENTRAL_API_URL) {
+      try {
+        const res = await fetch(`${process.env.CENTRAL_API_URL}/api/v1/integrations/whatsapp`, {
+          headers: { "x-api-key": process.env.CENTRAL_API_KEY || "" },
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const body = await res.json();
+          if (body?.configured) cfg = body.config;
+        }
+      } catch (err) {
+        console.error("[customerNotify:whatsapp] failed to load central-api shared WhatsApp config", err);
+      }
+    }
+    if (!cfg?.phoneNumberId || !cfg?.accessToken) return;
     const res = await fetch(`https://graph.facebook.com/v18.0/${cfg.phoneNumberId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.accessToken}` },
