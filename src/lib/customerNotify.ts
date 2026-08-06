@@ -18,8 +18,8 @@
  * yet, so a business with no SMS gateway set up never blocks a workorder
  * status transition -- see the `if (!integration) return` guards.
  */
-import { connectDB } from "@/lib/mongodb";
-import Integration, { SmsConfig } from "@/models/Integration";
+import type { SmsConfig } from "@/models/Integration";
+import { getSharedIntegration } from "@/lib/centralApiRead";
 
 async function sendViaMsg91(credentials: Record<string, string>, senderId: string | undefined, to: string, message: string): Promise<void> {
   const authKey = credentials.authKey;
@@ -68,10 +68,11 @@ async function sendViaTwilio(credentials: Record<string, string>, to: string, me
 export async function sendCustomerSms(businessId: string, to: string, message: string): Promise<void> {
   if (!to?.trim()) return;
   try {
-    await connectDB();
-    const integration = await Integration.findOne({ businessId, provider: "SMS", isActive: true }).lean<any>();
-    if (!integration) return; // no gateway configured yet -- silent no-op, not an error
-    const cfg = integration.config as SmsConfig;
+    // Central-api is now the ONLY source -- a business-specific override
+    // there (if set) wins, otherwise the platform-wide default. No local
+    // Integration{provider:"SMS"} read anymore.
+    const cfg = await getSharedIntegration<SmsConfig>("SMS", businessId);
+    if (!cfg) return; // no gateway configured anywhere -- silent no-op, not an error
     if (cfg.gateway === "MSG91") await sendViaMsg91(cfg.credentials || {}, cfg.senderId, to, message);
     else if (cfg.gateway === "TWILIO") await sendViaTwilio(cfg.credentials || {}, to, message);
     else console.warn(`[customerNotify:sms] Unsupported gateway "${cfg.gateway}" configured for business ${businessId}`);
@@ -92,11 +93,8 @@ export async function sendCustomerSms(businessId: string, to: string, message: s
 export async function sendCustomerWhatsApp(businessId: string, to: string, message: string): Promise<void> {
   if (!to?.trim()) return;
   try {
-    await connectDB();
-    const integration = await Integration.findOne({ businessId, provider: "WHATSAPP", isActive: true }).lean<any>();
-    if (!integration) return;
-    const cfg = integration.config as { phoneNumberId?: string; accessToken?: string };
-    if (!cfg.phoneNumberId || !cfg.accessToken) return;
+    const cfg = await getSharedIntegration<{ phoneNumberId?: string; accessToken?: string }>("WHATSAPP", businessId);
+    if (!cfg?.phoneNumberId || !cfg?.accessToken) return;
     const res = await fetch(`https://graph.facebook.com/v18.0/${cfg.phoneNumberId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.accessToken}` },

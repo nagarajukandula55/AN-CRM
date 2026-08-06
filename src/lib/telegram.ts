@@ -1,20 +1,35 @@
 /**
  * Minimal Telegram notifier -- dependency-free (plain fetch). Used for
- * ops-report and catalog-request alerts. Reads bot token/chat id from env;
- * if either is missing, logs a warning and resolves to false instead of
- * throwing, so callers never crash the app just because Telegram isn't
- * configured yet in a given environment.
+ * ops-report/catalog-request alerts and every ecosystem-wide event
+ * notification (vendor signup, agreement email, activation, etc.).
+ *
+ * Credentials: an explicit options.chatId always wins (a caller sending
+ * to a specific business's own configured chat, a different concern from
+ * the shared ops channel) -- otherwise central-api's shared "TELEGRAM"
+ * integration is the source (business-specific override supported, see
+ * getSharedIntegration), with the legacy ANOPS_TELEGRAM_BOT_TOKEN/
+ * ANOPS_TELEGRAM_CHAT_ID env vars only as a last-resort fallback for a
+ * central-api outage.
  */
+import { getSharedIntegration } from "@/lib/centralApiRead";
 
 export async function sendTelegramMessage(
   text: string,
-  options?: { parseMode?: "HTML" | "MarkdownV2"; chatId?: string }
+  options?: { parseMode?: "HTML" | "MarkdownV2"; chatId?: string; businessId?: string }
 ): Promise<boolean> {
-  const token = process.env.ANOPS_TELEGRAM_BOT_TOKEN;
-  const chatId = options?.chatId || process.env.ANOPS_TELEGRAM_CHAT_ID;
+  let token = process.env.ANOPS_TELEGRAM_BOT_TOKEN;
+  let chatId = options?.chatId || process.env.ANOPS_TELEGRAM_CHAT_ID;
+
+  if (!options?.chatId) {
+    const shared = await getSharedIntegration<{ botToken?: string; chatId?: string }>("TELEGRAM", options?.businessId);
+    if (shared?.botToken && shared?.chatId) {
+      token = shared.botToken;
+      chatId = shared.chatId;
+    }
+  }
 
   if (!token || !chatId) {
-    console.warn("[telegram] ANOPS_TELEGRAM_BOT_TOKEN / ANOPS_TELEGRAM_CHAT_ID not configured -- skipping send.");
+    console.warn("[telegram] No Telegram credentials configured (central-api shared integration or ANOPS_TELEGRAM_* env vars) -- skipping send.");
     return false;
   }
 

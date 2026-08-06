@@ -172,6 +172,13 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-plan-features", label: "Plan Features", route: "/console/admin/plan-features", icon: "Sparkles" },
       { key: "admin-settings", label: "Settings", route: "/console/settings", icon: "Settings" },
       { key: "admin-plan", label: "Plan & Billing", route: "/console/plan", icon: "Receipt" },
+      // Nav visibility is governed by the normal module-permission system
+      // like every other entry here (a business admin who somehow got a
+      // permission grant for this key would see it too) -- the REAL gate
+      // is inside console/help/page.tsx itself, which checks
+      // session.isSuperAdmin and renders nothing else if false, same
+      // pattern as module-builder's client-side isSuperAdmin checks.
+      { key: "admin-help", label: "Help & System Guide", route: "/console/help", icon: "BookOpen" },
       // SC-only in practice -- see /console/sub-accounts's own comment and
       // the scAllowedKeys gate in api/ui/sidebar/route.ts. Shown here in
       // the same "System" group as Plan & Billing since it's the same

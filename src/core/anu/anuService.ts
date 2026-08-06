@@ -1,6 +1,6 @@
-import AIConfig from "@/models/AIConfig";
 import type { AnuQueryInput, AnuQueryResult } from "./types";
 import { buildAnuContext, localAnswer } from "./knowledgeBase";
+import { getSharedIntegration } from "@/lib/centralApiRead";
 
 /**
  * ANu's provider call layer. Deliberately thin: resolve which providers this
@@ -133,62 +133,33 @@ async function callOpenRouter(apiKey: string, model: string, systemPrompt: strin
 type ProviderName = "anthropic" | "openai" | "google" | "openrouter";
 
 export async function askAnu(input: AnuQueryInput): Promise<AnuQueryResult> {
-  const aiConfig = await AIConfig.findOne({ businessId: input.businessId }).lean() as any;
   const systemPrompt = await buildAnuContext(input.businessId, input.language);
 
-  // Priority order — Anthropic first (matches this platform's own stack),
-  // then the others. Each entry only runs if that provider is enabled AND
-  // has a key; a business can configure as many or as few as it likes.
+  // Central-api is now the ONLY source for Anu's AI credentials -- per
+  // explicit direction, every integration (including AI) is managed
+  // centrally across every AN Group site, full stop. This app's local
+  // AIConfig model is no longer read here at all; a business that wants
+  // its own distinct AI provider/key gets that via a business-specific
+  // override on central-api's dashboard (routes/integrations.js's
+  // businessId-scoped GET/PUT), the platform-wide "ANU_AI" default
+  // otherwise. AIConfig is still used for the separate AI Studio
+  // image-generation feature, untouched here.
   const chain: Array<{ name: ProviderName; call: () => Promise<string> }> = [];
 
-  const anthropicCfg = aiConfig?.providers?.anthropic;
-  if (anthropicCfg?.isEnabled && anthropicCfg?.apiKey) {
-    chain.push({ name: "anthropic", call: () => callAnthropic(anthropicCfg.apiKey, anthropicCfg.model, systemPrompt, input.messages) });
-  }
-  const openaiCfg = aiConfig?.providers?.openai;
-  if (openaiCfg?.isEnabled && openaiCfg?.apiKey) {
-    chain.push({ name: "openai", call: () => callOpenAI(openaiCfg.apiKey, openaiCfg.model, systemPrompt, input.messages) });
-  }
-  const googleCfg = aiConfig?.providers?.google;
-  if (googleCfg?.isEnabled && googleCfg?.apiKey) {
-    chain.push({ name: "google", call: () => callGoogle(googleCfg.apiKey, googleCfg.model, systemPrompt, input.messages) });
-  }
-  const openrouterCfg = aiConfig?.providers?.openrouter;
-  if (openrouterCfg?.isEnabled && openrouterCfg?.apiKey) {
-    chain.push({ name: "openrouter", call: () => callOpenRouter(openrouterCfg.apiKey, openrouterCfg.model, systemPrompt, input.messages) });
-  }
-
-  // Shared fallback: if this business hasn't configured its own AI
-  // provider (or none of them worked above), fall back to central-api's
-  // shared "ANU_AI" integration — one platform-wide provider/key/model,
-  // dashboard-configurable, so a business doesn't need its own API key
-  // just to get Anu working (same central-source-of-truth pattern as
-  // Resend, see services/email/resend.service.ts). Only attempted if the
-  // chain is otherwise empty or every per-business provider above fails.
-  if (process.env.CENTRAL_API_URL) {
-    try {
-      const res = await fetch(`${process.env.CENTRAL_API_URL}/api/v1/integrations/anu_ai`, {
-        headers: { "x-api-key": process.env.CENTRAL_API_KEY || "" },
-        cache: "no-store",
-      });
-      if (res.ok) {
-        const body = await res.json();
-        const cfg = body?.configured ? body.config : null;
-        if (cfg?.apiKey && cfg?.provider) {
-          const callers: Record<ProviderName, (key: string, model: string) => Promise<string>> = {
-            anthropic: (key, model) => callAnthropic(key, model, systemPrompt, input.messages),
-            openai: (key, model) => callOpenAI(key, model, systemPrompt, input.messages),
-            google: (key, model) => callGoogle(key, model, systemPrompt, input.messages),
-            openrouter: (key, model) => callOpenRouter(key, model, systemPrompt, input.messages),
-          };
-          const caller = callers[cfg.provider as ProviderName];
-          if (caller) {
-            chain.push({ name: cfg.provider as ProviderName, call: () => caller(cfg.apiKey, cfg.model) });
-          }
-        }
-      }
-    } catch (err) {
-      console.error("ANU: failed to load central-api shared AI config", err);
+  const shared = await getSharedIntegration<{ provider?: ProviderName; apiKey?: string; model?: string }>(
+    "ANU_AI",
+    input.businessId
+  );
+  if (shared?.apiKey && shared?.provider) {
+    const callers: Record<ProviderName, (key: string, model: string) => Promise<string>> = {
+      anthropic: (key, model) => callAnthropic(key, model, systemPrompt, input.messages),
+      openai: (key, model) => callOpenAI(key, model, systemPrompt, input.messages),
+      google: (key, model) => callGoogle(key, model, systemPrompt, input.messages),
+      openrouter: (key, model) => callOpenRouter(key, model, systemPrompt, input.messages),
+    };
+    const caller = callers[shared.provider];
+    if (caller) {
+      chain.push({ name: shared.provider, call: () => caller(shared.apiKey!, shared.model!) });
     }
   }
 
