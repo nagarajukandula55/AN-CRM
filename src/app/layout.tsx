@@ -17,8 +17,11 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swa
 const newsreader = Newsreader({ subsets: ["latin"], style: ["italic", "normal"], variable: "--font-display", display: "swap" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
+// Public-facing product name is "My Biz Flow" -- AN-CRM is this repo's
+// internal name only, never shown to an outside visitor (browser tab
+// title, search results, social share previews all read this).
 export const metadata: Metadata = {
-  title: "AN-CRM",
+  title: "My Biz Flow",
   description: "The CRM/ERP platform for Brand, Service Center, and POS operations.",
 };
 

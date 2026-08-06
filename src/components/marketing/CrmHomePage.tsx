@@ -4,33 +4,66 @@ import Link from 'next/link'
 import {
   PhoneCall, ClipboardList, ShoppingCart, ShieldCheck, Zap, BarChart3,
   ArrowRight, CheckCircle2, Building2, Users, Sparkles, Smartphone, Tablet,
+  Clock3, LayoutDashboard, Receipt, Wrench,
 } from 'lucide-react'
+import Logo from './Logo'
+import {
+  neonButtonPrimary,
+  neonButtonSecondary,
+  neonButtonNav,
+  neonButtonGhostNav,
+  neonPageBg,
+  neonGlow,
+  neonGradientText,
+  neonCard,
+} from './theme'
 
 /**
- * AN-CRM public, pre-login marketing homepage. Premium/glossy/interactive
- * per explicit direction ("Home page before login screen ensure that
- * should be like either glossy or most interactive UI") -- this is the
- * product's own storefront, promoting the CRM itself (Brand/SC/POS) to
- * prospective customers, not a generic ecommerce landing page. Built as a
- * new component (not editing the inherited marketing/HomePage.tsx from
- * ANgroup) so nothing else that might still reference the old one breaks.
+ * My Biz Flow (public product name -- AN-CRM is this repo's internal name
+ * only) public, pre-login marketing homepage. Rebuilt on the "Light Neon"
+ * theme (see ./theme.ts) that partner-signup already used, so the whole
+ * pre-login surface reads as one consistent product instead of this page
+ * alone still looking like the plain in-app design system. Per explicit
+ * direction: no separate generic signup -- the CTA is split by vendor
+ * type up front (SC / Brand / POS), each linking straight into
+ * /partner-signup?type=... with that type pre-selected and its own
+ * instant-vs-reviewed messaging already visible before the visitor clicks
+ * through.
  */
 
-const MODES = [
+type VendorType = {
+  type: 'SC' | 'BRAND' | 'POS'
+  icon: typeof Building2
+  title: string
+  description: string
+  activation: string
+  activationTone: 'instant' | 'review'
+}
+
+const VENDOR_TYPES: VendorType[] = [
   {
+    type: 'BRAND',
     icon: Building2,
     title: 'Brand',
     description: 'Multi-role operations — CCO, Manager, Engineer dashboards, call center and appointment booking, all in one command center.',
+    activation: 'Reviewed by our team before activation',
+    activationTone: 'review',
   },
   {
+    type: 'SC',
     icon: ClipboardList,
     title: 'Service Center',
     description: 'Single login, single screen. Log a call, diagnose, repair, bill — the entire workorder lifecycle without switching pages.',
+    activation: 'Instant access — no waiting on approval',
+    activationTone: 'instant',
   },
   {
+    type: 'POS',
     icon: ShoppingCart,
     title: 'Point of Sale',
     description: 'GST-ready billing that scales from a single counter to a multi-outlet enterprise, without changing systems.',
+    activation: 'Reviewed by our team before activation',
+    activationTone: 'review',
   },
 ]
 
@@ -41,109 +74,144 @@ const FEATURES = [
   { icon: BarChart3, title: 'Real Numbers, Real Time', description: 'Revenue, calls, workorders — a live summary for every role, every day.' },
 ]
 
+/** Abstract product-preview mockups (NOT real screenshots -- placeholders
+ * built purely from CSS/icons, same "swap later" pattern as Logo.tsx's
+ * text wordmark) until real product screenshots are captured and dropped
+ * in as actual images. */
+const PREVIEWS: { icon: typeof LayoutDashboard; label: string }[] = [
+  { icon: LayoutDashboard, label: 'Live operations dashboard' },
+  { icon: Wrench, label: 'Single-screen workorder flow' },
+  { icon: Receipt, label: 'GST-ready billing counter' },
+]
+
+function BrowserMockup({ icon: Icon, label }: { icon: typeof LayoutDashboard; label: string }) {
+  return (
+    <div className={`${neonCard} overflow-hidden`}>
+      <div className="flex items-center gap-1.5 border-b border-violet-100 bg-violet-50/50 px-4 py-2.5">
+        <span className="h-2.5 w-2.5 rounded-full bg-pink-300" />
+        <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
+        <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
+      </div>
+      <div className="flex h-56 flex-col items-center justify-center gap-3 bg-gradient-to-br from-violet-50/60 via-white to-cyan-50/50 px-6 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500 shadow-[0_8px_24px_-6px_rgba(139,92,246,0.5)]">
+          <Icon className="h-7 w-7 text-white" />
+        </div>
+        <p className="text-sm font-medium text-gray-600">{label}</p>
+        <p className="text-[10px] uppercase tracking-widest text-gray-400">Preview — real screenshots coming soon</p>
+      </div>
+    </div>
+  )
+}
+
 export default function CrmHomePage() {
   return (
-    <div className="min-h-screen bg-bg text-ink overflow-x-hidden">
+    <div className={`${neonPageBg} overflow-x-hidden`}>
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <section className="relative">
-        <div
-          className="absolute inset-0 -z-10"
-          style={{
-            background:
-              'radial-gradient(1200px 600px at 20% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%), radial-gradient(900px 500px at 90% 10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 55%)',
-          }}
-        />
-        <nav className="max-w-6xl mx-auto flex items-center justify-between px-6 py-6">
-          <div className="flex items-center gap-2 font-semibold text-lg tracking-tight">
-            <div className="h-8 w-8 rounded-control bg-accent flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-accent-fg" />
-            </div>
-            AN-CRM
-          </div>
+        <div aria-hidden className={`${neonGlow('violet')} -right-40 -top-40 h-[32rem] w-[32rem]`} />
+        <div aria-hidden className={`${neonGlow('cyan')} -left-40 top-40 h-96 w-96 opacity-70`} />
+
+        <nav className="relative z-10 max-w-6xl mx-auto flex items-center justify-between px-6 py-6">
+          <Logo />
           <div className="flex items-center gap-3">
-            <Link href="/pricing" className="text-sm text-ink-2 hover:text-ink transition-colors hidden sm:block">
+            <Link href="/pricing" className="text-sm font-medium text-gray-600 hover:text-violet-700 transition-colors hidden sm:block">
               Pricing
             </Link>
-            <Link href="/track-workorder" className="text-sm text-ink-2 hover:text-ink transition-colors hidden sm:block">
-              Track a Repair
+            <Link href="/track-workorder" className={neonButtonGhostNav}>
+              <Clock3 className="h-3.5 w-3.5" /> Track a Repair
             </Link>
-            <Link
-              href="/login"
-              className="rounded-control bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:bg-accent-hover transition-colors"
-            >
+            <Link href="/login" className={neonButtonNav}>
               Sign in
             </Link>
           </div>
         </nav>
 
-        <div className="max-w-6xl mx-auto px-6 pt-16 pb-24 text-center">
-          <div className="inline-flex items-center gap-1.5 rounded-control border border-border-strong bg-surface/60 backdrop-blur px-3 py-1 text-xs text-ink-2 mb-6">
-            <Sparkles className="h-3.5 w-3.5 text-accent" />
+        <div className="relative z-10 max-w-6xl mx-auto px-6 pt-16 pb-24 text-center">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-white/70 backdrop-blur px-3.5 py-1.5 text-xs font-medium text-violet-700 mb-6">
+            <Sparkles className="h-3.5 w-3.5 text-violet-500" />
             One platform. Every operating mode.
           </div>
-          <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight leading-[1.05]">
+          <h1 className="text-4xl sm:text-6xl font-bold tracking-tight leading-[1.05] text-gray-900">
             The CRM built for
             <br />
-            <span className="bg-gradient-to-r from-accent to-accent-hover bg-clip-text text-transparent">
-              how service businesses actually run
-            </span>
+            <span className={neonGradientText}>how service businesses actually run</span>
           </h1>
-          <p className="mt-6 text-lg text-ink-2 max-w-2xl mx-auto">
+          <p className="mt-6 text-lg text-gray-500 max-w-2xl mx-auto">
             Brand operations, single-screen service centers, and point-of-sale billing —
             one system, purpose-built for each, never forcing one shape onto all three.
           </p>
           <div className="mt-10 flex items-center justify-center gap-3 flex-wrap">
-            <Link
-              href="/login"
-              className="rounded-control bg-accent text-accent-fg px-6 py-3 text-sm font-medium hover:bg-accent-hover transition-all hover:scale-[1.02] shadow-card-lg flex items-center gap-2"
-            >
+            <a href="#signup-types" className={neonButtonPrimary}>
               Get Started <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              href="/track-workorder"
-              className="rounded-control border border-border-strong bg-surface px-6 py-3 text-sm font-medium hover:bg-surface-2 transition-colors"
-            >
+            </a>
+            <Link href="/track-workorder" className={neonButtonSecondary}>
               Track My Repair
             </Link>
           </div>
         </div>
       </section>
 
-      {/* ── Operating modes ──────────────────────────────────────────── */}
-      <section className="max-w-6xl mx-auto px-6 py-20">
+      {/* ── Product preview (placeholder mockups) ───────────────────────── */}
+      <section className="max-w-6xl mx-auto px-6 pb-20">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {PREVIEWS.map((p) => (
+            <BrowserMockup key={p.label} icon={p.icon} label={p.label} />
+          ))}
+        </div>
+      </section>
+
+      {/* ── Sign up, split by type ───────────────────────────────────── */}
+      <section id="signup-types" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-6">
         <div className="text-center mb-12">
-          <div className="eyebrow">Built for three distinct realities</div>
-          <h2 className="h-page mt-2">Not one-size-fits-all</h2>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-violet-500">Get started</p>
+          <h2 className="mt-2 text-3xl sm:text-4xl font-bold tracking-tight text-gray-900">
+            Sign up as the type you actually are
+          </h2>
+          <p className="mt-3 text-gray-500 max-w-xl mx-auto">
+            Pick your operating mode below — Service Center gets instant access,
+            Brand and POS applications are reviewed by our team first.
+          </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {MODES.map((mode) => (
-            <div
-              key={mode.title}
-              className="group rounded-card border border-border bg-surface p-6 shadow-card hover:shadow-card-lg hover:border-border-strong transition-all hover:-translate-y-1"
-            >
-              <div className="h-11 w-11 rounded-control bg-accent-soft flex items-center justify-center mb-4 group-hover:bg-accent group-hover:text-accent-fg transition-colors">
-                <mode.icon className="h-5 w-5 text-accent group-hover:text-accent-fg" />
+          {VENDOR_TYPES.map((v) => (
+            <div key={v.type} className={`${neonCard} p-6 flex flex-col`}>
+              <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center mb-4 shadow-[0_6px_20px_-6px_rgba(139,92,246,0.5)]">
+                <v.icon className="h-5 w-5 text-white" />
               </div>
-              <h3 className="h-section">{mode.title}</h3>
-              <p className="text-ink-2 text-sm mt-2 leading-relaxed">{mode.description}</p>
+              <h3 className="text-lg font-bold text-gray-900">{v.title}</h3>
+              <p className="text-gray-500 text-sm mt-2 leading-relaxed flex-1">{v.description}</p>
+              <div
+                className={`mt-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium w-fit ${
+                  v.activationTone === 'instant' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                }`}
+              >
+                {v.activationTone === 'instant' ? <Zap className="h-3 w-3" /> : <Clock3 className="h-3 w-3" />}
+                {v.activation}
+              </div>
+              <Link
+                href={`/partner-signup?type=${v.type}`}
+                className={`${neonButtonPrimary} mt-5 w-full`}
+              >
+                Sign up as {v.title} <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── Feature grid ─────────────────────────────────────────────── */}
-      <section className="bg-surface-2/50 border-y border-border">
+      <section className="border-y border-violet-100 bg-white/60 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-6 py-20">
           <div className="text-center mb-12">
-            <div className="eyebrow">Why teams switch</div>
-            <h2 className="h-page mt-2">Everything else keeps missing something</h2>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-violet-500">Why teams switch</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">Everything else keeps missing something</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {FEATURES.map((f) => (
-              <div key={f.title} className="rounded-card bg-surface border border-border p-5 shadow-card">
-                <f.icon className="h-5 w-5 text-accent mb-3" />
-                <h3 className="font-medium text-sm">{f.title}</h3>
-                <p className="text-ink-3 text-xs mt-1.5 leading-relaxed">{f.description}</p>
+              <div key={f.title} className={`${neonCard} p-5`}>
+                <f.icon className="h-5 w-5 text-violet-600 mb-3" />
+                <h3 className="font-semibold text-sm text-gray-900">{f.title}</h3>
+                <p className="text-gray-500 text-xs mt-1.5 leading-relaxed">{f.description}</p>
               </div>
             ))}
           </div>
@@ -152,24 +220,18 @@ export default function CrmHomePage() {
 
       {/* ── Trust strip ───────────────────────────────────────────────── */}
       <section className="max-w-6xl mx-auto px-6 py-16">
-        <div className="rounded-card border border-border-strong bg-surface p-8 sm:p-10 shadow-card-lg flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className={`${neonCard} p-8 sm:p-10 flex flex-col sm:flex-row items-center justify-between gap-6`}>
           <div>
-            <h3 className="h-section flex items-center gap-2">
-              <Users className="h-5 w-5 text-accent" /> Ready when you are
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <Users className="h-5 w-5 text-violet-600" /> Ready when you are
             </h3>
-            <p className="text-ink-2 text-sm mt-1">Vendors and businesses onboard in minutes — one shared signup, no separate steps.</p>
+            <p className="text-gray-500 text-sm mt-1">Pick your type above and you're on your way — no separate signup, no extra steps.</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            <Link
-              href="/register?tab=vendor"
-              className="rounded-control bg-accent text-accent-fg px-5 py-2.5 text-sm font-medium hover:bg-accent-hover transition-colors flex items-center gap-2"
-            >
+            <a href="#signup-types" className={neonButtonPrimary}>
               Become a Partner <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              href="/appointment-request"
-              className="rounded-control border border-border-strong px-5 py-2.5 text-sm font-medium hover:bg-surface-2 transition-colors flex items-center gap-2"
-            >
+            </a>
+            <Link href="/appointment-request" className={neonButtonSecondary}>
               <CheckCircle2 className="h-4 w-4" /> Book a Service
             </Link>
           </div>
@@ -182,44 +244,44 @@ export default function CrmHomePage() {
           build (see PROGRESS.md) -- these links are inert until then. */}
       <section className="max-w-6xl mx-auto px-6 pb-16">
         <div className="text-center mb-6">
-          <div className="eyebrow">Coming soon</div>
-          <h3 className="h-section mt-1">Take AN-CRM anywhere</h3>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-violet-500">Coming soon</p>
+          <h3 className="mt-1 text-xl font-bold text-gray-900">Take My Biz Flow anywhere</h3>
         </div>
         <div className="flex items-center justify-center gap-4 flex-wrap">
-          <div className="flex items-center gap-3 rounded-control border border-border bg-surface px-5 py-3 opacity-60 cursor-not-allowed">
-            <Smartphone className="h-6 w-6 text-ink-3" />
+          <div className="flex items-center gap-3 rounded-2xl border border-violet-100 bg-white px-5 py-3 opacity-60 cursor-not-allowed">
+            <Smartphone className="h-6 w-6 text-gray-400" />
             <div>
-              <div className="text-[10px] text-ink-3">GET IT ON</div>
-              <div className="text-sm font-medium">Google Play</div>
+              <div className="text-[10px] text-gray-400">GET IT ON</div>
+              <div className="text-sm font-medium text-gray-600">Google Play</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-control border border-border bg-surface px-5 py-3 opacity-60 cursor-not-allowed">
-            <Smartphone className="h-6 w-6 text-ink-3" />
+          <div className="flex items-center gap-3 rounded-2xl border border-violet-100 bg-white px-5 py-3 opacity-60 cursor-not-allowed">
+            <Smartphone className="h-6 w-6 text-gray-400" />
             <div>
-              <div className="text-[10px] text-ink-3">DOWNLOAD ON THE</div>
-              <div className="text-sm font-medium">App Store</div>
+              <div className="text-[10px] text-gray-400">DOWNLOAD ON THE</div>
+              <div className="text-sm font-medium text-gray-600">App Store</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-control border border-border bg-surface px-5 py-3 opacity-60 cursor-not-allowed">
-            <Tablet className="h-6 w-6 text-ink-3" />
+          <div className="flex items-center gap-3 rounded-2xl border border-violet-100 bg-white px-5 py-3 opacity-60 cursor-not-allowed">
+            <Tablet className="h-6 w-6 text-gray-400" />
             <div>
-              <div className="text-[10px] text-ink-3">OPTIMIZED FOR</div>
-              <div className="text-sm font-medium">Tablet</div>
+              <div className="text-[10px] text-gray-400">OPTIMIZED FOR</div>
+              <div className="text-sm font-medium text-gray-600">Tablet</div>
             </div>
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-border">
-        <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col items-center gap-3 text-center text-xs text-ink-3">
+      <footer className="border-t border-violet-100">
+        <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col items-center gap-3 text-center text-xs text-gray-400">
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-            <a href="/terms" className="hover:text-ink transition-colors">Terms of Service</a>
-            <a href="/privacy" className="hover:text-ink transition-colors">Privacy Policy</a>
-            <a href="/refund-policy" className="hover:text-ink transition-colors">Refund & Cancellation</a>
-            <a href="/vendor-agreement" className="hover:text-ink transition-colors">Vendor Agreement</a>
-            <a href="/contact" className="hover:text-ink transition-colors">Contact</a>
+            <a href="/terms" className="hover:text-violet-600 transition-colors">Terms of Service</a>
+            <a href="/privacy" className="hover:text-violet-600 transition-colors">Privacy Policy</a>
+            <a href="/refund-policy" className="hover:text-violet-600 transition-colors">Refund & Cancellation</a>
+            <a href="/vendor-agreement" className="hover:text-violet-600 transition-colors">Vendor Agreement</a>
+            <a href="/contact" className="hover:text-violet-600 transition-colors">Contact</a>
           </div>
-          <div>© {new Date().getFullYear()} AN-CRM. Built for AN Group.</div>
+          <div>© {new Date().getFullYear()} My Biz Flow. Built for AN Group.</div>
         </div>
       </footer>
     </div>

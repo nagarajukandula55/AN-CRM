@@ -10,6 +10,7 @@ import SsoSourceMapping from '@/models/SsoSourceMapping'
 import { logAction } from '@/lib/audit/logAction'
 import { generateUniqueUserId } from '@/lib/auth/generateUserId'
 import { sendWelcomeEmail } from '@/services/email/resend.service'
+import { sendTelegramMessage } from '@/lib/telegram'
 
 // Per explicit direction: EVERY new user starts with exactly one access —
 // the shopnative.in view floor. It's removed automatically the moment any
@@ -203,6 +204,15 @@ export async function POST(req: NextRequest) {
 
     // Best-effort: registration must succeed even if the welcome email fails.
     sendWelcomeEmail({ to: user.email, name: user.name }).catch(() => {})
+
+    // Every account registration, from any source (Native, ANgroup, this
+    // partner-signup flow, etc.), per explicit direction ("give me the
+    // telegram notifications for all registrations or signups and all") --
+    // previously only the vendor-application step notified, not the
+    // underlying account creation itself.
+    sendTelegramMessage(
+      `👤 <b>New account registered</b>\n${user.name} (${user.email}) — source: ${sourceLabel}, User ID: ${user.username}`
+    ).catch(() => {})
 
     return NextResponse.json(
       {
