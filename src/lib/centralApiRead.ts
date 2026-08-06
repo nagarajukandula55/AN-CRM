@@ -153,20 +153,31 @@ export interface VendorOnboardingConfig {
 // file uses. Never throws -- returns null on any failure (central-api
 // unreachable, business not yet synced, etc.), so callers fall back to
 // local config rather than breaking vendor apply/activation.
-export async function getVendorOnboardingConfig(businessId: string): Promise<VendorOnboardingConfig | null> {
-  if (!CENTRAL_API_URL || !businessId) return null;
+// getBusinessBySourceId() remaps _id back to the local sourceId (by
+// design, for callers that want the local shape) -- some callers need
+// central-api's OWN raw _id instead (e.g. to scope a business-specific
+// integration override), same direct-search approach api/auth/login/
+// route.ts's centralRole resolution already uses. Never throws.
+export async function resolveCentralBusinessId(localBusinessId: string): Promise<string | null> {
+  if (!CENTRAL_API_URL || !localBusinessId) return null;
   try {
-    // getBusinessBySourceId() remaps _id back to the local sourceId (by
-    // design, for callers that want the local shape) -- this needs
-    // central-api's OWN raw _id instead, same direct-search approach
-    // api/auth/login/route.ts's centralRole resolution already uses.
     const bizRes = await fetch(
-      `${CENTRAL_API_URL}/api/v1/businesses?search=${encodeURIComponent(`sourceId:${businessId}`)}&limit=1`,
+      `${CENTRAL_API_URL}/api/v1/businesses?search=${encodeURIComponent(`sourceId:${localBusinessId}`)}&limit=1`,
       { headers: headers(), cache: "no-store" }
     );
     if (!bizRes.ok) throw new Error(`central-api business lookup failed (${bizRes.status})`);
     const bizBody = await bizRes.json();
-    const centralBusinessId = bizBody?.items?.[0]?._id;
+    return bizBody?.items?.[0]?._id || null;
+  } catch (err) {
+    console.error(`[centralApiRead] resolveCentralBusinessId(${localBusinessId}) failed:`, (err as any)?.message || err);
+    return null;
+  }
+}
+
+export async function getVendorOnboardingConfig(businessId: string): Promise<VendorOnboardingConfig | null> {
+  if (!CENTRAL_API_URL || !businessId) return null;
+  try {
+    const centralBusinessId = await resolveCentralBusinessId(businessId);
     if (!centralBusinessId) return null;
 
     const res = await fetch(`${CENTRAL_API_URL}/api/v1/vendor-onboarding-config/business/${centralBusinessId}`, {
@@ -183,6 +194,36 @@ export async function getVendorOnboardingConfig(businessId: string): Promise<Ven
     };
   } catch (err) {
     console.error(`[centralApiRead] getVendorOnboardingConfig(${businessId}) failed:`, (err as any)?.message || err);
+    return null;
+  }
+}
+
+// Generic shared-integration read (Resend, SMS, WHATSAPP, ANU_AI, any
+// future provider) -- central-api is now the ONLY source for these, no
+// local per-business Integration/AIConfig fallback. businessId (this
+// app's own local id) is optional; when given, a business-specific
+// override at central-api wins, otherwise falls back to the platform
+// default automatically (central-api's own getIntegration() does that
+// resolution, this just passes the right central businessId through).
+// Never throws -- returns null on any failure so a missing/unreachable
+// integration degrades to "not configured", not a crash.
+export async function getSharedIntegration<T = Record<string, any>>(
+  provider: string,
+  businessId?: string
+): Promise<T | null> {
+  if (!CENTRAL_API_URL) return null;
+  try {
+    const centralBusinessId = businessId ? await resolveCentralBusinessId(businessId) : null;
+    const qs = centralBusinessId ? `?businessId=${encodeURIComponent(centralBusinessId)}` : "";
+    const res = await fetch(`${CENTRAL_API_URL}/api/v1/integrations/${provider.toLowerCase()}${qs}`, {
+      headers: headers(),
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error(`central-api integration fetch failed (${res.status})`);
+    const body = await res.json();
+    return body?.configured ? (body.config as T) : null;
+  } catch (err) {
+    console.error(`[centralApiRead] getSharedIntegration(${provider}) failed:`, (err as any)?.message || err);
     return null;
   }
 }

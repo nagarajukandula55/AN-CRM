@@ -18,8 +18,8 @@
  * yet, so a business with no SMS gateway set up never blocks a workorder
  * status transition -- see the `if (!integration) return` guards.
  */
-import { connectDB } from "@/lib/mongodb";
-import Integration, { SmsConfig } from "@/models/Integration";
+import type { SmsConfig } from "@/models/Integration";
+import { getSharedIntegration } from "@/lib/centralApiRead";
 
 async function sendViaMsg91(credentials: Record<string, string>, senderId: string | undefined, to: string, message: string): Promise<void> {
   const authKey = credentials.authKey;
@@ -68,30 +68,10 @@ async function sendViaTwilio(credentials: Record<string, string>, to: string, me
 export async function sendCustomerSms(businessId: string, to: string, message: string): Promise<void> {
   if (!to?.trim()) return;
   try {
-    await connectDB();
-    let cfg: SmsConfig | null = null;
-    const integration = await Integration.findOne({ businessId, provider: "SMS", isActive: true }).lean<any>();
-    if (integration) {
-      cfg = integration.config as SmsConfig;
-    } else if (process.env.CENTRAL_API_URL) {
-      // No business-specific gateway configured -- fall back to
-      // central-api's shared SMS integration (same generic
-      // PlatformIntegration mechanism as Resend/AI/Telegram), so a
-      // business doesn't need its own gateway account just to send
-      // customer SMS at all.
-      try {
-        const res = await fetch(`${process.env.CENTRAL_API_URL}/api/v1/integrations/sms`, {
-          headers: { "x-api-key": process.env.CENTRAL_API_KEY || "" },
-          cache: "no-store",
-        });
-        if (res.ok) {
-          const body = await res.json();
-          if (body?.configured) cfg = body.config as SmsConfig;
-        }
-      } catch (err) {
-        console.error("[customerNotify:sms] failed to load central-api shared SMS config", err);
-      }
-    }
+    // Central-api is now the ONLY source -- a business-specific override
+    // there (if set) wins, otherwise the platform-wide default. No local
+    // Integration{provider:"SMS"} read anymore.
+    const cfg = await getSharedIntegration<SmsConfig>("SMS", businessId);
     if (!cfg) return; // no gateway configured anywhere -- silent no-op, not an error
     if (cfg.gateway === "MSG91") await sendViaMsg91(cfg.credentials || {}, cfg.senderId, to, message);
     else if (cfg.gateway === "TWILIO") await sendViaTwilio(cfg.credentials || {}, to, message);
@@ -113,25 +93,7 @@ export async function sendCustomerSms(businessId: string, to: string, message: s
 export async function sendCustomerWhatsApp(businessId: string, to: string, message: string): Promise<void> {
   if (!to?.trim()) return;
   try {
-    await connectDB();
-    let cfg: { phoneNumberId?: string; accessToken?: string } | null = null;
-    const integration = await Integration.findOne({ businessId, provider: "WHATSAPP", isActive: true }).lean<any>();
-    if (integration) {
-      cfg = integration.config;
-    } else if (process.env.CENTRAL_API_URL) {
-      try {
-        const res = await fetch(`${process.env.CENTRAL_API_URL}/api/v1/integrations/whatsapp`, {
-          headers: { "x-api-key": process.env.CENTRAL_API_KEY || "" },
-          cache: "no-store",
-        });
-        if (res.ok) {
-          const body = await res.json();
-          if (body?.configured) cfg = body.config;
-        }
-      } catch (err) {
-        console.error("[customerNotify:whatsapp] failed to load central-api shared WhatsApp config", err);
-      }
-    }
+    const cfg = await getSharedIntegration<{ phoneNumberId?: string; accessToken?: string }>("WHATSAPP", businessId);
     if (!cfg?.phoneNumberId || !cfg?.accessToken) return;
     const res = await fetch(`https://graph.facebook.com/v18.0/${cfg.phoneNumberId}/messages`, {
       method: "POST",

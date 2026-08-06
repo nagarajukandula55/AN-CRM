@@ -1,61 +1,27 @@
 import { Resend } from "resend";
 import { buildInvoiceEmailTemplate } from "./invoiceEmail.template";
-import Integration from "@/models/Integration";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { getSharedIntegration } from "@/lib/centralApiRead";
 
 /**
- * Three-tier lookup: (1) that business's own Resend credentials, set via
- * the Email tab in /console/integrations — takes priority since a
- * business may deliberately want its own sender identity; (2) central-
- * api's shared platform-wide Resend integration (single source of truth
- * across every AN Group site, dashboard-configurable, no env var edit
- * needed) — see routes/integrations.js; (3) this app's own
- * RESEND_API_KEY/RESEND_FROM env vars, the original fallback, kept so
- * nothing breaks if central-api is unreachable or not yet configured.
+ * Central-api is now the ONLY source for Resend credentials -- per
+ * explicit direction, every integration is managed centrally, full stop.
+ * This app's local Integration{provider:"EMAIL"} model is no longer read
+ * here (a business that wants its own sender identity gets that via a
+ * business-specific override on central-api's dashboard instead -- see
+ * routes/integrations.js's businessId-scoped GET/PUT). RESEND_API_KEY/
+ * RESEND_FROM env vars remain only as a last-resort safety net for a
+ * central-api outage, never the primary source.
  */
 async function resolveResendCreds(businessId?: string): Promise<{ apiKey: string; from: string }> {
-  if (businessId) {
-    try {
-      const integration = await Integration.findOne({
-        businessId,
-        provider: "EMAIL",
-        isActive: true,
-      }).lean();
-      const cfg = (integration as any)?.config;
-      if (cfg?.provider === "RESEND" && cfg?.resendApiKey) {
-        return {
-          apiKey: cfg.resendApiKey,
-          from: cfg.resendFromEmail || cfg.fromEmail || process.env.RESEND_FROM || "",
-        };
-      }
-    } catch (err) {
-      console.error("EMAIL: failed to load business Resend config, falling back to global", err);
-    }
-  }
-
-  if (process.env.CENTRAL_API_URL) {
-    try {
-      const res = await fetch(`${process.env.CENTRAL_API_URL}/api/v1/integrations/resend`, {
-        headers: { "x-api-key": process.env.CENTRAL_API_KEY || "" },
-        cache: "no-store",
-      });
-      if (res.ok) {
-        const body = await res.json();
-        if (body?.configured && body?.config?.apiKey) {
-          return {
-            apiKey: body.config.apiKey,
-            from: body.config.fromEmail || process.env.RESEND_FROM || "",
-          };
-        }
-      }
-    } catch (err) {
-      console.error("EMAIL: failed to load central-api shared Resend config, falling back to env", err);
-    }
+  const shared = await getSharedIntegration<{ apiKey?: string; fromEmail?: string }>("RESEND", businessId);
+  if (shared?.apiKey) {
+    return { apiKey: shared.apiKey, from: shared.fromEmail || process.env.RESEND_FROM || "" };
   }
 
   if (!process.env.RESEND_API_KEY) {
     sendTelegramMessage(
-      "🚨 <b>No Resend API key configured anywhere</b> (business-specific, central-api shared, or local env) — every email send is failing right now."
+      "🚨 <b>No Resend API key configured</b> (central-api shared integration, and no local RESEND_API_KEY fallback either) — every email send is failing right now."
     ).catch(() => {});
   }
 
