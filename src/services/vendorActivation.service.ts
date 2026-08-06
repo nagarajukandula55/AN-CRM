@@ -61,9 +61,24 @@ async function provisionVendorLogin(
       defaultBusinessId: vendor.businessId,
       mustChangePassword: true,
     });
-  } else if (!user.isActive) {
-    user.isActive = true;
-    await user.save();
+  } else {
+    // Existing account -- e.g. one created at the register step of the
+    // apply flow, with the password the applicant chose themselves. Never
+    // touch that password (they already set the one they want), but the
+    // login IDENTIFIER still needs to become their vendorId here too --
+    // this is the only point where vendor.vendorId is guaranteed to exist
+    // (assigned once a business resolves, at apply time, before
+    // activation runs), so this account's username never got set to it.
+    let changed = false;
+    if (!user.isActive) {
+      user.isActive = true;
+      changed = true;
+    }
+    if (vendor.vendorId && user.username !== vendor.vendorId.toLowerCase()) {
+      user.username = vendor.vendorId;
+      changed = true;
+    }
+    if (changed) await user.save();
   }
 
   // invitedBy is an ObjectId ref -- the "system" placeholder passed when

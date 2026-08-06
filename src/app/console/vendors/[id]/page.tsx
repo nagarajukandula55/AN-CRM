@@ -216,7 +216,7 @@ export default function VendorDetailPage() {
   // application that should get instant-trial treatment right now even
   // though the automatic trigger (skip-approval on apply) didn't fire.
   const [activatingTrial, setActivatingTrial] = useState(false)
-  const [trialActivationResult, setTrialActivationResult] = useState<{ email: string; temporaryPassword: string | null } | null>(null)
+  const [trialActivationResult, setTrialActivationResult] = useState<{ vendorId: string | null; email: string; temporaryPassword: string | null } | null>(null)
   const [trialActivationError, setTrialActivationError] = useState<string | null>(null)
 
   // Owner (VendorProfile.userId) and Manager (a real VENDOR_MANAGER role
@@ -282,7 +282,7 @@ export default function VendorDetailPage() {
         setTrialActivationError(data.error || 'Activation failed')
         return
       }
-      setTrialActivationResult({ email: data.login.email, temporaryPassword: data.login.temporaryPassword })
+      setTrialActivationResult({ vendorId: data.login.vendorId, email: data.login.email, temporaryPassword: data.login.temporaryPassword })
       await refetchVendor()
     } catch (err) {
       setTrialActivationError(err instanceof Error ? err.message : 'Activation failed')
@@ -457,7 +457,7 @@ export default function VendorDetailPage() {
           <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
             <p className="font-semibold">Vendor activated on a 7-day trial.</p>
             <p className="mt-1">
-              Login: <span className="font-mono">{trialActivationResult.email}</span>
+              Login (Vendor ID): <span className="font-mono">{trialActivationResult.vendorId || trialActivationResult.email}</span>
               {trialActivationResult.temporaryPassword && (
                 <> &nbsp;•&nbsp; Temp password: <span className="font-mono">{trialActivationResult.temporaryPassword}</span> (shown once — share it securely now)</>
               )}
