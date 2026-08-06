@@ -243,6 +243,21 @@ export async function POST(req: NextRequest) {
       req,
     });
 
+    // Per explicit direction, a vendor's username is their Vendor ID and
+    // NOTHING else -- previously that only got set at final activation
+    // (provisionVendorLogin, for the instant-SC path), so a BRAND/POS
+    // applicant still pending review kept logging in with the random ID
+    // /api/auth/register generated at account-creation time, before a
+    // vendorId even existed. Now that a vendorId IS assigned immediately
+    // whenever a business resolves (see above), sync it onto the User
+    // record right away too -- applies to every application, not just the
+    // ones that get instantly activated.
+    if (vendor.vendorId) {
+      await User.findByIdAndUpdate(applicantUser._id, { username: vendor.vendorId.toLowerCase() }).catch((err) => {
+        console.error("[vendors/apply] failed to sync username to vendorId:", err?.message || err);
+      });
+    }
+
     // Skip-approval instant-trial path: only possible when a business was
     // actually resolved (it's a per-business toggle). Central-api is now
     // the single source of truth for this setting (its own dashboard's

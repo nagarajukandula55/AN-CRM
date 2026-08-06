@@ -110,7 +110,7 @@ export default function CrmSolutionPage() {
               Book a Service
               <ArrowRight size={18} />
             </Link>
-            <Link href="/register?tab=vendor" className={neonButtonSecondary}>
+            <Link href="/partner-signup" className={neonButtonSecondary}>
               Run This For Your Own Business
             </Link>
           </div>
@@ -174,7 +174,7 @@ export default function CrmSolutionPage() {
               <ArrowRight size={18} />
             </Link>
             <Link
-              href="/register?tab=vendor"
+              href="/partner-signup"
               className="inline-flex items-center gap-2 rounded-full border border-white/40 px-7 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/10"
             >
               Run This For Your Own Business
