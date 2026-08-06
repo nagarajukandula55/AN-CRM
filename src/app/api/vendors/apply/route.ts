@@ -147,21 +147,25 @@ export async function POST(req: NextRequest) {
     // Self-healing fallback: only for the no-businessId-in-link public
     // signup path (never for an explicit ?businessId= link, where a wrong
     // id should stay a hard error) -- if AN_CRM_MY_BIZ_FLOW_BUSINESS_ID is
-    // stale/missing/points at a since-deactivated record, look up "My Biz
-    // Flow" by name directly instead of hard-failing every public signup.
-    // This exact failure mode has bitten production before (env var drift
-    // across a redeploy, or the record's isActive getting flipped) -- see
-    // scripts/fixLocalMyBizFlowBusiness.ts for the one-time DB-side fix;
-    // this is the request-time safety net so a signup never 404s while
-    // that's sorted out.
+    // stale/missing/points at a since-deactivated record, look up this
+    // app's own self-representing business directly instead of hard-
+    // failing every public signup. Keyed on `isPlatform: true` (a stable
+    // structural flag), NOT on the literal name "My Biz Flow" -- that name
+    // is just branding and has already drifted in production (the actual
+    // record is currently named "AN-CRM Platform"), so a name-based lookup
+    // would silently never match. This exact failure mode has bitten
+    // production before (env var drift across a redeploy, or the record's
+    // isActive getting flipped) -- see scripts/fixLocalMyBizFlowBusiness.ts
+    // for the one-time DB-side fix; this is the request-time safety net so
+    // a signup never 404s while that's sorted out.
     if (!business && !businessId) {
       business = await (Business as any)
-        .findOne({ name: "My Biz Flow", isActive: true })
+        .findOne({ isPlatform: true, isActive: true })
         .select("_id name brandName marketplace.skipVendorApproval")
         .lean();
       if (business) {
         resolvedBusinessId = String((business as any)._id);
-        const warning = `[vendors/apply] AN_CRM_MY_BIZ_FLOW_BUSINESS_ID lookup failed (env value: ${process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID || "unset"}) -- fell back to "My Biz Flow" by name (${resolvedBusinessId}). Update the env var to stop relying on this fallback.`;
+        const warning = `[vendors/apply] AN_CRM_MY_BIZ_FLOW_BUSINESS_ID lookup failed (env value: ${process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID || "unset"}) -- fell back to the platform business by isPlatform flag ("${(business as any).name}", ${resolvedBusinessId}). Update the env var to stop relying on this fallback.`;
         console.warn(warning);
         sendTelegramMessage(`⚠️ <b>Signup fallback engaged</b>\n${warning}`).catch(() => {});
       }
