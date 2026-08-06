@@ -136,6 +136,21 @@ export default function SCJobSheetScreen() {
   const currentUserId: string | null = meData?.user?.id ?? null
   const currentUserName: string = meData?.user?.name ?? ''
 
+  // Vendor-type-aware, not business-mode-aware -- a single business (e.g.
+  // My Biz Flow) can host BRAND/SC/POS vendors together, so this SC-only
+  // single-page flow is gated on the accessing vendor's OWN appliedAs, not
+  // Business.operatingMode. Super admins can always reach it (overseeing
+  // on a vendor's behalf); a non-SC vendor gets redirected to the regular
+  // jobsheets list instead of seeing a screen that isn't theirs.
+  const { data: typeContext, isLoading: typeContextLoading } = useSWR('/api/vendor/type-context')
+  useEffect(() => {
+    if (typeContextLoading || !typeContext) return
+    if (typeContext.isSuperAdmin) return
+    if (typeContext.appliedAs !== 'SC') {
+      router.replace('/console/crm/jobsheets')
+    }
+  }, [typeContext, typeContextLoading, router])
+
   const { data: businessData, mutate: fetchBusiness } = useSWR(businessId ? `/api/businesses/${businessId}` : null)
   const defaultLabourCharge: number = businessData?.business?.defaultLabourCharge || 0
   const savedBrands: string[] = businessData?.business?.savedBrands || []
