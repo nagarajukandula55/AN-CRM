@@ -9,7 +9,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { notifySuperAdmins } from "@/services/notification.service";
 import { activateVendorWithTrial } from "@/services/vendorActivation.service";
 import { sendGenericEmail } from "@/services/email/resend.service";
-import { getVendorOnboardingConfig } from "@/lib/centralApiRead";
+import { getVendorOnboardingConfig, getPlatformBusinessId } from "@/lib/centralApiRead";
 import { sendTelegramMessage } from "@/lib/telegram";
 
 /**
@@ -116,20 +116,24 @@ export async function POST(req: NextRequest) {
 
     // A caller-supplied businessId (the existing link-based flow) still
     // wins if present. Otherwise -- the normal case for a public /vendor-
-    // apply signup -- fall back to AN_CRM_MY_BIZ_FLOW_BUSINESS_ID, AN-CRM's
-    // own self-representing Business every vendor who signs up here
-    // belongs under (this app's own product line, "My Biz Flow" -- see
-    // scripts/fixLocalMyBizFlowBusiness.ts for how that record gets set
-    // up). Per explicit direction: which business a signup lands under is
+    // apply signup -- resolve AN-CRM's own self-representing Business
+    // (every vendor who signs up here belongs under it) via central-api's
+    // platform-business registry FIRST (admin-editable live, no redeploy
+    // needed when it drifts -- see routes/platformBusiness.js), falling
+    // back to the AN_CRM_MY_BIZ_FLOW_BUSINESS_ID env var only if
+    // central-api is unreachable or that app isn't registered there yet.
+    // Per explicit direction: which business a signup lands under is
     // determined by WHICH SITE they signed up on, not left for an admin to
-    // assign later -- a signup from AN-CRM always belongs to AN-CRM's own
-    // business. Falls through to the old "unassigned, admin picks at
-    // approval" behavior only if that env var isn't set at all.
+    // assign later. Falls through to the old "unassigned, admin picks at
+    // approval" behavior only if neither source has anything.
     // .trim() -- a copy-pasted env var value with a trailing space/newline
     // is invisible in most dashboard UIs but fails Types.ObjectId.isValid()
     // (or resolves to a nonexistent id), reproduced in production tonight
     // with the same class of bug on SUPER_ADMIN_BOOTSTRAP_SECRET.
-    const resolvedBusinessId = businessId || process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID?.trim();
+    let resolvedBusinessId =
+      businessId ||
+      (await getPlatformBusinessId("an-crm")) ||
+      process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID?.trim();
 
     let business: { _id: unknown; name?: string; brandName?: string; marketplace?: { skipVendorApproval?: boolean } } | null = null;
     if (resolvedBusinessId) {
@@ -143,12 +147,38 @@ export async function POST(req: NextRequest) {
         .findOne({ _id: resolvedBusinessId, isActive: true })
         .select("_id name brandName marketplace.skipVendorApproval")
         .lean();
-      if (!business) {
-        return NextResponse.json(
-          { success: false, message: "Business not found or inactive" },
-          { status: 404 }
-        );
+    }
+    // Self-healing fallback: only for the no-businessId-in-link public
+    // signup path (never for an explicit ?businessId= link, where a wrong
+    // id should stay a hard error) -- if AN_CRM_MY_BIZ_FLOW_BUSINESS_ID is
+    // stale/missing/points at a since-deactivated record, look up this
+    // app's own self-representing business directly instead of hard-
+    // failing every public signup. Keyed on `isPlatform: true` (a stable
+    // structural flag), NOT on the literal name "My Biz Flow" -- that name
+    // is just branding and has already drifted in production (the actual
+    // record is currently named "AN-CRM Platform"), so a name-based lookup
+    // would silently never match. This exact failure mode has bitten
+    // production before (env var drift across a redeploy, or the record's
+    // isActive getting flipped) -- see scripts/fixLocalMyBizFlowBusiness.ts
+    // for the one-time DB-side fix; this is the request-time safety net so
+    // a signup never 404s while that's sorted out.
+    if (!business && !businessId) {
+      business = await (Business as any)
+        .findOne({ isPlatform: true, isActive: true })
+        .select("_id name brandName marketplace.skipVendorApproval")
+        .lean();
+      if (business) {
+        resolvedBusinessId = String((business as any)._id);
+        const warning = `[vendors/apply] AN_CRM_MY_BIZ_FLOW_BUSINESS_ID lookup failed (env value: ${process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID || "unset"}) -- fell back to the platform business by isPlatform flag ("${(business as any).name}", ${resolvedBusinessId}). Update the env var to stop relying on this fallback.`;
+        console.warn(warning);
+        sendTelegramMessage(`⚠️ <b>Signup fallback engaged</b>\n${warning}`).catch(() => {});
       }
+    }
+    if (resolvedBusinessId && !business) {
+      return NextResponse.json(
+        { success: false, message: "Business not found or inactive" },
+        { status: 404 }
+      );
     }
 
     // One live application per email (scoped to the target business when

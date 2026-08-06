@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBusinessBySourceId } from "@/lib/centralApiRead";
+import { refreshRoleCatalogCache } from "@/lib/access/centralAllowedPages";
 
 /**
  * Proxies central-api's role-catalog for ONE business, resolved from this
@@ -83,6 +84,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { action } = body;
 
   try {
+    // These four actions change a role's shape or which pages it can see
+    // -- refresh this business's local RoleCatalogCache right after each
+    // one succeeds, so the edit takes effect on the very next page load
+    // instead of waiting for the lazy bootstrap-only refresh. Best-effort:
+    // never blocks the response on the refresh's own success/failure.
     if (action === "addRole") {
       const { categoryKey, roleName } = body;
       const res = await fetch(`${CENTRAL_API_URL}/api/v1/role-catalog`, {
@@ -91,6 +97,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         body: JSON.stringify({ categoryKey, roleName }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.ok) refreshRoleCatalogCache(id).catch(() => {});
       return NextResponse.json(data, { status: res.status });
     }
 
@@ -101,6 +108,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         headers: centralHeaders(),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.ok) refreshRoleCatalogCache(id).catch(() => {});
       return NextResponse.json(data, { status: res.status });
     }
 
@@ -112,6 +120,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         body: JSON.stringify({ allowedPages }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.ok) refreshRoleCatalogCache(id).catch(() => {});
       return NextResponse.json(data, { status: res.status });
     }
 
@@ -123,7 +132,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         body: JSON.stringify({ roleCategoryKey }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.ok) refreshRoleCatalogCache(id).catch(() => {});
       return NextResponse.json(data, { status: res.status });
+    }
+
+    if (action === "syncNow") {
+      const refreshed = await refreshRoleCatalogCache(id);
+      return NextResponse.json({ success: refreshed });
     }
 
     if (action === "grantAccess") {

@@ -174,6 +174,31 @@ export async function resolveCentralBusinessId(localBusinessId: string): Promise
   }
 }
 
+// Central-api's platform-business registry (routes/platformBusiness.js):
+// which of THIS app's own local businesses is the self-representing one
+// (public signups with no business pre-selected land here). Replaces
+// AN_CRM_MY_BIZ_FLOW_BUSINESS_ID as the primary source -- an env var
+// needs a redeploy to fix when it drifts (stale id, renamed/recreated
+// record); this is admin-editable live from central-api's dashboard.
+// Returns THIS app's own local business _id (not central-api's mirrored
+// copy) -- callers query their own local Business collection with it
+// directly, same as they always have. Never throws.
+export async function getPlatformBusinessId(app: string): Promise<string | null> {
+  if (!CENTRAL_API_URL) return null;
+  try {
+    const res = await fetch(`${CENTRAL_API_URL}/api/v1/platform-business/${encodeURIComponent(app)}`, {
+      headers: headers(),
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error(`central-api platform-business fetch failed (${res.status})`);
+    const body = await res.json();
+    return body?.sourceId || null;
+  } catch (err) {
+    console.error(`[centralApiRead] getPlatformBusinessId(${app}) failed:`, (err as any)?.message || err);
+    return null;
+  }
+}
+
 export async function getVendorOnboardingConfig(businessId: string): Promise<VendorOnboardingConfig | null> {
   if (!CENTRAL_API_URL || !businessId) return null;
   try {

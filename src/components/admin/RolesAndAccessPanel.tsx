@@ -174,12 +174,31 @@ export default function RolesAndAccessPanel({ businessId }: { businessId: string
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100">
-        <h3 className="text-sm font-semibold text-gray-900">Roles &amp; Access</h3>
-        <p className="text-xs text-gray-500 mt-1">
-          Define this business&apos;s roles and which pages each one can access. Shared with every AN Group app via
-          central-api.
-        </p>
+      <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">Roles &amp; Access</h3>
+          <p className="text-xs text-gray-500 mt-1">
+            Define this business&apos;s roles and which pages each one can access. Shared with every AN Group app via
+            central-api -- edits here save immediately, but this app actually CHECKS a local synced copy on every
+            page load (so a central-api hiccup never breaks page access); that copy refreshes automatically after
+            every edit here.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={async () => {
+            setMsg("Syncing...");
+            await fetch(`/api/businesses/${businessId}/role-catalog`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "syncNow" }),
+            });
+            setMsg("Synced.");
+          }}
+          className="shrink-0 text-xs font-medium text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg px-3 py-1.5"
+        >
+          Sync now
+        </button>
       </div>
 
       <div className="p-5 space-y-5">
