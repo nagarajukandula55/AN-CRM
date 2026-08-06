@@ -14,63 +14,20 @@ import { LoadingPanel } from '@/components/ui/Spinner'
  * Custom report builder -- pick a data source, pick fields, filter, chart
  * type, save, run, and optionally schedule an email. Per explicit
  * direction ("Go with the fuller builder -- saved reports, scheduling,
- * charts"). Backed by /api/reports/definitions (+ /run), data sources and
- * their allowlisted fields defined in core/reports/dataSources.ts.
+ * charts"). Backed by /api/reports/definitions (+ /run); data sources and
+ * their allowlisted fields are defined in core/reports/dataSources.ts (the
+ * real server-side source of truth -- runReport.ts trusts nothing else)
+ * and fetched here from /api/reports/data-sources, which additionally
+ * merges in central-api's admin-configurable field label/visibility
+ * overrides (hide a field, rename its label) -- see that route's own
+ * comment for why the underlying model/field allowlist itself stays
+ * code-only rather than being fully admin-editable.
  */
 
-const DATA_SOURCE_OPTIONS = [
-  { value: 'CRM_CALLS', label: 'Calls' },
-  { value: 'CRM_JOBSHEETS', label: 'Workorders' },
-  { value: 'SALES_INVOICES', label: 'Invoices' },
-  { value: 'VENDORS', label: 'Vendors' },
-  { value: 'CUSTOMERS', label: 'Customers' },
-]
-
-// Kept in exact sync with core/reports/dataSources.ts's DATA_SOURCES allowlist
-// -- that file is the real server-side source of truth (runReport.ts trusts
-// nothing else), this is just its field/label pairs for the picker UI.
-const FIELDS_BY_SOURCE: Record<string, { key: string; label: string }[]> = {
-  CRM_CALLS: [
-    { key: 'callNumber', label: 'Call Number' }, { key: 'customerName', label: 'Customer Name' },
-    { key: 'phone', label: 'Phone' }, { key: 'email', label: 'Email' },
-    { key: 'company', label: 'Company' }, { key: 'subject', label: 'Subject' },
-    { key: 'status', label: 'Status' }, { key: 'priority', label: 'Priority' },
-    { key: 'source', label: 'Source' }, { key: 'estimatedValue', label: 'Estimated Value' },
-    { key: 'nextFollowUpAt', label: 'Next Follow-Up' }, { key: 'createdAt', label: 'Created At' },
-  ],
-  CRM_JOBSHEETS: [
-    { key: 'jobSheetNumber', label: 'Workorder Number' }, { key: 'customerName', label: 'Customer Name' },
-    { key: 'phone', label: 'Phone' }, { key: 'company', label: 'Company' },
-    { key: 'title', label: 'Title' }, { key: 'product', label: 'Product' },
-    { key: 'deviceModel', label: 'Device Model' }, { key: 'imeiOrSerialNumber', label: 'IMEI / Serial Number' },
-    { key: 'status', label: 'Status' }, { key: 'warrantyStatus', label: 'Warranty Status' },
-    { key: 'assignedToName', label: 'Engineer' }, { key: 'ccoName', label: 'CCO' },
-    { key: 'serviceCharge', label: 'Service Charge' }, { key: 'createdAt', label: 'Created At' },
-    { key: 'engineerAssignedAt', label: 'Engineer Assigned At' }, { key: 'repairInProgressAt', label: 'Repair In Progress At' },
-    { key: 'partPendingAt', label: 'Part Pending At' }, { key: 'repairResumedAt', label: 'Repair Resumed At' },
-    { key: 'completedAt', label: 'Completed At' }, { key: 'handedOverAt', label: 'Handed Over At' },
-  ],
-  SALES_INVOICES: [
-    { key: 'invoiceNumber', label: 'Invoice Number' }, { key: 'invoiceType', label: 'Type' },
-    { key: 'status', label: 'Status' }, { key: 'subtotal', label: 'Subtotal' },
-    { key: 'grandTotal', label: 'Grand Total' }, { key: 'taxTotal', label: 'Tax Total' },
-    { key: 'discountAmount', label: 'Discount' }, { key: 'salesExecutiveName', label: 'Sales Executive' },
-    { key: 'createdAt', label: 'Created At' }, { key: 'dueDate', label: 'Due Date' },
-    { key: 'paidAt', label: 'Payment Date' },
-  ],
-  VENDORS: [
-    { key: 'vendorId', label: 'Vendor ID' }, { key: 'companyName', label: 'Company Name' },
-    { key: 'contactPerson', label: 'Contact Person' }, { key: 'email', label: 'Email' },
-    { key: 'phone', label: 'Phone' }, { key: 'appliedAs', label: 'Applied As' },
-    { key: 'isApproved', label: 'Approved' }, { key: 'createdAt', label: 'Created At' },
-  ],
-  CUSTOMERS: [
-    { key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' },
-    { key: 'email', label: 'Email' }, { key: 'city', label: 'City' },
-    { key: 'state', label: 'State' }, { key: 'imeiOrSerialNumbers', label: 'IMEI / Serial Numbers' },
-    { key: 'source', label: 'Source' }, { key: 'sourceModule', label: 'Source Module' },
-    { key: 'createdAt', label: 'Created At' },
-  ],
+interface DataSourceMeta {
+  key: string
+  label: string
+  fields: { key: string; label: string; type: string }[]
 }
 
 const CHART_COLORS = ['#5B3DF5', '#8B5CF6', '#C084FC', '#F0ABFC', '#22D3EE', '#34D399']
@@ -90,6 +47,15 @@ export default function ReportBuilderPage() {
     fetch(url, { credentials: 'include' }).then((r) => r.json())
   )
   const reports: SavedReport[] = data?.success ? data.reports : []
+
+  const { data: sourcesData } = useSWR('/api/reports/data-sources', (url: string) =>
+    fetch(url, { credentials: 'include' }).then((r) => r.json())
+  )
+  const dataSources: DataSourceMeta[] = sourcesData?.success ? sourcesData.sources : []
+  const DATA_SOURCE_OPTIONS = dataSources.map((s) => ({ value: s.key, label: s.label }))
+  const FIELDS_BY_SOURCE: Record<string, { key: string; label: string }[]> = Object.fromEntries(
+    dataSources.map((s) => [s.key, s.fields])
+  )
 
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
