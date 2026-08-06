@@ -58,13 +58,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
       success: true,
       vendor: result.vendor,
       login: {
+        vendorId: result.vendor.vendorId,
         email: result.vendor.email,
         temporaryPassword: result.tempPassword,
         portalUrl: "/vendor",
       },
       message: result.tempPassword
-        ? "Vendor activated on a 7-day trial. Share the temporary password securely — it is shown only once."
-        : "Vendor activated on a 7-day trial. An existing login with this email was linked to the vendor.",
+        ? "Vendor activated on a 7-day trial. Share the Vendor ID + temporary password securely — the password is shown only once."
+        : "Vendor activated on a 7-day trial. Their existing login now signs in with their Vendor ID.",
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
