@@ -97,6 +97,15 @@ const PUBLIC_PREFIXES = [
   "/api/ping",
   "/api/vendors/apply",          // public vendor application submission
   "/api/vendors/self-signup",    // public one-step signup (see /signup page)
+  // Static marketing images (homepage screenshot previews etc.) -- files
+  // under public/ are served at the ROOT URL by Next (e.g. public/
+  // screenshots/x.png -> /screenshots/x.png), never under a literal
+  // /public/ prefix, so this config's matcher exclusion for "public/"
+  // below never actually matched anything and these were silently
+  // getting 307-redirected to /login like any other unauthenticated
+  // route. Real bug, not just this page's images -- any future asset
+  // under public/screenshots hits this same gap without this line.
+  "/screenshots",
   "/api/businesses/public",      // public business name lookup for the form
   // Public appointment-request short-link resolution (?code=AB -> businessId)
   // -- was missing here, so every ?code= link 401'd before ever resolving.
@@ -114,6 +123,14 @@ const PUBLIC_PREFIXES = [
   "/partner-signup",
   "/solutions/crm",
   "/solutions/ecommerce",
+  // Legal/footer pages linked from the public homepage -- same gap as
+  // above: every one of these was built but never added here, so clicking
+  // any footer link from the homepage bounced an anonymous visitor to
+  // /login instead of showing the actual page.
+  "/terms",
+  "/privacy",
+  "/refund-policy",
+  "/vendor-agreement",
   // Guest checkout -- Order.customer is a standalone {name,phone,email}
   // sub-object independent of any userId, so an unauthenticated Native
   // visitor can check out without ever logging in (see checkout/page.tsx's
