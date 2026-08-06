@@ -43,7 +43,19 @@ function walkPages(dir: string, base = ""): { route: string; segment: string }[]
       const isGroup = entry.name.startsWith("(") && entry.name.endsWith(")");
       out.push(...walkPages(full, isGroup ? base : `${base}/${entry.name}`));
     } else if (entry.name === "page.tsx" || entry.name === "page.ts") {
-      const route = base || "/";
+      // An OPTIONAL catch-all segment ([[...id]]) matches its own PARENT
+      // path too (e.g. console/crm/jobsheets/sc/[[...id]]/page.tsx serves
+      // BOTH /console/crm/jobsheets/sc and /console/crm/jobsheets/sc/<id>
+      // from one file) -- registering the literal bracketed path meant
+      // this page (and any other optional-catch-all page, e.g. the SC
+      // single-screen workorder flow) never matched the real URL anyone
+      // actually navigates to or that a role's allowedPages would
+      // reference. Strip it to the bare parent route instead. A REQUIRED
+      // dynamic segment ([id], [...slug]) is left as-is -- its parent path
+      // is a genuinely different page (e.g. /console/business is the list,
+      // /console/business/[id] is the detail view), so collapsing it would
+      // wrongly merge two distinct pages into one registry row.
+      const route = (base.replace(/\/\[\[\.\.\..*?\]\]$/, "") || base) || "/";
       const segment = route.split("/").filter(Boolean).pop() || "home";
       out.push({ route, segment });
     }
