@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
     // is invisible in most dashboard UIs but fails Types.ObjectId.isValid()
     // (or resolves to a nonexistent id), reproduced in production tonight
     // with the same class of bug on SUPER_ADMIN_BOOTSTRAP_SECRET.
-    const resolvedBusinessId = businessId || process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID?.trim();
+    let resolvedBusinessId = businessId || process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID?.trim();
 
     let business: { _id: unknown; name?: string; brandName?: string; marketplace?: { skipVendorApproval?: boolean } } | null = null;
     if (resolvedBusinessId) {
@@ -143,12 +143,34 @@ export async function POST(req: NextRequest) {
         .findOne({ _id: resolvedBusinessId, isActive: true })
         .select("_id name brandName marketplace.skipVendorApproval")
         .lean();
-      if (!business) {
-        return NextResponse.json(
-          { success: false, message: "Business not found or inactive" },
-          { status: 404 }
-        );
+    }
+    // Self-healing fallback: only for the no-businessId-in-link public
+    // signup path (never for an explicit ?businessId= link, where a wrong
+    // id should stay a hard error) -- if AN_CRM_MY_BIZ_FLOW_BUSINESS_ID is
+    // stale/missing/points at a since-deactivated record, look up "My Biz
+    // Flow" by name directly instead of hard-failing every public signup.
+    // This exact failure mode has bitten production before (env var drift
+    // across a redeploy, or the record's isActive getting flipped) -- see
+    // scripts/fixLocalMyBizFlowBusiness.ts for the one-time DB-side fix;
+    // this is the request-time safety net so a signup never 404s while
+    // that's sorted out.
+    if (!business && !businessId) {
+      business = await (Business as any)
+        .findOne({ name: "My Biz Flow", isActive: true })
+        .select("_id name brandName marketplace.skipVendorApproval")
+        .lean();
+      if (business) {
+        resolvedBusinessId = String((business as any)._id);
+        const warning = `[vendors/apply] AN_CRM_MY_BIZ_FLOW_BUSINESS_ID lookup failed (env value: ${process.env.AN_CRM_MY_BIZ_FLOW_BUSINESS_ID || "unset"}) -- fell back to "My Biz Flow" by name (${resolvedBusinessId}). Update the env var to stop relying on this fallback.`;
+        console.warn(warning);
+        sendTelegramMessage(`⚠️ <b>Signup fallback engaged</b>\n${warning}`).catch(() => {});
       }
+    }
+    if (resolvedBusinessId && !business) {
+      return NextResponse.json(
+        { success: false, message: "Business not found or inactive" },
+        { status: 404 }
+      );
     }
 
     // One live application per email (scoped to the target business when
