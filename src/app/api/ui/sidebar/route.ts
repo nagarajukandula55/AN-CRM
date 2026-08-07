@@ -166,6 +166,7 @@ export async function POST(req: Request) {
       // pre-existing behavior). BRAND/POS with no central config configured
       // yet are left unrestricted here rather than guessing a wrong list.
       const defaultKeys = appliedAs === "SC" ? [
+        "sc_dashboard",
         "sc_jobsheets",
         "sc-masters-brands",
         "sc-masters-solutions",

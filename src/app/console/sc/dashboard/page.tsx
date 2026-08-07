@@ -177,7 +177,6 @@ export default function CRMPage() {
   }).length
 
   const recentActivity = [
-    ...(isSC ? [] : appointments.map(a => ({ id: a._id, kind: 'Appointment' as const, title: a.customerName, sub: a.subject || a.status, date: a.createdAt, href: `/console/crm/calls/${a._id}` }))),
     ...workorders.map(w => ({ id: w._id, kind: 'Workorder' as const, title: w.jobSheetNumber, sub: w.title, date: w.createdAt, href: `/console/sc/jobsheets/${w._id}` })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8)
 
@@ -231,29 +230,19 @@ export default function CRMPage() {
     <div className="min-h-screen bg-bg text-ink p-6">
       <PageHeader
         title="CRM Overview"
-        description={isSC ? 'Workorders, revenue and analytics in one place' : 'Appointments, workorders, revenue and analytics in one place'}
-        actions={!isSC ? <Button onClick={() => setShowForm(true)} icon={<Plus className="w-4 h-4" />}>New Lead</Button> : undefined}
+        description="Workorders, revenue and analytics in one place"
       />
 
       {/* Real dashboard KPIs, sourced from Appointments + Workorders (not
           the legacy leads list below), only shown once the module-gate
           check confirms CRM is actually enabled for this business. SC has
           no appointment pipeline, so its KPI row is workorder-only. */}
-      <div className={`grid grid-cols-2 ${isSC ? 'lg:grid-cols-4' : 'lg:grid-cols-5'} gap-4 mb-6`}>
-        {(isSC
-          ? [
-              { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
-              { icon: AlertCircle, label: 'Overdue (7d+)', value: String(overdueWorkorders) },
-              { icon: CheckCircle2, label: 'Closed This Month', value: String(closedThisMonth) },
-            ]
-          : [
-              { icon: PhoneCall, label: 'Open Appointments', value: String(openAppointments) },
-              { icon: Clock, label: 'Pending Calls', value: String(pendingCalls) },
-              { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
-              { icon: AlertCircle, label: 'Overdue (7d+)', value: String(overdueWorkorders) },
-              { icon: CheckCircle2, label: 'Closed This Month', value: String(closedThisMonth) },
-            ]
-        ).map(({ icon: Icon, label, value }) => (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {[
+          { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
+          { icon: AlertCircle, label: 'Overdue (7d+)', value: String(overdueWorkorders) },
+          { icon: CheckCircle2, label: 'Closed This Month', value: String(closedThisMonth) },
+        ].map(({ icon: Icon, label, value }) => (
           <Card key={label} className="p-6">
             <div className="flex items-center justify-between mb-3">
               <span className="text-ink-3 text-sm">{label}</span>
@@ -291,13 +280,8 @@ export default function CRMPage() {
       {/* Lightweight analytics -- status breakdown bars for appointments
           and workorders, computed client-side from the same data already
           fetched above, no chart library needed. */}
-      <div className={`grid grid-cols-1 ${isSC ? '' : 'sm:grid-cols-2'} gap-4 mb-6`}>
-        {(isSC
-          ? [{ title: 'Workorders by Status', data: workorderStatusBreakdown, total: workorders.length }]
-          : [
-              { title: 'Appointments by Status', data: appointmentStatusBreakdown, total: appointments.length },
-              { title: 'Workorders by Status', data: workorderStatusBreakdown, total: workorders.length },
-            ]
+      <div className="grid grid-cols-1 gap-4 mb-6">
+        {([{ title: 'Workorders by Status', data: workorderStatusBreakdown, total: workorders.length }]
         ).map(({ title, data, total }) => (
           <Card key={title} className="p-6">
             <p className="eyebrow mb-4">{title}</p>
@@ -338,7 +322,7 @@ export default function CRMPage() {
                 className="w-full flex items-center justify-between px-6 py-3 text-left hover:bg-surface-2 transition"
               >
                 <div className="flex items-center gap-3">
-                  <Badge tone={item.kind === 'Appointment' ? 'info' : 'success'}>{item.kind}</Badge>
+                  <Badge tone="success">{item.kind}</Badge>
                   <span className="text-sm font-medium text-ink">{item.title}</span>
                   <span className="text-sm text-ink-3">{item.sub}</span>
                 </div>

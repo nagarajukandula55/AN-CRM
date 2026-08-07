@@ -39,6 +39,11 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "dashboard",  label: "Dashboard",    route: "/console",            icon: "LayoutDashboard" },
   ]},
   { label: "SC", items: [
+    // console/sc/dashboard IS SC's CRM overview (stats, recent activity,
+    // ageing workorders) -- also reachable via the generic top-level
+    // "Dashboard" redirect, but a directly-labeled entry here means an SC
+    // user isn't relying on that indirection to find their own overview.
+    { key: "sc_dashboard", label: "CRM Overview", route: "/console/sc/dashboard", icon: "LayoutDashboard", modes: ["SC"] },
     // SC is a single-login repair shop: everything is a workorder from
     // intake onward, no separate appointment/lead pipeline at all.
     { key: "sc_jobsheets", label: "Workorders", route: "/console/sc/jobsheets", icon: "ClipboardList", modes: ["SC"] },

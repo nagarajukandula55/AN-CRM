@@ -318,13 +318,19 @@ export default function AdminSettingsPage() {
     setSavingOperations(false)
   }
 
+  // Integrations, Communication Quota, and AI/ANu are platform-level,
+  // Super-Admin-only concerns -- not a vendor's own business settings,
+  // regardless of vendor type (was previously only hidden for SC; Brand/
+  // POS still saw them, which was the same "vendor-facing thing that's
+  // actually a super-admin concern" gap this whole tab bar has already
+  // been trimmed for once before).
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'operations', label: 'Operations', icon: <Building2 size={14} /> },
     { key: 'numbering', label: 'Document Numbers', icon: <Receipt size={14} /> },
     { key: 'invoicing', label: 'Invoicing Rules', icon: <Receipt size={14} /> },
-    ...(isSC ? [] : [{ key: 'integrations' as Tab, label: 'Integrations', icon: <Plug size={14} /> }]),
-    { key: 'communication', label: 'Communication Quota', icon: <Globe2 size={14} /> },
-    ...(isSC ? [] : [{ key: 'ai' as Tab, label: 'AI / ANu', icon: <Sparkles size={14} /> }]),
+    ...(isSuperAdmin ? [{ key: 'integrations' as Tab, label: 'Integrations', icon: <Plug size={14} /> }] : []),
+    ...(isSuperAdmin ? [{ key: 'communication' as Tab, label: 'Communication Quota', icon: <Globe2 size={14} /> }] : []),
+    ...(isSuperAdmin ? [{ key: 'ai' as Tab, label: 'AI / ANu', icon: <Sparkles size={14} /> }] : []),
   ]
 
   return (
@@ -657,33 +663,10 @@ export default function AdminSettingsPage() {
                 {signatureUploadError && <p className="text-xs text-danger mt-1">{signatureUploadError}</p>}
               </div>
 
-              <div className="pt-4 border-t border-border">
-                <div className="text-sm font-medium text-ink mb-1">Device Types</div>
-                <div className="text-xs text-ink-3 mb-3">
-                  Narrows the workorder intake form's "Device Type" dropdown to just what this business services. Leave none checked to show every category.
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mb-2">
-                  {DEVICE_CATEGORIES.map((c) => {
-                    const checked = operations.enabledDeviceCategories.includes(c)
-                    return (
-                      <label key={c} className="flex items-center gap-1.5 text-xs text-ink-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => setOperations({
-                            ...operations,
-                            enabledDeviceCategories: e.target.checked
-                              ? [...operations.enabledDeviceCategories, c]
-                              : operations.enabledDeviceCategories.filter((x) => x !== c),
-                          })}
-                          className="rounded border-border"
-                        />
-                        {DEVICE_CATEGORY_LABELS[c]}
-                      </label>
-                    )
-                  })}
-                </div>
-              </div>
+              {/* Device Types moved to the Brands & Models page (console/sc/
+                  masters/brands) -- it's the top of the same Device
+                  Category -> Brand -> Model hierarchy that page already
+                  manages, not a generic business setting. */}
 
               <div className="pt-4 border-t border-border">
                 <div className="text-sm font-medium text-ink mb-1">Terms &amp; Conditions</div>

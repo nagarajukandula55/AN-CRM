@@ -118,7 +118,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    const command = text.trim().split(/\s+/)[0].toLowerCase();
+    // In a group/supergroup, Telegram appends "@YourBotUsername" to every
+    // command (e.g. "/link@MyBizFlowBot ABC123") -- matching the bare
+    // command string here always silently failed for exactly the case
+    // that matters most (linking a vendor's TEAM group, not a solo DM).
+    // Strip the "@..." suffix before comparing.
+    const command = text.trim().split(/\s+/)[0].toLowerCase().replace(/@\S+$/, "");
 
     await connectDB();
 
