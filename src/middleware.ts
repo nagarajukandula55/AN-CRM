@@ -177,6 +177,16 @@ const PUBLIC_PREFIXES = [
   // api/public/workorder-status/route.ts's own comment.
   "/api/public/workorder-status",
   "/track-workorder",
+  // Public invoice viewer -- both the SalesInvoice share-link flow
+  // (/invoice/view/[token]) and the plain /invoice/[invoiceNumber] page a
+  // customer/vendor opens directly are documented as no-login-required
+  // (see api/invoice/view/[invoiceNumber]/route.ts's own comment), but
+  // this exemption was never actually added here -- every invoice link
+  // ever generated bounced an anonymous visitor to /login instead of
+  // showing the invoice. Real bug, found while wiring vendor billing
+  // invoices into the same viewer.
+  "/api/invoice/",
+  "/invoice/",
   // Native storefront: public blog listing (read-only; create/delete stay
   // behind the admin UI, which isn't reachable without a session anyway).
   // The public contact-form submission endpoint ("/api/contact") is listed
