@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/mongodb";
 import CatalogChangeRequest from "@/models/CatalogChangeRequest";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { logAction } from "@/lib/audit/logAction";
+import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
 
 // POST /api/catalog/requests/[id]/reject
 // Same hardcoded session.isSuperAdmin gate as approve/route.ts -- see that
@@ -54,6 +55,14 @@ export async function POST(req: NextRequest, context: any) {
       req,
       actor: { id: session.user.id },
     });
+
+    if (request.businessId) {
+      sendVendorTelegramMessage(
+        String(request.businessId),
+        "CATALOG_REQUEST",
+        `Your catalog request "${request.name}" was rejected${reason ? `: ${reason}` : "."}`
+      ).catch(() => {});
+    }
 
     return NextResponse.json({ success: true, request });
   } catch (err: any) {

@@ -30,6 +30,7 @@ import {
   CreditCard,
   HandCoins,
   Store,
+  Send,
 } from 'lucide-react'
 
 // NOTE: Product Bill of Materials is intentionally NOT a top-level nav
@@ -69,6 +70,7 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   // "Settings" specifically didn't recognize this as it and believed they
   // had no settings access at all.
   { href: '/vendor/billing', label: 'Billing & Plan', icon: CreditCard, modules: null },
+  { href: '/vendor/telegram', label: 'Telegram Alerts', icon: Send, modules: null },
   { href: '/vendor/profile', label: 'My Profile / Settings', icon: User, modules: null },
   { href: '/vendor/statement', label: 'Financial Statement', icon: BarChart3, modules: ['finance'] },
 ]
