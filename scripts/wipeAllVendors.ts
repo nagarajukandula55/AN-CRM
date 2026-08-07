@@ -21,6 +21,14 @@ import BusinessMember from "../src/models/BusinessMember";
 import Role from "../src/models/Role";
 import UserRole from "../src/models/UserRole";
 import User from "../src/models/User";
+import NumberSequence from "../src/core/numbering/NumberSequence.model";
+
+// vendorId/requestNumber sequences live in a SEPARATE counter collection
+// (NumberSequence, scoped by documentType + periodKey), not on VendorProfile
+// itself -- deleting every VendorProfile does not touch this counter, so a
+// fresh signup after a wipe would still resume from wherever the counter
+// left off (e.g. "9") instead of restarting at 1. Reset alongside the wipe.
+const VENDOR_DOCUMENT_TYPES = ["VENDOR", "VENDOR_REQUEST"];
 
 const CONFIRM = process.argv.includes("--confirm");
 
@@ -38,6 +46,9 @@ async function main() {
     ? await UserRole.countDocuments({ roleId: { $in: vendorRoleIds } })
     : 0;
   const userCount = userIds.length ? await User.countDocuments({ _id: { $in: userIds } }) : 0;
+  const sequenceDocs = await NumberSequence.find({ documentType: { $in: VENDOR_DOCUMENT_TYPES } })
+    .select("documentType periodKey value")
+    .lean();
 
   console.log("Would delete:");
   console.log(`  VendorProfile:            ${vendors.length}`);
@@ -46,6 +57,8 @@ async function main() {
   console.log(`  Vendor-scoped Role:       ${vendorRoleDocs.length}`);
   console.log(`  UserRole (vendor):        ${userRoleCount}`);
   console.log(`  User login accounts:      ${userCount}`);
+  console.log(`  Vendor ID/request counters to reset to 0:`);
+  sequenceDocs.forEach((s) => console.log(`    - ${s.documentType} / ${s.periodKey}: ${s.value} -> 0`));
   console.log(`\nNOT touched: any Business record (including "AN-CRM Platform").`);
 
   if (!CONFIRM) {
@@ -58,8 +71,12 @@ async function main() {
   await Role.deleteMany({ vendorId: { $in: vendorIds } });
   if (userIds.length) await User.deleteMany({ _id: { $in: userIds } });
   await VendorProfile.deleteMany({});
+  await NumberSequence.updateMany(
+    { documentType: { $in: VENDOR_DOCUMENT_TYPES } },
+    { $set: { value: 0 } }
+  );
 
-  console.log("\nDone. Every vendor, their login, and their vendor-scoped roles were deleted. Businesses were left untouched.");
+  console.log("\nDone. Every vendor, their login, and their vendor-scoped roles were deleted, and vendor ID/request counters were reset to 0. Businesses were left untouched.");
 }
 
 main()
