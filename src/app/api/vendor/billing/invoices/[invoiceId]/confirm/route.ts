@@ -6,6 +6,7 @@ import VendorSubscription from "@/models/VendorSubscription";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
 import { verifyRazorpaySignature } from "@/core/billing/paymentGateway";
 import { extendPeriod } from "@/core/billing/billing.service";
+import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
 
 // POST /api/vendor/billing/invoices/:invoiceId/confirm
 // Body: { razorpayOrderId, razorpayPaymentId, razorpaySignature } -- the
@@ -64,6 +65,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ inv
     invoice.paidAt = new Date();
     invoice.gatewayPaymentId = razorpayPaymentId;
     await invoice.save();
+
+    if (vendor.businessId) {
+      sendVendorTelegramMessage(
+        String(vendor.businessId),
+        "PAYMENT_RECEIVED",
+        `Payment received for invoice ${invoice.invoiceNumber} (₹${invoice.amount}). Subscription extended to ${end.toLocaleDateString("en-IN")}.`
+      ).catch(() => {});
+    }
 
     return NextResponse.json({ success: true, invoice, subscription });
   } catch (err: any) {

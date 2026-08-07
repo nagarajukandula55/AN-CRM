@@ -150,8 +150,9 @@ export async function POST(req: Request) {
       // pre-existing behavior). BRAND/POS with no central config configured
       // yet are left unrestricted here rather than guessing a wrong list.
       const defaultKeys = appliedAs === "SC" ? [
-        "crm",
-        "crm_jobsheets",
+        "sc_jobsheets",
+        "sc-masters-brands",
+        "sc-masters-solutions",
         "material-catalog",
         // Customer directory (view who's been serviced, contact details,
         // ledger balance) -- was missing entirely, so SC had no way to
@@ -170,7 +171,6 @@ export async function POST(req: Request) {
         "admin-settings",
         "admin-plan",
         "sub-accounts",
-        "send-feedback",
         // Documents SC can also generate directly (not only via a
         // workorder close) -- Quotations/Estimates before repair,
         // Delivery Challans when handing a device to a courier, Credit/
@@ -180,7 +180,7 @@ export async function POST(req: Request) {
         "credit-notes",
         "debit-notes",
         "proforma-invoices",
-        ...(business?.inventorySerialized ? ["inventory", "stock-transfers", "inventory-lots"] : []),
+        ...(business?.inventorySerialized ? ["inventory", "stock-transfers"] : []),
       ] : [];
       const typeAllowedKeys = centralEntry?.moduleKeys?.length ? centralEntry.moduleKeys : defaultKeys;
       if (typeAllowedKeys.length > 0) {
@@ -227,20 +227,6 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { success: false, message: "Access denied" },
         { status: 403 }
-      );
-    }
-
-    // SC vendors have no separate vendor-portal experience -- they work
-    // entirely in the console, so the SAME "Workorders" nav item everyone
-    // else sees must point at the single-screen SC flow
-    // (/console/crm/jobsheets/sc) instead of the generic multi-page list
-    // -- not a second nav entry, the existing one just resolves
-    // differently for this user. Matches sidebar.tsx's own dbMod-override
-    // pattern (a module row returned here already wins over the static
-    // item's own route).
-    if (appliedAs === "SC") {
-      visibleModules = visibleModules.map((m: any) =>
-        m.key === "crm_jobsheets" ? { ...m, route: "/console/crm/jobsheets/sc" } : m
       );
     }
 

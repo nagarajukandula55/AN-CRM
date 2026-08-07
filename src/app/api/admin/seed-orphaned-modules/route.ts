@@ -61,7 +61,6 @@ const ORPHANED_MODULES: Array<{
 
   { key: "stock-transfers", label: "Stock Transfer", pluralLabel: "Stock Transfers", description: "Move stock between warehouses.", icon: "ArrowLeftRight", route: "/console/stock-transfers", sortOrder: 70 },
   { key: "stock-adjustments", label: "Stock Adjustment", pluralLabel: "Stock Adjustments", description: "Manual stock corrections with reason codes.", icon: "SlidersHorizontal", route: "/console/stock-adjustments", sortOrder: 71 },
-  { key: "inventory-lots", label: "Inventory Lot", pluralLabel: "Inventory Lots", description: "Batch/lot-level inventory tracking.", icon: "Box", route: "/console/inventory/lots", sortOrder: 72 },
 
   { key: "vendor-products", label: "Vendor Product", pluralLabel: "Vendor Products", description: "Vendor-submitted product approval queue.", icon: "ShoppingCart", route: "/console/vendor-products", applicableActions: ["view", "approve"], sortOrder: 80 },
 
@@ -111,7 +110,7 @@ const ORPHANED_MODULES: Array<{
   { key: "audit", label: "Audit Log", pluralLabel: "Audit Logs", description: "System-wide create/update/delete activity trail.", icon: "ShieldCheck", route: "/console/reports", applicableActions: ["view", "create"], sortOrder: 302 },
   { key: "finance", label: "Finance Record", pluralLabel: "Finance", description: "Invoices and payments.", icon: "DollarSign", route: "/console/finance", applicableActions: ["view", "create", "edit"], sortOrder: 303 },
   { key: "purchase", label: "Purchase Order", pluralLabel: "Purchase", description: "Purchase orders.", icon: "ShoppingCart", route: "/console/purchase", applicableActions: ["view", "create", "approve"], sortOrder: 304 },
-  { key: "inventory", label: "Inventory Item", pluralLabel: "Inventory", description: "Inventory items, movements, and GRNs.", icon: "Package", route: "/console/inventory", applicableActions: ["view", "edit"], sortOrder: 305 },
+  { key: "inventory", label: "Inventory Item", pluralLabel: "Inventory", description: "Inventory items, movements, and GRNs.", icon: "Package", route: "/console/common/inventory", applicableActions: ["view", "edit"], sortOrder: 305 },
 ];
 
 async function seedOrphanedModules(userId: string) {

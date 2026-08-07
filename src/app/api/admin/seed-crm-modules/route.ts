@@ -39,7 +39,7 @@ const CRM_SYSTEM_MODULES = [
     pluralLabel: "CRM Overview",
     description: "CRM summary dashboard — leads, calls, and job sheets at a glance.",
     icon: "UserPlus",
-    route: "/console/crm",
+    route: "/console/brand/dashboard",
     // Read-only landing page — no create/edit/delete/approve action makes
     // sense for a dashboard, so this module only ever needs VIEW. Without
     // applicableActions restricted here, syncPermissionsForModule would
@@ -54,17 +54,26 @@ const CRM_SYSTEM_MODULES = [
     pluralLabel: "Appointments",
     description: "Appointment entry, disposition tracking, and follow-up pipeline.",
     icon: "PhoneCall",
-    route: "/console/crm/calls",
+    route: "/console/brand/crm/calls",
     sortOrder: 200,
   },
   {
     key: "crm_jobsheets",
     label: "Workorder",
     pluralLabel: "Workorders",
-    description: "Work performed for a customer, from scheduling through invoicing.",
+    description: "Brand's call-center-style workorders, from scheduling through invoicing.",
     icon: "ClipboardList",
-    route: "/console/crm/jobsheets",
+    route: "/console/brand/jobsheets",
     sortOrder: 201,
+  },
+  {
+    key: "sc_jobsheets",
+    label: "Workorder",
+    pluralLabel: "Workorders",
+    description: "SC's single-screen workorder flow, from intake through invoicing.",
+    icon: "ClipboardList",
+    route: "/console/sc/jobsheets",
+    sortOrder: 202,
   },
   {
     key: "reports",
@@ -105,6 +114,18 @@ async function seedCrmModules(userId: string) {
         createdBy: userId,
       });
       created = true;
+    } else if (moduleDoc.route !== def.route) {
+      // Route (and label/description, in case they drifted too) can change
+      // under an already-seeded module -- e.g. the console/* restructure
+      // that split Brand and SC into separate Workorders pages/keys. Keep
+      // this in sync on every run rather than only ever creating once,
+      // otherwise a stale route from before a restructure silently keeps
+      // pointing every existing business's sidebar at the old page forever.
+      moduleDoc.route = def.route;
+      moduleDoc.label = def.label;
+      moduleDoc.pluralLabel = def.pluralLabel;
+      moduleDoc.description = def.description;
+      await moduleDoc.save();
     }
 
     // Always re-sync so Permission rows exist / stay current, whether the

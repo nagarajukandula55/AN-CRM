@@ -8,6 +8,7 @@ import DeviceModel from "@/models/DeviceModel";
 import Variant from "@/models/Variant";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { logAction } from "@/lib/audit/logAction";
+import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
 
 function escapeRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -117,6 +118,14 @@ export async function POST(req: NextRequest, context: any) {
       req,
       actor: { id: session.user.id },
     });
+
+    if (request.businessId) {
+      sendVendorTelegramMessage(
+        String(request.businessId),
+        "CATALOG_REQUEST",
+        `Your catalog request "${request.name}" was approved and is now available.`
+      ).catch(() => {});
+    }
 
     return NextResponse.json({ success: true, request, resultEntity });
   } catch (err: any) {

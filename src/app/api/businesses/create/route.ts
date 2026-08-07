@@ -80,7 +80,7 @@ export async function POST(req: Request) {
       title: "Business created",
       message: `"${business.name}" was created successfully.`,
       type: "success",
-      link: `/console/business/${business._id}`,
+      link: `/console/admin/vendors`,
     });
 
     return NextResponse.json({

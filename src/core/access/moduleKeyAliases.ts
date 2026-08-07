@@ -24,13 +24,30 @@
  */
 export const MODULE_KEY_ALIASES: Record<string, string> = {
   "masters-prod-cat": "product_categories",
+  // Fault Codes/Symptom Codes/Workorder Options are Brand-only (picked
+  // while creating/closing a Brand workorder) -- moved from sc-masters-*
+  // to brand-masters-* once it turned out SC's own workorder flow never
+  // reads any of the three. Every historical key alias kept so an
+  // already-saved Business.modules[] toggle under any past name keeps
+  // working.
+  "brand-masters-fault-codes": "fault_codes",
+  "sc-masters-fault-codes": "fault_codes",
   "masters-fault-codes": "fault_codes",
+  "brand-masters-symptom-codes": "symptom_codes",
+  "sc-masters-symptom-codes": "symptom_codes",
   "masters-symptom-codes": "symptom_codes",
+  "sc-masters-solutions": "solutions",
   "masters-solutions": "solutions",
   "masters-mat-cat": "material_categories",
+  // sc-masters-brands is now the plain vendor-editable savedBrands/
+  // savedModels list (Business fields, not the hierarchical catalog) --
+  // kept aliased to the old "brands" permission key so a business that
+  // already toggled it on in Business.modules[] doesn't lose visibility.
+  "sc-masters-brands": "brands",
   "masters-brands": "brands",
   "masters-models": "device_models",
-  "masters-units": "units",
+  "brand-masters-crm-options": "crm_options",
+  "sc-masters-crm-options": "crm_options",
   "masters-crm-options": "crm_options",
   // Second batch, found the same way (comparing every sidebar leaf key
   // against every real buildPermissionCode(...) call site) after a

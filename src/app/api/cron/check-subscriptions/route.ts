@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Subscription from "@/models/Subscription";
+import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,12 +27,42 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
+    // Reminder window BEFORE flipping to EXPIRED, so a vendor whose
+    // routing has SUBSCRIPTION_EXPIRY enabled gets a heads-up while they
+    // can still act, not just a "you're already cut off" notice.
+    const in3Days = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+    const expiringSoon = await Subscription.find({
+      status: "ACTIVE",
+      expiryDate: { $gte: new Date(), $lte: in3Days },
+    }).select("businessId expiryDate").lean();
+
+    for (const sub of expiringSoon) {
+      const days = Math.ceil((new Date(sub.expiryDate!).getTime() - Date.now()) / 86400000);
+      await sendVendorTelegramMessage(
+        String(sub.businessId),
+        "SUBSCRIPTION_EXPIRY",
+        `Your subscription expires in ${days} day${days === 1 ? "" : "s"} (${new Date(sub.expiryDate!).toLocaleDateString("en-IN")}). Renew from Plan & Billing to avoid service interruption.`
+      ).catch(() => {});
+    }
+
+    const expiring = await Subscription.find({ status: "ACTIVE", expiryDate: { $lt: new Date() } })
+      .select("businessId")
+      .lean();
+
     const result = await Subscription.updateMany(
       { status: "ACTIVE", expiryDate: { $lt: new Date() } },
       { $set: { status: "EXPIRED" } }
     );
 
-    return NextResponse.json({ success: true, expiredCount: result.modifiedCount });
+    for (const sub of expiring) {
+      await sendVendorTelegramMessage(
+        String(sub.businessId),
+        "PAYMENT_DUE",
+        `Your subscription has expired. Services are now paused until payment is made -- please renew from Plan & Billing.`
+      ).catch(() => {});
+    }
+
+    return NextResponse.json({ success: true, expiredCount: result.modifiedCount, remindedCount: expiringSoon.length });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ success: false, message }, { status: 500 });

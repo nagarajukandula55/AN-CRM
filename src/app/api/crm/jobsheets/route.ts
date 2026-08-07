@@ -21,6 +21,7 @@ import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
 import { captureCustomer } from "@/services/customer.service";
+import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
 // Required for .populate(...) below -- model must be registered before populate can resolve it.
 import "@/models/User";
 import "@/models/Brand";
@@ -299,6 +300,12 @@ export async function POST(req: NextRequest) {
     });
 
     notifyJobSheetStatusChange(effectiveBizId, jobSheet.phone, jobSheet.jobSheetNumber, jobSheet.status);
+
+    sendVendorTelegramMessage(
+      effectiveBizId,
+      "NEW_WORKORDER",
+      `New workorder ${jobSheet.jobSheetNumber} created for ${jobSheet.customerName} (${jobSheet.phone}).`
+    ).catch(() => {});
 
     logAction({
       action: "CREATE",

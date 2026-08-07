@@ -228,7 +228,7 @@ export async function POST(req: NextRequest) {
 
     // Fire-and-forget -- a Telegram outage must never fail the request creation.
     sendTelegramMessage(
-      `New catalog request: ${kind} "${trimmedName}" — review at /console/masters/catalog-requests`
+      `New catalog request: ${kind} "${trimmedName}" — review at /console/common/masters/catalog-requests`
     ).catch((err) => console.error("[catalog/requests] Telegram notify failed:", err));
 
     // Also raise a real in-app notification (shows up in ANu's bell/panel
@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
       title: "New catalog request",
       message: `${kind} "${trimmedName}" needs approval.`,
       type: "info",
-      link: "/console/masters/catalog-requests",
+      link: "/console/common/masters/catalog-requests",
     }).catch(() => {});
 
     return NextResponse.json({ success: true, request }, { status: 201 });

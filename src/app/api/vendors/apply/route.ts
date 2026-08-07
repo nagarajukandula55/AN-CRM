@@ -332,7 +332,7 @@ export async function POST(req: NextRequest) {
         trialActivated ? " and was auto-activated on a 7-day trial" : " and needs review"
       }${business ? ` for ${business.brandName || business.name}` : ""}.`,
       type: "warning",
-      link: trialActivated ? "/console/vendor-subscriptions" : "/console/vendors",
+      link: trialActivated ? "/console/admin/vendor-subscriptions" : "/console/admin/vendors",
     });
 
     sendTelegramMessage(

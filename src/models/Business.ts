@@ -759,6 +759,30 @@ const BusinessSchema = new mongoose.Schema(
       type: Date,
     },
 
+    // A vendor's OWN chat, separate from telegramChatId above (which is
+    // this app's shared ops-facing group/business chat) -- a vendor Owner
+    // links their personal Telegram DM the same /link <code> way, so
+    // per-type alerts (see telegramMessageRouting) can go to their group,
+    // their DM, or both. Optional -- most vendors will only ever set
+    // telegramChatId (their team group).
+    telegramPersonalChatId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    // Per-message-type routing: which of this vendor's two chats (group /
+    // personal, both keyed above) each category of automated alert goes
+    // to. Keyed by VENDOR_TELEGRAM_MESSAGE_TYPES[].key (see
+    // core/telegram/vendorMessageTypes.ts) -- {} for a type means "not
+    // configured yet", which sendVendorTelegramMessage() treats as
+    // "group only" if telegramChatId is set, matching the single-channel
+    // behavior every vendor already had before this was added.
+    telegramMessageRouting: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+
     // Default rate for the workorder detail page's one-click "Add Labour
     // Charge" line, set by the vendor's Owner/Manager (Settings > Business
     // Settings) -- used whenever the vendor has no LABOUR-type
