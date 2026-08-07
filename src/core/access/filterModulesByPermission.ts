@@ -18,6 +18,18 @@ function realPermissionKey(key: string): string {
   return MODULE_KEY_ALIASES[key] || key;
 }
 
+// Pure navigation entries -- whatever real authorization matters for
+// what they show happens inside the page/API itself (dashboards render
+// whatever the caller is already allowed to see; sub-vendors' own create
+// action re-checks resolveOwnerOrManagerVendor), not by holding a
+// separate granted VIEW permission for the nav link. Gating these behind
+// the normal permission check means every brand-new key here is
+// invisible to every already-provisioned role until a migration re-syncs
+// their granted permissions -- found live three separate times in one
+// session (Workorders, the SC dashboard nav entry, Sub-Vendors), so
+// fixing the class of bug here instead of aliasing one key at a time.
+const ALWAYS_VISIBLE_KEYS = new Set(["dashboard", "sc_dashboard", "sub-vendors"]);
+
 /**
  * Replaces the original filterModules() in services/moduleEngine.service.ts.
  * That function checked a flat accessKeys[] against Business.modules[].access
@@ -44,6 +56,7 @@ export function filterModulesByPermission(
     .filter((m) => m.enabled)
     .filter((m) => {
       if (isSuperAdmin) return true; // super admin always sees everything, matches existing x-is-super-admin convention
+      if (ALWAYS_VISIBLE_KEYS.has(m.key)) return true;
       const realKey = realPermissionKey(m.key);
       const viewCode = buildPermissionCode(realKey, "view");
       if (granted.has(viewCode)) return true;

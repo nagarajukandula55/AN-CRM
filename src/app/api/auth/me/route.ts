@@ -6,13 +6,13 @@ import BusinessMember from "@/models/BusinessMember";
 import UserRole from "@/models/UserRole";
 import Role from "@/models/Role";
 import { getOrCreateANGroupBusinessId } from "@/core/access/anGroupBusiness.service";
+import { resolveOwnerOrManagerVendor } from "@/core/access/vendorAccess.service";
 
 export async function GET(req: Request) {
   try {
     const userId      = req.headers.get("x-user-id");
     const isSuperAdmin = req.headers.get("x-is-super-admin") === "true";
-    const activeBusinessId = req.headers.get("x-active-business-id");
-    const tokenSessionVersionHeader = req.headers.get("x-session-version");
+    let activeBusinessId = req.headers.get("x-active-business-id");
 
     if (!userId) {
       return NextResponse.json(
@@ -35,19 +35,34 @@ export async function GET(req: Request) {
       );
     }
 
-    // Single active session -- this is the endpoint the frontend polls to
-    // confirm "am I still logged in", so a stale token from a previous
-    // login elsewhere gets caught here promptly, not just on routes that
-    // happen to call getEnrichedSession. See api/auth/login and
-    // lib/auth/session-enriched.ts for where sessionVersion is bumped/set.
-    if (
-      tokenSessionVersionHeader !== null &&
-      Number(tokenSessionVersionHeader) !== (user.sessionVersion || 0)
-    ) {
-      return NextResponse.json(
-        { success: false, message: "Logged in elsewhere. Please log in again.", sessionExpired: true },
-        { status: 401 }
-      );
+    // Single active session enforcement -- DISABLED here too, same as
+    // lib/auth/session-enriched.ts, per explicit direction to allow
+    // multiple concurrent sessions for now. This was a SEPARATE check
+    // from that file's (this endpoint is what the frontend polls to
+    // confirm "am I still logged in", independent of getEnrichedSession),
+    // so disabling one without the other left this one still silently
+    // logging out a second device.
+    // if (
+    //   tokenSessionVersionHeader !== null &&
+    //   Number(tokenSessionVersionHeader) !== (user.sessionVersion || 0)
+    // ) {
+    //   return NextResponse.json(
+    //     { success: false, message: "Logged in elsewhere. Please log in again.", sessionExpired: true },
+    //     { status: 401 }
+    //   );
+    // }
+
+    // A vendor Owner has no BusinessMember row (see buildAuthSession.ts's
+    // matching comment) -- the x-active-business-id header comes from the
+    // JWT, only recomputed at login, so an account whose token was issued
+    // before that fix (or that just never had it set) would carry no
+    // active business here either. Recompute live rather than requiring
+    // a fresh login for this to self-heal. Computed once and reused below
+    // (the businesses-list branch needs it too) rather than looked up twice.
+    const ownerOrManagerVendor = await resolveOwnerOrManagerVendor(userId).catch(() => null);
+    const ownVendorBusinessId = (ownerOrManagerVendor as any)?.businessId;
+    if (!activeBusinessId && ownVendorBusinessId) {
+      activeBusinessId = String(ownVendorBusinessId);
     }
 
     const userRoleDocs = await UserRole.find({ userId: user._id }).select("roleId").lean().exec() as any[];
@@ -105,6 +120,21 @@ export async function GET(req: Request) {
             isDefault:  mem?.isDefaultBusiness ?? false,
           };
         });
+      }
+
+      // A vendor Owner has NO BusinessMember row at all (see
+      // buildAuthSession.ts's matching comment) -- the loop above only
+      // ever finds STAFF memberships, so an Owner with no staff role of
+      // their own got an empty/incomplete businesses list, meaning even a
+      // correctly-resolved activeBusinessId couldn't be matched against
+      // anything here (the business switcher showed nothing, or fell
+      // back to whatever the caller defaulted to). Add the vendor's own
+      // business if it isn't already present from a membership.
+      if (ownVendorBusinessId && !businesses.some((b) => b._id.toString() === ownVendorBusinessId.toString())) {
+        const ownBiz = await (Business as any).findById(ownVendorBusinessId)
+          .select("_id name brandName businessCode type operatingMode")
+          .lean();
+        if (ownBiz) businesses.push({ ...ownBiz, isDefault: businesses.length === 0 });
       }
     }
 
