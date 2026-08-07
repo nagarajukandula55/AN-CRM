@@ -494,7 +494,6 @@ export default function SCJobSheetScreen() {
     }
   }
 
-  const [paymentCollected, setPaymentCollected] = useState('')
   const [paymentMode, setPaymentMode] = useState('CASH')
   const [paymentCollectedByName, setPaymentCollectedByName] = useState('')
   const [showAddCollectorModal, setShowAddCollectorModal] = useState(false)
@@ -521,7 +520,7 @@ export default function SCJobSheetScreen() {
       const res = await fetch(`/api/crm/jobsheets/${jobId}/handover`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentCollected: Number(paymentCollected) || 0, paymentMode, paymentCollectedByName }),
+        body: JSON.stringify({ paymentCollected: total, paymentMode, paymentCollectedByName }),
       })
       const d = await res.json()
       if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to hand over')
@@ -990,11 +989,11 @@ export default function SCJobSheetScreen() {
       {job.status === 'REPAIR_COMPLETED' && (
         <Card className="p-5 mt-6">
           <h3 className="text-sm font-semibold text-ink mb-3">Handover &amp; Close</h3>
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <div>
-              <label className={labelCls}>Payment Collected</label>
-              <input type="number" onFocus={e => e.target.select()} min={0} value={paymentCollected} onChange={e => setPaymentCollected(e.target.value)} className={inputCls} />
-            </div>
+          {/* No separate "Payment Collected" amount field -- the Total
+              row in Parts & Service Lines just above is the same number
+              (both come from this same lineItems/total), so re-entering
+              it here was asking for the same figure twice. */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <label className={labelCls}>Payment Mode</label>
               <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)} className={inputCls}>
