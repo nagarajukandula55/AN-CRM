@@ -120,6 +120,7 @@ const EDITABLE_FIELDS = [
   // screen's "add new" mini-modal -- see models/Business.ts's comment.
   "savedBrands",
   "savedModels",
+  "savedModelsByBrand",
   "savedPaymentCollectors",
   // Business Type / Industry enums + address fields — the edit form used
   // to only show city/state/pincode read-only (they were never actually

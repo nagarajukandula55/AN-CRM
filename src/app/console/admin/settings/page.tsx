@@ -744,52 +744,60 @@ export default function AdminSettingsPage() {
               vendor payouts are still settled normally (Vendor Settlements) either way.
             </p>
             <form onSubmit={saveInvoicingRules} className="space-y-4">
-              <label className="flex items-center gap-3 rounded-xl border border-gray-200 px-4 py-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={invoicingRules.dualInvoiceMode}
-                  onChange={(e) => setInvoicingRules({ ...invoicingRules, dualInvoiceMode: e.target.checked })}
-                  className="w-4 h-4"
-                />
-                <div>
-                  <div className="text-sm font-medium text-gray-900">Generate dual invoices (B2B + B2C)</div>
-                  <div className="text-xs text-gray-400">
-                    When on: a B2B invoice is generated from the vendor to this business (at their cost basis
-                    below), and a separate B2C invoice from this business to the customer (at the sale price),
-                    for every order with vendor-fulfilled items.
+              {/* Dual-invoice (B2B leg from a fulfilling vendor + B2C leg to
+                  the customer) and vendor cost basis are a marketplace/
+                  Brand concept -- SC has no vendor-fulfilled order flow at
+                  all, so neither field means anything for an SC business. */}
+              {!isSC && (
+                <>
+                  <label className="flex items-center gap-3 rounded-xl border border-gray-200 px-4 py-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={invoicingRules.dualInvoiceMode}
+                      onChange={(e) => setInvoicingRules({ ...invoicingRules, dualInvoiceMode: e.target.checked })}
+                      className="w-4 h-4"
+                    />
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">Generate dual invoices (B2B + B2C)</div>
+                      <div className="text-xs text-gray-400">
+                        When on: a B2B invoice is generated from the vendor to this business (at their cost basis
+                        below), and a separate B2C invoice from this business to the customer (at the sale price),
+                        for every order with vendor-fulfilled items.
+                      </div>
+                    </div>
+                  </label>
+
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Vendor cost basis (for the B2B leg)</label>
+                    <select
+                      value={invoicingRules.vendorCostBasis}
+                      onChange={(e) => setInvoicingRules({ ...invoicingRules, vendorCostBasis: e.target.value as InvoicingRules['vendorCostBasis'] })}
+                      title="Vendor cost basis"
+                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
+                    >
+                      <option value="NET_PAYOUT">Net payout — sale value minus platform commission (matches Vendor Settlements)</option>
+                      <option value="GROSS_AMOUNT">Gross amount — full sale value, no commission deducted</option>
+                      <option value="FIXED_MARGIN_PERCENT">Fixed margin % — sale value reduced by a flat markup</option>
+                      <option value="VENDOR_DECLARED">Vendor-declared price</option>
+                    </select>
                   </div>
-                </div>
-              </label>
 
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Vendor cost basis (for the B2B leg)</label>
-                <select
-                  value={invoicingRules.vendorCostBasis}
-                  onChange={(e) => setInvoicingRules({ ...invoicingRules, vendorCostBasis: e.target.value as InvoicingRules['vendorCostBasis'] })}
-                  title="Vendor cost basis"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
-                >
-                  <option value="NET_PAYOUT">Net payout — sale value minus platform commission (matches Vendor Settlements)</option>
-                  <option value="GROSS_AMOUNT">Gross amount — full sale value, no commission deducted</option>
-                  <option value="FIXED_MARGIN_PERCENT">Fixed margin % — sale value reduced by a flat markup</option>
-                  <option value="VENDOR_DECLARED">Vendor-declared price</option>
-                </select>
-              </div>
-
-              {invoicingRules.vendorCostBasis === 'FIXED_MARGIN_PERCENT' && (
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Fixed margin percent</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={invoicingRules.fixedMarginPercent}
-                    onChange={(e) => setInvoicingRules({ ...invoicingRules, fixedMarginPercent: Number(e.target.value) })}
-                    onFocus={(e) => e.target.select()}
-                    placeholder="Fixed margin percent"
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
-                  />
-                </div>
+                  {invoicingRules.vendorCostBasis === 'FIXED_MARGIN_PERCENT' && (
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Fixed margin percent</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={invoicingRules.fixedMarginPercent}
+                        onChange={(e) => setInvoicingRules({ ...invoicingRules, fixedMarginPercent: Number(e.target.value) })}
+                        onFocus={(e) => e.target.select()}
+                        placeholder="Fixed margin percent"
+                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
+                      />
+                    </div>
+                  )}
+                </>
               )}
 
               <div>

@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import useSWR from 'swr'
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
-import BusinessScopeControl, { type BusinessScopeValue } from "@/components/catalog/BusinessScopeControl";
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -24,7 +23,6 @@ export default function SolutionsPage() {
   const [code, setCode] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('')
-  const [scope, setScope] = useState<BusinessScopeValue>({ businessScope: 'SINGLE', businessIds: [] })
   const [error, setError] = useState<string | null>(null)
 
   const { data: solutionsData, isLoading: loading, mutate: load } = useSWR(
@@ -39,11 +37,11 @@ export default function SolutionsPage() {
       const res = await fetch('/api/solutions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, description, category, businessId, ...scope }),
+        body: JSON.stringify({ code, description, category, businessId, businessScope: 'SINGLE' }),
       })
       const d = await res.json()
       if (!res.ok || !d.success) throw new Error(d.error || 'Failed to add')
-      setCode(''); setDescription(''); setCategory(''); setScope({ businessScope: 'SINGLE', businessIds: [] })
+      setCode(''); setDescription(''); setCategory('')
       load()
     } catch (err: any) {
       setError(err.message)
@@ -75,10 +73,6 @@ export default function SolutionsPage() {
           </Field>
           <Button type="submit">Add</Button>
         </form>
-      </Card>
-
-      <Card className="p-4 max-w-sm">
-        <BusinessScopeControl value={scope} onChange={setScope} />
       </Card>
 
       {error && <p className="text-sm text-danger">{error}</p>}

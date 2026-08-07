@@ -154,15 +154,18 @@ export default function SCJobSheetScreen() {
   const { data: businessData, mutate: fetchBusiness } = useSWR(businessId ? `/api/businesses/${businessId}` : null)
   const defaultLabourCharge: number = businessData?.business?.defaultLabourCharge || 0
   const savedBrands: string[] = businessData?.business?.savedBrands || []
-  const savedModels: string[] = businessData?.business?.savedModels || []
+  // Keyed by brand name -- a model always belongs to a specific brand now
+  // (see Business.savedModelsByBrand's own comment), not the old flat
+  // savedModels list with no brand relationship at all.
+  const savedModelsByBrand: Record<string, string[]> = businessData?.business?.savedModelsByBrand || {}
   const savedPaymentCollectors: string[] = businessData?.business?.savedPaymentCollectors || []
 
-  // Persists a new Brand/Model/Payment-Collector name onto the matching
+  // Persists a new Brand/Payment-Collector name onto the matching
   // Business.saved* array (deduped) so it shows up as a dropdown
   // suggestion on every future workorder -- the mini-modal "add & save"
   // flow asked for, without the shared approval-gated catalog tree (see
   // intake screen's own comment).
-  async function saveBusinessListValue(field: 'savedBrands' | 'savedModels' | 'savedPaymentCollectors', value: string) {
+  async function saveBusinessListValue(field: 'savedBrands' | 'savedPaymentCollectors', value: string) {
     if (!businessId || !value.trim()) return
     const current: string[] = businessData?.business?.[field] || []
     if (current.some(v => v.toLowerCase() === value.trim().toLowerCase())) return
@@ -171,6 +174,30 @@ export default function SCJobSheetScreen() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ [field]: next }),
+    })
+    fetchBusiness()
+  }
+
+  // Model save is a two-part write: the brand itself (if it's new, same
+  // dedup as saveBusinessListValue above) AND the model appended under
+  // that brand's own list in savedModelsByBrand -- keeps the two always
+  // in sync instead of a model ever existing with no real brand behind it.
+  async function saveModelForBrand(brand: string, model: string) {
+    if (!businessId || !brand.trim() || !model.trim()) return
+    const brandName = brand.trim()
+    const modelName = model.trim()
+    const nextBrands = savedBrands.some(b => b.toLowerCase() === brandName.toLowerCase())
+      ? savedBrands
+      : [...savedBrands, brandName]
+    const currentModels = savedModelsByBrand[brandName] || []
+    const nextModelsForBrand = currentModels.some(m => m.toLowerCase() === modelName.toLowerCase())
+      ? currentModels
+      : [...currentModels, modelName]
+    const nextModelsByBrand = { ...savedModelsByBrand, [brandName]: nextModelsForBrand }
+    await fetch(`/api/businesses/${businessId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ savedBrands: nextBrands, savedModelsByBrand: nextModelsByBrand }),
     })
     fetchBusiness()
   }
@@ -185,6 +212,7 @@ export default function SCJobSheetScreen() {
     title: '', remark: '', ccoName: '',
   })
   useEffect(() => { if (currentUserName && !intake.ccoName) setIntake(p => ({ ...p, ccoName: currentUserName })) }, [currentUserName])
+  const modelsForSelectedBrand: string[] = intake.brandName ? (savedModelsByBrand[intake.brandName] || []) : []
 
   const enabledDeviceCategories: DeviceCategory[] = businessData?.business?.enabledDeviceCategories?.length
     ? businessData.business.enabledDeviceCategories
@@ -195,15 +223,33 @@ export default function SCJobSheetScreen() {
 
   const [addListModal, setAddListModal] = useState<null | 'savedBrands' | 'savedModels'>(null)
   const [addListValue, setAddListValue] = useState('')
+  // Only used by the "Add New Model" modal -- lets the user pick an
+  // existing brand or type a new one right there, instead of requiring
+  // Brand to already be filled in on the intake form first.
+  const [addModelBrand, setAddModelBrand] = useState('')
   const [savingListValue, setSavingListValue] = useState(false)
 
   async function submitAddListValue() {
-    if (!addListModal || !addListValue.trim()) return
+    if (!addListModal) return
+    if (addListModal === 'savedModels') {
+      if (!addModelBrand.trim() || !addListValue.trim()) return
+      setSavingListValue(true)
+      try {
+        await saveModelForBrand(addModelBrand.trim(), addListValue.trim())
+        setIntake(p => ({ ...p, brandName: addModelBrand.trim(), deviceModel: addListValue.trim() }))
+        setAddListModal(null)
+        setAddListValue('')
+        setAddModelBrand('')
+      } finally {
+        setSavingListValue(false)
+      }
+      return
+    }
+    if (!addListValue.trim()) return
     setSavingListValue(true)
     try {
       await saveBusinessListValue(addListModal, addListValue.trim())
-      if (addListModal === 'savedBrands') setIntake(p => ({ ...p, brandName: addListValue.trim() }))
-      if (addListModal === 'savedModels') setIntake(p => ({ ...p, deviceModel: addListValue.trim() }))
+      setIntake(p => ({ ...p, brandName: addListValue.trim() }))
       setAddListModal(null)
       setAddListValue('')
     } finally {
@@ -581,7 +627,7 @@ export default function SCJobSheetScreen() {
                   <div>
                     <label className={labelCls}>Brand</label>
                     <div className="flex gap-1">
-                      <input list="sc-brand-list" value={intake.brandName} onChange={e => setIntake(p => ({ ...p, brandName: e.target.value }))} className={inputCls} placeholder="e.g. Samsung" />
+                      <input list="sc-brand-list" value={intake.brandName} onChange={e => setIntake(p => ({ ...p, brandName: e.target.value, deviceModel: e.target.value === p.brandName ? p.deviceModel : '' }))} className={inputCls} placeholder="e.g. Samsung" />
                       <datalist id="sc-brand-list">
                         {savedBrands.map(b => <option key={b} value={b} />)}
                       </datalist>
@@ -593,11 +639,11 @@ export default function SCJobSheetScreen() {
                   <div>
                     <label className={labelCls}>Model</label>
                     <div className="flex gap-1">
-                      <input list="sc-model-list" value={intake.deviceModel} onChange={e => setIntake(p => ({ ...p, deviceModel: e.target.value }))} className={inputCls} placeholder="e.g. Galaxy M14" />
+                      <input list="sc-model-list" value={intake.deviceModel} onChange={e => setIntake(p => ({ ...p, deviceModel: e.target.value }))} className={inputCls} placeholder={intake.brandName ? 'e.g. Galaxy M14' : 'Pick a brand first'} />
                       <datalist id="sc-model-list">
-                        {savedModels.map(m => <option key={m} value={m} />)}
+                        {modelsForSelectedBrand.map(m => <option key={m} value={m} />)}
                       </datalist>
-                      <button type="button" title="Add new model" onClick={() => { setAddListModal('savedModels'); setAddListValue('') }} className="shrink-0 w-7 h-7 flex items-center justify-center rounded-control border border-border text-ink-3 hover:text-accent hover:border-accent">
+                      <button type="button" title="Add new model" onClick={() => { setAddListModal('savedModels'); setAddListValue(''); setAddModelBrand(intake.brandName || '') }} className="shrink-0 w-7 h-7 flex items-center justify-center rounded-control border border-border text-ink-3 hover:text-accent hover:border-accent">
                         <Plus className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -657,13 +703,19 @@ export default function SCJobSheetScreen() {
                 <h3 className="text-sm font-semibold text-ink">{addListModal === 'savedBrands' ? 'Add New Brand' : 'Add New Model'}</h3>
                 <button onClick={() => setAddListModal(null)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
               </div>
+              {addListModal === 'savedModels' && (
+                <div>
+                  <label className={labelCls}>Brand</label>
+                  <input list="sc-brand-list" autoFocus value={addModelBrand} onChange={e => setAddModelBrand(e.target.value)} className={inputCls} placeholder="Pick existing or type a new one" />
+                </div>
+              )}
               <div>
                 <label className={labelCls}>{addListModal === 'savedBrands' ? 'Brand Name' : 'Model Name'}</label>
-                <input autoFocus value={addListValue} onChange={e => setAddListValue(e.target.value)} className={inputCls} placeholder={addListModal === 'savedBrands' ? 'e.g. Samsung' : 'e.g. Galaxy M14'} />
+                <input autoFocus={addListModal === 'savedBrands'} value={addListValue} onChange={e => setAddListValue(e.target.value)} className={inputCls} placeholder={addListModal === 'savedBrands' ? 'e.g. Samsung' : 'e.g. Galaxy M14'} />
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <Button variant="secondary" size="sm" onClick={() => setAddListModal(null)}>Cancel</Button>
-                <Button size="sm" onClick={submitAddListValue} disabled={savingListValue} icon={savingListValue ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save &amp; Use</Button>
+                <Button size="sm" onClick={submitAddListValue} disabled={savingListValue || !addListValue.trim() || (addListModal === 'savedModels' && !addModelBrand.trim())} icon={savingListValue ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save &amp; Use</Button>
               </div>
             </div>
           </div>

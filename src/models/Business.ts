@@ -864,7 +864,20 @@ const BusinessSchema = new mongoose.Schema(
     // tree (see the SC intake screen's own comment on why that tree was
     // dropped in favour of plain text for this operating mode).
     savedBrands: [{ type: String, trim: true }],
+    // Deprecated -- models are now stored per-brand in savedModelsByBrand
+    // below, so a model can no longer exist without a real brand
+    // relationship. Left in place (unused by new code) rather than
+    // dropped outright, in case any already-saved data still needs it.
     savedModels: [{ type: String, trim: true }],
+    // { [brandName]: [modelName, ...] } -- a model always belongs to
+    // exactly one saved brand now (the SC intake screen's "Add Model"
+    // requires picking/typing the brand first), instead of the old flat
+    // savedModels list where brand and model had no relationship at all.
+    savedModelsByBrand: {
+      type: Map,
+      of: [String],
+      default: {},
+    },
     // Same save-and-suggest pattern, for the "Payment Collected By" name
     // typed in at handover -- who physically took the cash, not just
     // which of the single SC login is running the register.
