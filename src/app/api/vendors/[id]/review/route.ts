@@ -9,6 +9,7 @@ import Agreement, { ISignature } from "@/models/Agreement";
 import { generateGlobalDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { sendAgreementOtpEmail, sendGenericEmail } from "@/services/email/resend.service";
+import { getCentralAgreementTemplate } from "@/core/agreements/getCentralAgreementTemplate";
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -124,7 +125,27 @@ export async function POST(req: NextRequest, context: RouteContext) {
     const vendorDisplay = vendor.companyName;
 
     /* ── Generate the partner agreement ────────────────────────────── */
-    const content = `VENDOR PARTNER AGREEMENT
+    const gstClause = vendor.gstRegistered
+      ? "The Vendor is GST-registered and shall raise valid GST-compliant B2B invoices to the Company for all confirmed orders."
+      : "The Vendor is not GST-registered; commercial terms shall account for applicable tax treatment under the Company's policies.";
+    // An admin can configure a live VENDOR_AGREEMENT body in central-api's
+    // Admin > Agreements (globally or assigned to this specific business)
+    // -- used verbatim (with these placeholders filled in) instead of the
+    // hardcoded template below when one is configured and active for this
+    // business. Falls back to the exact previous hardcoded content when
+    // nothing is configured, so this is a pure opt-in with zero behavior
+    // change for every business that hasn't touched it.
+    const centralTemplate = await getCentralAgreementTemplate("VENDOR_AGREEMENT", vendor.businessId?.toString(), {
+      businessDisplay,
+      vendorDisplay,
+      businessGstin: business?.compliance?.gstNumber || "",
+      businessAddress: [business?.address, business?.city, business?.state, business?.pincode].filter(Boolean).join(", ") || "its registered address",
+      vendorGstinOrPan: vendor.gstRegistered && vendor.gstNumber ? `GSTIN: ${vendor.gstNumber}` : vendor.panNumber ? `PAN: ${vendor.panNumber}` : "",
+      vendorAddress: [vendor.address?.street, vendor.address?.city, vendor.address?.state, vendor.address?.pincode].filter(Boolean).join(", ") || "its registered address",
+      gstClause,
+      paymentTerms: vendor.paymentTerms || "30 days",
+    });
+    const content = centralTemplate || `VENDOR PARTNER AGREEMENT
 
 This Vendor Partner Agreement ("Agreement") is entered into between:
 
