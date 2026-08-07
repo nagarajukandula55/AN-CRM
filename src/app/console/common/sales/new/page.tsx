@@ -280,7 +280,7 @@ export default function NewSalesInvoicePage() {
           body: JSON.stringify({ businessId, name: customer.name, phone: customer.phone, email: customer.email, gstin: customer.gstin, address: customer.address, city: customer.city, state: customer.state, pincode: customer.pincode, source: 'sales_invoice' }),
         }).catch(() => {})
       }
-      router.push('/console/sales')
+      router.push('/console/common/sales')
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
@@ -295,7 +295,7 @@ export default function NewSalesInvoicePage() {
         description={invoiceType === 'GST' ? 'Compliant with Indian GST regulations' : 'Simple invoice without GST'}
         actions={
           <>
-            <Button variant="secondary" size="sm" onClick={() => router.push('/console/sales')} icon={<ArrowLeft className="w-4 h-4" />}>Cancel</Button>
+            <Button variant="secondary" size="sm" onClick={() => router.push('/console/common/sales')} icon={<ArrowLeft className="w-4 h-4" />}>Cancel</Button>
             <Button type="submit" form="new-invoice-form" size="sm" disabled={submitting} icon={submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Create Invoice</Button>
           </>
         }

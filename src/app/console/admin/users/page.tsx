@@ -379,7 +379,7 @@ export default function UsersPage() {
                           className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
                           <Edit2 size={14} />
                         </button>
-                        <button onClick={() => router.push(`/console/users/${user._id}`)} title="View"
+                        <button onClick={() => router.push(`/console/admin/users/${user._id}`)} title="View"
                           className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
                           <Eye size={14} />
                         </button>

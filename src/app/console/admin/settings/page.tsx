@@ -334,7 +334,7 @@ export default function AdminSettingsPage() {
             <p className="text-xs text-gray-500 uppercase tracking-widest">Admin</p>
             <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
           </div>
-          <Link href="/console/settings/account" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900">
+          <Link href="/console/admin/settings/account" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900">
             <User size={13} /> My Account Settings <ChevronRight size={13} />
           </Link>
         </div>
@@ -424,7 +424,7 @@ export default function AdminSettingsPage() {
             <div className="rounded-2xl border border-gray-200 bg-white p-6">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Other Platform Configuration</h3>
               <div className="space-y-2 text-sm">
-                <Link href="/console/roles" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
+                <Link href="/console/admin/roles" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
                   Roles &amp; Permissions <ChevronRight size={14} className="text-gray-400" />
                 </Link>
                 <Link href="/console/document-numbers" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">

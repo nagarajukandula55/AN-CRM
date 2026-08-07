@@ -235,7 +235,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 text-lg">User not found</p>
-          <a href="/console/users" className="text-blue-400 hover:text-blue-300 text-sm mt-2 inline-block">← Back to Users</a>
+          <a href="/console/admin/users" className="text-blue-400 hover:text-blue-300 text-sm mt-2 inline-block">← Back to Users</a>
         </div>
       </div>
     );
@@ -263,7 +263,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 p-6">
       {/* Back button */}
-      <a href="/console/users" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 text-sm mb-6 transition-colors">
+      <a href="/console/admin/users" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 text-sm mb-6 transition-colors">
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>

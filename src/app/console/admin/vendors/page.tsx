@@ -543,7 +543,7 @@ export default function VendorsPage() {
                   // (approve/reject/finalize actions); an onboarded vendor
                   // opens the full detail page instead.
                   const needsReviewModal = ['APPLIED', 'PENDING', 'AGREEMENT_SIGNED', 'AGREEMENT_CANCELLED'].includes(v.status || '')
-                  const openVendor = () => needsReviewModal ? setSelectedVendor(v) : router.push(`/console/vendors/${v._id}`)
+                  const openVendor = () => needsReviewModal ? setSelectedVendor(v) : router.push(`/console/admin/vendors/${v._id}`)
                   const subCount = v.subVendorBilling?.subVendorCount || 0
                   const isExpanded = expandedId === v._id
                   return (
@@ -598,7 +598,7 @@ export default function VendorsPage() {
                       </td>
                     </tr>
                     {isExpanded && (
-                      <SubVendorRows parentId={v._id} onOpen={(id) => router.push(`/console/vendors/${id}`)} />
+                      <SubVendorRows parentId={v._id} onOpen={(id) => router.push(`/console/admin/vendors/${id}`)} />
                     )}
                     </Fragment>
                   )

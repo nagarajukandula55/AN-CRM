@@ -61,10 +61,19 @@ const CRM_SYSTEM_MODULES = [
     key: "crm_jobsheets",
     label: "Workorder",
     pluralLabel: "Workorders",
-    description: "Work performed for a customer, from scheduling through invoicing.",
+    description: "Brand's call-center-style workorders, from scheduling through invoicing.",
+    icon: "ClipboardList",
+    route: "/console/brand/jobsheets",
+    sortOrder: 201,
+  },
+  {
+    key: "sc_jobsheets",
+    label: "Workorder",
+    pluralLabel: "Workorders",
+    description: "SC's single-screen workorder flow, from intake through invoicing.",
     icon: "ClipboardList",
     route: "/console/sc/jobsheets",
-    sortOrder: 201,
+    sortOrder: 202,
   },
   {
     key: "reports",
@@ -105,6 +114,18 @@ async function seedCrmModules(userId: string) {
         createdBy: userId,
       });
       created = true;
+    } else if (moduleDoc.route !== def.route) {
+      // Route (and label/description, in case they drifted too) can change
+      // under an already-seeded module -- e.g. the console/* restructure
+      // that split Brand and SC into separate Workorders pages/keys. Keep
+      // this in sync on every run rather than only ever creating once,
+      // otherwise a stale route from before a restructure silently keeps
+      // pointing every existing business's sidebar at the old page forever.
+      moduleDoc.route = def.route;
+      moduleDoc.label = def.label;
+      moduleDoc.pluralLabel = def.pluralLabel;
+      moduleDoc.description = def.description;
+      await moduleDoc.save();
     }
 
     // Always re-sync so Permission rows exist / stay current, whether the

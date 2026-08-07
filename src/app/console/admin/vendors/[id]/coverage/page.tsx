@@ -220,7 +220,7 @@ export default function VendorCoveragePage() {
       <div className="max-w-[1800px] mx-auto px-6 py-10">
         <div className="flex items-start gap-4 mb-8">
           <button
-            onClick={() => router.push(`/console/vendors/${id}`)}
+            onClick={() => router.push(`/console/admin/vendors/${id}`)}
             className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-100 transition shrink-0 mt-1"
           >
             <ArrowLeft className="w-4 h-4 text-gray-600" />

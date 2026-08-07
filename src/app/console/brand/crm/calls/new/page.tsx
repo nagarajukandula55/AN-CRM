@@ -62,7 +62,7 @@ export default function NewAppointmentPage() {
       })
       const d = await res.json()
       if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to create appointment')
-      router.push(`/console/crm/calls/${d.call._id}`)
+      router.push(`/console/brand/crm/calls/${d.call._id}`)
     } catch (err: any) {
       setFormError(err.message || 'Something went wrong')
     } finally {
@@ -77,7 +77,7 @@ export default function NewAppointmentPage() {
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <div className="max-w-[1800px] mx-auto px-6 py-10">
         <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => router.push('/console/crm/calls')} className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-100 transition">
+          <button onClick={() => router.push('/console/brand/crm/calls')} className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-100 transition">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
@@ -214,7 +214,7 @@ export default function NewAppointmentPage() {
           </section>
 
           <div className="flex gap-3">
-            <button type="button" onClick={() => router.push('/console/crm/calls')} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-500 hover:text-gray-900 transition">
+            <button type="button" onClick={() => router.push('/console/brand/crm/calls')} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-500 hover:text-gray-900 transition">
               Cancel
             </button>
             <button

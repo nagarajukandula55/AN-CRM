@@ -92,7 +92,7 @@ export default function VendorBillingDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="p-6 space-y-6 max-w-3xl">
       <div>
-        <Link href="/console/vendor-billing" className="text-xs text-gray-400">← All vendors</Link>
+        <Link href="/console/admin/vendor-billing" className="text-xs text-gray-400">← All vendors</Link>
         <h1 className="text-xl font-semibold text-gray-900 mt-1">{vendor?.companyName}</h1>
         <p className="text-sm text-gray-500">{vendor?.vendorId} · Status: {status}</p>
       </div>

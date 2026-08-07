@@ -41,7 +41,7 @@ export const NAV_GROUPS: NavGroup[] = [
   { label: "SC", items: [
     // SC is a single-login repair shop: everything is a workorder from
     // intake onward, no separate appointment/lead pipeline at all.
-    { key: "crm_jobsheets", label: "Workorders", route: "/console/sc/jobsheets", icon: "ClipboardList", modes: ["SC"] },
+    { key: "sc_jobsheets", label: "Workorders", route: "/console/sc/jobsheets", icon: "ClipboardList", modes: ["SC"] },
     { key: "sc-masters-brands",   label: "Brands & Models",       route: "/console/sc/masters/brands",       icon: "Tags",          modes: ["SC"] },
     { key: "sc-masters-solutions", label: "Solutions",            route: "/console/sc/masters/solutions",    icon: "CheckCircle",   modes: ["SC"] },
     { key: "sc-masters-fault-codes", label: "Fault Codes",        route: "/console/sc/masters/fault-codes",  icon: "AlertTriangle", modes: ["SC"] },
@@ -52,6 +52,11 @@ export const NAV_GROUPS: NavGroup[] = [
   { label: "Brand", items: [
     { key: "deals", label: "Deals", route: "/console/brand/deals", icon: "TrendingUp", modes: ["BRAND"] },
     { key: "crm_calls", label: "Appointments", route: "/console/brand/crm/calls", icon: "PhoneCall", modes: ["BRAND"] },
+    // Brand's own call-center-style Workorders (multi-technician
+    // assignment) -- a genuinely different page/component from SC's
+    // single-login flow (console/sc/jobsheets), not just a different route
+    // for the same page.
+    { key: "crm_jobsheets", label: "Workorders", route: "/console/brand/jobsheets", icon: "ClipboardList", modes: ["BRAND"] },
   ]},
   { label: "POS", items: [
     { key: "pos", label: "Point of Sale", route: "/console/pos/billing", icon: "ShoppingCart", modes: ["POS"] },

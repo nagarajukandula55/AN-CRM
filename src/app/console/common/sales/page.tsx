@@ -338,7 +338,7 @@ export default function SalesPage() {
           actions={
             <>
               <Button variant="secondary" size="sm" onClick={() => router.push('/console')} icon={<ArrowLeft size={15} />}>Back</Button>
-              <Button onClick={() => router.push('/console/sales/new')} icon={<Plus size={15} />}>New Invoice</Button>
+              <Button onClick={() => router.push('/console/common/sales/new')} icon={<Plus size={15} />}>New Invoice</Button>
             </>
           }
         />

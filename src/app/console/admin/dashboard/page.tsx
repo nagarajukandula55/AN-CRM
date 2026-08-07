@@ -42,12 +42,12 @@ function StatCard({ icon: Icon, label, value, sub }: { icon: React.ElementType; 
 }
 
 const QUICK_ACTIONS: { href: string; icon: React.ElementType; label: string; desc: string; modes?: OperatingMode[] }[] = [
-  { href: '/console/deals', icon: TrendingUp, label: 'Deals', desc: 'Work your sales pipeline' },
-  { href: '/console/crm/jobsheets', icon: ClipboardList, label: 'Workorders', desc: 'Track active repairs', modes: ['BRAND', 'SC'] },
-  { href: '/console/pos', icon: BarChart3, label: 'Point of Sale', desc: 'Quick-sale billing screen', modes: ['POS'] },
-  { href: '/console/vendors', icon: Truck, label: 'Vendors', desc: 'Vendor & sub-vendor onboarding' },
-  { href: '/console/inventory', icon: BarChart3, label: 'Inventory', desc: 'Stock management' },
-  { href: '/console/customers', icon: Users2, label: 'Customer Data', desc: 'Browse customer records' },
+  { href: '/console/brand/deals', icon: TrendingUp, label: 'Deals', desc: 'Work your sales pipeline' },
+  { href: '/console/brand/jobsheets', icon: ClipboardList, label: 'Workorders', desc: 'Track active repairs', modes: ['BRAND'] },
+  { href: '/console/pos/billing', icon: BarChart3, label: 'Point of Sale', desc: 'Quick-sale billing screen', modes: ['POS'] },
+  { href: '/console/admin/vendors', icon: Truck, label: 'Vendors', desc: 'Vendor & sub-vendor onboarding' },
+  { href: '/console/common/inventory', icon: BarChart3, label: 'Inventory', desc: 'Stock management' },
+  { href: '/console/common/customers', icon: Users2, label: 'Customer Data', desc: 'Browse customer records' },
 ]
 
 export default function AdminDashboard() {
@@ -154,7 +154,7 @@ export default function AdminDashboard() {
           <Card className="overflow-hidden">
             <div className="px-5 py-4 border-b border-border flex items-center justify-between">
               <h2 className="h-section">Recent Invoices</h2>
-              <Link href="/console/sales" className="text-xs text-ink-3 hover:text-ink flex items-center gap-1 transition">
+              <Link href="/console/common/sales" className="text-xs text-ink-3 hover:text-ink flex items-center gap-1 transition">
                 View all <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -179,7 +179,7 @@ export default function AdminDashboard() {
           <Card className="overflow-hidden">
             <div className="px-5 py-4 border-b border-border flex items-center justify-between">
               <h2 className="h-section">Recent Deals</h2>
-              <Link href="/console/deals" className="text-xs text-ink-3 hover:text-ink flex items-center gap-1 transition">
+              <Link href="/console/brand/deals" className="text-xs text-ink-3 hover:text-ink flex items-center gap-1 transition">
                 View all <ArrowRight className="w-3 h-3" />
               </Link>
             </div>

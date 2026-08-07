@@ -157,7 +157,7 @@ export default function FinancePage() {
           actions={
             <>
               <Button variant="secondary" size="sm" onClick={() => router.push('/console')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
-              <Link href="/console/sales">
+              <Link href="/console/common/sales">
                 <Button>New Invoice <ArrowRight className="w-4 h-4" /></Button>
               </Link>
             </>
@@ -225,7 +225,7 @@ export default function FinancePage() {
             <div className="flex items-center justify-between mb-1">
               <span className="text-ink-3 text-sm">Export for GST filing</span>
             </div>
-            <Link href="/console/reports" className="text-sm text-accent hover:underline flex items-center gap-1 mt-2">
+            <Link href="/console/common/reports" className="text-sm text-accent hover:underline flex items-center gap-1 mt-2">
               Download invoices ZIP by date range <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </Card>

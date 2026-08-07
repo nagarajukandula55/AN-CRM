@@ -147,7 +147,7 @@ export default function SCJobSheetScreen() {
     if (typeContextLoading || !typeContext) return
     if (typeContext.isSuperAdmin) return
     if (typeContext.appliedAs !== 'SC') {
-      router.replace('/console/crm/jobsheets')
+      router.replace('/console/sc/dashboard')
     }
   }, [typeContext, typeContextLoading, router])
 
@@ -237,7 +237,7 @@ export default function SCJobSheetScreen() {
       const d = await res.json()
       if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to create job sheet')
       setJobId(d.jobSheet._id)
-      router.replace(`/console/crm/jobsheets/sc/${d.jobSheet._id}`)
+      router.replace(`/console/sc/jobsheets/${d.jobSheet._id}`)
     } catch (err: any) {
       setIntakeError(err.message || 'Something went wrong')
     } finally {
@@ -485,7 +485,7 @@ export default function SCJobSheetScreen() {
           description="This same screen carries the job through repair to closure."
           actions={
             <>
-              <Button variant="secondary" size="sm" onClick={() => router.push('/console/crm/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
+              <Button variant="secondary" size="sm" onClick={() => router.push('/console/sc/dashboard')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
               <Button type="submit" form="sc-intake-form" size="sm" disabled={creating} icon={creating ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save</Button>
             </>
           }
@@ -696,7 +696,7 @@ export default function SCJobSheetScreen() {
         description={`${job.customerName} — ${[job.product, job.deviceModel].filter(Boolean).join(' · ') || 'Device'}`}
         actions={
           <>
-            <Button variant="secondary" size="sm" onClick={() => router.push('/console/crm/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
+            <Button variant="secondary" size="sm" onClick={() => router.push('/console/sc/dashboard')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
             <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}`)} icon={<Printer className="w-4 h-4" />}>Print Workorder</Button>
             {inRepair && (
               <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}?doc=estimate`)} icon={<FileText className="w-4 h-4" />}>Print Estimate</Button>
@@ -705,7 +705,7 @@ export default function SCJobSheetScreen() {
               <>
                 <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}/service-record`)} icon={<FileText className="w-4 h-4" />}>Service Order</Button>
                 {job.invoiceId && (
-                  <Button variant="secondary" size="sm" onClick={() => router.push(`/console/crm/invoices/${job.invoiceId}`)} icon={<FileText className="w-4 h-4" />}>Invoice</Button>
+                  <Button variant="secondary" size="sm" onClick={() => router.push(`/console/common/documents/crm-invoices/${job.invoiceId}`)} icon={<FileText className="w-4 h-4" />}>Invoice</Button>
                 )}
               </>
             )}

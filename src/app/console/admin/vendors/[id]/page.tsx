@@ -398,7 +398,7 @@ export default function VendorDetailPage() {
         <div className="text-center">
           <p className="text-sm text-red-600 mb-4">{error || 'Vendor not found'}</p>
           <button
-            onClick={() => router.push('/console/vendors')}
+            onClick={() => router.push('/console/admin/vendors')}
             className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50 transition"
           >
             Back to Vendors
@@ -420,7 +420,7 @@ export default function VendorDetailPage() {
         {/* Header */}
         <div className="flex items-start gap-4 mb-8">
           <button
-            onClick={() => router.push('/console/vendors')}
+            onClick={() => router.push('/console/admin/vendors')}
             className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-100 transition shrink-0 mt-1"
           >
             <ArrowLeft className="w-4 h-4 text-gray-600" />
@@ -446,10 +446,16 @@ export default function VendorDetailPage() {
             </button>
           )}
           <button
-            onClick={() => router.push(`/console/vendors/${id}/coverage`)}
+            onClick={() => router.push(`/console/admin/vendors/${id}/coverage`)}
             className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50 transition shrink-0"
           >
             Service Area Coverage
+          </button>
+          <button
+            onClick={() => router.push(`/console/admin/vendors/${id}/telegram`)}
+            className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50 transition shrink-0"
+          >
+            Telegram Alerts
           </button>
         </div>
 

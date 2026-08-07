@@ -500,7 +500,7 @@ export default function Sidebar() {
                     business ther only give option to add sub vendor"). */}
                 {activeBiz?.operatingMode === "SC" && (
                   <button
-                    onClick={() => { setBizDropdown(false); router.push("/console/sub-accounts"); }}
+                    onClick={() => { setBizDropdown(false); router.push("/console/sc/sub-accounts"); }}
                     className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-surface-2 border-t border-border text-accent"
                   >
                     <Plus size={12} className="shrink-0" />

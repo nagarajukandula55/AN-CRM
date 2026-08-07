@@ -167,7 +167,7 @@ export default function CallDetailPage() {
       })
       const d = await res.json()
       if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to convert appointment')
-      router.push(`/console/crm/jobsheets/${d.jobSheet._id}`)
+      router.push(`/console/brand/jobsheets/${d.jobSheet._id}`)
     } catch (err: any) {
       setConvertError(err.message || 'Something went wrong')
     } finally {
@@ -187,7 +187,7 @@ export default function CallDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-3">
         <p className="text-red-600 text-sm">{error || 'Appointment not found'}</p>
-        <button onClick={() => router.push('/console/crm/calls')} className="text-sm text-gray-500 underline">Back to Appointments</button>
+        <button onClick={() => router.push('/console/brand/crm/calls')} className="text-sm text-gray-500 underline">Back to Appointments</button>
       </div>
     )
   }
@@ -198,7 +198,7 @@ export default function CallDetailPage() {
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <div className="px-6 py-10">
         <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => router.push('/console/crm/calls')} className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-100 transition">
+          <button onClick={() => router.push('/console/brand/crm/calls')} className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-100 transition">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
@@ -207,7 +207,7 @@ export default function CallDetailPage() {
           </div>
           {call.jobSheetId && (
             <button
-              onClick={() => router.push(`/console/crm/jobsheets/${call.jobSheetId}`)}
+              onClick={() => router.push(`/console/brand/jobsheets/${call.jobSheetId}`)}
               className="ml-auto flex items-center gap-2 bg-gray-900 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-gray-800 transition"
             >
               View Workorder <ArrowRightCircle className="w-4 h-4" />

@@ -118,9 +118,9 @@ export default function CrmCallsPage() {
           actions={
             <>
               <Button variant="secondary" size="sm" onClick={() => router.push('/console/brand/dashboard')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
-              <Button variant="secondary" onClick={() => router.push('/console/crm/jobsheets/new')} icon={<Plus className="w-4 h-4" />}>New Job Sheet</Button>
+              <Button variant="secondary" onClick={() => router.push('/console/brand/jobsheets/new')} icon={<Plus className="w-4 h-4" />}>New Job Sheet</Button>
               <Button
-                onClick={() => router.push('/console/crm/calls/new')}
+                onClick={() => router.push('/console/brand/crm/calls/new')}
                 disabled={!businessId}
                 title={businessId ? undefined : 'Select a business first to create a call'}
                 icon={<Plus className="w-4 h-4" />}
@@ -206,7 +206,7 @@ export default function CrmCallsPage() {
                   <tr
                     key={call._id}
                     className="hover:bg-surface-2 transition-colors cursor-pointer"
-                    onClick={() => router.push(`/console/crm/calls/${call._id}`)}
+                    onClick={() => router.push(`/console/brand/crm/calls/${call._id}`)}
                   >
                     <td className="px-6 py-3 tabular text-xs text-ink-3">{call.callNumber}</td>
                     <td className="px-6 py-3 font-medium text-ink">
