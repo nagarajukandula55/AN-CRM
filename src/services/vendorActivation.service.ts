@@ -3,7 +3,7 @@ import bcryptjs from "bcryptjs";
 import mongoose from "mongoose";
 import VendorProfile, { IVendorProfile } from "@/models/VendorProfile";
 import Agreement, { ISignature } from "@/models/Agreement";
-import User from "@/models/User";
+import User, { UserRoleLegacy } from "@/models/User";
 import BusinessMember, { BusinessMemberStatus } from "@/models/BusinessMember";
 import VendorStaffSlot, { VENDOR_DESIGNATIONS } from "@/models/VendorStaffSlot";
 import Role from "@/models/Role";
@@ -76,6 +76,20 @@ async function provisionVendorLogin(
     }
     if (vendor.vendorId && user.username !== vendor.vendorId.toLowerCase()) {
       user.username = vendor.vendorId;
+      changed = true;
+    }
+    // Unlike the new-user branch above, this was never updated for an
+    // EXISTING account -- the normal case for every public signup, since
+    // partner-signup's own /api/auth/register step always creates the
+    // User first with role: "CUSTOMER" before this activation ever runs.
+    // vendor/layout.tsx gates the entire vendor portal on
+    // (role === "VENDOR" OR a staff BusinessMember row) -- a vendor OWNER
+    // has neither (their own BusinessMember row below has no vendorId set,
+    // that's what distinguishes an owner from staff), so every freshly
+    // self-signed-up vendor Owner was bounced straight back to /login on
+    // login, every single time, no matter how they'd been activated.
+    if (user.role !== UserRoleLegacy.VENDOR) {
+      user.role = UserRoleLegacy.VENDOR;
       changed = true;
     }
     if (changed) await user.save();
