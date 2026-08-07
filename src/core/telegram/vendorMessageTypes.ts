@@ -14,6 +14,12 @@ export interface VendorTelegramMessageType {
   defaultPersonal: boolean;
 }
 
+// Hardcoded list below is the FALLBACK -- central-api's AN CRM Admin
+// panel (Telegram Triggers tab) is now the live source, so a new trigger
+// type can be created there without an AN-CRM deploy. See
+// getVendorTelegramMessageTypes() below, which merges the two: every
+// central-api trigger, falling back to this list entirely if central-api
+// is unreachable or has none configured yet.
 export const VENDOR_TELEGRAM_MESSAGE_TYPES: VendorTelegramMessageType[] = [
   { key: "NEW_WORKORDER", label: "New Workorder", description: "A new job sheet / workorder was created for this vendor.", defaultGroup: true, defaultPersonal: false },
   { key: "WORKORDER_CLOSED", label: "Workorder Closed", description: "A workorder was closed and invoiced.", defaultGroup: true, defaultPersonal: false },
@@ -27,3 +33,37 @@ export const VENDOR_TELEGRAM_MESSAGE_TYPES: VendorTelegramMessageType[] = [
 ];
 
 export const VENDOR_TELEGRAM_MESSAGE_TYPE_KEYS = VENDOR_TELEGRAM_MESSAGE_TYPES.map((t) => t.key);
+
+/**
+ * Live trigger catalog from central-api's AN CRM Admin panel, falling
+ * back to the hardcoded VENDOR_TELEGRAM_MESSAGE_TYPES above whenever
+ * central-api is unreachable or has nothing configured (keeps this
+ * app fully functional through a central-api outage, same fallback
+ * pattern every other central-api read in this codebase already uses).
+ * Not cached beyond the request -- this is an admin-facing routing UI,
+ * not a hot path, so a live read each time is fine.
+ */
+export async function getVendorTelegramMessageTypes(): Promise<VendorTelegramMessageType[]> {
+  const CENTRAL_API_URL = process.env.CENTRAL_API_URL;
+  const CENTRAL_API_KEY = process.env.CENTRAL_API_KEY;
+  if (!CENTRAL_API_URL) return VENDOR_TELEGRAM_MESSAGE_TYPES;
+  try {
+    const res = await fetch(`${CENTRAL_API_URL}/api/v1/an-crm-admin/telegram-triggers`, {
+      headers: { "x-api-key": CENTRAL_API_KEY || "" },
+      cache: "no-store",
+    });
+    if (!res.ok) return VENDOR_TELEGRAM_MESSAGE_TYPES;
+    const data = await res.json();
+    const triggers = (data?.triggers || []).filter((t: any) => t.enabled !== false);
+    if (triggers.length === 0) return VENDOR_TELEGRAM_MESSAGE_TYPES;
+    return triggers.map((t: any) => ({
+      key: t.key,
+      label: t.label,
+      description: t.description || "",
+      defaultGroup: !!t.defaultGroup,
+      defaultPersonal: !!t.defaultPersonal,
+    }));
+  } catch {
+    return VENDOR_TELEGRAM_MESSAGE_TYPES;
+  }
+}

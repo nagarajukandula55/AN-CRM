@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import Business from "@/models/Business";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
-import { VENDOR_TELEGRAM_MESSAGE_TYPES, VENDOR_TELEGRAM_MESSAGE_TYPE_KEYS } from "@/core/telegram/vendorMessageTypes";
+import { getVendorTelegramMessageTypes } from "@/core/telegram/vendorMessageTypes";
 import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
 
 /**
@@ -31,9 +31,10 @@ export async function GET() {
   if (!businessId) {
     return NextResponse.json({ success: false, message: "Vendor business not found" }, { status: 404 });
   }
-  const business = await Business.findById(businessId)
-    .select("name telegramChatId telegramPersonalChatId telegramMessageRouting")
-    .lean<any>();
+  const [business, messageTypes] = await Promise.all([
+    Business.findById(businessId).select("name telegramChatId telegramPersonalChatId telegramMessageRouting").lean<any>(),
+    getVendorTelegramMessageTypes(),
+  ]);
   if (!business) {
     return NextResponse.json({ success: false, message: "Business not found" }, { status: 404 });
   }
@@ -43,7 +44,7 @@ export async function GET() {
     telegramChatId: business.telegramChatId || "",
     telegramPersonalChatId: business.telegramPersonalChatId || "",
     telegramMessageRouting: business.telegramMessageRouting || {},
-    messageTypes: VENDOR_TELEGRAM_MESSAGE_TYPES,
+    messageTypes,
   });
 }
 
@@ -61,9 +62,10 @@ export async function PUT(req: NextRequest) {
 
   if (body.telegramMessageRouting && typeof body.telegramMessageRouting === "object") {
     const routing: Record<string, { group: boolean; personal: boolean }> = {};
-    for (const key of VENDOR_TELEGRAM_MESSAGE_TYPE_KEYS) {
-      const entry = body.telegramMessageRouting[key];
-      if (entry) routing[key] = { group: !!entry.group, personal: !!entry.personal };
+    for (const [key, entry] of Object.entries(body.telegramMessageRouting)) {
+      if (entry && typeof entry === "object") {
+        routing[key] = { group: !!(entry as any).group, personal: !!(entry as any).personal };
+      }
     }
     update.telegramMessageRouting = routing;
   }

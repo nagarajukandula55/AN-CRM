@@ -48,15 +48,20 @@ export async function POST(req: Request) {
       );
     }
 
-    const business = await Business.findById(businessId).lean() as any;
+    // This route runs on every single page load (sidebar mount) -- these
+    // two only ever depend on businessId, not on each other, but ran
+    // sequentially before (two round trips back to back on every nav
+    // render instead of one).
+    const [business, dbModules] = await Promise.all([
+      Business.findById(businessId).lean() as Promise<any>,
+      listModulesForBusiness(businessId),
+    ]);
     if (!business) {
       return NextResponse.json(
         { success: false, message: "Business not found" },
         { status: 404 }
       );
     }
-
-    const dbModules = await listModulesForBusiness(businessId);
     // Every real nav item (STATIC_MODULES, derived from sidebar.tsx's own
     // NAV_GROUPS) is always a candidate too, not just whatever happens to
     // have a matching ModuleDefinition row in the DB -- dozens of sidebar
