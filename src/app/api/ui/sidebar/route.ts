@@ -11,6 +11,7 @@ import { getAllowedModuleKeysForBusiness } from "@/core/pricing/planAccess";
 import { resolveAllowedPageKeys, ALWAYS_ALLOWED_KEYS } from "@/lib/access/centralAllowedPages";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
 import { getVendorOnboardingConfig } from "@/lib/centralApiRead";
+import { getSidebarIconOverrides } from "@/core/uiConfig/sidebarIconOverrides";
 
 /**
  * MIGRATED from UserBusinessAccess/accessKeys to the Permission-based access
@@ -249,6 +250,17 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { success: false, message: "Access denied" },
         { status: 403 }
+      );
+    }
+
+    // Central-api UI Config icon overrides -- see getSidebarIconOverrides
+    // (cached 60s, live-editable from the AN CRM Admin panel's UI Config
+    // tab). Only replaces the `icon` field for a module key present in
+    // the override map; everything else about the module is unaffected.
+    const iconOverrides = await getSidebarIconOverrides();
+    if (Object.keys(iconOverrides).length > 0) {
+      visibleModules = visibleModules.map((m: any) =>
+        iconOverrides[m.key] ? { ...m, icon: iconOverrides[m.key] } : m
       );
     }
 

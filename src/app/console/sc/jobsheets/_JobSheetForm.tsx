@@ -126,7 +126,7 @@ function MilestoneStepper({ job }: { job: JobSheet }) {
 export default function SCJobSheetScreen() {
   const router = useRouter()
   const params = useParams()
-  const idFromRoute = Array.isArray(params?.id) ? params.id[0] : undefined
+  const idFromRoute = Array.isArray(params?.id) ? params.id[0] : (typeof params?.id === 'string' ? params.id : undefined)
   const { businessId } = useActiveBusinessId()
 
   const [jobId, setJobId] = useState<string | undefined>(idFromRoute)
@@ -531,7 +531,7 @@ export default function SCJobSheetScreen() {
           description="This same screen carries the job through repair to closure."
           actions={
             <>
-              <Button variant="secondary" size="sm" onClick={() => router.push('/console/sc/dashboard')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
+              <Button variant="secondary" size="sm" onClick={() => router.push('/console/sc/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
               <Button type="submit" form="sc-intake-form" size="sm" disabled={creating} icon={creating ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save</Button>
             </>
           }
@@ -748,7 +748,7 @@ export default function SCJobSheetScreen() {
         description={`${job.customerName} — ${[job.product, job.deviceModel].filter(Boolean).join(' · ') || 'Device'}`}
         actions={
           <>
-            <Button variant="secondary" size="sm" onClick={() => router.push('/console/sc/dashboard')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
+            <Button variant="secondary" size="sm" onClick={() => router.push('/console/sc/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
             <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}`)} icon={<Printer className="w-4 h-4" />}>Print Workorder</Button>
             {inRepair && (
               <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}?doc=estimate`)} icon={<FileText className="w-4 h-4" />}>Print Estimate</Button>

@@ -3,6 +3,7 @@ import { connectDB } from "@/core/db/mongodb";
 import Business from "@/models/Business";
 import { getVendorTelegramMessageTypes } from "@/core/telegram/vendorMessageTypes";
 import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
+import { logAiChange } from "@/core/changelog/logAiChange";
 
 /**
  * Reads/writes ONE business's Telegram routing config -- their group chat
@@ -60,6 +61,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!business) {
     return NextResponse.json({ success: false, message: "Business not found" }, { status: 404 });
   }
+  await logAiChange({
+    summary: `Telegram routing updated for business ${id}`,
+    details: `Fields changed: ${Object.keys(update).join(", ") || "(none)"}`,
+    filesChanged: [`Business(${id}).telegramMessageRouting`],
+    author: "AN-CRM Admin Console",
+    tags: ["telegram", "config"],
+  });
   return NextResponse.json({ success: true, business });
 }
 
