@@ -525,11 +525,13 @@ export async function resolveLandingPath(userId: string, isSuperAdmin: boolean):
   // comment for the manager@vendor.com example this guards against.
   const ownerOrManagerVendor = await resolveOwnerOrManagerVendor(userId).catch(() => null);
   const hasVendorAccess = memberships.some((m) => !!m.vendorId) || !!ownerOrManagerVendor;
-  // SC vendors have no vendor-portal experience -- see login/page.tsx's
-  // identical branch (this function covers the SAME landing decision for
-  // a return visit via /api/auth/landing, not just the initial login).
+  // SC vendors have no vendor-portal experience -- they land on the
+  // console Dashboard like any other console user, reaching the SC
+  // workorder screen via the sidebar's Workorders link instead (see
+  // login/page.tsx's identical branch -- this function covers the SAME
+  // landing decision for a return visit via /api/auth/landing).
   if (ownerOrManagerVendor && (ownerOrManagerVendor as any).appliedAs === "SC") {
-    return "/console/crm/jobsheets/sc";
+    return "/console";
   }
   if (hasVendorAccess) return "/vendor";
 
