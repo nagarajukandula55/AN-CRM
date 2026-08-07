@@ -6,6 +6,7 @@ import VendorProfile from "@/models/VendorProfile";
 import { generateUniqueUserId } from "@/lib/auth/generateUserId";
 import { notifySuperAdmins } from "@/services/notification.service";
 import { logAction } from "@/lib/audit/logAction";
+import { sendAdminSystemAlert } from "@/core/telegram/sendAdminSystemAlert";
 
 /**
  * POST /api/vendors/self-signup — PUBLIC, ONE-STEP vendor signup.
@@ -86,6 +87,11 @@ export async function POST(req: NextRequest) {
       message: `${companyName.trim()} (${appliedAs || "type not set"}) signed up and is awaiting approval.`,
       link: "/console/admin/vendors",
     }).catch(() => {});
+
+    sendAdminSystemAlert(
+      "NEW_VENDOR_SIGNUP",
+      `New vendor signup: ${companyName.trim()} (${appliedAs || "type not set"}), ${normalizedEmail} -- awaiting approval.`
+    ).catch(() => {});
 
     return NextResponse.json(
       { success: true, message: "Signup received — we'll review and activate your account shortly.", vendorId: vendor._id },
