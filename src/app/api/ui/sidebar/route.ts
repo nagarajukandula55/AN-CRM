@@ -230,6 +230,20 @@ export async function POST(req: Request) {
       );
     }
 
+    // SC vendors have no separate vendor-portal experience -- they work
+    // entirely in the console, so the SAME "Workorders" nav item everyone
+    // else sees must point at the single-screen SC flow
+    // (/console/crm/jobsheets/sc) instead of the generic multi-page list
+    // -- not a second nav entry, the existing one just resolves
+    // differently for this user. Matches sidebar.tsx's own dbMod-override
+    // pattern (a module row returned here already wins over the static
+    // item's own route).
+    if (appliedAs === "SC") {
+      visibleModules = visibleModules.map((m: any) =>
+        m.key === "crm_jobsheets" ? { ...m, route: "/console/crm/jobsheets/sc" } : m
+      );
+    }
+
     return NextResponse.json({
       success: true,
       business: {
