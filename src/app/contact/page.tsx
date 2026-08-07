@@ -231,7 +231,7 @@ export default function ContactPage() {
 
         <p className="mt-6 text-center text-sm text-gray-500">
           Looking to partner with us instead?{" "}
-          <Link href="/register?tab=vendor" className="font-medium text-violet-700 hover:text-cyan-600">
+          <Link href="/partner-signup" className="font-medium text-violet-700 hover:text-cyan-600">
             Become a Partner
           </Link>
         </p>

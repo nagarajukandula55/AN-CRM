@@ -49,7 +49,7 @@ type SubmitState =
       message: string;
       username: string;
     }
-  | { kind: "success"; username: string; requestNumber?: string };
+  | { kind: "success"; username: string; requestNumber?: string; trialActivated?: boolean };
 
 function Field({
   label,
@@ -272,7 +272,17 @@ function PartnerSignupPageInner() {
           });
           return;
         }
-        setState({ kind: "success", username, requestNumber: vendorData.requestNumber });
+        setState({
+          kind: "success",
+          // applicationId is the real vendorId whenever one was assigned
+          // (now happens immediately on every application, not just an
+          // instantly-activated one -- see apply/route.ts) -- falls back
+          // to the auto-generated account username only in the
+          // unassigned-business edge case where no vendorId exists yet.
+          username: vendorData.applicationId || username,
+          requestNumber: vendorData.requestNumber,
+          trialActivated: !!vendorData.trialActivated,
+        });
       } catch {
         setState({
           kind: "vendorFailed",
@@ -335,30 +345,38 @@ function PartnerSignupPageInner() {
                 <span className="font-semibold text-gray-900">
                   ✅ Your account has been created
                 </span>{" "}
-                — log in anytime with your email,{" "}
+                — your login ID is{" "}
                 <span className="font-mono font-semibold text-violet-700">
-                  {email}
+                  {state.username}
                 </span>
-                , and the password you set.
+                {" "}(not your email — email is only used for updates and notifications), with the password you set.
               </p>
-              <p>
-                <span className="font-semibold text-gray-900">
-                  ✅ Your partner application has been submitted for review
-                </span>
-                {state.requestNumber ? (
-                  <>
-                    {" "}
-                    — request number{" "}
-                    <span className="font-mono font-semibold text-violet-700">
-                      {state.requestNumber}
-                    </span>
-                  </>
-                ) : null}
-                . Your account exists now, but your vendor/business access is
-                still pending admin approval — you&apos;ll receive your
-                vendor login and dashboard access once the review is
-                complete.
-              </p>
+              {state.trialActivated ? (
+                <p>
+                  <span className="font-semibold text-gray-900">
+                    ✅ Your Service Center application was approved instantly
+                  </span>{" "}
+                  — your 7-day trial has already started. Log in with your Vendor ID above whenever you&apos;re ready.
+                </p>
+              ) : (
+                <p>
+                  <span className="font-semibold text-gray-900">
+                    ✅ Your partner application has been submitted for review
+                  </span>
+                  {state.requestNumber ? (
+                    <>
+                      {" "}
+                      — request number{" "}
+                      <span className="font-mono font-semibold text-violet-700">
+                        {state.requestNumber}
+                      </span>
+                    </>
+                  ) : null}
+                  . Your account exists now (log in with the ID above to check status), but your vendor/business
+                  access is still pending admin approval — you&apos;ll receive your Vendor ID and dashboard access
+                  once the review is complete.
+                </p>
+              )}
             </div>
             <Link href="/login" className={`${neonButtonPrimary} mt-6`}>
               Login to Your Account

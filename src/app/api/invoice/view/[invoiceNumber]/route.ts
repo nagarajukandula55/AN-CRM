@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import SalesInvoice from "@/models/SalesInvoice";
+import VendorBillingInvoice from "@/models/VendorBillingInvoice";
 import { getBusinessBySourceId } from "@/lib/centralApiRead";
 import { connectDB } from "@/lib/mongodb";
 import { getDefaultTemplate } from "@/core/invoiceTemplates/service";
 import { getStateCode } from "@/core/gst/stateCodes";
 import { generateUpiQrDataUrl } from "@/core/payments/upiQr";
+import { buildVendorBillingInvoiceView } from "./vendorBillingView";
 
 export const runtime = "nodejs";
 
@@ -51,6 +53,18 @@ export async function GET(
     // Cloudinary-generation path (api/invoice/generate/route.ts) can use
     // the same lookup instead of a second copy that would drift.
     if (!invoice) {
+      // Fall back to a VendorBillingInvoice (a business billing a VENDOR
+      // for their subscription/module fees -- "when vendor paid to us we
+      // can issue the same type of invoice"). Same view page, same GST
+      // tax-invoice layouts -- just a different source document and
+      // buyer/seller direction (the Business is the seller here, the
+      // Vendor is the customer), built in its own helper to keep this
+      // already-long SalesInvoice path unchanged.
+      const vendorInvoice = await VendorBillingInvoice.findOne({ invoiceNumber }).lean();
+      if (vendorInvoice) {
+        const view = await buildVendorBillingInvoiceView(vendorInvoice as any);
+        if (view) return NextResponse.json(view);
+      }
       return NextResponse.json(
         {
           success: false,

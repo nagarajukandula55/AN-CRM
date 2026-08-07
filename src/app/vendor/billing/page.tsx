@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -114,6 +115,7 @@ export default function VendorBillingPage() {
                 <th className="p-2 font-medium">Amount</th>
                 <th className="p-2 font-medium">Status</th>
                 <th className="p-2 font-medium">Paid On</th>
+                <th className="p-2 font-medium"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -123,6 +125,13 @@ export default function VendorBillingPage() {
                   <td className="p-2 tabular text-ink">₹{inv.amount.toLocaleString("en-IN")}</td>
                   <td className="p-2 text-ink-2">{inv.status}</td>
                   <td className="p-2 text-ink-3">{inv.paidAt ? new Date(inv.paidAt).toLocaleDateString() : "—"}</td>
+                  <td className="p-2">
+                    {inv.status === "PAID" && (
+                      <Link href={`/invoice/${inv.invoiceNumber}`} target="_blank" className="text-accent hover:text-accent-hover text-xs font-medium">
+                        View GST Invoice
+                      </Link>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

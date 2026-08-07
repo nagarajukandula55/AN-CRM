@@ -23,6 +23,7 @@ import UserRole from "@/models/UserRole";
 import VendorProfile from "@/models/VendorProfile";
 import BusinessMember from "@/models/BusinessMember";
 import Business from "@/models/Business";
+import VendorSubscription from "@/models/VendorSubscription";
 import { buildPermissionCode, STANDARD_ACTIONS } from "./actions";
 import { ACCESS_HIERARCHY, ModuleEntry } from "./moduleHierarchy";
 import { expandWithAliases } from "./moduleKeyAliases";
@@ -118,10 +119,25 @@ function flattenHierarchy(): ModuleEntry[] {
  * Business > Modules (deny-list convention — a key the business's saved
  * modules[] has never heard of stays available; see session-enriched.ts's
  * matching filter for why absent must never mean disabled).
+ *
+ * When `vendorId` is given AND that vendor has a VendorSubscription with a
+ * non-empty `modules` list configured (Super Admin set pricing for them --
+ * see models/VendorSubscription.ts), the result is further intersected
+ * down to just those modules. Per explicit direction ("once trial ends
+ * after payment only they can avail the services they opted for based on
+ * plan and pricing") -- VendorSubscription.modules was previously read
+ * ONLY for computing the invoice amount, never actually enforced as an
+ * access boundary, so a vendor who paid for 3 modules still had the same
+ * full business-wide module access as before paying for anything. No
+ * VendorSubscription (or one with an empty modules list, meaning pricing
+ * hasn't been configured for this vendor yet) applies no extra
+ * restriction, same permissive-by-default fallback every other filter
+ * here already uses.
  */
 export async function getVendorAvailableModules(
   businessId: string,
-  appliedAs?: string
+  appliedAs?: string,
+  vendorId?: string
 ): Promise<ModuleEntry[]> {
   const business = await Business.findById(businessId)
     .select("modules vendorTypeModules")
@@ -158,6 +174,14 @@ export async function getVendorAvailableModules(
     }
   }
 
+  if (vendorId) {
+    const subscription = await VendorSubscription.findOne({ vendorId }).select("modules").lean<any>();
+    if (subscription && Array.isArray(subscription.modules) && subscription.modules.length > 0) {
+      const paidFor = new Set<string>(subscription.modules.map((m: any) => String(m.key)));
+      result = result.filter((m) => paidFor.has(m.key));
+    }
+  }
+
   return result;
 }
 
@@ -188,7 +212,7 @@ export async function ensureVendorCoreRoles(
   businessId: string,
   appliedAs?: string
 ): Promise<void> {
-  const available = await getVendorAvailableModules(businessId, appliedAs);
+  const available = await getVendorAvailableModules(businessId, appliedAs, vendorProfileId);
   const codes = permissionCodesForModules(available.map((m) => m.key));
 
   for (const def of [

@@ -335,6 +335,16 @@ export default function BusinessDetailPage() {
       });
       const data = await res.json();
       if (data.success) {
+        // Write-through to central-api too -- api/vendors/apply's
+        // skip-approval check reads central-api FIRST once a business is
+        // synced there, so this local checkbox alone silently does
+        // nothing unless central-api's own copy is also kept in sync.
+        // Best-effort: never blocks the local save's own success.
+        fetch(`/api/businesses/${id}/vendor-onboarding-config`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ skipVendorApproval: form.skipVendorApproval }),
+        }).catch(() => {});
         refetchBusiness({ success: true, business: data.business }, false);
         setForm(toForm(data.business));
         setSaved(true);

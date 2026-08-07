@@ -2,10 +2,11 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 /**
  * One billing-cycle invoice generated against a VendorSubscription. Payment
- * is currently a stub (see core/billing/paymentGateway.ts) — paymentLink and
- * gatewayRef are shaped so a real gateway (Razorpay/Skydo) can be dropped in
- * later without a schema change: gatewayRef holds whatever reference ID that
- * gateway returns, paymentLink is the URL the vendor is sent to.
+ * goes through Razorpay (see core/billing/paymentGateway.ts) — gatewayRef
+ * holds the Razorpay order id (set at pay-time), gatewayPaymentId the
+ * actual payment id (set only once verified paid). Shaped so a second
+ * gateway (Skydo) can be added later without a schema change beyond an
+ * optional `gateway` discriminator.
  */
 export interface IVendorBillingInvoice extends Document {
   vendorId: mongoose.Types.ObjectId;
@@ -19,6 +20,7 @@ export interface IVendorBillingInvoice extends Document {
   status: "PENDING" | "PAID" | "CANCELLED";
   paymentLink: string;
   gatewayRef: string;
+  gatewayPaymentId: string;
   paidAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -37,6 +39,10 @@ const VendorBillingInvoiceSchema = new Schema<IVendorBillingInvoice>(
     status: { type: String, enum: ["PENDING", "PAID", "CANCELLED"], default: "PENDING" },
     paymentLink: { type: String, default: "" },
     gatewayRef: { type: String, default: "" },
+    // Razorpay's payment id (rzp_payment_id) once actually verified paid --
+    // kept separate from gatewayRef (the ORDER id, set at pay-time before
+    // any money moves) so the two can never be confused with each other.
+    gatewayPaymentId: { type: String, default: "" },
     paidAt: { type: Date, default: null },
   },
   { timestamps: true }
