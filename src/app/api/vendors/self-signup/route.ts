@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     notifySuperAdmins({
       title: "New vendor signup",
       message: `${companyName.trim()} (${appliedAs || "type not set"}) signed up and is awaiting approval.`,
-      link: "/console/vendors",
+      link: "/console/admin/vendors",
     }).catch(() => {});
 
     return NextResponse.json(

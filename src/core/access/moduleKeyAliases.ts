@@ -24,13 +24,22 @@
  */
 export const MODULE_KEY_ALIASES: Record<string, string> = {
   "masters-prod-cat": "product_categories",
+  // Renamed to sc-masters-* when these pages moved under console/sc/masters
+  // (SC-exclusive now) -- both the old and new sidebar key alias to the
+  // same real permission module key so existing saved Business.modules[]
+  // toggles under the old key keep working.
+  "sc-masters-fault-codes": "fault_codes",
   "masters-fault-codes": "fault_codes",
+  "sc-masters-symptom-codes": "symptom_codes",
   "masters-symptom-codes": "symptom_codes",
+  "sc-masters-solutions": "solutions",
   "masters-solutions": "solutions",
   "masters-mat-cat": "material_categories",
+  "sc-masters-brands": "brands",
   "masters-brands": "brands",
   "masters-models": "device_models",
   "masters-units": "units",
+  "sc-masters-crm-options": "crm_options",
   "masters-crm-options": "crm_options",
   // Second batch, found the same way (comparing every sidebar leaf key
   // against every real buildPermissionCode(...) call site) after a
