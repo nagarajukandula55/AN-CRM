@@ -42,11 +42,17 @@ export const NAV_GROUPS: NavGroup[] = [
     // SC is a single-login repair shop: everything is a workorder from
     // intake onward, no separate appointment/lead pipeline at all.
     { key: "sc_jobsheets", label: "Workorders", route: "/console/sc/jobsheets", icon: "ClipboardList", modes: ["SC"] },
+    // A plain vendor-editable free-text list (Business.savedBrands/
+    // savedModels), NOT the shared hierarchical Brand/Series/Model/
+    // Variant catalog Brand vendors use below -- SC's workorder intake
+    // screen writes/reads these same two fields directly, so whatever a
+    // vendor adds here (or inline from intake) shows up immediately in
+    // both places. Solutions is the only OTHER shared-catalog concept SC
+    // actually uses (picked at workorder close) -- Fault Codes, Symptom
+    // Codes, and Workorder Options are Brand-only, SC's flow never reads
+    // them, see the Brand group below.
     { key: "sc-masters-brands",   label: "Brands & Models",       route: "/console/sc/masters/brands",       icon: "Tags",          modes: ["SC"] },
     { key: "sc-masters-solutions", label: "Solutions",            route: "/console/sc/masters/solutions",    icon: "CheckCircle",   modes: ["SC"] },
-    { key: "sc-masters-fault-codes", label: "Fault Codes",        route: "/console/sc/masters/fault-codes",  icon: "AlertTriangle", modes: ["SC"] },
-    { key: "sc-masters-symptom-codes", label: "Symptom Codes",    route: "/console/sc/masters/symptom-codes", icon: "AlertTriangle", modes: ["SC"] },
-    { key: "sc-masters-crm-options", label: "Workorder Options",  route: "/console/sc/masters/crm-options",  icon: "Settings",      modes: ["SC"] },
     { key: "sub-accounts", label: "SC Sub-Accounts", route: "/console/sc/sub-accounts", icon: "Building2", modes: ["SC"] },
   ]},
   { label: "Brand", items: [
@@ -57,6 +63,12 @@ export const NAV_GROUPS: NavGroup[] = [
     // single-login flow (console/sc/jobsheets), not just a different route
     // for the same page.
     { key: "crm_jobsheets", label: "Workorders", route: "/console/brand/jobsheets", icon: "ClipboardList", modes: ["BRAND"] },
+    // Fault Codes / Symptom Codes / Workorder Options are picked while
+    // creating/closing a Brand workorder (console/brand/jobsheets/new and
+    // [id]) -- SC's own workorder flow never reads any of the three.
+    { key: "brand-masters-fault-codes", label: "Fault Codes", route: "/console/brand/masters/fault-codes", icon: "AlertTriangle", modes: ["BRAND"] },
+    { key: "brand-masters-symptom-codes", label: "Symptom Codes", route: "/console/brand/masters/symptom-codes", icon: "AlertTriangle", modes: ["BRAND"] },
+    { key: "brand-masters-crm-options", label: "Workorder Options", route: "/console/brand/masters/crm-options", icon: "Settings", modes: ["BRAND"] },
   ]},
   { label: "POS", items: [
     { key: "pos", label: "Point of Sale", route: "/console/pos/billing", icon: "ShoppingCart", modes: ["POS"] },
@@ -78,7 +90,6 @@ export const NAV_GROUPS: NavGroup[] = [
     // sub-master were duplicate ways to manage the same data and have been
     // removed; this page is the only place materials are now maintained.
     { key: "material-catalog", label: "Material Catalog", route: "/console/common/material-catalog", icon: "Package" },
-    { key: "masters-units",    label: "Units",              route: "/console/common/masters/units",              icon: "Ruler" },
     { key: "masters-catalog-requests", label: "Catalog Change Requests", route: "/console/common/masters/catalog-requests", icon: "ClipboardCheck" },
     { key: "stock-transfers",   label: "Stock Transfers",   route: "/console/common/stock-transfers",   icon: "ArrowLeftRight" },
     { key: "stock-adjustments", label: "Stock Adjustments", route: "/console/common/stock-adjustments", icon: "SlidersHorizontal" },

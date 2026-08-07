@@ -153,9 +153,6 @@ export async function POST(req: Request) {
         "sc_jobsheets",
         "sc-masters-brands",
         "sc-masters-solutions",
-        "sc-masters-fault-codes",
-        "sc-masters-symptom-codes",
-        "sc-masters-crm-options",
         "material-catalog",
         // Customer directory (view who's been serviced, contact details,
         // ledger balance) -- was missing entirely, so SC had no way to
