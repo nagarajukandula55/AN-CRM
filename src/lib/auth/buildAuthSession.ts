@@ -94,10 +94,16 @@ export async function buildAuthSession(
     }
   }
 
-  const hasVendorAccess =
-    memberships.some((m) => !!m.vendorId) ||
-    !!(await resolveOwnerOrManagerVendor(user._id.toString()).catch(() => null));
+  const ownerOrManagerVendor = await resolveOwnerOrManagerVendor(user._id.toString()).catch(() => null);
+  const hasVendorAccess = memberships.some((m) => !!m.vendorId) || !!ownerOrManagerVendor;
   const isEngineerOrCco = memberships.some((m) => ["ENGINEER", "CCO"].includes(m.memberType));
+  // SC vendors have no vendor-portal experience at all -- the single-
+  // screen workorder flow they actually use lives in the console app
+  // (/console/crm/jobsheets/sc, vendor-type-gated), not /vendor. Only
+  // matters for an Owner/Manager (isEngineerOrCco already routes staff
+  // elsewhere) -- captured here so login/page.tsx can branch the landing
+  // path without a second lookup.
+  const vendorAppliedAs = (ownerOrManagerVendor as any)?.appliedAs || null;
 
   const pendingVendorApplication = !hasVendorAccess
     ? await VendorProfile.findOne({
@@ -151,6 +157,7 @@ export async function buildAuthSession(
     homeRoute,
     hasVendorAccess,
     isEngineerOrCco,
+    vendorAppliedAs,
     pendingVendorApplication: !!pendingVendorApplication,
   };
 
