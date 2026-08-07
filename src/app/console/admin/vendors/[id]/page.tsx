@@ -205,6 +205,17 @@ export default function VendorDetailPage() {
 
   const { data: meData } = useSWR('/api/auth/me')
   const isSuperAdmin = !!meData?.user?.isSuperAdmin
+  // AN Group's own platform business (isPlatform: true) is never a real
+  // tenant a vendor can belong to -- excluded here the same way the
+  // onboarding picker in console/admin/vendors/page.tsx now is, so this
+  // "fix a wrong assignment" control can't be used to make the same
+  // mistake it exists to correct.
+  const businessOptions: { _id: string; name: string; brandName?: string; isPlatform?: boolean }[] =
+    (meData?.businesses || []).filter((b: any) => !b.isPlatform)
+  const [businessPicker, setBusinessPicker] = useState(false)
+  const [businessPickerValue, setBusinessPickerValue] = useState('')
+  const [businessSaving, setBusinessSaving] = useState(false)
+  const [businessError, setBusinessError] = useState<string | null>(null)
 
   const [showAddStaff, setShowAddStaff] = useState(false)
   const [staffUsername, setStaffUsername] = useState('')
@@ -384,6 +395,28 @@ export default function VendorDetailPage() {
     }
   }
 
+  async function reassignBusiness() {
+    if (!businessPickerValue) { setBusinessError('Pick a business'); return }
+    setBusinessSaving(true)
+    setBusinessError(null)
+    try {
+      const res = await fetch(`/api/vendors/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessId: businessPickerValue }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.success === false) throw new Error(data.error || data.message || 'Failed to reassign business')
+      setBusinessPicker(false)
+      setBusinessPickerValue('')
+      refetchVendor()
+    } catch (err) {
+      setBusinessError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setBusinessSaving(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -432,9 +465,45 @@ export default function VendorDetailPage() {
                 {statusKey}
               </span>
             </div>
-            <p className="text-sm text-gray-400 mt-1 font-mono">
+            <p className="text-sm text-gray-400 mt-1 font-mono flex items-center gap-2 flex-wrap">
               {vendor.vendorId || 'No vendor ID assigned yet'} · {businessLabel(vendor.businessId)}
+              {isSuperAdmin && !businessPicker && (
+                <button
+                  onClick={() => setBusinessPicker(true)}
+                  className="text-xs font-sans text-indigo-600 hover:text-indigo-700 underline"
+                >
+                  Reassign business
+                </button>
+              )}
             </p>
+            {isSuperAdmin && businessPicker && (
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <select
+                  value={businessPickerValue}
+                  onChange={(e) => setBusinessPickerValue(e.target.value)}
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm"
+                >
+                  <option value="">Select the vendor's real business…</option>
+                  {businessOptions.map((b) => (
+                    <option key={b._id} value={b._id}>{b.brandName || b.name}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={reassignBusiness}
+                  disabled={businessSaving}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {businessSaving ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  onClick={() => { setBusinessPicker(false); setBusinessError(null) }}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >
+                  Cancel
+                </button>
+                {businessError && <span className="text-xs text-red-600">{businessError}</span>}
+              </div>
+            )}
           </div>
           {!isApproved && vendor.status !== 'ACTIVE' && (
             <button

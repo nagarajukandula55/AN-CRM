@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import VendorProfile from "@/models/VendorProfile";
+import Business from "@/models/Business";
 import Warehouse from "@/models/Warehouse";
 import User from "@/models/User";
 import BusinessMember from "@/models/BusinessMember";
@@ -95,6 +96,29 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         { userId: body.userId, vendorId: { $ne: null, $nin: [id] }, isDeleted: { $ne: true } },
         { $set: { status: "INACTIVE", isDeleted: true } }
       );
+    }
+
+    // Reassigning which business this vendor belongs to -- passed straight
+    // through to findByIdAndUpdate below like any other field, but must
+    // never be allowed to point at AN Group's own platform business
+    // (isPlatform: true). That's a real single-record placeholder, not a
+    // tenant, and it was possible to pick it by accident from the
+    // onboarding form's business dropdown (see console/admin/vendors
+    // page's own fix) -- validated here too since this route is the one
+    // that would actually apply it, on approval or any later edit.
+    if (body.businessId !== undefined && body.businessId !== null && body.businessId !== "") {
+      const targetBusiness = await Business.findOne({ _id: body.businessId, isActive: true })
+        .select("_id isPlatform")
+        .lean<any>();
+      if (!targetBusiness) {
+        return NextResponse.json({ success: false, error: "Business not found or inactive" }, { status: 400 });
+      }
+      if (targetBusiness.isPlatform) {
+        return NextResponse.json(
+          { success: false, error: "AN Group's own platform business can't be assigned to a vendor -- pick the vendor's real business instead." },
+          { status: 400 }
+        );
+      }
     }
 
     // For every facility toggle flipping false -> true in this update,

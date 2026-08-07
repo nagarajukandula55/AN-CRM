@@ -21,7 +21,7 @@ import { Field, Input, Select as SelectControl, Textarea } from '@/components/ui
 
 type Vendor = VendorDetailData
 
-interface BusinessOption { _id: string; name: string; brandName?: string; industry?: string }
+interface BusinessOption { _id: string; name: string; brandName?: string; industry?: string; isPlatform?: boolean }
 
 const CATEGORIES = [
   'Raw Materials','Packaging','Electronics','Machinery','Services',
@@ -209,7 +209,14 @@ export default function VendorsPage() {
   }, [ownerSearch])
 
   const { data: meData } = useSWR('/api/auth/me')
-  const allBusinesses: BusinessOption[] = meData?.businesses || []
+  // AN Group's own platform business (isPlatform: true) is in this list
+  // for switcher/Access-page purposes, not because it's a real tenant a
+  // vendor can be onboarded under -- picking it here (easy to do by
+  // accident, it just looked like one more row) silently made a vendor's
+  // sidebar/business-switcher treat their own account as "AN-CRM
+  // (Platform)" instead of their real business name, since nothing about
+  // the picker distinguished it from a normal business.
+  const allBusinesses: BusinessOption[] = (meData?.businesses || []).filter((b: BusinessOption) => !b.isPlatform)
   const isSuperAdmin = !!meData?.user?.isSuperAdmin
   // Falls back to the first business only for listing vendors on page
   // load (so the table isn't empty) — this is NOT used to silently
