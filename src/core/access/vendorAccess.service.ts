@@ -523,9 +523,14 @@ export async function resolveLandingPath(userId: string, isSuperAdmin: boolean):
   // /vendor no matter what a business-wide role they ALSO happen to hold
   // sets as its own homeRoute -- see resolveOwnerOrManagerVendor's own
   // comment for the manager@vendor.com example this guards against.
-  const hasVendorAccess =
-    memberships.some((m) => !!m.vendorId) ||
-    !!(await resolveOwnerOrManagerVendor(userId).catch(() => null));
+  const ownerOrManagerVendor = await resolveOwnerOrManagerVendor(userId).catch(() => null);
+  const hasVendorAccess = memberships.some((m) => !!m.vendorId) || !!ownerOrManagerVendor;
+  // SC vendors have no vendor-portal experience -- see login/page.tsx's
+  // identical branch (this function covers the SAME landing decision for
+  // a return visit via /api/auth/landing, not just the initial login).
+  if (ownerOrManagerVendor && (ownerOrManagerVendor as any).appliedAs === "SC") {
+    return "/console/crm/jobsheets/sc";
+  }
   if (hasVendorAccess) return "/vendor";
 
   const homeRoute = grantedRoles.find((r) => r.homeRoute && !MINIMAL_FLOOR_ROLE_CODES.includes(r.code))?.homeRoute;

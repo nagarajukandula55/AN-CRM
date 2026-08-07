@@ -93,6 +93,12 @@ function LoginForm() {
         // sales dashboard -- irrelevant to their role. Send them to the
         // CRM-specific overview instead; Owner/Manager keep landing on
         // plain /vendor exactly as before.
+        // SC vendors have no vendor-portal experience -- their actual
+        // workflow is the single-screen workorder flow in the console app.
+        // Only for the Owner/Manager landing fresh in (isEngineerOrCco
+        // already goes to /vendor/crm, unaffected).
+        : data.user?.hasVendorAccess && data.user?.vendorAppliedAs === 'SC' && !data.user?.isEngineerOrCco
+        ? '/console/crm/jobsheets/sc'
         : data.user?.hasVendorAccess ? (data.user?.isEngineerOrCco ? '/vendor/crm' : '/vendor')
         // Per-role configurable home page (Roles & Permissions > Home Page)
         // wins over the generic role/account-type default below when set.
