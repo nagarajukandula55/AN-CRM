@@ -130,7 +130,7 @@ export default function JobSheetsListPage() {
   }, [jobSheets, quickFilter])
 
   return (
-    <div className="min-h-screen bg-bg text-ink">
+    <div className="min-h-screen bg-bg text-ink p-6">
       <PageHeader
         title="Workorders"
         description="Every job sheet for this business — search, filter, and open one to view or continue working it."

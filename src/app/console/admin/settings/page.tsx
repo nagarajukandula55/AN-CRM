@@ -364,7 +364,13 @@ export default function AdminSettingsPage() {
     { key: 'operations', label: 'Operations', icon: <Building2 size={14} /> },
     { key: 'notifications', label: 'Notifications', icon: <Send size={14} /> },
     { key: 'numbering', label: 'Document Numbers', icon: <Receipt size={14} /> },
-    { key: 'invoicing', label: 'Invoicing Rules', icon: <Receipt size={14} /> },
+    // Invoicing Rules is entirely a marketplace/Brand concept (the
+    // dual-invoice B2B+B2C split and vendor cost basis for orders a
+    // different vendor fulfills) -- SC has no vendor-fulfilled order flow
+    // at all, so the tab itself, not just those two fields inside it, has
+    // nothing relevant to an SC business. Reported live as still showing
+    // even after the fields inside it were hidden.
+    ...(!isSC ? [{ key: 'invoicing' as Tab, label: 'Invoicing Rules', icon: <Receipt size={14} /> }] : []),
     ...(isSuperAdmin ? [{ key: 'integrations' as Tab, label: 'Integrations', icon: <Plug size={14} /> }] : []),
     ...(isSuperAdmin ? [{ key: 'communication' as Tab, label: 'Communication Quota', icon: <Globe2 size={14} /> }] : []),
     ...(isSuperAdmin ? [{ key: 'ai' as Tab, label: 'AI / ANu', icon: <Sparkles size={14} /> }] : []),

@@ -136,6 +136,26 @@ export async function GET(req: Request) {
           .lean();
         if (ownBiz) businesses.push({ ...ownBiz, isDefault: businesses.length === 0 });
       }
+
+      // The self-heal above (line ~64) only fires when the header is
+      // completely EMPTY -- a header carrying a real but WRONG value (a
+      // stale JWT issued for a since-changed business, or the platform
+      // business id leaking onto a non-staff account) skipped it entirely
+      // and was reported live as the sidebar sticking on "AN-CRM
+      // (Platform)" for an ordinary vendor even after that fix. Any
+      // non-platform-staff account's activeBusinessId must resolve to one
+      // of THEIR OWN businesses; if it doesn't, recompute it the same way
+      // the empty-header case already does instead of trusting the header.
+      if (
+        activeBusinessId &&
+        !businesses.some((b) => b._id.toString() === activeBusinessId)
+      ) {
+        activeBusinessId = ownVendorBusinessId
+          ? String(ownVendorBusinessId)
+          : businesses[0]?._id
+            ? String(businesses[0]._id)
+            : null;
+      }
     }
 
     // First granted role that has a custom moduleOrder configured (see

@@ -716,8 +716,12 @@ export default function Sidebar() {
         {/* User footer */}
         <div className="px-3 py-3 border-t border-border">
           {user ? (
-            <div className={`rounded-control border border-border bg-surface-2 ${isCollapsed ? "p-2" : "p-3"}`}>
-              <div className={`flex items-center ${isCollapsed ? "flex-col gap-2" : "justify-between"}`}>
+            <button
+              onClick={handleLogout}
+              title="Sign out"
+              className={`w-full text-left rounded-control border border-border bg-surface-2 hover:bg-surface-3 transition ${isCollapsed ? "p-2" : "p-3"}`}
+            >
+              <div className={`flex items-center ${isCollapsed ? "flex-col gap-2" : "justify-between gap-2"}`}>
                 {!isCollapsed && (
                   <div className="min-w-0">
                     <p className="truncate text-xs font-semibold text-ink">{user.name}</p>
@@ -726,15 +730,12 @@ export default function Sidebar() {
                     </p>
                   </div>
                 )}
-                <button
-                  onClick={handleLogout}
-                  className="p-1.5 rounded-control text-ink-3 hover:text-ink hover:bg-surface-3 transition"
-                  title="Sign out"
-                >
+                <span className="flex items-center gap-1 text-ink-3 shrink-0">
                   <LogOut size={13} />
-                </button>
+                  {!isCollapsed && <span className="text-[10px]">Sign out</span>}
+                </span>
               </div>
-            </div>
+            </button>
           ) : (
             <div className="rounded-control border border-border bg-surface-2 p-3">
               <div className="flex items-center gap-2">
