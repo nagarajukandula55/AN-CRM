@@ -41,6 +41,18 @@ export async function buildAuthSession(
 
   const businessIds: string[] = memberships.map((m) => m.businessId.toString());
 
+  // A vendor Owner has NO BusinessMember row at all -- they're linked via
+  // VendorProfile.userId instead (see resolveOwnerOrManagerVendor below,
+  // hoisted up here since activeBusinessId needs it too). Without this,
+  // an Owner with no BusinessMember AND no user.defaultBusinessId set
+  // fell through every branch below with activeBusinessId left
+  // undefined, so every downstream business-context lookup (sidebar's
+  // business switcher, the dashboard-type router) silently defaulted to
+  // the platform's own business instead of the vendor's -- found live as
+  // an SC vendor landing on the Admin dashboard with "AN-CRM (Platform)"
+  // shown as their active business.
+  const ownerOrManagerVendor = await resolveOwnerOrManagerVendor(user._id.toString()).catch(() => null);
+
   let activeBusinessId: string | undefined;
   const defaultMembership = memberships.find((m) => m.isDefaultBusiness);
   if (defaultMembership) {
@@ -49,6 +61,8 @@ export async function buildAuthSession(
     activeBusinessId = user.defaultBusinessId.toString();
   } else if (businessIds.length > 0) {
     activeBusinessId = businessIds[0];
+  } else if ((ownerOrManagerVendor as any)?.businessId) {
+    activeBusinessId = String((ownerOrManagerVendor as any).businessId);
   }
 
   let centralRole: string | null = null;
@@ -94,7 +108,6 @@ export async function buildAuthSession(
     }
   }
 
-  const ownerOrManagerVendor = await resolveOwnerOrManagerVendor(user._id.toString()).catch(() => null);
   const hasVendorAccess = memberships.some((m) => !!m.vendorId) || !!ownerOrManagerVendor;
   const isEngineerOrCco = memberships.some((m) => ["ENGINEER", "CCO"].includes(m.memberType));
   // SC vendors have no vendor-portal experience at all -- the single-

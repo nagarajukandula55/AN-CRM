@@ -36,7 +36,7 @@ import DocumentNumbersPanel from '@/components/admin/DocumentNumbersPanel'
  */
 
 type View = 'business' | 'platform'
-type Tab = 'integrations' | 'ai' | 'invoicing' | 'operations' | 'communication' | 'numbering'
+type Tab = 'integrations' | 'ai' | 'invoicing' | 'operations' | 'communication' | 'numbering' | 'notifications'
 
 interface SsoMapping {
   _id: string
@@ -218,6 +218,42 @@ export default function AdminSettingsPage() {
   )
   const quota = quotaRes?.success ? quotaRes.quota : null
 
+  // Same Telegram routing this vendor's own /vendor/telegram page uses --
+  // reused here so an SC business (which never touches the /vendor portal
+  // at all, it works entirely inside /console) has a way to reach it too.
+  const { data: notifRes, mutate: refetchNotif } = useSWR(
+    businessId && view === 'business' && tab === 'notifications' ? `/api/businesses/${businessId}/telegram-routing` : null
+  )
+  const [notifGroupChatId, setNotifGroupChatId] = useState('')
+  const [notifPersonalChatId, setNotifPersonalChatId] = useState('')
+  const [notifRouting, setNotifRouting] = useState<Record<string, { group: boolean; personal: boolean }>>({})
+  const [savingNotif, setSavingNotif] = useState(false)
+  useEffect(() => {
+    if (notifRes?.success) {
+      setNotifGroupChatId(notifRes.telegramChatId || '')
+      setNotifPersonalChatId(notifRes.telegramPersonalChatId || '')
+      setNotifRouting(notifRes.telegramMessageRouting || {})
+    }
+  }, [notifRes])
+  async function saveNotificationRouting() {
+    if (!businessId) return
+    setSavingNotif(true)
+    try {
+      await fetch(`/api/businesses/${businessId}/telegram-routing`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telegramChatId: notifGroupChatId,
+          telegramPersonalChatId: notifPersonalChatId,
+          telegramMessageRouting: notifRouting,
+        }),
+      })
+      refetchNotif()
+    } finally {
+      setSavingNotif(false)
+    }
+  }
+
   const { data: integrationsRes, isLoading: loadingIntegrations } = useSWR(
     businessId && view === 'business' && tab === 'integrations' ? `/api/integrations?businessId=${businessId}` : null
   )
@@ -326,6 +362,7 @@ export default function AdminSettingsPage() {
   // been trimmed for once before).
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'operations', label: 'Operations', icon: <Building2 size={14} /> },
+    { key: 'notifications', label: 'Notifications', icon: <Send size={14} /> },
     { key: 'numbering', label: 'Document Numbers', icon: <Receipt size={14} /> },
     { key: 'invoicing', label: 'Invoicing Rules', icon: <Receipt size={14} /> },
     ...(isSuperAdmin ? [{ key: 'integrations' as Tab, label: 'Integrations', icon: <Plug size={14} /> }] : []),
@@ -846,6 +883,73 @@ export default function AdminSettingsPage() {
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {tab === 'notifications' && (
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-gray-200 bg-white p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Telegram Alerts</h3>
+              <p className="text-xs text-gray-500 mb-5">
+                Choose which chat gets which type of alert -- your team group, your personal chat, or both.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Group / Team Chat ID</label>
+                  <input
+                    value={notifGroupChatId}
+                    onChange={(e) => setNotifGroupChatId(e.target.value)}
+                    placeholder="e.g. -1001234567890"
+                    className="w-full rounded-control border border-border-strong bg-surface px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Your Personal Chat ID</label>
+                  <input
+                    value={notifPersonalChatId}
+                    onChange={(e) => setNotifPersonalChatId(e.target.value)}
+                    placeholder="e.g. 987654321"
+                    className="w-full rounded-control border border-border-strong bg-surface px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+              </div>
+              <div className="divide-y divide-border rounded-control border border-border overflow-hidden mb-5">
+                {(notifRes?.messageTypes || []).map((t: any) => {
+                  const cur = notifRouting[t.key] || { group: t.defaultGroup, personal: t.defaultPersonal }
+                  return (
+                    <div key={t.key} className="px-4 py-3 flex items-center justify-between gap-4 bg-surface">
+                      <div>
+                        <p className="text-sm font-medium text-ink">{t.label}</p>
+                        <p className="text-xs text-ink-3">{t.description}</p>
+                      </div>
+                      <div className="flex items-center gap-4 flex-shrink-0">
+                        <label className="flex items-center gap-1.5 text-xs text-ink-2">
+                          <input
+                            type="checkbox"
+                            checked={!!cur.group}
+                            onChange={() => setNotifRouting((prev) => ({ ...prev, [t.key]: { ...cur, group: !cur.group } }))}
+                          /> Group
+                        </label>
+                        <label className="flex items-center gap-1.5 text-xs text-ink-2">
+                          <input
+                            type="checkbox"
+                            checked={!!cur.personal}
+                            onChange={() => setNotifRouting((prev) => ({ ...prev, [t.key]: { ...cur, personal: !cur.personal } }))}
+                          /> Personal
+                        </label>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <button
+                onClick={saveNotificationRouting}
+                disabled={savingNotif}
+                className="px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition"
+              >
+                {savingNotif ? 'Saving…' : 'Save Notification Settings'}
+              </button>
+            </div>
           </div>
         )}
 
