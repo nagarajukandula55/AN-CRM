@@ -24,6 +24,17 @@
  */
 export const MODULE_KEY_ALIASES: Record<string, string> = {
   "masters-prod-cat": "product_categories",
+  // SC's Workorders nav key was renamed from "crm_jobsheets" to
+  // "sc_jobsheets" so it could get its own route independent of Brand's
+  // (see console/brand/jobsheets vs console/sc/jobsheets) -- but every
+  // already-provisioned SC role was granted "CRM_JOBSHEETS.VIEW" under
+  // the OLD key, and permission codes are never renamed automatically.
+  // Without this alias, "sc_jobsheets" resolves to a permission
+  // ("SC_JOBSHEETS.VIEW") nobody has ever been granted, silently hiding
+  // Workorders from every SC vendor already live -- found live right
+  // after this shipped. Brand's own "crm_jobsheets" key is unaffected
+  // (unchanged, still resolves to the same permission it always did).
+  "sc_jobsheets": "crm_jobsheets",
   // Fault Codes/Symptom Codes/Workorder Options are Brand-only (picked
   // while creating/closing a Brand workorder) -- moved from sc-masters-*
   // to brand-masters-* once it turned out SC's own workorder flow never

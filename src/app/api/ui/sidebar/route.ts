@@ -75,7 +75,23 @@ export async function POST(req: Request) {
       icon: m.icon,
       enabled: true,
     }));
-    const modules = [...dbModules, ...staticCandidates];
+    // A ModuleDefinition row that already exists in the database (e.g.
+    // hand-created via the old /console/module-builder UI, since removed)
+    // can carry a route that's gone stale after a code-level page move --
+    // the console/* restructure into sc/pos/brand/common/admin moved
+    // dozens of routes, but a DB row's own `route` field has no way to
+    // follow along automatically, and dbKeys.has(key) above means the
+    // corrected STATIC_MODULES entry for that same key never even gets
+    // considered. Route (and label/icon, so a stale DB label doesn't hang
+    // around either) is treated as code-owned for any key STATIC_MODULES
+    // still recognizes -- the DB row still governs enabled/permissions/
+    // everything else. Without this, a page move in code silently stops
+    // fixing already-seeded businesses' sidebars.
+    const staticByKey = new Map(STATIC_MODULES.map((m) => [m.key, m]));
+    const modules = [...dbModules, ...staticCandidates].map((m: any) => {
+      const known = staticByKey.get(m.key);
+      return known ? { ...m, route: known.route, label: known.label, icon: known.icon } : m;
+    });
 
     let visibleModules = filterModulesByPermission(
       modules,
