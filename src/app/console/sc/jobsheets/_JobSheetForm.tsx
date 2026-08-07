@@ -497,7 +497,22 @@ export default function SCJobSheetScreen() {
   const [paymentCollected, setPaymentCollected] = useState('')
   const [paymentMode, setPaymentMode] = useState('CASH')
   const [paymentCollectedByName, setPaymentCollectedByName] = useState('')
-  const [showHandoverModal, setShowHandoverModal] = useState(false)
+  const [showAddCollectorModal, setShowAddCollectorModal] = useState(false)
+  const [newCollectorName, setNewCollectorName] = useState('')
+  const [savingCollector, setSavingCollector] = useState(false)
+
+  async function submitNewCollector() {
+    if (!newCollectorName.trim()) return
+    setSavingCollector(true)
+    try {
+      await saveBusinessListValue('savedPaymentCollectors', newCollectorName.trim())
+      setPaymentCollectedByName(newCollectorName.trim())
+      setNewCollectorName('')
+      setShowAddCollectorModal(false)
+    } finally {
+      setSavingCollector(false)
+    }
+  }
 
   async function handover() {
     if (!jobId) return
@@ -975,7 +990,7 @@ export default function SCJobSheetScreen() {
       {job.status === 'REPAIR_COMPLETED' && (
         <Card className="p-5 mt-6">
           <h3 className="text-sm font-semibold text-ink mb-3">Handover &amp; Close</h3>
-          <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="grid grid-cols-3 gap-3 mb-3">
             <div>
               <label className={labelCls}>Payment Collected</label>
               <input type="number" onFocus={e => e.target.select()} min={0} value={paymentCollected} onChange={e => setPaymentCollected(e.target.value)} className={inputCls} />
@@ -989,28 +1004,42 @@ export default function SCJobSheetScreen() {
                 <option value="BANK_TRANSFER">Bank Transfer</option>
               </select>
             </div>
+            <div>
+              <label className={labelCls}>Payment Collected By</label>
+              <div className="flex gap-1.5">
+                <select value={paymentCollectedByName} onChange={e => setPaymentCollectedByName(e.target.value)} className={inputCls}>
+                  <option value="">Select…</option>
+                  {savedPaymentCollectors.map(name => <option key={name} value={name}>{name}</option>)}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => { setNewCollectorName(''); setShowAddCollectorModal(true) }}
+                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-control border border-border hover:bg-surface-2 text-ink-2"
+                  title="Add new name"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
-          <Button size="lg" className="w-full" onClick={() => { setPaymentCollectedByName(''); setShowHandoverModal(true) }} disabled={saving}>Hand Over to Customer &amp; Close</Button>
+          <Button size="lg" className="w-full" onClick={handover} disabled={saving || !paymentCollectedByName.trim()} icon={saving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Hand Over to Customer &amp; Close</Button>
         </Card>
       )}
 
-      {showHandoverModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowHandoverModal(false)}>
+      {showAddCollectorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowAddCollectorModal(false)}>
           <div className="bg-surface border border-border rounded-card shadow-card-lg w-full max-w-sm p-5 space-y-3" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-ink">Payment Collected By</h3>
-              <button onClick={() => setShowHandoverModal(false)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
+              <h3 className="text-sm font-semibold text-ink">Add New Collector Name</h3>
+              <button onClick={() => setShowAddCollectorModal(false)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
             </div>
             <div>
-              <label className={labelCls}>Name of person who collected the payment</label>
-              <input autoFocus list="payment-collectors-list" value={paymentCollectedByName} onChange={e => setPaymentCollectedByName(e.target.value)} className={inputCls} placeholder="e.g. Nagaraj" />
-              <datalist id="payment-collectors-list">
-                {savedPaymentCollectors.map(name => <option key={name} value={name} />)}
-              </datalist>
+              <label className={labelCls}>Name of person who collects payments</label>
+              <input autoFocus value={newCollectorName} onChange={e => setNewCollectorName(e.target.value)} className={inputCls} placeholder="e.g. Nagaraj" onKeyDown={e => e.key === 'Enter' && submitNewCollector()} />
             </div>
             <div className="flex justify-end gap-2 pt-1">
-              <Button variant="secondary" size="sm" onClick={() => setShowHandoverModal(false)}>Cancel</Button>
-              <Button size="sm" onClick={() => { setShowHandoverModal(false); handover() }} disabled={saving} icon={saving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Confirm Handover</Button>
+              <Button variant="secondary" size="sm" onClick={() => setShowAddCollectorModal(false)}>Cancel</Button>
+              <Button size="sm" onClick={submitNewCollector} disabled={savingCollector || !newCollectorName.trim()} icon={savingCollector ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save &amp; Use</Button>
             </div>
           </div>
         </div>
