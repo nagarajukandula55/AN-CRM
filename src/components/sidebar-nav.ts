@@ -104,6 +104,12 @@ export const NAV_GROUPS: NavGroup[] = [
   ]},
   { label: "Business", items: [
     { key: "customers",  label: "Customer Data", route: "/console/common/customers", icon: "Users" },
+    // A vendor's Owner can spin up another full vendor account under
+    // itself, paid per-add (see api/vendors/[id]/sub-vendors) -- the
+    // page itself gates the actual create action to Owner only, this
+    // nav entry is visible to any vendor type since the feature isn't
+    // Brand/SC/POS specific.
+    { key: "sub-vendors", label: "Sub-Vendors", route: "/console/common/sub-vendors", icon: "Network" },
   ]},
   { label: "Documents", items: [
     { key: "agreements",      label: "Agreements",      route: "/console/common/documents/agreements",       icon: "FileSignature" },

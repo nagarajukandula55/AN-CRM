@@ -26,6 +26,8 @@ export async function GET() {
 
     return NextResponse.json({
       appliedAs: (vendorContext?.vendor as any)?.appliedAs || null,
+      vendorId: vendorContext?.vendor?._id ? String(vendorContext.vendor._id) : null,
+      vendorRole: vendorContext?.role || null,
       isSuperAdmin: !!session.isSuperAdmin,
     });
   } catch (error: unknown) {
