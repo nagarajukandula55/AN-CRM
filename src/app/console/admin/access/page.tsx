@@ -49,6 +49,8 @@ export default function AccessPage() {
   const toast = useToast();
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
+  const [editRoleModal, setEditRoleModal] = useState<{ name: string; description: string } | null>(null);
+  const [renameNodeModal, setRenameNodeModal] = useState<{ key: string; label: string; kind: "category" | "subcategory" } | null>(null);
   const [creating, setCreating] = useState<boolean>(false);
   const [newRoleName, setNewRoleName] = useState<string>("");
   const [newRoleCode, setNewRoleCode] = useState<string>("");
@@ -597,12 +599,7 @@ export default function AccessPage() {
                   )}
                 </div>
                 <button
-                  onClick={() => {
-                    const name = prompt("Role name", selectedRole.name);
-                    if (!name?.trim()) return;
-                    const description = prompt("Role description (optional)", selectedRole.description || "") ?? selectedRole.description;
-                    setSelectedRole({ ...selectedRole, name: name.trim(), description: description || "" });
-                  }}
+                  onClick={() => setEditRoleModal({ name: selectedRole.name, description: selectedRole.description || "" })}
                   title="Edit role name/description"
                   className="p-1 text-gray-300 hover:text-gray-700 shrink-0"
                   aria-label="Edit role"
@@ -734,7 +731,7 @@ export default function AccessPage() {
                           {cat.isCustom && (
                             <>
                               <button
-                                onClick={() => { const l = prompt("Rename category", cat.label); if (l) renameNode(cat.key, l); }}
+                                onClick={() => setRenameNodeModal({ key: cat.key, label: cat.label, kind: "category" })}
                                 className="p-1 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100"
                                 aria-label={`Rename ${cat.label}`}
                               ><Pencil className="w-3.5 h-3.5" /></button>
@@ -777,7 +774,7 @@ export default function AccessPage() {
                                     {sc.isCustom && sc.key !== cat.key && (
                                       <>
                                         <button
-                                          onClick={() => { const l = prompt("Rename subcategory", sc.label); if (l) renameNode(sc.key, l); }}
+                                          onClick={() => setRenameNodeModal({ key: sc.key, label: sc.label, kind: "subcategory" })}
                                           className="p-1 text-gray-300 hover:text-gray-700 opacity-0 group-hover:opacity-100"
                                           aria-label={`Rename ${sc.label}`}
                                         ><Pencil className="w-3 h-3" /></button>
@@ -951,6 +948,86 @@ export default function AccessPage() {
                 className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editRoleModal && selectedRole && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setEditRoleModal(null)}>
+          <div className="bg-white rounded-md shadow-xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Edit Role</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Role name</label>
+                <input
+                  autoFocus
+                  value={editRoleModal.name}
+                  onChange={(e) => setEditRoleModal({ ...editRoleModal, name: e.target.value })}
+                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Description (optional)</label>
+                <textarea
+                  value={editRoleModal.description}
+                  onChange={(e) => setEditRoleModal({ ...editRoleModal, description: e.target.value })}
+                  rows={3}
+                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-400 resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button onClick={() => setEditRoleModal(null)} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!editRoleModal.name.trim()) return;
+                  setSelectedRole({ ...selectedRole, name: editRoleModal.name.trim(), description: editRoleModal.description || "" });
+                  setEditRoleModal(null);
+                }}
+                className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {renameNodeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setRenameNodeModal(null)}>
+          <div className="bg-white rounded-md shadow-xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">
+              Rename {renameNodeModal.kind === "category" ? "Category" : "Subcategory"}
+            </h3>
+            <input
+              autoFocus
+              value={renameNodeModal.label}
+              onChange={(e) => setRenameNodeModal({ ...renameNodeModal, label: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && renameNodeModal.label.trim()) {
+                  renameNode(renameNodeModal.key, renameNodeModal.label.trim());
+                  setRenameNodeModal(null);
+                }
+              }}
+              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-400"
+            />
+            <div className="flex justify-end gap-2 mt-5">
+              <button onClick={() => setRenameNodeModal(null)} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!renameNodeModal.label.trim()) return;
+                  renameNode(renameNodeModal.key, renameNodeModal.label.trim());
+                  setRenameNodeModal(null);
+                }}
+                className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                Save
               </button>
             </div>
           </div>
