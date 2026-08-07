@@ -134,7 +134,7 @@ export default function CRMPage() {
       .then(r => r.json())
       .then(d => {
         const modules = d.modules || []
-        setCrmEnabled(modules.some((m: any) => String(m.key).startsWith('crm')))
+        setCrmEnabled(modules.some((m: any) => String(m.key).startsWith('crm') || String(m.key) === 'sc_jobsheets'))
       })
       .catch(() => setCrmEnabled(true))
       .finally(() => setGateChecked(true))

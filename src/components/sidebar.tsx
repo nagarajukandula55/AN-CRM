@@ -404,7 +404,7 @@ export default function Sidebar() {
           {isCollapsed ? (
             <div className="flex justify-center">
               <div
-                title="AN-CRM"
+                title="My Biz Flow"
                 className="h-8 w-8 rounded-control flex items-center justify-center text-[11px] font-bold text-accent-fg"
                 style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-hover))" }}
               >
@@ -420,7 +420,7 @@ export default function Sidebar() {
                 AN
               </div>
               <div className="min-w-0">
-                <h2 className="text-base font-bold tracking-tight text-ink leading-tight">AN-CRM</h2>
+                <h2 className="text-base font-bold tracking-tight text-ink leading-tight">My Biz Flow</h2>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse shrink-0" />
                   <p className="text-[10px] text-ink-3 truncate">
