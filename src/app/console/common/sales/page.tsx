@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { validateGSTIN } from '@/lib/validation/gst'
 import {
   Loader2, ArrowLeft, Plus, X, Search, Eye, Trash2,
-  FileText, ShoppingCart, IndianRupee, Clock,
+  FileText, ShoppingCart, IndianRupee, Clock, Printer,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -338,6 +338,11 @@ export default function SalesPage() {
           actions={
             <>
               <Button variant="secondary" size="sm" onClick={() => router.push('/console')} icon={<ArrowLeft size={15} />}>Back</Button>
+              {/* Estimates/Quotations are a separate document type (see
+                  console/common/documents/quotations, SalesDocumentManager)
+                  -- linked here since a quote is usually the step right
+                  before an invoice and this is where people look for it. */}
+              <Button variant="secondary" size="sm" onClick={() => router.push('/console/common/documents/quotations')} icon={<FileText size={15} />}>New Estimate</Button>
               <Button onClick={() => router.push('/console/common/sales/new')} icon={<Plus size={15} />}>New Invoice</Button>
             </>
           }
@@ -444,6 +449,15 @@ export default function SalesPage() {
                           className="w-7 h-7 rounded-control bg-surface-2 flex items-center justify-center hover:bg-surface-3 transition">
                           <Eye size={13} className="text-ink-3" />
                         </button>
+                        <a
+                          href={`/invoice/${inv.invoiceNumber}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Print invoice"
+                          className="w-7 h-7 rounded-control bg-surface-2 flex items-center justify-center hover:bg-surface-3 transition"
+                        >
+                          <Printer size={13} className="text-ink-3" />
+                        </a>
                       </div>
                     </td>
                   </tr>
@@ -838,9 +852,19 @@ export default function SalesPage() {
                   <Badge tone="warning">Non-GST</Badge>
                 )}
               </div>
-              <button onClick={() => setPreview(null)} className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100">
-                <X size={13} className="text-gray-500" />
-              </button>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/invoice/${preview.invoiceNumber}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 flex items-center gap-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                >
+                  <Printer size={13} /> Print
+                </a>
+                <button onClick={() => setPreview(null)} className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100">
+                  <X size={13} className="text-gray-500" />
+                </button>
+              </div>
             </div>
 
             {/* Invoice Document */}

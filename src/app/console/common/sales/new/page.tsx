@@ -273,6 +273,7 @@ export default function NewSalesInvoicePage() {
         const d = await res.json().catch(() => ({}))
         throw new Error(d.error ?? d.message ?? 'Failed to create invoice')
       }
+      const d = await res.json().catch(() => ({}))
       if (!selectedCustomerId && customer.name.trim()) {
         fetch('/api/customers', {
           method: 'POST',
@@ -280,6 +281,12 @@ export default function NewSalesInvoicePage() {
           body: JSON.stringify({ businessId, name: customer.name, phone: customer.phone, email: customer.email, gstin: customer.gstin, address: customer.address, city: customer.city, state: customer.state, pincode: customer.pincode, source: 'sales_invoice' }),
         }).catch(() => {})
       }
+      // Open the printable invoice in a new tab right away -- there was
+      // previously no way to print a just-created invoice without going
+      // back to the list and finding it, no Print action existed there
+      // either (see console/common/sales/page.tsx's own fix).
+      const createdInvoiceNumber = d?.invoice?.invoiceNumber
+      if (createdInvoiceNumber) window.open(`/invoice/${createdInvoiceNumber}`, '_blank', 'noopener,noreferrer')
       router.push('/console/common/sales')
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : 'Something went wrong')
