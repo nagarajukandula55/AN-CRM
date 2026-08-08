@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingPanel } from '@/components/ui/Spinner'
+import { openPrintPopup } from '@/lib/openPrintPopup'
 
 interface JobSheetRow {
   _id: string
@@ -260,14 +261,14 @@ export default function JobSheetsListPage() {
                         <button
                           title="Print Workorder"
                           className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2"
-                          onClick={() => router.push(`/print/jobsheets/${job._id}`)}
+                          onClick={() => openPrintPopup(`/print/jobsheets/${job._id}`)}
                         >
                           <Printer className="w-4 h-4" />
                         </button>
                         <button
                           title="Print Estimate"
                           className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2"
-                          onClick={() => router.push(`/print/jobsheets/${job._id}?doc=estimate`)}
+                          onClick={() => openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)}
                         >
                           <FileText className="w-4 h-4" />
                         </button>

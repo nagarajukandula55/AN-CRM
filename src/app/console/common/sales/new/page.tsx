@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/Card'
 import { StateSelect, CitySelect, PincodeInput } from '@/components/shared/LocationSelect'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 import { GST_SLABS } from '@/core/gst/gstSlabs'
+import { openPrintPopup } from '@/lib/openPrintPopup'
 
 /**
  * Full-page invoice creation, not a modal -- per explicit direction to
@@ -286,7 +287,7 @@ export default function NewSalesInvoicePage() {
       // back to the list and finding it, no Print action existed there
       // either (see console/common/sales/page.tsx's own fix).
       const createdInvoiceNumber = d?.invoice?.invoiceNumber
-      if (createdInvoiceNumber) window.open(`/invoice/${createdInvoiceNumber}`, '_blank', 'noopener,noreferrer')
+      if (createdInvoiceNumber) openPrintPopup(`/invoice/${createdInvoiceNumber}`)
       router.push('/console/common/sales')
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : 'Something went wrong')

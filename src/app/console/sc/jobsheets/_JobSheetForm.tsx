@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { LoadingPanel } from '@/components/ui/Spinner'
 import { GST_SLABS } from '@/core/gst/gstSlabs'
+import { openPrintPopup } from '@/lib/openPrintPopup'
 
 /**
  * SC's entire workorder lifecycle -- intake through closure -- on ONE
@@ -71,6 +72,7 @@ interface JobSheet {
   remark?: string; ccoName?: string; invoiceNumber?: string; invoiceId?: string; cancelReason?: string
   engineerAssignedAt?: string; repairInProgressAt?: string; partPendingAt?: string; repairResumedAt?: string
   completedAt?: string; handedOverAt?: string
+  paymentCollected?: number; paymentMode?: string; paymentCollectedByName?: string
   solutionId?: { code?: string; description?: string } | string
 }
 
@@ -827,15 +829,15 @@ export default function SCJobSheetScreen() {
         actions={
           <>
             <Button variant="secondary" size="sm" onClick={() => router.push('/console/sc/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
-            <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}`)} icon={<Printer className="w-4 h-4" />}>Print Workorder</Button>
+            <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/print/jobsheets/${job._id}`)} icon={<Printer className="w-4 h-4" />}>Print Workorder</Button>
             {inRepair && (
-              <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}?doc=estimate`)} icon={<FileText className="w-4 h-4" />}>Print Estimate</Button>
+              <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)} icon={<FileText className="w-4 h-4" />}>Print Estimate</Button>
             )}
             {(job.status === 'REPAIR_COMPLETED' || job.status === 'CLOSED') && (
               <>
-                <Button variant="secondary" size="sm" onClick={() => router.push(`/print/jobsheets/${job._id}/service-record`)} icon={<FileText className="w-4 h-4" />}>Service Order</Button>
+                <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/print/jobsheets/${job._id}/service-record`)} icon={<FileText className="w-4 h-4" />}>Service Order</Button>
                 {job.invoiceId && (
-                  <Button variant="secondary" size="sm" onClick={() => router.push(`/console/common/documents/crm-invoices/${job.invoiceId}`)} icon={<FileText className="w-4 h-4" />}>Invoice</Button>
+                  <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/console/common/documents/crm-invoices/${job.invoiceId}`)} icon={<FileText className="w-4 h-4" />}>Invoice</Button>
                 )}
               </>
             )}
@@ -1147,8 +1149,32 @@ export default function SCJobSheetScreen() {
       )}
 
       {job.status === 'CLOSED' && (
-        <Card className="p-5 mt-6 text-center">
-          <p className="text-sm text-ink-2">This job sheet is closed.</p>
+        <Card className="p-5 mt-6">
+          <h3 className="text-sm font-semibold text-ink mb-3">Handover Summary</h3>
+          {/* Was just "This job sheet is closed." with no detail at all --
+              reported live: the handover/payment info entered when this
+              job was closed had nowhere to be verified afterward. Parts &
+              Service Lines and the milestone stepper above already stay
+              visible (read-only) once closed; this fills in the one piece
+              that was missing. */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <span className="text-ink-3 text-xs">Payment Collected</span>
+              <p className="text-ink tabular">{job.paymentCollected != null ? `₹${job.paymentCollected}` : '—'}</p>
+            </div>
+            <div>
+              <span className="text-ink-3 text-xs">Payment Mode</span>
+              <p className="text-ink">{job.paymentMode || '—'}</p>
+            </div>
+            <div>
+              <span className="text-ink-3 text-xs">Payment Collected By</span>
+              <p className="text-ink">{job.paymentCollectedByName || '—'}</p>
+            </div>
+            <div>
+              <span className="text-ink-3 text-xs">Handed Over At</span>
+              <p className="text-ink">{fmtDateTime(job.handedOverAt) || '—'}</p>
+            </div>
+          </div>
         </Card>
       )}
 

@@ -18,7 +18,6 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { Plus, X, Printer, Trash2, Loader2, Search } from "lucide-react";
 import { validateGSTIN } from "@/lib/validation/gst";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
@@ -31,6 +30,7 @@ import { Field, Input, Select } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingPanel } from "@/components/ui/Spinner";
 import { GST_SLABS } from "@/core/gst/gstSlabs";
+import { openPrintPopup } from "@/lib/openPrintPopup";
 
 interface LineItem {
   description: string;
@@ -377,9 +377,9 @@ export default function SalesDocumentManager({
                     <td className="px-6 py-3 text-ink-3 text-xs">{new Date(d.createdAt).toLocaleDateString("en-IN")}</td>
                     <td className="px-6 py-3">
                       <div className="flex items-center justify-center gap-1">
-                        <Link href={`/console/common/documents/sales-documents/${d._id}/print`} target="_blank" className="inline-flex items-center justify-center w-8 h-8 rounded-control text-ink-3 hover:text-ink hover:bg-surface-2" title="Print">
+                        <button onClick={() => openPrintPopup(`/console/common/documents/sales-documents/${d._id}/print`)} className="inline-flex items-center justify-center w-8 h-8 rounded-control text-ink-3 hover:text-ink hover:bg-surface-2" title="Print">
                           <Printer className="w-4 h-4" />
-                        </Link>
+                        </button>
                         <button onClick={() => handleDelete(d._id)} className="inline-flex items-center justify-center w-8 h-8 rounded-control text-ink-3 hover:text-danger hover:bg-danger-soft" title="Delete">
                           <Trash2 className="w-4 h-4" />
                         </button>

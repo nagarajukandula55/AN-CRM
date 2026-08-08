@@ -17,6 +17,7 @@ import { LoadingPanel } from '@/components/ui/Spinner'
 import { Input } from '@/components/ui/Input'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 import { GST_SLABS } from '@/core/gst/gstSlabs'
+import { openPrintPopup } from '@/lib/openPrintPopup'
 
 interface Customer {
   name: string
@@ -449,15 +450,13 @@ export default function SalesPage() {
                           className="w-7 h-7 rounded-control bg-surface-2 flex items-center justify-center hover:bg-surface-3 transition">
                           <Eye size={13} className="text-ink-3" />
                         </button>
-                        <a
-                          href={`/invoice/${inv.invoiceNumber}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={() => openPrintPopup(`/invoice/${inv.invoiceNumber}`)}
                           title="Print invoice"
                           className="w-7 h-7 rounded-control bg-surface-2 flex items-center justify-center hover:bg-surface-3 transition"
                         >
                           <Printer size={13} className="text-ink-3" />
-                        </a>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -853,14 +852,12 @@ export default function SalesPage() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <a
-                  href={`/invoice/${preview.invoiceNumber}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => openPrintPopup(`/invoice/${preview.invoiceNumber}`)}
                   className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 flex items-center gap-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
                 >
                   <Printer size={13} /> Print
-                </a>
+                </button>
                 <button onClick={() => setPreview(null)} className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100">
                   <X size={13} className="text-gray-500" />
                 </button>
