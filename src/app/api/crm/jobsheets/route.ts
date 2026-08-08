@@ -19,6 +19,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
 import { captureCustomer } from "@/services/customer.service";
 import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
@@ -43,13 +44,27 @@ export async function GET(req: NextRequest) {
 
     const userId = session.user.id;
     const h = await headers();
-    const bizId = h.get("x-active-business-id") || req.nextUrl.searchParams.get("businessId");
+    const requestedBizId = h.get("x-active-business-id") || req.nextUrl.searchParams.get("businessId");
 
     await connectDB();
+
+    // SECURITY: same cross-tenant leak as crm/calls (see
+    // lib/auth/resolveAuthorizedBusinessId.ts) -- an unset
+    // x-active-business-id header (stale JWT) used to fall through to
+    // trusting a raw ?businessId= from the client with no ownership
+    // check at all.
+    const bizId = await resolveAuthorizedBusinessId(
+      userId,
+      requestedBizId,
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
 
     const filter: any = { isDeleted: false };
     if (bizId && mongoose.Types.ObjectId.isValid(bizId)) {
       filter.businessId = new mongoose.Types.ObjectId(bizId);
+    } else if (!session.isSuperAdmin) {
+      return NextResponse.json({ success: true, jobSheets: [], total: 0, page: 1, totalPages: 0 });
     }
 
     const status = req.nextUrl.searchParams.get("status");
@@ -167,7 +182,18 @@ export async function POST(req: NextRequest) {
       callId,
     } = body;
 
-    const effectiveBizId = body.businessId || bizId;
+    // SECURITY: body.businessId used to win outright over the trusted
+    // header -- see the matching GET fix above / resolveAuthorizedBusinessId's
+    // own comment. Any authenticated caller could otherwise attribute a
+    // new job sheet to any business just by putting that businessId in
+    // the request body.
+    await connectDB();
+    const effectiveBizId = await resolveAuthorizedBusinessId(
+      userId,
+      body.businessId || bizId,
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
 
     if (!customerName?.trim()) {
       return NextResponse.json({ success: false, message: "Customer name is required" }, { status: 400 });

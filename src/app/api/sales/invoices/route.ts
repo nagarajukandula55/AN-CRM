@@ -17,6 +17,8 @@ import { generateDocumentNumber } from "@/core/numbering/numberingService";
 import SalesInvoice from "@/models/SalesInvoice";
 import { logAction } from "@/lib/audit/logAction";
 import { captureCustomer } from "@/services/customer.service";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 /* ── Invoice number generator ─────────────────────────────────────── */
 /**
@@ -69,11 +71,22 @@ export async function GET(req: NextRequest) {
   try {
     const h        = await headers()
     const userId   = h.get("x-user-id")
-    const bizId    = h.get("x-active-business-id") || req.nextUrl.searchParams.get("businessId")
+    const requestedBizId = h.get("x-active-business-id") || req.nextUrl.searchParams.get("businessId")
 
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     await connectDB()
+
+    // SECURITY: an unset x-active-business-id header (stale JWT) used to
+    // fall through to trusting a raw ?businessId= from the client with no
+    // ownership check -- see lib/auth/resolveAuthorizedBusinessId.ts.
+    const session = await getEnrichedSession()
+    const bizId = await resolveAuthorizedBusinessId(
+      userId,
+      requestedBizId,
+      !!session?.isSuperAdmin,
+      session?.business?.businessId || null
+    )
 
     const filter: any = {}
     if (bizId && mongoose.Types.ObjectId.isValid(bizId)) {
@@ -148,7 +161,15 @@ export async function POST(req: NextRequest) {
 
     await connectDB()
 
-    const effectiveBizId = body.businessId || bizId
+    // SECURITY: body.businessId used to win outright over the trusted
+    // header -- see resolveAuthorizedBusinessId's own comment.
+    const session = await getEnrichedSession()
+    const effectiveBizId = await resolveAuthorizedBusinessId(
+      userId,
+      body.businessId || bizId,
+      !!session?.isSuperAdmin,
+      session?.business?.businessId || null
+    )
 
     /* Compute GST-split per item */
     let subtotal = 0, cgstTotal = 0, sgstTotal = 0, igstTotal = 0
@@ -193,7 +214,7 @@ export async function POST(req: NextRequest) {
     const taxTotal   = cgstTotal + sgstTotal + igstTotal
     const grandTotal = subtotal + taxTotal - discountAmount
 
-    const invoiceNumber = await nextInvoiceNumber(effectiveBizId || userId, effectiveBizId)
+    const invoiceNumber = await nextInvoiceNumber(effectiveBizId || userId, effectiveBizId || undefined)
 
     const invoice = await SalesInvoice.create({
       invoiceNumber,

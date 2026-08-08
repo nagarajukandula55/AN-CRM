@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import AnuIssue from "@/models/AnuIssue";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 import { notify } from "@/lib/notify";
 import { notifySuperAdmins } from "@/services/notification.service";
 
@@ -111,10 +112,15 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const h = req.headers;
-    const bizId = h.get("x-active-business-id") || req.nextUrl.searchParams.get("businessId");
+    const requestedBizId = h.get("x-active-business-id") || req.nextUrl.searchParams.get("businessId");
     const status = req.nextUrl.searchParams.get("status");
 
     const isPlatformStaff = session.isSuperAdmin || h.get("x-is-platform-staff") === "true";
+    // SECURITY: requestedBizId used to be trusted outright for anyone who
+    // wasn't platform staff -- see lib/auth/resolveAuthorizedBusinessId.ts.
+    const bizId = isPlatformStaff
+      ? requestedBizId
+      : await resolveAuthorizedBusinessId(session.user.id, requestedBizId, false, session.business?.businessId || null);
     if (!bizId && !isPlatformStaff) {
       return NextResponse.json({ success: false, message: "businessId is required" }, { status: 400 });
     }

@@ -9,6 +9,8 @@ import { connectDB } from '@/lib/mongodb'
 import mongoose, { Schema, Document, Model } from 'mongoose'
 import { logAction } from '@/lib/audit/logAction'
 import { captureCustomer } from '@/services/customer.service'
+import { getEnrichedSession } from '@/lib/auth/session-enriched'
+import { resolveAuthorizedBusinessId } from '@/lib/auth/resolveAuthorizedBusinessId'
 
 /* =========================================================
  * Inline Lead model (to avoid extra model file dependency)
@@ -76,18 +78,37 @@ const Lead: Model<ILead> =
 
 export async function GET(req: Request) {
   try {
+    // SECURITY: this route previously had NO authentication check at all
+    // -- an unauthenticated caller could list every lead across every
+    // business just by hitting the URL, and query.businessId (below) was
+    // a raw, unverified query param with no ownership check on top of
+    // that. Now requires a session and locks non-super-admins to their
+    // own business, same pattern as crm/calls and crm/jobsheets.
+    const session = await getEnrichedSession()
+    if (!session?.user) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
+    }
+
     await connectDB()
 
     const { searchParams } = new URL(req.url)
     const stage = searchParams.get('stage')
     const search = searchParams.get('search')
-    const businessId = searchParams.get('businessId')
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      searchParams.get('businessId'),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    )
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
 
     const query: any = { isDeleted: false }
     if (stage) query.stage = stage
     if (businessId) query.businessId = businessId
+    else if (!session.isSuperAdmin) {
+      return NextResponse.json({ success: true, leads: [], pagination: { page: 1, limit, total: 0, pages: 0 }, stageCounts: {} })
+    }
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -106,8 +127,11 @@ export async function GET(req: Request) {
     ])
 
     // Stage counts for kanban view
+    // SECURITY: this used to $match on isDeleted only, ignoring the same
+    // businessId scoping the list query above used -- stage counts leaked
+    // a cross-tenant aggregate regardless of how the main list was scoped.
     const stageCounts = await Lead.aggregate([
-      { $match: { isDeleted: false } },
+      { $match: query },
       { $group: { _id: '$stage', count: { $sum: 1 }, totalValue: { $sum: '$value' } } },
     ])
 
@@ -135,8 +159,18 @@ export async function POST(req: Request) {
 
     await connectDB()
 
+    const session = await getEnrichedSession()
     const body = await req.json()
-    const { name, company, email, phone, source, stage, priority, value, currency, businessId, assignedTo, notes, tags } = body
+    const { name, company, email, phone, source, stage, priority, value, currency, assignedTo, notes, tags } = body
+    // SECURITY: body.businessId used to be written straight onto the new
+    // Lead with no ownership check -- any authenticated caller could
+    // attribute a lead to any business.
+    const businessId = await resolveAuthorizedBusinessId(
+      userId,
+      body.businessId || null,
+      !!session?.isSuperAdmin,
+      session?.business?.businessId || null
+    )
 
     if (!name?.trim()) {
       return NextResponse.json({ success: false, message: 'Lead name is required' }, { status: 400 })

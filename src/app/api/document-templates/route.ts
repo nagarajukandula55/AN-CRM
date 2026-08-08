@@ -5,6 +5,8 @@ import { listTemplates, createTemplate } from "@/core/documentTemplates/service"
 import { BLOCK_PALETTE } from "@/core/documentTemplates/blockPalette";
 import { DOCUMENT_TEMPLATE_TYPES, type DocumentTemplateType } from "@/models/DocumentTemplate";
 import { logAction } from "@/lib/audit/logAction";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 /* =========================================================
  * GET /api/document-templates?businessId=&documentType=
@@ -22,8 +24,18 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId") || h.get("x-active-business-id");
+    const requestedBusinessId = searchParams.get("businessId") || h.get("x-active-business-id");
     const documentType = searchParams.get("documentType") || undefined;
+
+    // SECURITY: requestedBusinessId used to be trusted outright -- see
+    // lib/auth/resolveAuthorizedBusinessId.ts.
+    const session = await getEnrichedSession();
+    const businessId = await resolveAuthorizedBusinessId(
+      userId,
+      requestedBusinessId,
+      !!session?.isSuperAdmin,
+      session?.business?.businessId || null
+    );
 
     if (!businessId) {
       return NextResponse.json({ success: false, error: "businessId is required" }, { status: 400 });
@@ -59,7 +71,15 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const businessId = body.businessId || h.get("x-active-business-id");
+    // SECURITY: body.businessId used to win outright over the trusted
+    // header -- see resolveAuthorizedBusinessId's own comment.
+    const session = await getEnrichedSession();
+    const businessId = await resolveAuthorizedBusinessId(
+      userId,
+      body.businessId || h.get("x-active-business-id"),
+      !!session?.isSuperAdmin,
+      session?.business?.businessId || null
+    );
     const { documentType, name, blocks, accentColor, logoUrl, isDefault } = body;
 
     if (!businessId) {

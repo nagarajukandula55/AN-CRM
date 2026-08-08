@@ -8,6 +8,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 /* =========================================================
  * GET /api/reports/invoices-zip?from=&to=&businessId=
@@ -34,7 +35,17 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
     const h = await headers();
-    const bizId = h.get("x-active-business-id") || req.nextUrl.searchParams.get("businessId");
+    // SECURITY: requestedBizId used to be trusted outright -- see
+    // lib/auth/resolveAuthorizedBusinessId.ts. A bulk ZIP of every invoice
+    // in a date range is exactly the kind of high-value export a
+    // cross-tenant leak here would have exposed in full.
+    const requestedBizId = h.get("x-active-business-id") || req.nextUrl.searchParams.get("businessId");
+    const bizId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      requestedBizId,
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
 
     const from = req.nextUrl.searchParams.get("from");
     const to = req.nextUrl.searchParams.get("to");

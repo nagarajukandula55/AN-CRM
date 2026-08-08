@@ -14,6 +14,7 @@ import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { sendAccountCredentialsEmail } from "@/services/email/resend.service";
 import { generateUniqueUserId } from '@/lib/auth/generateUserId'
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 // Same anti-escalation allow-list as api/admin/users/route.ts's POST --
 // SUPER_ADMIN is deliberately excluded and checked separately below.
@@ -80,17 +81,28 @@ export async function POST(req: Request) {
       );
     }
 
+    // SECURITY: body.businessId used to be trusted outright -- a caller
+    // with staff.create on their own business could mint a staff account
+    // under ANY OTHER business by just naming its id. Super admins keep
+    // full choice; everyone else is locked to their own business.
+    const authorizedBusinessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      body.businessId || null,
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
+
     const user = await User.create({
       name: body.name,
       email: body.email,
       username: await generateUniqueUserId(),
       password: hashedPassword,
       role: requestedRole,
-      businessId: body.businessId,
+      businessId: authorizedBusinessId,
       mustChangePassword: true,
     })
 
-    await UserRole.create({ userId: user._id, roleId: roleDoc._id, businessId: body.businessId || null });
+    await UserRole.create({ userId: user._id, roleId: roleDoc._id, businessId: authorizedBusinessId });
 
     logAction({
       action: "CREATE",

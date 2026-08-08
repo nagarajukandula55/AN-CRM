@@ -6,6 +6,10 @@ import { connectDB } from "@/lib/mongodb";
 import { Types } from "mongoose";
 import { generateGlobalDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { requirePermission } from "@/middleware/permission.guard";
+import { buildPermissionCode } from "@/core/access/actions";
 // Required for .populate(...) below -- model must be registered before populate can resolve it.
 import "@/models/Business";
 
@@ -25,7 +29,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     // Prefer the explicit query param, fall back to the active business
     // injected by the auth middleware.
-    const businessId =
+    const requestedBusinessId =
       searchParams.get("businessId") || h.get("x-active-business-id");
     const search = searchParams.get("search");
     const status = searchParams.get("status");
@@ -40,7 +44,24 @@ export async function GET(req: NextRequest) {
     // created under a different business silently never appeared in the
     // list even though it existed in the DB (it only showed up after
     // switching the active business to match).
-    const wantsAll = (isSuperAdmin || isPlatformStaff) && businessId === "ALL";
+    const wantsAll = (isSuperAdmin || isPlatformStaff) && requestedBusinessId === "ALL";
+
+    // SECURITY: for anyone who isn't a super admin/platform staff, the
+    // requested businessId used to be trusted outright -- a regular vendor
+    // user could pass another business's id and see its vendor list (e.g.
+    // sub-vendors) with no ownership check. Non-admin callers now always
+    // get their OWN business, verified live, regardless of what they ask
+    // for.
+    let businessId: string | null = requestedBusinessId;
+    if (!wantsAll && !isSuperAdmin && !isPlatformStaff) {
+      const session = await getEnrichedSession();
+      businessId = await resolveAuthorizedBusinessId(
+        userId,
+        requestedBusinessId,
+        false,
+        session?.business?.businessId || null
+      );
+    }
 
     if (!wantsAll && (!businessId || !Types.ObjectId.isValid(businessId))) {
       return NextResponse.json(
@@ -110,8 +131,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // SECURITY: this route had no permission check at all -- any
+    // authenticated user could POST here directly (bypassing the
+    // admin-only UI gating entirely) and onboard a vendor under any
+    // business.
+    const session = await getEnrichedSession();
+    try {
+      requirePermission(session as any, buildPermissionCode("vendors", "create"));
+    } catch (err: any) {
+      return NextResponse.json(
+        { success: false, error: err.message },
+        { status: err.code === "FORBIDDEN" ? 403 : 401 }
+      );
+    }
+
     const body = await req.json();
-    const businessId = body.businessId || h.get("x-active-business-id");
+    // SECURITY: body.businessId used to win outright over the trusted
+    // header -- see resolveAuthorizedBusinessId's own comment. Super
+    // admins/platform staff keep full choice (matches GET's ALL bypass);
+    // everyone else is locked to their own business regardless of what
+    // this field says.
+    const isSuperAdmin = h.get("x-is-super-admin") === "true";
+    const isPlatformStaff = h.get("x-is-platform-staff") === "true";
+    const requestedBusinessId = body.businessId || h.get("x-active-business-id");
+    const businessId = isSuperAdmin || isPlatformStaff
+      ? requestedBusinessId
+      : await resolveAuthorizedBusinessId(userId, requestedBusinessId, false, session?.business?.businessId || null);
     const {
       companyName,
       businessType,
