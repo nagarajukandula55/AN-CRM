@@ -212,6 +212,41 @@ export default function SCJobSheetScreen() {
     title: '', remark: '', ccoName: '',
   })
   useEffect(() => { if (currentUserName && !intake.ccoName) setIntake(p => ({ ...p, ccoName: currentUserName })) }, [currentUserName])
+
+  // Customer lookup by contact number -- typing a phone number searches
+  // existing customers for this business; picking a match autofills the
+  // rest of the Customer/Address fields below, which stay fully editable
+  // afterward (plain controlled inputs, same as manual entry -- nothing
+  // here disables/locks them).
+  interface CustomerMatch {
+    _id: string; name: string; phone?: string; email?: string; gstin?: string
+    address?: string; city?: string; state?: string; pincode?: string
+  }
+  const [customerMatches, setCustomerMatches] = useState<CustomerMatch[]>([])
+  const [showCustomerMatches, setShowCustomerMatches] = useState(false)
+  useEffect(() => {
+    if (!businessId || intake.phone.trim().length < 3) { setCustomerMatches([]); return }
+    const t = setTimeout(() => {
+      fetch(`/api/customers?businessId=${businessId}&search=${encodeURIComponent(intake.phone.trim())}`)
+        .then(r => r.json())
+        .then(d => setCustomerMatches((d?.customers || []).slice(0, 6)))
+        .catch(() => setCustomerMatches([]))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [intake.phone, businessId])
+  function applyCustomerMatch(c: CustomerMatch) {
+    setIntake(p => ({
+      ...p,
+      phone: c.phone || p.phone,
+      customerName: c.name || p.customerName,
+      gstin: c.gstin || p.gstin,
+      address: c.address || p.address,
+      city: c.city || p.city,
+      state: c.state || p.state,
+      pincode: c.pincode || p.pincode,
+    }))
+    setShowCustomerMatches(false)
+  }
   const modelsForSelectedBrand: string[] = intake.brandName ? (savedModelsByBrand[intake.brandName] || []) : []
 
   const enabledDeviceCategories: DeviceCategory[] = businessData?.business?.enabledDeviceCategories?.length
@@ -467,6 +502,9 @@ export default function SCJobSheetScreen() {
     setShowPartPendingModal(false)
   }
 
+  const [showCompleteModal, setShowCompleteModal] = useState(false)
+  const [invoiceTypeChoice, setInvoiceTypeChoice] = useState<'GST' | 'NON_GST'>('GST')
+
   async function completeAndInvoice() {
     if (!jobId) return
     if (!engineerName.trim()) { setActionError('Engineer name is required to complete the repair.'); return }
@@ -482,10 +520,11 @@ export default function SCJobSheetScreen() {
       const res = await fetch(`/api/crm/jobsheets/${jobId}/close`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ remark, engineerName }),
+        body: JSON.stringify({ remark, engineerName, invoiceType: invoiceTypeChoice }),
       })
       const d = await res.json()
       if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to complete repair')
+      setShowCompleteModal(false)
       fetchJob()
     } catch (err: any) {
       setActionError(err.message || 'Something went wrong')
@@ -562,13 +601,38 @@ export default function SCJobSheetScreen() {
               <Card className="p-4 space-y-2.5">
                 <h3 className="text-xs font-semibold text-ink">Customer</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className={labelCls}>Customer Name *</label>
-                    <input required value={intake.customerName} onChange={e => setIntake(p => ({ ...p, customerName: e.target.value }))} className={inputCls} />
+                  <div className="relative">
+                    <label className={labelCls}>Contact No *</label>
+                    <input
+                      required
+                      type="tel"
+                      autoFocus
+                      value={intake.phone}
+                      onChange={e => { setIntake(p => ({ ...p, phone: e.target.value })); setShowCustomerMatches(true) }}
+                      onFocus={() => setShowCustomerMatches(true)}
+                      onBlur={() => setTimeout(() => setShowCustomerMatches(false), 150)}
+                      className={inputCls}
+                      placeholder="Type to look up an existing customer"
+                    />
+                    {showCustomerMatches && customerMatches.length > 0 && (
+                      <div className="absolute z-20 mt-1 w-full bg-surface border border-border rounded-control shadow-card-lg max-h-56 overflow-y-auto">
+                        {customerMatches.map((c) => (
+                          <button
+                            key={c._id}
+                            type="button"
+                            onClick={() => applyCustomerMatch(c)}
+                            className="w-full text-left px-3 py-2 hover:bg-surface-2 text-sm"
+                          >
+                            <span className="font-medium text-ink">{c.name}</span>
+                            <span className="text-ink-3 ml-2">{c.phone}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
-                    <label className={labelCls}>Contact No *</label>
-                    <input required type="tel" value={intake.phone} onChange={e => setIntake(p => ({ ...p, phone: e.target.value }))} className={inputCls} />
+                    <label className={labelCls}>Customer Name *</label>
+                    <input required value={intake.customerName} onChange={e => setIntake(p => ({ ...p, customerName: e.target.value }))} className={inputCls} placeholder="Fills in automatically if the number matches, or type it in" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -791,7 +855,7 @@ export default function SCJobSheetScreen() {
               <Button variant="secondary" size="sm" onClick={() => { setBrandJobNo(''); setShowPartPendingModal(true) }} disabled={saving}>Mark Part Pending</Button>
             )}
             {inRepair && (
-              <Button size="sm" onClick={completeAndInvoice} disabled={saving}>Complete Repair &amp; Invoice</Button>
+              <Button size="sm" onClick={() => setShowCompleteModal(true)} disabled={saving}>Complete Repair &amp; Invoice</Button>
             )}
             {job.status === 'CREATED' && (
               <Button size="sm" onClick={proceedForRepair} disabled={saving}>Proceed for Repair</Button>
@@ -1039,6 +1103,44 @@ export default function SCJobSheetScreen() {
             <div className="flex justify-end gap-2 pt-1">
               <Button variant="secondary" size="sm" onClick={() => setShowAddCollectorModal(false)}>Cancel</Button>
               <Button size="sm" onClick={submitNewCollector} disabled={savingCollector || !newCollectorName.trim()} icon={savingCollector ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save &amp; Use</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCompleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => !saving && setShowCompleteModal(false)}>
+          <div className="bg-surface border border-border rounded-card shadow-card-lg w-full max-w-sm p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-ink">Complete Repair &amp; Invoice</h3>
+              <button onClick={() => !saving && setShowCompleteModal(false)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
+            </div>
+            {intake.company?.trim() ? (
+              <p className="text-xs text-ink-3">This is a B2B customer (company name on file) — always invoiced on the B2B series, GST/Non-GST choice below doesn't apply.</p>
+            ) : (
+              <div>
+                <label className={labelCls}>Raise as</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setInvoiceTypeChoice('GST')}
+                    className={`flex-1 rounded-control border px-3 py-2 text-sm ${invoiceTypeChoice === 'GST' ? 'border-accent bg-accent-soft text-accent-deep' : 'border-border text-ink-2'}`}
+                  >
+                    GST Invoice
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInvoiceTypeChoice('NON_GST')}
+                    className={`flex-1 rounded-control border px-3 py-2 text-sm ${invoiceTypeChoice === 'NON_GST' ? 'border-accent bg-accent-soft text-accent-deep' : 'border-border text-ink-2'}`}
+                  >
+                    Non-GST Invoice
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="secondary" size="sm" onClick={() => setShowCompleteModal(false)} disabled={saving}>Cancel</Button>
+              <Button size="sm" onClick={completeAndInvoice} disabled={saving} icon={saving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Confirm &amp; Invoice</Button>
             </div>
           </div>
         </div>

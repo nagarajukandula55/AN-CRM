@@ -142,7 +142,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // what taxRate each line item/BOM part normally carries. B2B
     // invoices are never affected by this toggle, per explicit direction.
     const applyB2CTax = (business as any)?.applyTaxOnB2CBilling !== false;
-    const zeroTaxForB2C = !isB2B && !applyB2CTax;
+    // Explicit per-invoice choice from the Handover & Close screen
+    // ("Raise as GST Invoice" / "Raise as Non-GST Invoice") overrides the
+    // business-level applyTaxOnB2CBilling default for THIS invoice only --
+    // lets a shop that normally bills with GST still hand a customer a
+    // simple zero-tax bill for a specific job, or vice versa, without
+    // changing a business-wide setting. B2B is unaffected (never zero-tax).
+    const forceInvoiceType: "GST" | "NON_GST" | undefined =
+      body.invoiceType === "GST" || body.invoiceType === "NON_GST" ? body.invoiceType : undefined;
+    const zeroTaxForB2C = !isB2B && (forceInvoiceType ? forceInvoiceType === "NON_GST" : !applyB2CTax);
     // Per-workorder "Tax Apply" toggle (Parts & Service Lines) -- lets a
     // service center switch tax off for this job regardless of what each
     // line's own tax rate is set to, without having to zero every line.
@@ -231,7 +239,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // invoiceItems (the actual, possibly-zeroed rates), not the raw job
     // sheet line items, so a B2C bill with tax turned off always lands on
     // NON_GST_INVOICE even if its BOM parts normally carry GST.
-    const isGstInvoice = zeroTaxForB2C ? false : invoiceItems.some((item: any) => (item.taxRate || 0) > 0);
+    const isGstInvoice = !isB2B && forceInvoiceType
+      ? forceInvoiceType === "GST"
+      : zeroTaxForB2C ? false : invoiceItems.some((item: any) => (item.taxRate || 0) > 0);
     const { value: invoiceNumber } = await generateDocumentNumber(
       jobSheet.businessId.toString(),
       isB2B ? "B2B_INVOICE" : isGstInvoice ? "INVOICE" : "NON_GST_INVOICE"

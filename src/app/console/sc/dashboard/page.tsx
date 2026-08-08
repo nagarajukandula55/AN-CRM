@@ -9,10 +9,10 @@ import {
   ArrowRight,
   AlertCircle,
   CheckCircle2,
-  IndianRupee,
-  TrendingUp,
-  Wallet,
   CalendarDays,
+  CalendarRange,
+  Calendar,
+  CalendarClock,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -27,12 +27,6 @@ interface Workorder {
   title: string
   status: string
   createdAt: string
-}
-
-const OPEN_WORKORDER_STATUSES = new Set(['CREATED', 'REPAIR_STARTED', 'REPAIR_IN_PROGRESS', 'REPAIR_COMPLETED'])
-
-function ageingDays(createdAt: string): number {
-  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000)
 }
 
 const fmtDate = (d: string) =>
@@ -74,45 +68,35 @@ export default function ScDashboard() {
       .finally(() => setGateChecked(true))
   }, [businessId])
 
+  // Recent Activity only ever needs the newest few rows, so the capped
+  // (100-row) list endpoint is fine for that. Every KPI count below comes
+  // from /stats instead (real countDocuments/aggregate totals) -- a busy
+  // shop with 100+ workorders in a year would otherwise silently
+  // undercount "This Year" etc. if computed from this capped page.
   const { data: workordersData, isLoading: loadingWorkorders } = useSWR(
     businessId ? `/api/crm/jobsheets?businessId=${businessId}&limit=100` : null
   )
   const workorders: Workorder[] = workordersData?.jobSheets || []
 
-  const { data: revenueData } = useSWR(businessId ? `/api/crm/revenue?businessId=${businessId}` : null)
-  const revenue = revenueData?.success
-    ? { totalRevenue: revenueData.totalRevenue, revenueThisMonth: revenueData.revenueThisMonth, outstanding: revenueData.outstanding }
-    : { totalRevenue: 0, revenueThisMonth: 0, outstanding: 0 }
-
-  const fmtCurrency = (n: number) =>
-    n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
-
-  const workorderStatusBreakdown = workorders.reduce<Record<string, number>>((acc, w) => {
-    acc[w.status] = (acc[w.status] || 0) + 1
-    return acc
-  }, {})
-
-  const openWorkorders = workorders.filter(w => OPEN_WORKORDER_STATUSES.has(w.status)).length
-  const overdueWorkorders = workorders.filter(w => OPEN_WORKORDER_STATUSES.has(w.status) && ageingDays(w.createdAt) >= 7).length
-  const now = new Date()
-  const closedThisMonth = workorders.filter(w => {
-    if (w.status !== 'CLOSED') return false
-    const d = new Date(w.createdAt)
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-  }).length
-  // Every workorder CREATED this month, regardless of current status --
-  // distinct from "Closed This Month" above (that's only ones finished).
-  const workordersThisMonth = workorders.filter(w => {
-    const d = new Date(w.createdAt)
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-  }).length
+  const { data: statsData, isLoading: loadingStats } = useSWR(
+    businessId ? `/api/crm/jobsheets/stats?businessId=${businessId}` : null
+  )
+  const workorderStatusBreakdown: Record<string, number> = statsData?.byStatus || {}
+  const totalForBreakdown = Object.values(workorderStatusBreakdown).reduce((a, b) => a + b, 0)
+  const openWorkorders = statsData?.openCount ?? 0
+  const overdueWorkorders = statsData?.overdueCount ?? 0
+  const closedThisMonth = statsData?.closedThisMonth ?? 0
+  const workordersToday = statsData?.today ?? 0
+  const workordersThisWeek = statsData?.thisWeek ?? 0
+  const workordersThisMonth = statsData?.thisMonth ?? 0
+  const workordersThisYear = statsData?.thisYear ?? 0
 
   const recentActivity = workorders
     .map(w => ({ id: w._id, kind: 'Workorder' as const, title: w.jobSheetNumber, sub: w.title, date: w.createdAt, href: `/console/sc/jobsheets/${w._id}` }))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 8)
 
-  const loading = !gateChecked || loadingWorkorders
+  const loading = !gateChecked || loadingWorkorders || loadingStats
 
   if (loading) {
     return <LoadingPanel label="Loading CRM overview…" />
@@ -136,12 +120,15 @@ export default function ScDashboard() {
         description="Workorders, revenue and analytics in one place"
       />
 
+      {/* Workorder volume by period -- created-count rollups, not revenue.
+          Per explicit direction: this page is about workorder throughput,
+          not money (that's Sales/Reports' job). */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { icon: CalendarDays, label: 'Workorders This Month', value: String(workordersThisMonth) },
-          { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
-          { icon: AlertCircle, label: 'Overdue (7d+)', value: String(overdueWorkorders) },
-          { icon: CheckCircle2, label: 'Closed This Month', value: String(closedThisMonth) },
+          { icon: CalendarClock, label: 'Workorders Today', value: String(workordersToday) },
+          { icon: CalendarDays, label: 'Workorders This Week', value: String(workordersThisWeek) },
+          { icon: Calendar, label: 'Workorders This Month', value: String(workordersThisMonth) },
+          { icon: CalendarRange, label: 'Workorders This Year', value: String(workordersThisYear) },
         ].map(({ icon: Icon, label, value }) => (
           <Card key={label} className="p-6">
             <div className="flex items-center justify-between mb-3">
@@ -155,13 +142,11 @@ export default function ScDashboard() {
         ))}
       </div>
 
-      {/* Revenue, sourced from SalesInvoices generated by CRM job-sheet
-          closures (see /api/crm/revenue). */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {[
-          { icon: IndianRupee, label: 'Revenue This Month', value: fmtCurrency(revenue.revenueThisMonth) },
-          { icon: TrendingUp, label: 'Total Revenue', value: fmtCurrency(revenue.totalRevenue) },
-          { icon: Wallet, label: 'Outstanding', value: fmtCurrency(revenue.outstanding) },
+          { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
+          { icon: AlertCircle, label: 'Overdue (7d+)', value: String(overdueWorkorders) },
+          { icon: CheckCircle2, label: 'Closed This Month', value: String(closedThisMonth) },
         ].map(({ icon: Icon, label, value }) => (
           <Card key={label} className="p-6">
             <div className="flex items-center justify-between mb-3">
@@ -191,7 +176,7 @@ export default function ScDashboard() {
                   <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
                     <div
                       className="h-full bg-accent rounded-full"
-                      style={{ width: `${workorders.length ? Math.round((count / workorders.length) * 100) : 0}%` }}
+                      style={{ width: `${totalForBreakdown ? Math.round((count / totalForBreakdown) * 100) : 0}%` }}
                     />
                   </div>
                 </div>
