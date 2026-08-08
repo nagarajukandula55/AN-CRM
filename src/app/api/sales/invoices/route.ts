@@ -43,16 +43,22 @@ import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusines
  * couldn't be fully unified for that reason — flagged here and in
  * PROGRESS.md rather than silently forcing it through.
  */
-async function nextInvoiceNumber(key: string, businessId?: string): Promise<string> {
+async function nextInvoiceNumber(key: string, businessId: string | undefined, isNonGst: boolean): Promise<string> {
   if (businessId) {
-    const { value } = await generateDocumentNumber(businessId, "INVOICE", { vendorId: "" });
+    // GST and Non-GST invoices get their own separate running series
+    // (INV vs BILL) -- same distinction the CRM job-sheet close route
+    // already makes, see api/crm/jobsheets/[id]/close/route.ts's own
+    // comment. Reported live: this route ignored invoiceType entirely
+    // and always used "INVOICE", so a Non-GST invoice landed on the same
+    // series/sequence as GST ones.
+    const { value } = await generateDocumentNumber(businessId, isNonGst ? "NON_GST_INVOICE" : "INVOICE", { vendorId: "" });
     return value;
   }
 
   const yr  = new Date().getFullYear()
   const mo  = String(new Date().getMonth() + 1).padStart(2, "0")
   const fy  = mo >= "04" ? `${yr}-${String(yr + 1).slice(2)}` : `${yr - 1}-${String(yr).slice(2)}`
-  const prefix = `INV/${fy}/`
+  const prefix = isNonGst ? `BILL/${fy}/` : `INV/${fy}/`
 
   const last = await SalesInvoice.findOne(
     { $or: [{ businessId: key }, { createdBy: key }], invoiceNumber: { $regex: `^${prefix}` } },
@@ -153,7 +159,9 @@ export async function POST(req: NextRequest) {
       status         = "DRAFT",
       supplyType     = "INTRASTATE",
       placeOfSupply,
+      invoiceType    = "GST",
     } = body
+    const isNonGst = invoiceType === "NON_GST"
 
     if (!customer?.name) {
       return NextResponse.json({ error: "Customer name is required" }, { status: 400 })
@@ -175,18 +183,26 @@ export async function POST(req: NextRequest) {
     let subtotal = 0, cgstTotal = 0, sgstTotal = 0, igstTotal = 0
 
     const processedItems = items.map((item: any) => {
+      // A Non-GST invoice carries zero tax on every line, full stop --
+      // enforced here server-side rather than trusted from the client.
+      // Reported live: a Non-GST invoice still came out with real tax
+      // applied, because nothing zeroed item.taxRate/taxPct for this case
+      // -- the frontend's own default (new line items on a fresh
+      // invoice) happened to start at 18% before the user ever touched
+      // the GST/Non-GST toggle, and that value was never cleared.
+      const rawTaxRate = isNonGst ? 0 : (item.taxRate || item.taxPct || 0)
       const lineAmt   = (item.quantity || item.qty || 1) * (item.unitPrice || item.price || 0)
-      const totalGST  = lineAmt * ((item.taxRate || item.taxPct || 0) / 100)
+      const totalGST  = lineAmt * (rawTaxRate / 100)
 
       let cgstRate = 0, cgstAmount = 0, sgstRate = 0, sgstAmount = 0
       let igstRate = 0, igstAmount = 0
 
       if (supplyType === "INTERSTATE") {
-        igstRate   = item.taxRate || item.taxPct || 0
+        igstRate   = rawTaxRate
         igstAmount = totalGST
         igstTotal += igstAmount
       } else {
-        cgstRate   = (item.taxRate || item.taxPct || 0) / 2
+        cgstRate   = rawTaxRate / 2
         sgstRate   = cgstRate
         cgstAmount = totalGST / 2
         sgstAmount = totalGST / 2
@@ -202,7 +218,7 @@ export async function POST(req: NextRequest) {
         quantity:    item.quantity    || item.qty || 1,
         unit:        item.unit        || "Nos",
         unitPrice:   item.unitPrice   || item.price || 0,
-        taxRate:     item.taxRate     || item.taxPct || 0,
+        taxRate:     rawTaxRate,
         taxAmount:   totalGST,
         cgstRate, cgstAmount,
         sgstRate, sgstAmount,
@@ -214,7 +230,7 @@ export async function POST(req: NextRequest) {
     const taxTotal   = cgstTotal + sgstTotal + igstTotal
     const grandTotal = subtotal + taxTotal - discountAmount
 
-    const invoiceNumber = await nextInvoiceNumber(effectiveBizId || userId, effectiveBizId || undefined)
+    const invoiceNumber = await nextInvoiceNumber(effectiveBizId || userId, effectiveBizId || undefined, isNonGst)
 
     const invoice = await SalesInvoice.create({
       invoiceNumber,

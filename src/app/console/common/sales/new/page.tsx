@@ -433,7 +433,7 @@ export default function NewSalesInvoicePage() {
                 <th className="text-left px-2 py-2 text-xs text-ink-3 font-medium w-24">HSN</th>
                 <th className="text-center px-2 py-2 text-xs text-ink-3 font-medium w-16">Qty</th>
                 <th className="text-right px-2 py-2 text-xs text-ink-3 font-medium w-24">Rate</th>
-                <th className="text-right px-2 py-2 text-xs text-ink-3 font-medium w-20">Tax %</th>
+                {invoiceType === 'GST' && <th className="text-right px-2 py-2 text-xs text-ink-3 font-medium w-20">Tax %</th>}
                 <th className="text-right px-5 py-2 text-xs text-ink-3 font-medium w-28">Amount</th>
                 <th className="w-8" />
               </tr>
@@ -445,11 +445,13 @@ export default function NewSalesInvoicePage() {
                   <td className="px-2 py-1.5"><input value={item.hsnCode} onChange={e => updateItem(i, 'hsnCode', e.target.value)} className={`${inputCls} py-1.5`} /></td>
                   <td className="px-2 py-1.5"><input type="number" onFocus={e => e.target.select()} min={1} value={item.qty} onChange={e => updateItem(i, 'qty', Number(e.target.value))} className={`${inputCls} py-1.5 text-center`} /></td>
                   <td className="px-2 py-1.5"><input type="number" onFocus={e => e.target.select()} min={0} value={item.price} onChange={e => updateItem(i, 'price', Number(e.target.value))} className={`${inputCls} py-1.5 text-right`} /></td>
-                  <td className="px-2 py-1.5">
-                    <select value={item.taxPct} onChange={e => updateItem(i, 'taxPct', Number(e.target.value))} className={`${inputCls} py-1.5 text-right`}>
-                      {GST_SLABS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
-                    </select>
-                  </td>
+                  {invoiceType === 'GST' && (
+                    <td className="px-2 py-1.5">
+                      <select value={item.taxPct} onChange={e => updateItem(i, 'taxPct', Number(e.target.value))} className={`${inputCls} py-1.5 text-right`}>
+                        {GST_SLABS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
+                      </select>
+                    </td>
+                  )}
                   <td className="px-5 py-1.5 text-right tabular text-ink font-medium text-xs">{fmt((item.qty || 0) * (item.price || 0) * (1 + (item.taxPct || 0) / 100))}</td>
                   <td className="px-2 py-1.5">{items.length > 1 && <button type="button" onClick={() => removeItem(i)} className="text-ink-3 hover:text-danger"><Trash2 className="w-4 h-4" /></button>}</td>
                 </tr>
