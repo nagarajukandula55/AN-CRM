@@ -69,10 +69,18 @@ interface ReportCardProps {
   statusOptions?: string[]
   status: string
   onStatusChange?: (v: string) => void
+  // Second, independent filter dimension -- e.g. Payment Mode alongside
+  // Status. Kept generic (label/options/value/onChange) rather than a
+  // second hardcoded "statusOptions"-shaped prop so any report can reuse
+  // it without inventing its own filter row.
+  secondFilterLabel?: string
+  secondFilterOptions?: string[]
+  secondFilterValue?: string
+  onSecondFilterChange?: (v: string) => void
   onDownload: () => Promise<void>
 }
 
-function ReportCard({ icon: Icon, title, description, statusOptions, status, onStatusChange, onDownload }: ReportCardProps) {
+function ReportCard({ icon: Icon, title, description, statusOptions, status, onStatusChange, secondFilterLabel, secondFilterOptions, secondFilterValue, onSecondFilterChange, onDownload }: ReportCardProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -102,6 +110,12 @@ function ReportCard({ icon: Icon, title, description, statusOptions, status, onS
             {statusOptions.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
           </Select>
         )}
+        {secondFilterOptions && onSecondFilterChange && (
+          <Select value={secondFilterValue} onChange={(e) => onSecondFilterChange(e.target.value)} className="mb-3">
+            <option value="">All {secondFilterLabel?.toLowerCase() || 'options'}</option>
+            {secondFilterOptions.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+          </Select>
+        )}
         {error && <p className="text-xs text-danger mb-2">{error}</p>}
         <Button variant="secondary" size="sm" onClick={handleClick} disabled={loading} icon={<Download className="w-4 h-4" />}>
           {loading ? 'Preparing…' : 'Download CSV'}
@@ -123,6 +137,7 @@ export default function ReportsPage() {
   const [callStatus, setCallStatus] = useState('')
   const [jobStatus, setJobStatus] = useState('')
   const [invoiceStatus, setInvoiceStatus] = useState('')
+  const [reviewPaymentMode, setReviewPaymentMode] = useState('')
 
   const { data: meData } = useSWR('/api/auth/me')
   const businessId: string | null = meData?.success
@@ -269,6 +284,39 @@ export default function ReportsPage() {
                 }
               })
             downloadCSV(`crm_jobsheets_${from}_to_${to}.csv`, rows)
+          }}
+        />
+
+        <ReportCard
+          icon={ClipboardList}
+          title="Review Report"
+          description="Invoice number and workorder number side by side, per payment mode — for reconciling collections against what was actually invoiced."
+          status=""
+          secondFilterLabel="Payment Mode"
+          secondFilterOptions={['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER']}
+          secondFilterValue={reviewPaymentMode}
+          onSecondFilterChange={setReviewPaymentMode}
+          onDownload={async () => {
+            const qs = new URLSearchParams({ limit: '1000' })
+            const res = await fetch(`/api/crm/jobsheets?${qs.toString()}`)
+            const d = await res.json()
+            if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to load workorders')
+            const rows = (d.jobSheets || [])
+              .filter((j: any) => inRange(j.createdAt, from, to))
+              .filter((j: any) => !reviewPaymentMode || j.paymentMode === reviewPaymentMode)
+              .map((j: any) => ({
+                JobSheetNumber: j.jobSheetNumber,
+                InvoiceNumber: j.invoiceNumber || '',
+                Customer: j.customerName,
+                Phone: j.phone || '',
+                Status: j.status,
+                PaymentMode: j.paymentMode || '',
+                PaymentCollected: j.paymentCollected ?? '',
+                PaymentCollectedBy: j.paymentCollectedByName || '',
+                CreatedAt: j.createdAt,
+                HandedOverAt: j.handedOverAt || '',
+              }))
+            downloadCSV(`review_report_${from}_to_${to}.csv`, rows)
           }}
         />
 
