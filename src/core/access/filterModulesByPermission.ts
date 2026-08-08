@@ -28,7 +28,19 @@ function realPermissionKey(key: string): string {
 // their granted permissions -- found live three separate times in one
 // session (Workorders, the SC dashboard nav entry, Sub-Vendors), so
 // fixing the class of bug here instead of aliasing one key at a time.
-const ALWAYS_VISIBLE_KEYS = new Set(["dashboard", "sc_dashboard", "sub-vendors"]);
+// Quotations/Delivery Challans/Credit Notes/Debit Notes/Proforma Invoices
+// are the same bug again -- added to sidebar-nav.ts and to SC's default
+// allowed-module list this session, but no existing role's granted
+// permissions were ever migrated to include them, so they stayed
+// invisible for every already-provisioned vendor (reported live: "did
+// not see anything like estimation or quotation in menu"). These are
+// ordinary document-generation screens with no separate access-control
+// story of their own (same as the others already in this set), not a
+// deliberate per-role gate someone configured.
+const ALWAYS_VISIBLE_KEYS = new Set([
+  "dashboard", "sc_dashboard", "sub-vendors",
+  "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
+]);
 
 /**
  * Replaces the original filterModules() in services/moduleEngine.service.ts.
