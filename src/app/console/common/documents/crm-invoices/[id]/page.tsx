@@ -21,7 +21,7 @@
 import useSWR from 'swr'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Loader2, Printer } from 'lucide-react'
-import { DocumentRenderer, DocumentFooterText } from '@/core/documentTemplates/renderer'
+import { RichInvoiceLayout } from '@/core/documentTemplates/RichInvoiceLayout'
 import { salesInvoiceToRenderData } from '@/core/documentTemplates/adapters'
 import type { DocumentRenderData } from '@/core/documentTemplates/renderData'
 
@@ -125,13 +125,7 @@ export default function CrmInvoiceViewPage() {
       )}
 
       <div className="max-w-3xl mx-auto bg-white border border-gray-200 rounded-2xl p-10 mb-10 print:border-none print:rounded-none print:shadow-none">
-        <DocumentRenderer
-          blocks={template.blocks}
-          accentColor={template.accentColor}
-          logoUrl={template.logoUrl}
-          data={renderData}
-        />
-        <DocumentFooterText text={renderData.footerText} />
+        <RichInvoiceLayout data={renderData} accentColor={template.accentColor} />
       </div>
 
       <style jsx global>{`

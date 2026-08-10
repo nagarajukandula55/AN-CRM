@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Printer } from 'lucide-react'
 import { DocumentRenderer, DocumentFooterText } from '@/core/documentTemplates/renderer'
+import { RichInvoiceLayout } from '@/core/documentTemplates/RichInvoiceLayout'
 import { jobSheetToRenderData } from '@/core/documentTemplates/adapters'
 import type { DocumentRenderData } from '@/core/documentTemplates/renderData'
 
@@ -67,13 +68,19 @@ function PrintPageInner() {
       </div>
 
       <div className="max-w-3xl mx-auto bg-white shadow-sm print:shadow-none rounded-2xl print:rounded-none p-10">
-        <DocumentRenderer
-          blocks={template.blocks}
-          accentColor={template.accentColor}
-          logoUrl={template.logoUrl}
-          data={renderData}
-        />
-        <DocumentFooterText text={renderData.footerText} />
+        {docType === 'ESTIMATE' ? (
+          <RichInvoiceLayout data={renderData} accentColor={template.accentColor} />
+        ) : (
+          <>
+            <DocumentRenderer
+              blocks={template.blocks}
+              accentColor={template.accentColor}
+              logoUrl={template.logoUrl}
+              data={renderData}
+            />
+            <DocumentFooterText text={renderData.footerText} />
+          </>
+        )}
       </div>
     </div>
   )
