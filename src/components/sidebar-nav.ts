@@ -5,17 +5,23 @@
 // instead of the real array, so STATIC_MODULES.filter() threw at runtime
 // and every sidebar load 500'd in production.
 //
-// REORGANIZED (folder-and-nav both) into the same five buckets pages now
-// physically live under: console/sc, console/pos, console/brand,
-// console/common, console/admin. `modes` below is what actually gates
-// visibility per vendor type (see /api/ui/sidebar/route.ts and
-// getVendorAvailableModules) — the folder a page's file lives in mirrors
-// this so the two can never quietly drift apart the way the old flat
-// console/* tree did. Access to a `modes`-restricted item is also bounded
-// by the vendor's paid subscription modules (VendorSubscription.modules),
-// not just their type — see getVendorAvailableModules in
-// core/access/vendorAccess.service.ts.
-export type OperatingModeKey = "BRAND" | "SC" | "POS";
+// REORGANIZED (folder-and-nav both) into the same buckets pages now
+// physically live under: console/sc, console/common, console/admin.
+// `modes` below is what actually gates visibility per vendor type (see
+// /api/ui/sidebar/route.ts and getVendorAvailableModules) — the folder a
+// page's file lives in mirrors this so the two can never quietly drift
+// apart the way the old flat console/* tree did. Access to a
+// `modes`-restricted item is also bounded by the vendor's paid
+// subscription modules (VendorSubscription.modules), not just their
+// type — see getVendorAvailableModules in core/access/vendorAccess.service.ts.
+//
+// BRAND and POS vendor types (and their console/brand, console/pos
+// pages) were removed -- this is now an SC-only platform. "SC" is kept
+// as a literal union (rather than collapsing to a plain boolean) so a
+// legacy BRAND/POS business record already in the database still
+// type-checks against `modes` without crashing; it just never matches
+// any nav item since nothing is tagged BRAND/POS anymore.
+export type OperatingModeKey = "SC";
 
 export interface NavItem {
   key: string; label: string; route: string; icon: string; modes?: OperatingModeKey[];
@@ -59,24 +65,6 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "sc-masters-brands",   label: "Brands & Models",       route: "/console/sc/masters/brands",       icon: "Tags",          modes: ["SC"] },
     { key: "sc-masters-solutions", label: "Solutions",            route: "/console/sc/masters/solutions",    icon: "CheckCircle",   modes: ["SC"] },
     { key: "sub-accounts", label: "SC Sub-Accounts", route: "/console/sc/sub-accounts", icon: "Building2", modes: ["SC"] },
-  ]},
-  { label: "Brand", items: [
-    { key: "deals", label: "Deals", route: "/console/brand/deals", icon: "TrendingUp", modes: ["BRAND"] },
-    { key: "crm_calls", label: "Appointments", route: "/console/brand/crm/calls", icon: "PhoneCall", modes: ["BRAND"] },
-    // Brand's own call-center-style Workorders (multi-technician
-    // assignment) -- a genuinely different page/component from SC's
-    // single-login flow (console/sc/jobsheets), not just a different route
-    // for the same page.
-    { key: "crm_jobsheets", label: "Workorders", route: "/console/brand/jobsheets", icon: "ClipboardList", modes: ["BRAND"] },
-    // Fault Codes / Symptom Codes / Workorder Options are picked while
-    // creating/closing a Brand workorder (console/brand/jobsheets/new and
-    // [id]) -- SC's own workorder flow never reads any of the three.
-    { key: "brand-masters-fault-codes", label: "Fault Codes", route: "/console/brand/masters/fault-codes", icon: "AlertTriangle", modes: ["BRAND"] },
-    { key: "brand-masters-symptom-codes", label: "Symptom Codes", route: "/console/brand/masters/symptom-codes", icon: "AlertTriangle", modes: ["BRAND"] },
-    { key: "brand-masters-crm-options", label: "Workorder Options", route: "/console/brand/masters/crm-options", icon: "Settings", modes: ["BRAND"] },
-  ]},
-  { label: "POS", items: [
-    { key: "pos", label: "Point of Sale", route: "/console/pos/billing", icon: "ShoppingCart", modes: ["POS"] },
   ]},
   { label: "Sales", items: [
     { key: "orders", label: "Orders", route: "/console/common/orders", icon: "ShoppingBag" },

@@ -2,24 +2,24 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Check, ArrowRight, Sparkles } from 'lucide-react'
-import { PLANS_BY_MODE, OPERATING_MODES, BILLING_PERIODS, priceForPeriod, type BillingPeriod, type OperatingMode } from '@/core/pricing/plans'
+import { PLANS_BY_MODE, BILLING_PERIODS, priceForPeriod, type BillingPeriod } from '@/core/pricing/plans'
 
 /**
- * Public pricing page -- separate Basic/Pro/Ultimate ladders per operating
- * mode (SC/Brand/POS), per explicit direction: "for SC - Basic, Pro &
- * Ultimate and then for Brand ... and for POS ... because for those
- * businesses what we are providing is matters." x Monthly/Quarterly/Half-
- * Yearly/Yearly, 7-day free trial on Basic. Placeholder numbers per
- * explicit direction; see core/pricing/plans.ts for the single source of
- * truth these render from.
+ * Public pricing page -- Basic/Pro/Ultimate ladder for Service Center
+ * (the only vendor type this app supports; Brand/POS were removed) x
+ * Monthly/Quarterly/Half-Yearly/Yearly, 7-day free trial on Basic.
+ * Placeholder numbers per explicit direction; see core/pricing/plans.ts
+ * for the single source of truth these render from -- PLANS_BY_MODE
+ * still carries the (now-unused) BRAND/POS ladders too, kept only so a
+ * pre-existing legacy business on one of those plans doesn't hit an
+ * undefined lookup.
  */
 
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
 export default function PricingPage() {
-  const [mode, setMode] = useState<OperatingMode>('SC')
   const [period, setPeriod] = useState<BillingPeriod>('YEARLY')
-  const PLANS = PLANS_BY_MODE[mode]
+  const PLANS = PLANS_BY_MODE.SC
 
   return (
     <div className="min-h-screen bg-bg text-ink">
@@ -38,29 +38,11 @@ export default function PricingPage() {
       <div className="max-w-6xl mx-auto px-6 pt-10 pb-24">
         <div className="text-center mb-10">
           <div className="eyebrow">Simple, transparent pricing</div>
-          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight mt-2">Pick what fits how you operate</h1>
+          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight mt-2">Pick the plan that fits your shop</h1>
           <p className="text-ink-2 mt-4 max-w-xl mx-auto">
-            Pricing is tailored to how you operate — pick your mode below.
+            Single-login, single-screen workorder shop — pick a billing period below.
           </p>
         </div>
-
-        {/* Operating mode tabs */}
-        <div className="flex items-center justify-center mb-6">
-          <div className="inline-flex rounded-control border border-border-strong bg-surface p-1 gap-1">
-            {OPERATING_MODES.map((m) => (
-              <button
-                key={m.key}
-                onClick={() => setMode(m.key)}
-                className={`px-4 py-2 rounded-control text-sm font-medium transition-colors ${
-                  mode === m.key ? 'bg-accent text-accent-fg' : 'text-ink-2 hover:text-ink'
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <p className="text-center text-sm text-ink-3 mb-8">{OPERATING_MODES.find((m) => m.key === mode)!.blurb}</p>
 
         {/* Billing period toggle */}
         <div className="flex items-center justify-center mb-12">
@@ -133,7 +115,7 @@ export default function PricingPage() {
                 </ul>
 
                 <Link
-                  href={`/register?plan=${plan.key.toLowerCase()}&mode=${mode.toLowerCase()}`}
+                  href={`/register?plan=${plan.key.toLowerCase()}&mode=sc`}
                   className={`mt-6 rounded-control px-4 py-2.5 text-sm font-medium text-center transition-colors flex items-center justify-center gap-2 ${
                     plan.highlight
                       ? 'bg-accent text-accent-fg hover:bg-accent-hover'

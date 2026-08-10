@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Eye,
@@ -112,16 +111,6 @@ export default function PartnerSignupPage() {
 }
 
 function PartnerSignupPageInner() {
-  const searchParams = useSearchParams();
-  // Homepage's type-split signup buttons ("Sign up as SC/Brand/POS") link
-  // here with ?type=SC|BRAND|POS -- pre-selects and locks step 2's
-  // "applying as" field so the visitor never has to pick it again, and the
-  // page can show type-specific messaging (SC = instant, BRAND/POS =
-  // reviewed) from the very first screen instead of only after submit.
-  const typeParam = searchParams.get("type");
-  const preselectedType: "BRAND" | "SC" | "POS" | "" =
-    typeParam === "BRAND" || typeParam === "SC" || typeParam === "POS" ? typeParam : "";
-
   const [step, setStep] = useState<Step>(1);
   const [error, setError] = useState("");
   const [state, setState] = useState<SubmitState>({ kind: "idle" });
@@ -137,9 +126,11 @@ function PartnerSignupPageInner() {
   const [companyName, setCompanyName] = useState("");
   const [contactPerson, setContactPerson] = useState(fullName);
   const [category, setCategory] = useState("");
-  // Which operating mode they're applying to run as -- per explicit
-  // direction ("in the signup page add Type they are applying").
-  const [appliedAs, setAppliedAs] = useState<"BRAND" | "SC" | "POS" | "">(preselectedType);
+  // SC (Service Center) is the only vendor type this platform supports --
+  // Brand and POS were removed. Kept as a fixed constant (rather than
+  // deleting the field) since VendorProfile.appliedAs is still a real,
+  // required backend field.
+  const appliedAs = "SC" as const;
   const [gstRegistered, setGstRegistered] = useState(true);
   const [gstNumber, setGstNumber] = useState("");
   const [panNumber, setPanNumber] = useState("");
@@ -173,7 +164,6 @@ function PartnerSignupPageInner() {
   function validateStep2(): string | null {
     if (!companyName.trim()) return "Company name is required";
     if (!contactPerson.trim()) return "Contact person is required";
-    if (!appliedAs) return "Please select what you're applying as";
     if (gstRegistered && !gstNumber.trim()) return "GSTIN is required for GST-registered businesses";
     if (!gstRegistered && !panNumber.trim()) return "PAN is required for businesses without GST";
     if (gstNumber.trim()) {
@@ -247,7 +237,7 @@ function PartnerSignupPageInner() {
             gstNumber: gstRegistered ? gstNumber.trim().toUpperCase() : undefined,
             panNumber: panNumber.trim() ? panNumber.trim().toUpperCase() : undefined,
             category: category || undefined,
-            appliedAs: appliedAs || undefined,
+            appliedAs,
             address:
               street || city || addrState || pincode
                 ? {
@@ -537,40 +527,16 @@ function PartnerSignupPageInner() {
                         ))}
                       </select>
                     </Field>
-                    <Field label="What are you applying as?" required>
-                      {preselectedType ? (
-                        <div className={`${neonInputCls} flex items-center justify-between bg-violet-50/60 text-gray-700`}>
-                          <span>
-                            {preselectedType === "BRAND" && "Brand (multi-role, call center + appointments)"}
-                            {preselectedType === "SC" && "Service Center (single login, workorder flow)"}
-                            {preselectedType === "POS" && "Sales / POS (billing counter, store to enterprise)"}
-                          </span>
-                          <Link href="/partner-signup" className="text-xs text-violet-600 hover:text-cyan-600 shrink-0 ml-2">
-                            Change
-                          </Link>
-                        </div>
-                      ) : (
-                        <select
-                          className={neonInputCls}
-                          value={appliedAs}
-                          onChange={(e) => setAppliedAs(e.target.value as "BRAND" | "SC" | "POS" | "")}
-                        >
-                          <option value="">Select…</option>
-                          <option value="BRAND">Brand (multi-role, call center + appointments)</option>
-                          <option value="SC">Service Center (single login, workorder flow)</option>
-                          <option value="POS">Sales / POS (billing counter, store to enterprise)</option>
-                        </select>
-                      )}
+                    <Field label="What are you applying as?">
+                      <div className={`${neonInputCls} flex items-center bg-violet-50/60 text-gray-700`}>
+                        <span>Service Center (single login, workorder flow)</span>
+                      </div>
                     </Field>
                   </div>
 
-                  {appliedAs && (
-                    <div className={`rounded-xl border px-4 py-3 text-xs ${appliedAs === "SC" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
-                      {appliedAs === "SC"
-                        ? "Service Center applications activate instantly (where enabled) — you'll get portal access and a 7-day trial right after submitting, no waiting on review."
-                        : "Brand and POS applications are reviewed by our team before activation — we'll take your details now and follow up shortly with next steps, so there's no need to wait here."}
-                    </div>
-                  )}
+                  <div className="rounded-xl border px-4 py-3 text-xs border-emerald-200 bg-emerald-50 text-emerald-700">
+                    Service Center applications activate instantly (where enabled) — you'll get portal access and a 7-day trial right after submitting, no waiting on review.
+                  </div>
 
                   <div>
                     <p className="mb-2 text-xs font-medium text-gray-600">

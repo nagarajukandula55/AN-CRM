@@ -25,7 +25,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { PhoneCall, ClipboardList, Receipt, ShieldCheck, Archive, Users, CreditCard, Download } from 'lucide-react'
+import { ClipboardList, Receipt, Archive, Users, Download } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody } from '@/components/ui/Card'
@@ -134,7 +134,6 @@ export default function ReportsPage() {
   const [invoiceMsg, setInvoiceMsg] = useState<string | null>(null)
   const [invoiceErr, setInvoiceErr] = useState<string | null>(null)
 
-  const [callStatus, setCallStatus] = useState('')
   const [jobStatus, setJobStatus] = useState('')
   const [invoiceStatus, setInvoiceStatus] = useState('')
   const [reviewPaymentMode, setReviewPaymentMode] = useState('')
@@ -143,11 +142,6 @@ export default function ReportsPage() {
   const businessId: string | null = meData?.success
     ? (meData.businesses?.find((b: any) => b._id === meData.user?.activeBusinessId) || meData.businesses?.[0])?._id ?? null
     : null
-  // SC has no calls concept (workorders only), sees its own subscription
-  // status on Plan & Billing already, and isn't given Audit Log access --
-  // so none of those three report cards apply there.
-  const activeBusiness = meData?.businesses?.find((b: any) => b._id === businessId) || meData?.businesses?.[0]
-  const isSC = activeBusiness?.operatingMode === 'SC'
 
   async function downloadZip() {
     setZipping(true)
@@ -208,37 +202,6 @@ export default function ReportsPage() {
       </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {!isSC && <ReportCard
-          icon={PhoneCall}
-          title="CRM Calls"
-          description="Call records with status, priority, and follow-up dates — filtered to the date range and status above."
-          statusOptions={['NEW', 'IN_PROGRESS', 'FOLLOW_UP', 'JOB_CREATED', 'CLOSED', 'CANCELLED']}
-          status={callStatus}
-          onStatusChange={setCallStatus}
-          onDownload={async () => {
-            const qs = new URLSearchParams({ limit: '1000', ...(callStatus ? { status: callStatus } : {}) })
-            const res = await fetch(`/api/crm/calls?${qs.toString()}`)
-            const d = await res.json()
-            if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to load calls')
-            const rows = (d.calls || [])
-              .filter((c: any) => inRange(c.createdAt, from, to))
-              .map((c: any) => ({
-                CallNumber: c.callNumber,
-                Customer: c.customerName,
-                Company: c.company || '',
-                Phone: c.phone,
-                Email: c.email || '',
-                Subject: c.subject,
-                Status: c.status,
-                Priority: c.priority,
-                AssignedTo: c.assignedTo?.name || '',
-                NextFollowUp: c.nextFollowUpAt || '',
-                CreatedAt: c.createdAt,
-              }))
-            downloadCSV(`crm_calls_${from}_to_${to}.csv`, rows)
-          }}
-        />}
-
         <ReportCard
           icon={ClipboardList}
           title="CRM Job Sheets"
@@ -373,53 +336,6 @@ export default function ReportsPage() {
           }}
         />
 
-        {!isSC && <ReportCard
-          icon={CreditCard}
-          title="Subscription Billing"
-          description="This business's own AN-CRM plan-payment history — plan, period, and amount charged."
-          status=""
-          onDownload={async () => {
-            const res = await fetch('/api/subscriptions/invoices')
-            const d = await res.json()
-            if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to load billing history')
-            const rows = (d.invoices || [])
-              .filter((inv: any) => inRange(inv.createdAt, from, to))
-              .map((inv: any) => ({
-                InvoiceNumber: inv.invoiceNumber,
-                Plan: inv.plan,
-                BillingPeriod: inv.billingPeriod,
-                Amount: inv.amount,
-                TaxTotal: inv.taxTotal,
-                GrandTotal: inv.grandTotal,
-                PeriodStart: inv.periodStart,
-                PeriodEnd: inv.periodEnd,
-                CreatedAt: inv.createdAt,
-              }))
-            downloadCSV(`subscription_billing_${from}_to_${to}.csv`, rows)
-          }}
-        />}
-
-        {!isSC && <ReportCard
-          icon={ShieldCheck}
-          title="Audit Log"
-          description="Create/update/delete activity across the system for this business, in the selected date range."
-          status=""
-          onDownload={async () => {
-            const res = await fetch('/api/audit/logs?limit=1000')
-            const d = await res.json()
-            if (!res.ok) throw new Error(d.error || 'Failed to load audit logs — requires AUDIT.VIEW permission')
-            const rows = (d.logs || d || [])
-              .filter((l: any) => inRange(l.createdAt, from, to))
-              .map((l: any) => ({
-                Action: l.action,
-                Entity: l.entity,
-                EntityId: l.entityId || '',
-                By: l.by || l.userEmail || '',
-                CreatedAt: l.createdAt,
-              }))
-            downloadCSV(`audit_log_${from}_to_${to}.csv`, rows)
-          }}
-        />}
       </div>
     </div>
   )

@@ -34,10 +34,9 @@ const fmtDate = (d: string) =>
 
 /**
  * SC's CRM Overview -- its actual dashboard, single-login repair shop,
- * workorders only. No appointments/leads pipeline exists for SC at all
- * (that's Brand's concept, see console/brand/dashboard), so none of that
- * UI lives here anymore -- this file used to serve both types with a
- * pile of `!isSC &&` branches; SC now has its own dedicated page instead.
+ * workorders only. No appointments/leads pipeline exists here at all --
+ * that was Brand's concept, and Brand/POS vendor types were removed from
+ * this app entirely (SC-only platform now).
  */
 export default function ScDashboard() {
   const router = useRouter()

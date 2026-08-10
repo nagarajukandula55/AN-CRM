@@ -103,8 +103,6 @@ export async function buildAuthSession(
     const activeBusiness = await Business.findById(activeBusinessId).select("operatingMode").lean<any>();
     if (activeBusiness?.operatingMode === "SC") {
       homeRoute = "/console/sc/dashboard";
-    } else if (activeBusiness?.operatingMode === "POS" && !homeRoute) {
-      homeRoute = "/console/pos/dashboard";
     }
   }
 

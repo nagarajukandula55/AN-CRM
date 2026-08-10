@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import {
-  PhoneCall, ClipboardList, ShoppingCart, ShieldCheck, Zap, BarChart3,
+  PhoneCall, ClipboardList, ShieldCheck, Zap, BarChart3,
   ArrowRight, CheckCircle2, Building2, Users, Sparkles, Smartphone, Tablet,
   Clock3, Facebook, Twitter, Linkedin, Instagram, Mail, MapPin, Phone,
 } from 'lucide-react'
@@ -38,7 +38,7 @@ import {
  */
 
 type VendorType = {
-  type: 'SC' | 'BRAND' | 'POS'
+  type: 'SC'
   icon: typeof Building2
   title: string
   description: string
@@ -46,15 +46,9 @@ type VendorType = {
   activationTone: 'instant' | 'review'
 }
 
+// Brand and Point of Sale vendor types were removed -- this is now an
+// SC-only (Service Center) platform.
 const VENDOR_TYPES: VendorType[] = [
-  {
-    type: 'BRAND',
-    icon: Building2,
-    title: 'Brand',
-    description: 'Multi-role operations — CCO, Manager, Engineer dashboards, call center and appointment booking, all in one command center.',
-    activation: 'Reviewed by our team before activation',
-    activationTone: 'review',
-  },
   {
     type: 'SC',
     icon: ClipboardList,
@@ -62,14 +56,6 @@ const VENDOR_TYPES: VendorType[] = [
     description: 'Single login, single screen. Log a call, diagnose, repair, bill — the entire workorder lifecycle without switching pages.',
     activation: 'Instant access — no waiting on approval',
     activationTone: 'instant',
-  },
-  {
-    type: 'POS',
-    icon: ShoppingCart,
-    title: 'Point of Sale',
-    description: 'GST-ready billing that scales from a single counter to a multi-outlet enterprise, without changing systems.',
-    activation: 'Reviewed by our team before activation',
-    activationTone: 'review',
   },
 ]
 
@@ -83,7 +69,7 @@ const FEATURES = [
 const PREVIEWS: { src: string; label: string; href: string }[] = [
   { src: '/screenshots/track-workorder.png', label: 'Track a repair, no login needed', href: '/track-workorder' },
   { src: '/screenshots/partner-signup.png', label: 'Sign up in one guided flow', href: '/partner-signup' },
-  { src: '/screenshots/login.png', label: 'One login, every operating mode', href: '/login' },
+  { src: '/screenshots/login.png', label: 'One login, one screen', href: '/login' },
 ]
 
 function ScreenshotFrame({ src, label, href }: { src: string; label: string; href: string }) {
@@ -112,9 +98,7 @@ const FOOTER_COLUMNS: { heading: string; links: { label: string; href: string }[
     heading: 'Product',
     links: [
       { label: 'Pricing', href: '/pricing' },
-      { label: 'Sign up as Brand', href: '/partner-signup?type=BRAND' },
-      { label: 'Sign up as Service Center', href: '/partner-signup?type=SC' },
-      { label: 'Sign up as Point of Sale', href: '/partner-signup?type=POS' },
+      { label: 'Sign up as Service Center', href: '/partner-signup' },
       { label: 'Track a Repair', href: '/track-workorder' },
       { label: 'Book an Appointment', href: '/appointment-request' },
     ],
@@ -164,7 +148,7 @@ export default function CrmHomePage() {
         <div className="relative z-10 w-full px-6 sm:px-12 pt-16 pb-24 text-center">
           <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/30 bg-white/5 backdrop-blur px-3.5 py-1.5 text-xs font-medium text-cyan-300 mb-6">
             <Sparkles className="h-3.5 w-3.5" />
-            One platform. Every operating mode.
+            Built for Service Centers.
           </div>
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] text-white">
             The business platform built for
@@ -172,8 +156,8 @@ export default function CrmHomePage() {
             <span className={mbfGradientText}>how you actually operate</span>
           </h1>
           <p className="mt-6 text-lg text-gray-400 max-w-2xl mx-auto">
-            Brand operations, service delivery, sales and billing — one complete
-            business platform, purpose-built for each, never forcing one shape onto all three.
+            Single login, single screen — call to close, diagnosis to billing,
+            the entire service center workorder lifecycle in one place.
           </p>
           <div className="mt-10 flex items-center justify-center gap-3 flex-wrap">
             <a href="#signup-types" className={mbfButtonPrimary}>
@@ -200,14 +184,13 @@ export default function CrmHomePage() {
         <div className="text-center mb-12">
           <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-cyan-300">Get started</p>
           <h2 className="mt-2 text-3xl sm:text-4xl font-bold tracking-tight text-white">
-            Sign up as the type you actually are
+            Built for Service Centers
           </h2>
           <p className="mt-3 text-gray-400 max-w-xl mx-auto">
-            Pick your operating mode below — Service Center gets instant access,
-            Brand and POS applications are reviewed by our team first.
+            Sign up and get instant access — no waiting on approval.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 max-w-md mx-auto gap-5">
           {VENDOR_TYPES.map((v) => (
             <div key={v.type} className={`${mbfCard} p-6 flex flex-col`}>
               <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-cyan-400 to-fuchsia-400 flex items-center justify-center mb-4 shadow-[0_0_20px_-4px_rgba(0,229,255,0.6)]">
@@ -224,7 +207,7 @@ export default function CrmHomePage() {
                 {v.activation}
               </div>
               <Link
-                href={`/partner-signup?type=${v.type}`}
+                href="/partner-signup"
                 className={`${mbfButtonPrimary} mt-5 w-full`}
               >
                 Sign up as {v.title} <ArrowRight className="h-4 w-4" />
