@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveCentralBusinessId } from "@/lib/centralApiRead";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
 
 /**
  * Proxies central-api's vendor-onboarding-config skip-approval setting for
@@ -24,6 +25,16 @@ function centralHeaders() {
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  // SECURITY: had no auth check at all -- any caller, authenticated or
+  // not, could toggle auto-approval of vendor applications for any
+  // business by id.
+  const session = await getEnrichedSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!session.isSuperAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const { id } = await params;
   if (!CENTRAL_API_URL) {
     return NextResponse.json({ error: "CENTRAL_API_URL is not configured" }, { status: 503 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import mongoose from 'mongoose';
+import { getEnrichedSession } from '@/lib/auth/session-enriched';
 
 const PERMISSION_MODULES = {
   Inventory: [
@@ -51,6 +52,15 @@ const PERMISSION_MODULES = {
 
 export async function GET(request: NextRequest) {
   try {
+    // SECURITY: had no auth check at all -- listed every platform role
+    // (with user counts) to any caller, authenticated or not.
+    const session = await getEnrichedSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!session.isSuperAdmin) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     await connectDB();
     const Role = mongoose.models.Role || (await import('@/models/Role')).default;
     const UserRole = mongoose.models.UserRole || (await import('@/models/UserRole')).default;

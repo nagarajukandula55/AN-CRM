@@ -5,6 +5,8 @@ import { getBusinessBySourceId } from "@/lib/centralApiRead";
 import { getTemplateForBusiness } from "@/core/documentTemplates/resolve";
 import { businessToCompany } from "@/core/documentTemplates/adapters";
 import type { DocumentTemplateType } from "@/models/DocumentTemplate";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 /**
  * GET /api/document-templates/resolve?businessId=&documentType=&warehouseId=
@@ -15,9 +17,22 @@ import type { DocumentTemplateType } from "@/models/DocumentTemplate";
  */
 export async function GET(req: NextRequest) {
   try {
+    // SECURITY: had no auth check at all -- leaked a business's address/
+    // GSTIN (via businessToCompany) to any caller who knew its businessId.
+    // Every consumer of this route is an authenticated console/print
+    // page, so this was never meant to be publicly reachable.
+    const session = await getEnrichedSession();
+    if (!session?.user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
     await connectDB();
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      searchParams.get("businessId"),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
     const documentType = searchParams.get("documentType") as DocumentTemplateType | null;
     const warehouseId = searchParams.get("warehouseId");
 

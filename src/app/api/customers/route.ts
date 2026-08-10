@@ -6,6 +6,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { logAction } from "@/lib/audit/logAction";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 function permissionErrorResponse(err: any) {
   return NextResponse.json(
@@ -30,10 +31,24 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
     const search = searchParams.get("search");
 
     await connectDB();
+
+    // SECURITY: businessId was trusted straight from the query param with
+    // no ownership check, and omitting it entirely returned EVERY
+    // business's customers (PII: phone/email/GSTIN/address) to any caller
+    // holding the generic customers.view permission, not just a super
+    // admin -- the code comment's stated intent ("aggregated view... by a
+    // super admin") was never actually enforced. Only a real super admin
+    // gets the unscoped/aggregated view now; everyone else is locked to
+    // their own verified business.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      searchParams.get("businessId"),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
 
     // Reads from this app's own MongoDB, not central-api -- this is the
     // real write target for every capture path (captureCustomer(), the
@@ -74,13 +89,23 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { businessId, name, phone, email, gstin, address, city, state, pincode, source, notes } = body;
+    const { name, phone, email, gstin, address, city, state, pincode, source, notes } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ success: false, error: "name is required" }, { status: 400 });
     }
 
     await connectDB();
+
+    // SECURITY: body.businessId used to be trusted directly -- any
+    // authenticated user with customers.create could attribute a new
+    // customer record to any other business.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      body.businessId,
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
 
     const customer = await Customer.create({
       businessId: businessId && Types.ObjectId.isValid(businessId) ? new Types.ObjectId(businessId) : null,

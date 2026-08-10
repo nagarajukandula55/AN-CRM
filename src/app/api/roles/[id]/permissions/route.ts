@@ -24,6 +24,15 @@ export async function GET(req: NextRequest, context: any) {
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // SECURITY: writing this role's permission grants (POST below) had no
+    // privilege check at all beyond "is logged in" -- any authenticated
+    // user could replace ANY role's permission set, including granting
+    // themselves (or any role) super-admin-equivalent access. Read side
+    // gated the same way for consistency, since it reveals a role's full
+    // grant set.
+    if (!session.user.isSuperAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     await connectDB();
     const { id } = await context.params;
@@ -55,6 +64,9 @@ export async function POST(req: NextRequest, context: any) {
     const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!session.user.isSuperAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await connectDB();

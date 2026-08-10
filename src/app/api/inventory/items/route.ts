@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import InventoryItem from "@/models/InventoryItem";
@@ -7,6 +6,8 @@ import { connectDB } from "@/lib/mongodb";
 import { Types } from "mongoose";
 import { notify } from "@/lib/notify";
 import { logAction } from "@/lib/audit/logAction";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 /* =========================================================
  * GET INVENTORY ITEMS
@@ -14,11 +15,10 @@ import { logAction } from "@/lib/audit/logAction";
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
-    const h = await headers();
-    const userId = h.get("x-user-id");
-    const session = userId
-      ? { user: { id: userId, name: h.get("x-user-name") || "", email: h.get("x-user-email") || "" }, permissions: [], roles: [] }
-      : null;
+    // SECURITY: this route built its own ad-hoc pseudo-session (always
+    // permissions: []) instead of using getEnrichedSession(), and trusted
+    // businessId straight from the query param with no ownership check.
+    const session = await getEnrichedSession();
 
     if (!session?.user) {
       return NextResponse.json(
@@ -27,10 +27,15 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    requirePermission(session, buildPermissionCode("inventory", "view"));
+    requirePermission(session as any, buildPermissionCode("inventory", "view"));
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      searchParams.get("businessId"),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
 
     if (!businessId) {
       return NextResponse.json(
@@ -65,11 +70,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
-    const h = await headers();
-    const userId = h.get("x-user-id");
-    const session = userId
-      ? { user: { id: userId, name: h.get("x-user-name") || "", email: h.get("x-user-email") || "" }, permissions: [], roles: [] }
-      : null;
+    const session = await getEnrichedSession();
 
     if (!session?.user) {
       return NextResponse.json(
@@ -78,17 +79,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    requirePermission(session, buildPermissionCode("inventory", "edit"));
+    requirePermission(session as any, buildPermissionCode("inventory", "edit"));
 
     const body = await req.json();
 
     const {
-      businessId,
       materialId,
       warehouseId,
       quantity,
       unit,
     } = body;
+
+    // SECURITY: body.businessId used to be trusted directly.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      body.businessId,
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
 
     if (!businessId || !materialId || !warehouseId) {
       return NextResponse.json(

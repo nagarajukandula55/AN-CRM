@@ -7,6 +7,8 @@ import mongoose, { Schema, Model } from 'mongoose'
 import { notify } from '@/lib/notify'
 import { generateDocumentNumber } from '@/core/numbering/numberingService'
 import { logAction } from '@/lib/audit/logAction'
+import { getEnrichedSession } from '@/lib/auth/session-enriched'
+import { resolveAuthorizedBusinessId } from '@/lib/auth/resolveAuthorizedBusinessId'
 
 const SalesOrderSchema = new Schema({
   orderNumber: { type: String, unique: true },
@@ -51,7 +53,15 @@ export async function GET(req: Request) {
     // /api/sales/invoices — otherwise every business shares the same
     // orders list, which is a real multi-tenant data leak.
     const url = new URL(req.url)
-    const bizId = req.headers.get('x-active-business-id') || url.searchParams.get('businessId')
+    // SECURITY: bizId used to be trusted straight from the header/query
+    // param with no ownership check.
+    const session = await getEnrichedSession()
+    const bizId = await resolveAuthorizedBusinessId(
+      userId,
+      req.headers.get('x-active-business-id') || url.searchParams.get('businessId'),
+      !!session?.isSuperAdmin,
+      session?.business?.businessId || null
+    )
     const filter: Record<string, unknown> = { isDeleted: false }
     if (bizId) {
       filter.businessId = bizId
@@ -86,7 +96,14 @@ export async function POST(req: Request) {
     if (!userId) return NextResponse.json({ success: false, message: 'Unauthorised' }, { status: 401 })
     await connectDB()
     const body = await req.json()
-    const bizId = req.headers.get('x-active-business-id') || body.businessId
+    // SECURITY: body.businessId used to be trusted directly.
+    const session = await getEnrichedSession()
+    const bizId = await resolveAuthorizedBusinessId(
+      userId,
+      req.headers.get('x-active-business-id') || body.businessId,
+      !!session?.isSuperAdmin,
+      session?.business?.businessId || null
+    )
     if (!bizId) {
       return NextResponse.json({ success: false, message: 'businessId is required' }, { status: 400 })
     }

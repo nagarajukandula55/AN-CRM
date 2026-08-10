@@ -12,6 +12,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 const SALT_ROUNDS = 12;
 // Same fixed first password used for vendor self-service staff creation
@@ -46,9 +47,19 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
 
-    const businessId =
-      headersList.get("x-active-business-id") ||
-      searchParams.get("businessId");
+    // SECURITY: businessId was still trusted directly from the header/
+    // query param -- the generic employees.view permission check above
+    // confirms the caller can view SOME business's employees, not that
+    // they belong to the one they asked for. Any authenticated user
+    // holding employees.view (e.g. their own vendor's Manager) could
+    // still list another business's employee records, salaries included,
+    // just by passing its businessId.
+    const businessId = await resolveAuthorizedBusinessId(
+      userId,
+      headersList.get("x-active-business-id") || searchParams.get("businessId"),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
 
     if (!businessId) {
       return NextResponse.json(
@@ -157,7 +168,14 @@ export async function POST(request: NextRequest) {
       createNew,
       roleCode,
     } = body;
-    businessId = parsedBusinessId;
+    // SECURITY: parsedBusinessId used to be trusted directly -- see GET's
+    // matching fix above.
+    businessId = (await resolveAuthorizedBusinessId(
+      userId,
+      parsedBusinessId,
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    )) || undefined;
     linkedUserId = parsedLinkedUserId;
 
     if (!name || !name.trim()) {

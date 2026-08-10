@@ -6,6 +6,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { logAction } from "@/lib/audit/logAction";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 function permissionErrorResponse(err: any) {
   return NextResponse.json(
@@ -28,12 +29,19 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
     const search = searchParams.get("search");
     const stage = searchParams.get("stage");
 
     await connectDB();
 
+    // SECURITY: businessId was trusted straight from the query param with
+    // no ownership check -- see customers/route.ts's matching fix.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      searchParams.get("businessId"),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
     const query: Record<string, unknown> = {};
     if (businessId && Types.ObjectId.isValid(businessId)) {
       query.businessId = new Types.ObjectId(businessId);
@@ -75,13 +83,20 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { businessId, title, customerId, companyName, value, currency, stage, probability, expectedCloseDate, source, notes } = body;
+    const { title, customerId, companyName, value, currency, stage, probability, expectedCloseDate, source, notes } = body;
 
     if (!title?.trim()) {
       return NextResponse.json({ success: false, error: "title is required" }, { status: 400 });
     }
 
     await connectDB();
+
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      body.businessId,
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
 
     const deal = await Deal.create({
       businessId: businessId && Types.ObjectId.isValid(businessId) ? new Types.ObjectId(businessId) : null,

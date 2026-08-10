@@ -7,6 +7,7 @@ import InventoryItem from "@/models/InventoryItem";
 import { generateDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 
@@ -30,7 +31,14 @@ export async function GET(req: NextRequest) {
     const userId = h.get("x-user-id");
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
+    // SECURITY: businessId used to be trusted straight from the query
+    // param with no ownership check.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      searchParams.get("businessId"),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
     if (!businessId) {
       return NextResponse.json(
         { error: "businessId is required" },
@@ -108,8 +116,16 @@ export async function POST(req: NextRequest) {
     const userId = h.get("x-user-id");
 
     const body = await req.json();
-    const { businessId, inventoryItemId, adjustmentType, quantity, reason, notes } =
+    const { inventoryItemId, adjustmentType, quantity, reason, notes } =
       body;
+
+    // SECURITY: body.businessId used to be trusted directly.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      body.businessId,
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
 
     if (!businessId || !inventoryItemId || !adjustmentType || quantity === undefined) {
       return NextResponse.json(

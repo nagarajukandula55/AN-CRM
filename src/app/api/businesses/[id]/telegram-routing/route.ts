@@ -4,15 +4,41 @@ import Business from "@/models/Business";
 import { getVendorTelegramMessageTypes } from "@/core/telegram/vendorMessageTypes";
 import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
 import { logAiChange } from "@/core/changelog/logAiChange";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { requirePermission } from "@/middleware/permission.guard";
+import { buildPermissionCode } from "@/core/access/actions";
 
 /**
  * Reads/writes ONE business's Telegram routing config -- their group chat
  * id, personal chat id, and which of the two each message type goes to
- * (Business.telegramMessageRouting). Authorization is this app's own --
- * callers must already be authenticated via middleware; only reachable
- * from console/admin/vendors/[id]/telegram, itself Admin-only nav.
+ * (Business.telegramMessageRouting), including sending an actual message
+ * to that chat. AN Group staff only (console/admin/vendors/[id]/telegram
+ * -- never reachable from a vendor's own console).
+ *
+ * SECURITY: this route's own comment used to claim "callers must already
+ * be authenticated via middleware" but never actually checked a session
+ * or permission anywhere -- any caller, authenticated or not, could read
+ * another business's Telegram chat ids/routing, overwrite them, or send
+ * an arbitrary message to that business's linked chat just by knowing
+ * its businessId. Every handler below now requires a real session with
+ * vendors.edit.
  */
+async function requireStaffAccess(): Promise<{ ok: true } | { ok: false; res: NextResponse }> {
+  const session = await getEnrichedSession();
+  if (!session?.user) {
+    return { ok: false, res: NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 }) };
+  }
+  try {
+    requirePermission(session as any, buildPermissionCode("vendors", "edit"));
+  } catch (err: any) {
+    return { ok: false, res: NextResponse.json({ success: false, message: err.message }, { status: err.code === "FORBIDDEN" ? 403 : 401 }) };
+  }
+  return { ok: true };
+}
+
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireStaffAccess();
+  if (!auth.ok) return auth.res;
   await connectDB();
   const { id } = await params;
   const [business, messageTypes] = await Promise.all([
@@ -33,6 +59,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireStaffAccess();
+  if (!auth.ok) return auth.res;
   await connectDB();
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
@@ -78,6 +106,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
  * an explicit override of destination.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireStaffAccess();
+  if (!auth.ok) return auth.res;
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
   const text: string = String(body.text || "").trim();

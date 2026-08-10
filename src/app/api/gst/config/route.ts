@@ -7,6 +7,7 @@ import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { logAction } from "@/lib/audit/logAction";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 /* =========================================================
  * GET /api/gst/config?businessId=
@@ -24,7 +25,14 @@ export async function GET(req: NextRequest) {
     requirePermission(session as any, buildPermissionCode("gst", "view"));
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
+    // SECURITY: businessId used to be trusted straight from the query
+    // param with no ownership check.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      searchParams.get("businessId"),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
     if (!businessId) {
       return NextResponse.json({ error: "businessId is required" }, { status: 400 });
     }
@@ -66,7 +74,17 @@ export async function PUT(req: NextRequest) {
     requirePermission(session as any, buildPermissionCode("gst", "edit"));
 
     const body = await req.json();
-    const { businessId, gstin, provider, apiKey, apiSecret, username, isEnabled, autoSubmit } = body;
+    const { gstin, provider, apiKey, apiSecret, username, isEnabled, autoSubmit } = body;
+
+    // SECURITY: body.businessId used to be trusted directly -- any user
+    // with the generic gst.edit permission could overwrite another
+    // business's GST portal API key/secret.
+    const businessId = await resolveAuthorizedBusinessId(
+      userId,
+      body.businessId,
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
 
     if (!businessId || !gstin) {
       return NextResponse.json({ error: "businessId and gstin are required" }, { status: 400 });

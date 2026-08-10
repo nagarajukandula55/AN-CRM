@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Feedback from "@/models/Feedback";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
 
 const ALLOWED_STATUSES = ["NEW", "READ", "RESOLVED"];
 
@@ -12,6 +13,14 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // SECURITY: had no auth check at all.
+    const session = await getEnrichedSession();
+    if (!session?.user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+    if (!session.isSuperAdmin) {
+      return NextResponse.json({ success: false, message: "Forbidden" }, { status: 403 });
+    }
     await connectDB();
     const { id } = await params;
 

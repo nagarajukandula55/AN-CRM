@@ -36,6 +36,20 @@ export async function GET(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // SECURITY: only checked that a session existed, not that the caller
+    // was actually allowed to view vendor PII -- any authenticated user
+    // (including a plain vendor) could fetch any other vendor's full
+    // profile (GST/PAN/bank details) just by guessing/enumerating ids.
+    const session = await getEnrichedSession();
+    try {
+      requirePermission(session as any, buildPermissionCode("vendors", "view"));
+    } catch (err: any) {
+      return NextResponse.json(
+        { success: false, message: err.message },
+        { status: err.code === "FORBIDDEN" ? 403 : 401 }
+      );
+    }
+
     const { id } = await context.params;
     const vendor = await VendorProfile.findById(id).populate("userId", "name email username");
     if (!vendor) {

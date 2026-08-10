@@ -17,6 +17,7 @@ import Business from "@/models/Business";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,7 +34,23 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
+    // SECURITY: businessId used to be trusted straight from the query
+    // param with NO ownership check at all -- any authenticated user
+    // holding reports.view could pass another business's id and see its
+    // full revenue/calls/workorder analytics, and omitting the param
+    // entirely aggregated EVERY business's invoices together. Now
+    // resolved live against the caller's own verified business (see
+    // lib/auth/resolveAuthorizedBusinessId.ts); non-super-admins can
+    // never end up unscoped.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      searchParams.get("businessId"),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
+    if (!businessId && !session.isSuperAdmin) {
+      return NextResponse.json({ success: false, message: "No business context for this account" }, { status: 400 });
+    }
     // aggregate() bypasses Mongoose's normal query-casting layer (unlike
     // .find()/.countDocuments()), so a plain string businessId here NEVER
     // matched the real ObjectId field -- revenue silently read 0 for every

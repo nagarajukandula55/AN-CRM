@@ -32,6 +32,7 @@ import Business from "@/models/Business";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 type Granularity = "DAY" | "WEEK" | "MONTH" | "YEAR";
 
@@ -154,7 +155,18 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
+    // SECURITY: businessId used to be trusted straight from the query
+    // param with no ownership check -- see resolveAuthorizedBusinessId's
+    // own comment and api/analytics/overview's matching fix.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      searchParams.get("businessId"),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
+    if (!businessId && !session.isSuperAdmin) {
+      return NextResponse.json({ success: false, message: "No business context for this account" }, { status: 400 });
+    }
     const granularity = (searchParams.get("granularity") || "MONTH").toUpperCase() as Granularity;
     if (!BUCKET_COUNT[granularity]) {
       return NextResponse.json({ success: false, message: "granularity must be DAY, WEEK, MONTH, or YEAR" }, { status: 400 });

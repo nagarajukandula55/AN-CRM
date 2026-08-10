@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getBusinessBySourceId } from "@/lib/centralApiRead";
 import { refreshRoleCatalogCache } from "@/lib/access/centralAllowedPages";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
 
 /**
  * Proxies central-api's role-catalog for ONE business, resolved from this
@@ -13,11 +14,24 @@ import { refreshRoleCatalogCache } from "@/lib/access/centralAllowedPages";
  * routes are reachable by any site key, not just its admin key, see
  * central-api's routes/roleCatalog.js).
  *
- * Authorization is this app's own -- callers must already be authenticated
- * via the normal middleware (an_token), which is all that's needed here
- * since only super admins/platform staff reach the Business view page
- * these calls come from.
+ * SECURITY: this route's own comment used to claim "only super admins/
+ * platform staff reach the Business view page these calls come from" as
+ * if that were an enforced boundary -- it never was; the code never
+ * checked isSuperAdmin/isPlatformStaff at all, so any authenticated user
+ * of ANY business could manage roles, allowed pages, and grant/revoke
+ * team access for ANY OTHER business by its id (a real privilege-
+ * escalation path via grantAccess). Now actually enforced below.
  */
+async function requirePlatformStaff(): Promise<{ ok: true } | { ok: false; res: NextResponse }> {
+  const session = await getEnrichedSession();
+  if (!session?.user) {
+    return { ok: false, res: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  }
+  if (!session.isSuperAdmin) {
+    return { ok: false, res: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+  return { ok: true };
+}
 
 const CENTRAL_API_URL = process.env.CENTRAL_API_URL;
 const CENTRAL_API_KEY = process.env.CENTRAL_API_KEY;
@@ -42,6 +56,8 @@ async function resolveCentralBusinessId(localBusinessId: string): Promise<string
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requirePlatformStaff();
+  if (!auth.ok) return auth.res;
   const { id } = await params;
   if (!CENTRAL_API_URL) {
     return NextResponse.json({ error: "CENTRAL_API_URL is not configured" }, { status: 503 });
@@ -70,6 +86,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 // -- a single mutation endpoint rather than one route per action, since
 // every action needs the same "resolve central business id" prelude.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requirePlatformStaff();
+  if (!auth.ok) return auth.res;
   const { id } = await params;
   if (!CENTRAL_API_URL) {
     return NextResponse.json({ error: "CENTRAL_API_URL is not configured" }, { status: 503 });
