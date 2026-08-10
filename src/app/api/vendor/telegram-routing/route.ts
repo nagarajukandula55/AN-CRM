@@ -26,13 +26,26 @@ import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusines
  * which checks the session's own verified business first and only falls
  * back to resolveVendorContext for vendor Owners who have no
  * BusinessMember row at all.
+ *
+ * BUG FIX 2: resolveAuthorizedBusinessId's super-admin branch trusts
+ * ONLY its `requestedBusinessId` argument (never the session-business
+ * fallback) -- this was always calling it with `null` as that argument,
+ * so a super admin viewing THEIR OWN business (Settings > This Business,
+ * e.g. the AN-CRM Platform business itself) always got a 404 and an
+ * empty Alert Routing / message-template list, even though their own
+ * session.business.businessId was right there. Super admins are exactly
+ * the account meant to configure their own platform-wide Telegram setup
+ * here too, not just view/manage other vendors' -- now passes the
+ * session's own active business through as the "requested" id so a
+ * super admin resolves to their own business the same way anyone else
+ * does.
  */
 async function resolveOwnBusinessId(): Promise<string | null> {
   const session = await getEnrichedSession();
   if (!session?.user) return null;
   return resolveAuthorizedBusinessId(
     session.user.id,
-    null,
+    session.business?.businessId || null,
     !!session.isSuperAdmin,
     session.business?.businessId || null
   );
