@@ -43,13 +43,18 @@ export async function GET(req: NextRequest) {
     if (isActive !== null) {
       query.isActive = isActive === "true";
     }
-    // Vendor self-managed lists, strictly private -- see fault-codes/
-    // route.ts's matching comment for the full rationale. Super admin
-    // ("god mode") is the only account that sees across vendors.
+    // Vendor self-managed lists, strictly private to that vendor -- EXCEPT
+    // a solution a Super Admin added with no vendorId at all, which is a
+    // shared platform default every vendor should see (and can still add
+    // their own on top of, normally) -- see fault-codes/route.ts's
+    // matching comment for the private-list rationale. Was previously an
+    // AND on vendorId===own, which excluded vendorId:null entirely, so a
+    // Super-Admin-added default never showed up for any vendor. Super
+    // admin ("god mode") still sees across every vendor unfiltered.
     const ownerOrManager = await resolveOwnerOrManagerVendor(session.user.id).catch(() => null);
     const teamMembership = ownerOrManager || (await resolveVendorTeamMembership(session.user.id).catch(() => null));
     if (teamMembership && !session.isSuperAdmin) {
-      andClauses.push({ vendorId: (teamMembership as any)._id });
+      andClauses.push({ $or: [{ vendorId: (teamMembership as any)._id }, { vendorId: null }] });
     }
     if (search) {
       andClauses.push({

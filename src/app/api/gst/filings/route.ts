@@ -7,6 +7,7 @@ import { queueFiling, listPendingFilings } from "@/core/gst/gstFilingService";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 import { logAction } from "@/lib/audit/logAction";
 
 /* =========================================================
@@ -24,9 +25,23 @@ export async function GET(req: NextRequest) {
     requirePermission(session as any, buildPermissionCode("gst", "view"));
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
-    if (!businessId) {
+    const requestedBusinessId = searchParams.get("businessId");
+    if (!requestedBusinessId) {
       return NextResponse.json({ error: "businessId is required" }, { status: 400 });
+    }
+
+    // SECURITY: businessId was previously trusted straight from the query
+    // string with no verification -- any authenticated user with the
+    // generic gst.view permission could list another business's GST
+    // filings just by passing its id.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      requestedBusinessId,
+      !!session.isSuperAdmin,
+      session.business?.businessId || null
+    );
+    if (!businessId) {
+      return NextResponse.json({ success: true, data: [] });
     }
 
     if (searchParams.get("status") === "pending") {
@@ -65,13 +80,26 @@ export async function POST(req: NextRequest) {
     requirePermission(session as any, buildPermissionCode("gst", "create"));
 
     const body = await req.json();
-    const { businessId, invoiceId, returnType, period } = body;
+    const { businessId: requestedBusinessId, invoiceId, returnType, period } = body;
 
-    if (!businessId || !invoiceId || !returnType || !period) {
+    if (!requestedBusinessId || !invoiceId || !returnType || !period) {
       return NextResponse.json(
         { error: "businessId, invoiceId, returnType, and period are required" },
         { status: 400 }
       );
+    }
+
+    // SECURITY: businessId was previously trusted straight from the body
+    // with no verification -- any authenticated user could queue a filing
+    // tagged under another business's id.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      requestedBusinessId,
+      !!session.isSuperAdmin,
+      session.business?.businessId || null
+    );
+    if (!businessId || businessId !== requestedBusinessId) {
+      return NextResponse.json({ error: "Not authorized for this business" }, { status: 403 });
     }
 
     const filing = await queueFiling({ businessId, invoiceId, returnType, period, submittedBy: userId });

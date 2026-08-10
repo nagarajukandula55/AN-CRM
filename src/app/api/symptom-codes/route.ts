@@ -70,10 +70,14 @@ export async function GET(req: NextRequest) {
     // Vendor self-managed lists, strictly private -- see fault-codes/
     // route.ts's matching comment for the full rationale. Super admin
     // ("god mode") is the only account that sees across vendors.
+    // A Super-Admin-added entry with no vendorId at all is a shared
+    // platform default every vendor should see -- was an AND on
+    // vendorId===own, which excluded vendorId:null entirely (see
+    // solutions/route.ts's matching fix).
     const ownerOrManager = await resolveOwnerOrManagerVendor(session.user.id).catch(() => null);
     const teamMembership = ownerOrManager || (await resolveVendorTeamMembership(session.user.id).catch(() => null));
     if (teamMembership && !session.isSuperAdmin) {
-      andClauses.push({ vendorId: (teamMembership as any)._id });
+      andClauses.push({ $or: [{ vendorId: (teamMembership as any)._id }, { vendorId: null }] });
     }
     if (search) {
       andClauses.push({

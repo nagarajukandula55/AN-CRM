@@ -9,6 +9,19 @@ import "@/models/ProductCategory";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+
+// SECURITY: GET/PUT/DELETE below looked a category up by its Mongo _id
+// ONLY -- no check that its businessId belongs to the caller, so any
+// authenticated user holding the generic material_categories.view/edit/
+// delete permission could read, change, or soft-delete another
+// business's material category just by knowing/guessing its id.
+async function assertOwnsCategory(category: { businessId: unknown } | null, userId: string, isSuperAdmin: boolean, sessionBusinessId: string | null) {
+  if (!category) return false;
+  if (isSuperAdmin) return true;
+  const authorizedBusinessId = await resolveAuthorizedBusinessId(userId, String(category.businessId), isSuperAdmin, sessionBusinessId);
+  return authorizedBusinessId === String(category.businessId);
+}
 
 /* =========================================================
  * GET /api/material-categories/[id]
@@ -48,7 +61,7 @@ export async function GET(
       isDeleted: false,
     }).populate("parentCategory", "name code");
 
-    if (!category) {
+    if (!category || !(await assertOwnsCategory(category as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
       return NextResponse.json(
         { success: false, error: "Category not found" },
         { status: 404 }
@@ -105,7 +118,7 @@ export async function PUT(
       isDeleted: false,
     });
 
-    if (!category) {
+    if (!category || !(await assertOwnsCategory(category as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
       return NextResponse.json(
         { success: false, error: "Category not found" },
         { status: 404 }
@@ -198,7 +211,7 @@ export async function DELETE(
       isDeleted: false,
     });
 
-    if (!category) {
+    if (!category || !(await assertOwnsCategory(category as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
       return NextResponse.json(
         { success: false, error: "Category not found" },
         { status: 404 }

@@ -87,10 +87,14 @@ export async function GET(req: NextRequest) {
     // resolvable vendor (business-level staff/console/super-admin -- "god
     // mode") is unaffected -- sees everything the businessId scope above
     // already allows, global entries included.
+    // A Super-Admin-added entry with no vendorId at all is a shared
+    // platform default every vendor should see -- was an AND on
+    // vendorId===own, which excluded vendorId:null entirely (see
+    // solutions/route.ts's matching fix).
     const ownerOrManager = await resolveOwnerOrManagerVendor(session.user.id).catch(() => null);
     const teamMembership = ownerOrManager || (await resolveVendorTeamMembership(session.user.id).catch(() => null));
     if (teamMembership && !session.isSuperAdmin) {
-      andClauses.push({ vendorId: (teamMembership as any)._id });
+      andClauses.push({ $or: [{ vendorId: (teamMembership as any)._id }, { vendorId: null }] });
     }
     if (search) {
       andClauses.push({

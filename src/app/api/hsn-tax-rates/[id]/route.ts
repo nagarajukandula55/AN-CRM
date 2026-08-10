@@ -5,6 +5,7 @@ import HsnTaxRate from "@/models/HsnTaxRate";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 import { logAction } from "@/lib/audit/logAction";
 
 function permissionErrorResponse(err: any) {
@@ -12,6 +13,19 @@ function permissionErrorResponse(err: any) {
     { success: false, error: err.message },
     { status: err.code === "FORBIDDEN" ? 403 : 401 }
   );
+}
+
+// SECURITY: PUT/DELETE below looked a rate up by its Mongo _id ONLY -- the
+// null-businessId (global/platform default) case was already guarded to
+// super-admin-only, but a non-null businessId record had no ownership
+// check at all, so any authenticated user with the generic
+// gst.manage_settings permission could edit/delete another business's HSN
+// rate override just by knowing/guessing its id.
+async function assertOwnsRate(rate: { businessId: unknown } | null, userId: string, isSuperAdmin: boolean, sessionBusinessId: string | null) {
+  if (!rate) return false;
+  if (isSuperAdmin) return true;
+  const authorizedBusinessId = await resolveAuthorizedBusinessId(userId, String(rate.businessId), isSuperAdmin, sessionBusinessId);
+  return authorizedBusinessId === String(rate.businessId);
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -32,11 +46,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const existing = await HsnTaxRate.findById(id);
-    if (existing && existing.businessId === null) {
+    if (!existing) {
+      return NextResponse.json({ success: false, error: "HSN rate not found" }, { status: 404 });
+    }
+    if (existing.businessId === null) {
       return NextResponse.json(
         { success: false, error: "Global/default HSN rates cannot be edited, only business-specific overrides" },
         { status: 403 }
       );
+    }
+    if (!(await assertOwnsRate(existing as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
+      return NextResponse.json({ success: false, error: "HSN rate not found" }, { status: 404 });
     }
 
     const body = await req.json();
@@ -79,11 +99,17 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     await connectDB();
     const existing = await HsnTaxRate.findById(id);
-    if (existing && existing.businessId === null) {
+    if (!existing) {
+      return NextResponse.json({ success: false, error: "HSN rate not found" }, { status: 404 });
+    }
+    if (existing.businessId === null) {
       return NextResponse.json(
         { success: false, error: "Global/default HSN rates cannot be deleted" },
         { status: 403 }
       );
+    }
+    if (!(await assertOwnsRate(existing as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
+      return NextResponse.json({ success: false, error: "HSN rate not found" }, { status: 404 });
     }
 
     const rate = await HsnTaxRate.findByIdAndDelete(id);

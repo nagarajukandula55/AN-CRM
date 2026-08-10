@@ -10,6 +10,7 @@ import "@/models/ProductCategory";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 /* =========================================================
  * GET  /api/material-categories?businessId=xxx
@@ -33,13 +34,26 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
+    const requestedBusinessId = searchParams.get("businessId");
 
-    if (!businessId) {
+    if (!requestedBusinessId) {
       return NextResponse.json(
         { success: false, error: "businessId is required" },
         { status: 400 }
       );
+    }
+
+    // SECURITY: businessId was previously trusted straight from the query
+    // string with no verification -- any authenticated user could list
+    // another business's material categories just by passing its id.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      requestedBusinessId,
+      !!session.isSuperAdmin,
+      session.business?.businessId || null
+    );
+    if (!businessId) {
+      return NextResponse.json({ success: true, data: [] });
     }
 
     const categories = await MaterialCategory.find({
@@ -80,12 +94,28 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { businessId, name, code, description, parentCategory, unit, isActive, businessScope, businessIds } = body;
+    const { businessId: requestedBusinessId, name, code, description, parentCategory, unit, isActive, businessScope, businessIds } = body;
 
-    if (!businessId) {
+    if (!requestedBusinessId) {
       return NextResponse.json(
         { success: false, error: "businessId is required" },
         { status: 400 }
+      );
+    }
+
+    // SECURITY: businessId was previously trusted straight from the body
+    // with no verification -- any authenticated user could create a
+    // category tagged with another business's id.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      requestedBusinessId,
+      !!session.isSuperAdmin,
+      session.business?.businessId || null
+    );
+    if (!businessId || businessId !== requestedBusinessId) {
+      return NextResponse.json(
+        { success: false, error: "Not authorized for this business" },
+        { status: 403 }
       );
     }
     if (!name || !name.trim()) {
