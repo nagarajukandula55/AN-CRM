@@ -961,7 +961,14 @@ export default function SCJobSheetScreen() {
         {job.ccoName && <p className="text-xs text-ink-3 mt-2">Logged by (CCO): {job.ccoName}</p>}
       </Card>
 
-      {isOpen && job.status !== 'CREATED' && (
+      {/* Was `isOpen && ...` -- isOpen excludes CLOSED entirely, so this
+          whole card (line items, tax, totals) vanished the moment a
+          workorder closed instead of staying visible read-only. `editable`
+          already correctly gates actual editing (including the CLOSED +
+          OTP-unlocked case), so visibility just needs to also include
+          CLOSED. Regression reported live: "once closed only fewer
+          details are being shown now". */}
+      {job.status !== 'CREATED' && job.status !== 'CANCELLED' && (
         <Card className="overflow-hidden mb-6">
           <div className="px-5 py-3 border-b border-border flex items-center justify-between flex-wrap gap-2">
             <h3 className="text-sm font-semibold text-ink">Parts &amp; Service Lines</h3>
