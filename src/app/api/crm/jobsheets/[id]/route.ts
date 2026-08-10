@@ -151,7 +151,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     await connectDB();
 
-    const existing = await CrmJobSheet.findOne({ _id: id, isDeleted: false }).lean();
+    const existing = await CrmJobSheet.findOne({ _id: id, isDeleted: false })
+      .select("+editAccessToken +editAccessTokenExpiresAt")
+      .lean();
     if (!existing) {
       return NextResponse.json({ success: false, message: "Job sheet not found" }, { status: 404 });
     }
@@ -168,7 +170,38 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (updates.fileBackupDescription === "") delete updates.fileBackupDescription;
     if (updates.warrantyStatus === "") delete updates.warrantyStatus;
 
-    if (LOCKED_AFTER_INVOICE.has((existing as any).status) && updates.lineItems) {
+    // A valid, unexpired, single-use editAccessToken (see
+    // edit-access/{request,verify}) unlocks lineItems on a CLOSED
+    // workorder specifically -- the OTP-gated flow this bypasses exists
+    // precisely to allow a deliberate, audited correction. Any other
+    // locked status (REPAIR_COMPLETED) or a missing/expired/wrong token
+    // still hits the normal guard. The token is consumed (cleared) the
+    // moment it's used, whether or not the rest of this request succeeds,
+    // so it can never be replayed for a second edit.
+    const providedToken = typeof body.editAccessToken === "string" ? body.editAccessToken : null;
+    const storedToken = (existing as any).editAccessToken as string | undefined;
+    const tokenExpiresAt = (existing as any).editAccessTokenExpiresAt as Date | undefined;
+    const otpBypassValid =
+      (existing as any).status === "CLOSED" &&
+      !!providedToken &&
+      !!storedToken &&
+      providedToken === storedToken &&
+      !!tokenExpiresAt &&
+      new Date(tokenExpiresAt).getTime() > Date.now();
+
+    if (otpBypassValid) {
+      await CrmJobSheet.updateOne({ _id: id }, { $unset: { editAccessToken: "", editAccessTokenExpiresAt: "" } });
+      logAction({
+        action: "UPDATE",
+        entity: "CrmJobSheet",
+        entityId: id,
+        after: { editedViaOtpBypass: true },
+        req,
+        actor: { id: userId },
+      });
+    }
+
+    if (LOCKED_AFTER_INVOICE.has((existing as any).status) && updates.lineItems && !otpBypassValid) {
       return NextResponse.json(
         { success: false, message: "Line items cannot be changed after the job has been invoiced." },
         { status: 409 }

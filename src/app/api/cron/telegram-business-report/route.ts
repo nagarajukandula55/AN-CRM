@@ -43,11 +43,14 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const now = new Date();
+    // Was telegramChatId-only -- a business with ONLY a personal chat id
+    // configured (no group) never got scheduled reports at all despite
+    // Settings supporting that combination.
     const candidates = await Business.find({
       telegramReportFrequency: { $in: ["DAILY", "WEEKLY", "MONTHLY"] },
-      telegramChatId: { $nin: [null, ""] },
+      $or: [{ telegramChatId: { $nin: [null, ""] } }, { telegramPersonalChatId: { $nin: [null, ""] } }],
       isActive: true,
-    }).select("name operatingMode telegramChatId telegramReportFrequency telegramReportLastSentAt");
+    }).select("name operatingMode telegramChatId telegramPersonalChatId telegramReportFrequency telegramReportLastSentAt");
 
     let sentCount = 0;
     for (const business of candidates) {
@@ -63,14 +66,24 @@ export async function GET(req: NextRequest) {
         const activityLabel = isSC ? "Workorders" : "Calls";
         const { text, current, prior } = await buildReportMessage(business.name, business.telegramReportFrequency!, isSC, String(business._id), now);
 
-        await sendTelegramMessage(text, { chatId: business.telegramChatId, parseMode: "HTML" });
-
-        // QuickChart renders a Chart.js config into a PNG server-side --
-        // https://quickchart.io/documentation/ -- no API key needed for
-        // this volume, and the whole config travels as one URL, so
-        // Telegram's sendPhoto (which fetches by URL) needs nothing else.
+        // Sent to BOTH configured chats -- was group-only (telegramChatId),
+        // so a business with only a personal chat configured, or wanting
+        // the owner to get their own copy alongside the team group,
+        // never received it on the personal side. Per explicit direction
+        // ("...tables of ... summaries of Workorders with Statuses and
+        // Revenue details in group and Personal").
+        const destinationChatIds = [business.telegramChatId, business.telegramPersonalChatId].filter(
+          (id): id is string => !!id
+        );
         const chartUrl = buildChartUrl(business.name, business.telegramReportFrequency!, activityLabel, prior, current);
-        await sendTelegramPhoto(chartUrl, { chatId: business.telegramChatId });
+        for (const destChatId of destinationChatIds) {
+          await sendTelegramMessage(text, { chatId: destChatId, parseMode: "HTML" });
+          // QuickChart renders a Chart.js config into a PNG server-side --
+          // https://quickchart.io/documentation/ -- no API key needed for
+          // this volume, and the whole config travels as one URL, so
+          // Telegram's sendPhoto (which fetches by URL) needs nothing else.
+          await sendTelegramPhoto(chartUrl, { chatId: destChatId });
+        }
 
         business.telegramReportLastSentAt = now;
         await business.save();

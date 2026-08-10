@@ -340,6 +340,52 @@ export default function SCJobSheetScreen() {
   const [saving, setSaving] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
+  // OTP-gated edit access for a CLOSED workorder -- see
+  // api/crm/jobsheets/[id]/edit-access/{request,verify}. editAccessToken
+  // is single-use and only lives in this component's memory (never
+  // persisted client-side) -- a page refresh always requires a fresh OTP.
+  const [editAccessToken, setEditAccessToken] = useState<string | null>(null)
+  const [showOtpModal, setShowOtpModal] = useState(false)
+  const [otpValue, setOtpValue] = useState('')
+  const [otpStep, setOtpStep] = useState<'requesting' | 'enter' | 'verifying'>('requesting')
+  const [otpError, setOtpError] = useState<string | null>(null)
+
+  async function requestEditOtp() {
+    setShowOtpModal(true)
+    setOtpStep('requesting')
+    setOtpError(null)
+    setOtpValue('')
+    try {
+      const res = await fetch(`/api/crm/jobsheets/${jobId}/edit-access/request`, { method: 'POST' })
+      const d = await res.json()
+      if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to send OTP')
+      setOtpStep('enter')
+    } catch (err: any) {
+      setOtpError(err.message || 'Something went wrong')
+      setOtpStep('enter')
+    }
+  }
+
+  async function verifyEditOtp() {
+    if (!otpValue.trim()) return
+    setOtpStep('verifying')
+    setOtpError(null)
+    try {
+      const res = await fetch(`/api/crm/jobsheets/${jobId}/edit-access/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ otp: otpValue.trim() }),
+      })
+      const d = await res.json()
+      if (!res.ok || d.success === false) throw new Error(d.message || 'Incorrect or expired OTP')
+      setEditAccessToken(d.editAccessToken)
+      setShowOtpModal(false)
+    } catch (err: any) {
+      setOtpError(err.message || 'Something went wrong')
+      setOtpStep('enter')
+    }
+  }
+
   useEffect(() => {
     if (job) {
       setLineItems(job.lineItems?.length ? job.lineItems : [])
@@ -441,10 +487,17 @@ export default function SCJobSheetScreen() {
       const res = await fetch(`/api/crm/jobsheets/${jobId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineItems, taxApplyEnabled, remark, workPerformed: engineerRemark, solutionId: solutionId || undefined }),
+        body: JSON.stringify({
+          lineItems, taxApplyEnabled, remark, workPerformed: engineerRemark, solutionId: solutionId || undefined,
+          ...(editAccessToken ? { editAccessToken } : {}),
+        }),
       })
       const d = await res.json()
       if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to save')
+      // Single-use -- the server already consumed it on this request
+      // regardless of outcome, so this component must forget it too
+      // rather than let a second Save silently retry with a dead token.
+      if (editAccessToken) setEditAccessToken(null)
       fetchJob()
     } catch (err: any) {
       setActionError(err.message || 'Something went wrong')
@@ -817,7 +870,7 @@ export default function SCJobSheetScreen() {
   // remains; letting the line items still be edited at that point (as
   // they were before) let someone silently change what was actually
   // repaired/charged after the fact.
-  const editable = inRepair || job.status === 'PART_PENDING'
+  const editable = inRepair || job.status === 'PART_PENDING' || (job.status === 'CLOSED' && !!editAccessToken)
   const tat = tatLabel(job.createdAt, job.completedAt)
 
   // ---------- In-progress / closure screen (same route, same component) ----------
@@ -1150,7 +1203,16 @@ export default function SCJobSheetScreen() {
 
       {job.status === 'CLOSED' && (
         <Card className="p-5 mt-6">
-          <h3 className="text-sm font-semibold text-ink mb-3">Handover Summary</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-ink">Handover Summary</h3>
+            {editAccessToken ? (
+              <Badge tone="warning">Edit unlocked — Parts &amp; Service Lines above is now editable</Badge>
+            ) : (
+              <Button variant="secondary" size="sm" onClick={requestEditOtp} disabled={saving}>
+                Request Edit Access
+              </Button>
+            )}
+          </div>
           {/* Was just "This job sheet is closed." with no detail at all --
               reported live: the handover/payment info entered when this
               job was closed had nowhere to be verified afterward. Parts &
@@ -1175,7 +1237,60 @@ export default function SCJobSheetScreen() {
               <p className="text-ink">{fmtDateTime(job.handedOverAt) || '—'}</p>
             </div>
           </div>
+          {!editAccessToken && (
+            <p className="text-xs text-ink-3 mt-3">
+              Editing a closed workorder's Parts &amp; Service Lines requires an OTP sent to this business's personal Telegram chat.
+              Note: this corrects the workorder's own record only — it does not regenerate the already-issued invoice.
+            </p>
+          )}
         </Card>
+      )}
+
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => otpStep !== 'requesting' && setShowOtpModal(false)}>
+          <div className="bg-surface border border-border rounded-card shadow-card-lg w-full max-w-sm p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-ink">Edit Access — OTP Required</h3>
+              <button onClick={() => setShowOtpModal(false)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
+            </div>
+            {otpStep === 'requesting' ? (
+              <div className="flex items-center gap-2 text-sm text-ink-2 py-2">
+                <Loader2 className="w-4 h-4 animate-spin" /> Sending OTP to the personal Telegram chat…
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-ink-3">
+                  Enter the 6-digit code sent to this business's <b>personal</b> Telegram chat (not the group). Valid for 10 minutes.
+                </p>
+                {otpError && <div className="text-xs text-danger bg-danger-soft border border-danger/20 rounded-control px-3 py-2">{otpError}</div>}
+                <input
+                  autoFocus
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otpValue}
+                  onChange={e => setOtpValue(e.target.value.replace(/\D/g, ''))}
+                  onKeyDown={e => e.key === 'Enter' && verifyEditOtp()}
+                  className={`${inputCls} text-center tracking-[0.5em] text-lg font-mono`}
+                  placeholder="••••••"
+                />
+                <div className="flex justify-between items-center pt-1">
+                  <button type="button" onClick={requestEditOtp} className="text-xs text-accent hover:underline">Resend code</button>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => setShowOtpModal(false)}>Cancel</Button>
+                    <Button
+                      size="sm"
+                      onClick={verifyEditOtp}
+                      disabled={otpStep === 'verifying' || otpValue.trim().length !== 6}
+                      icon={otpStep === 'verifying' ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}
+                    >
+                      Verify
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {showPartPendingModal && (

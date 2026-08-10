@@ -21,9 +21,21 @@ export function periodStart(frequency: string, now: Date): Date {
 
 export const fmtINR = (n: number) => `Rs ${Math.round(n).toLocaleString("en-IN")}`;
 
+// Every CrmJobSheet.status value, in the order they should list in the
+// report -- see models/CrmJobSheet.ts for the canonical lifecycle.
+const WORKORDER_STATUSES = [
+  "CREATED",
+  "REPAIR_STARTED",
+  "REPAIR_IN_PROGRESS",
+  "PART_PENDING",
+  "REPAIR_COMPLETED",
+  "CLOSED",
+  "CANCELLED",
+] as const;
+
 export async function computePeriodNumbers(businessId: string, isSC: boolean, from: Date, to: Date) {
   const businessObjectId = new mongoose.Types.ObjectId(businessId);
-  const [revenueAgg, callCount] = await Promise.all([
+  const [revenueAgg, callCount, statusAgg] = await Promise.all([
     SalesInvoice.aggregate([
       { $match: { businessId: businessObjectId, isDeleted: { $ne: true }, status: "PAID", createdAt: { $gte: from, $lt: to } } },
       { $group: { _id: null, sum: { $sum: "$grandTotal" }, count: { $sum: 1 } } },
@@ -31,12 +43,29 @@ export async function computePeriodNumbers(businessId: string, isSC: boolean, fr
     isSC
       ? CrmJobSheet.countDocuments({ businessId: businessObjectId, isDeleted: { $ne: true }, createdAt: { $gte: from, $lt: to } })
       : CrmCall.countDocuments({ businessId: businessObjectId, createdAt: { $gte: from, $lt: to } }),
+    // Per-status workorder breakdown for the period -- SC only (see
+    // buildReportMessage's own comment on why non-SC never had a
+    // workorder concept). Skipped entirely for non-SC to avoid an
+    // unnecessary aggregate.
+    isSC
+      ? CrmJobSheet.aggregate([
+          { $match: { businessId: businessObjectId, isDeleted: { $ne: true }, createdAt: { $gte: from, $lt: to } } },
+          { $group: { _id: "$status", count: { $sum: 1 } } },
+        ])
+      : Promise.resolve([]),
   ]);
+  const byStatus: Record<string, number> = {};
+  for (const row of statusAgg as any[]) byStatus[row._id] = row.count;
   return {
     revenue: revenueAgg?.[0]?.sum || 0,
     invoices: revenueAgg?.[0]?.count || 0,
     activity: callCount || 0,
+    byStatus,
   };
+}
+
+function statusLabel(status: string): string {
+  return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export async function buildReportMessage(businessName: string, frequency: string, isSC: boolean, businessId: string, now: Date) {
@@ -51,7 +80,7 @@ export async function buildReportMessage(businessName: string, frequency: string
   const activityLabel = isSC ? "Workorders" : "Calls";
   const changePct = prior.revenue > 0 ? (((current.revenue - prior.revenue) / prior.revenue) * 100).toFixed(1) : "n/a";
 
-  const text = [
+  const lines = [
     `<b>${businessName} — ${frequency} Report</b>`,
     "",
     "<pre>",
@@ -60,9 +89,27 @@ export async function buildReportMessage(businessName: string, frequency: string
     `${activityLabel.padEnd(12)} ${String(current.activity).padEnd(14)} (prior ${prior.activity})`,
     `Change       ${changePct}%`,
     "</pre>",
-  ].join("\n");
+  ];
 
-  return { text, current, prior };
+  // Per-status workorder table -- SC only, and only when there's at
+  // least one workorder in the period (an all-zero table for a quiet
+  // day/week is just noise). Per explicit direction ("Richtext format
+  // tables of Daily, Weekly and monthly summaries of Workorders with
+  // Statuses and Revenue details").
+  if (isSC) {
+    const rows = WORKORDER_STATUSES
+      .map((s) => ({ status: s, count: current.byStatus[s] || 0 }))
+      .filter((r) => r.count > 0);
+    if (rows.length > 0) {
+      lines.push("", "<b>Workorders by Status</b>", "<pre>");
+      for (const r of rows) {
+        lines.push(`${statusLabel(r.status).padEnd(18)} ${String(r.count).padStart(4)}`);
+      }
+      lines.push("</pre>");
+    }
+  }
+
+  return { text: lines.join("\n"), current, prior };
 }
 
 export function buildChartUrl(businessName: string, frequency: string, activityLabel: string, prior: { revenue: number; activity: number }, current: { revenue: number; activity: number }) {

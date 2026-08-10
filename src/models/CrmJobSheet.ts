@@ -224,6 +224,17 @@ export interface ICrmJobSheet extends Document {
   invoiceId?: Types.ObjectId; // SalesInvoice created at closure
   invoiceNumber?: string;
 
+  // Editing a CLOSED workorder's line items is gated by an OTP sent to
+  // the vendor's PERSONAL Telegram chat only (never the group) -- see
+  // api/crm/jobsheets/[id]/edit-access/{request,verify}/route.ts. Both
+  // the OTP and the token it unlocks are short-lived and single-use;
+  // never exposed to the client except editAccessToken itself, returned
+  // once on successful verification.
+  editAccessOtp?: string;
+  editAccessOtpExpiresAt?: Date;
+  editAccessToken?: string;
+  editAccessTokenExpiresAt?: Date;
+
   isDeleted: boolean;
   createdBy: Types.ObjectId;
   // Snapshot of the CCO's name -- copied from the originating CrmCall's
@@ -345,6 +356,11 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
 
     invoiceId: { type: Schema.Types.ObjectId, ref: "SalesInvoice" },
     invoiceNumber: { type: String },
+
+    editAccessOtp: { type: String, select: false },
+    editAccessOtpExpiresAt: { type: Date, select: false },
+    editAccessToken: { type: String, select: false },
+    editAccessTokenExpiresAt: { type: Date, select: false },
 
     isDeleted: { type: Boolean, default: false, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
