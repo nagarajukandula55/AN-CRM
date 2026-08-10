@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import { Types } from "mongoose";
 import StockTransfer from "@/models/StockTransfer";
 import { logAction } from "@/lib/audit/logAction";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+
+// SECURITY: both handlers below looked a transfer up by its Mongo _id
+// ONLY -- no check that its businessId belongs to the caller, and no
+// permission check at all beyond "some session exists". Any authenticated
+// user could read, or even change the status of (PATCH), another
+// business's stock transfer just by knowing/guessing its id.
+async function assertOwnsTransfer(transfer: { businessId: unknown } | null, userId: string, isSuperAdmin: boolean, sessionBusinessId: string | null) {
+  if (!transfer) return false;
+  if (isSuperAdmin) return true;
+  const authorizedBusinessId = await resolveAuthorizedBusinessId(userId, String(transfer.businessId), isSuperAdmin, sessionBusinessId);
+  return authorizedBusinessId === String(transfer.businessId);
+}
 
 // ---------------------------------------------------------------------------
 // PATCH /api/stock/transfers/[id]
@@ -14,11 +27,11 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const h = await headers();
-    const userId = h.get("x-user-id");
-    if (!userId) {
+    const session = await getEnrichedSession();
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = session.user.id;
 
     await connectDB();
 
@@ -26,6 +39,11 @@ export async function PATCH(
 
     if (!Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid transfer ID" }, { status: 400 });
+    }
+
+    const existing = await StockTransfer.findById(id).lean();
+    if (!existing || !(await assertOwnsTransfer(existing as any, userId, !!session.isSuperAdmin, session.business?.businessId || null))) {
+      return NextResponse.json({ error: "Transfer not found" }, { status: 404 });
     }
 
     const body = await req.json();
@@ -83,9 +101,8 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const h = await headers();
-    const userId = h.get("x-user-id");
-    if (!userId) {
+    const session = await getEnrichedSession();
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -99,7 +116,7 @@ export async function GET(
 
     const transfer = await StockTransfer.findById(id).lean();
 
-    if (!transfer) {
+    if (!transfer || !(await assertOwnsTransfer(transfer as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
       return NextResponse.json({ error: "Transfer not found" }, { status: 404 });
     }
 

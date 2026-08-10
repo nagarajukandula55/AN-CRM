@@ -6,6 +6,22 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { logAction } from "@/lib/audit/logAction";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+
+// SECURITY: GET/PUT/DELETE below looked a document up by its Mongo _id
+// ONLY -- no check that its businessId belongs to the caller at all, so
+// any authenticated user holding the generic sales_documents.view/edit/
+// delete permission could read, change the status of, or soft-delete
+// another business's sales document just by knowing (or guessing/
+// enumerating) its id. Every handler now verifies the document's own
+// businessId against the caller's real, resolved business before doing
+// anything with it.
+async function assertOwnsDocument(doc: { businessId: unknown } | null, userId: string, isSuperAdmin: boolean, sessionBusinessId: string | null) {
+  if (!doc) return false;
+  if (isSuperAdmin) return true;
+  const authorizedBusinessId = await resolveAuthorizedBusinessId(userId, String(doc.businessId), isSuperAdmin, sessionBusinessId);
+  return authorizedBusinessId === String(doc.businessId);
+}
 
 // GET /api/sales-documents/[id]
 export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -27,7 +43,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     }
 
     const doc = await SalesDocument.findOne({ _id: id, isDeleted: false }).lean();
-    if (!doc) {
+    if (!doc || !(await assertOwnsDocument(doc as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
       return NextResponse.json({ success: false, message: "Not found" }, { status: 404 });
     }
 
@@ -56,14 +72,16 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     const { id } = await context.params;
     const body = await req.json();
 
+    const existing = await SalesDocument.findOne({ _id: id, isDeleted: false }).lean();
+    if (!existing || !(await assertOwnsDocument(existing as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
+      return NextResponse.json({ success: false, message: "Not found" }, { status: 404 });
+    }
+
     const doc = await SalesDocument.findOneAndUpdate(
       { _id: id, isDeleted: false },
       { $set: { status: body.status, notes: body.notes } },
       { new: true }
     );
-    if (!doc) {
-      return NextResponse.json({ success: false, message: "Not found" }, { status: 404 });
-    }
 
     logAction({ action: "UPDATE", entity: "SalesDocument", entityId: id, after: doc, req });
 
@@ -89,10 +107,12 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     await connectDB();
     const { id } = await context.params;
 
-    const doc = await SalesDocument.findOneAndUpdate({ _id: id, isDeleted: false }, { $set: { isDeleted: true } }, { new: true });
-    if (!doc) {
+    const existing = await SalesDocument.findOne({ _id: id, isDeleted: false }).lean();
+    if (!existing || !(await assertOwnsDocument(existing as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
       return NextResponse.json({ success: false, message: "Not found" }, { status: 404 });
     }
+
+    await SalesDocument.findOneAndUpdate({ _id: id, isDeleted: false }, { $set: { isDeleted: true } }, { new: true });
 
     logAction({ action: "DELETE", entity: "SalesDocument", entityId: id, req });
 

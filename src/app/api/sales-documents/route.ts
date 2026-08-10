@@ -7,6 +7,7 @@ import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { generateDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 // GET /api/sales-documents?businessId=&docType=&status=&search=&page=&limit=
 export async function GET(req: NextRequest) {
@@ -24,13 +25,25 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
+    // SECURITY: businessId used to be trusted straight from the query
+    // param with NO ownership check -- any authenticated user holding
+    // sales_documents.view could pass another business's id and read its
+    // full sales-document list. Same fix pattern as customers/deals.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      searchParams.get("businessId"),
+      !!session.isSuperAdmin,
+      session.business?.businessId || null
+    );
     const docType = searchParams.get("docType") as SalesDocumentType | null;
     const status = searchParams.get("status");
     const search = searchParams.get("search");
 
     if (!businessId) {
-      return NextResponse.json({ success: false, message: "businessId is required" }, { status: 400 });
+      if (session.isSuperAdmin) {
+        return NextResponse.json({ success: false, message: "businessId is required" }, { status: 400 });
+      }
+      return NextResponse.json({ success: true, data: [], pagination: { page: 1, limit: 25, total: 0, totalPages: 0 } });
     }
     if (!docType || !SALES_DOCUMENT_TYPES.includes(docType)) {
       return NextResponse.json({ success: false, message: "A valid docType is required" }, { status: 400 });
@@ -77,7 +90,14 @@ export async function POST(req: NextRequest) {
     const userId = h.get("x-user-id") || session.user.id;
 
     const body = await req.json();
-    const { businessId, docType, party, items, discountAmount, notes, referenceInvoiceId } = body;
+    const { docType, party, items, discountAmount, notes, referenceInvoiceId } = body;
+    // SECURITY: same ownership check as GET above.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      body.businessId,
+      !!session.isSuperAdmin,
+      session.business?.businessId || null
+    );
 
     if (!businessId || !docType || !SALES_DOCUMENT_TYPES.includes(docType)) {
       return NextResponse.json({ success: false, message: "businessId and a valid docType are required" }, { status: 400 });

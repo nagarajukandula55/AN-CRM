@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import { Types } from "mongoose";
 import InventoryLot from "@/models/InventoryLot";
 import { logAction } from "@/lib/audit/logAction";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 // Required for .populate(...) below -- model must be registered before populate can resolve it.
 import "@/models/Material";
 import "@/models/VendorProfile";
@@ -19,22 +20,35 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
 
-    const h = await headers();
-    const userId = h.get("x-user-id");
-    if (!userId) {
+    const session = await getEnrichedSession();
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = session.user.id;
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
+    // SECURITY: businessId used to be trusted straight from the query
+    // param with NO ownership check at all -- any authenticated user could
+    // pass another business's id and read its full inventory lot list
+    // (cost/quantity/supplier data), not just their own. Same fix pattern
+    // as customers/route.ts and deals/route.ts.
+    const businessId = await resolveAuthorizedBusinessId(
+      userId,
+      searchParams.get("businessId"),
+      !!session.isSuperAdmin,
+      session.business?.businessId || null
+    );
     const itemId = searchParams.get("itemId");
     const status = searchParams.get("status");
 
-    if (!businessId) {
-      return NextResponse.json(
-        { success: false, error: "businessId is required" },
-        { status: 400 }
-      );
+    if (!businessId || !Types.ObjectId.isValid(businessId)) {
+      if (session.isSuperAdmin) {
+        return NextResponse.json(
+          { success: false, error: "businessId is required" },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json({ success: true, data: [] });
     }
 
     const filter: Record<string, unknown> = {
@@ -85,13 +99,27 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
-    const h = await headers();
-    const userId = h.get("x-user-id");
-    if (!userId) {
+    const session = await getEnrichedSession();
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = session.user.id;
 
     const body = await req.json();
+    const rawBusinessId = body.businessId;
+    // SECURITY: same ownership check as GET above -- a non-super-admin
+    // could otherwise create a lot under any business id they supplied.
+    const authorizedBusinessId = await resolveAuthorizedBusinessId(
+      userId,
+      rawBusinessId,
+      !!session.isSuperAdmin,
+      session.business?.businessId || null
+    );
+    if (!authorizedBusinessId) {
+      return NextResponse.json({ success: false, error: "No authorized business for this account" }, { status: 403 });
+    }
+    body.businessId = authorizedBusinessId;
+
     const {
       businessId,
       itemId,

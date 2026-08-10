@@ -14,6 +14,7 @@ import SalesInvoice from "@/models/SalesInvoice";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,7 +34,26 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
+    // SECURITY: businessId used to be trusted straight from the query
+    // param with NO ownership check, and omitting it entirely aggregated
+    // EVERY business's CRM revenue together. Same fix pattern as
+    // customers/deals.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      searchParams.get("businessId"),
+      !!session.isSuperAdmin,
+      session.business?.businessId || null
+    );
+    if (!businessId && !session.isSuperAdmin) {
+      return NextResponse.json({
+        success: true,
+        totalRevenue: 0,
+        revenueThisMonth: 0,
+        outstanding: 0,
+        invoiceCount: 0,
+        paidCount: 0,
+      });
+    }
 
     const match: Record<string, any> = {
       sourceOrderId: { $regex: "^CRM_JOBSHEET:" },

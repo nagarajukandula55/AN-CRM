@@ -13,6 +13,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { notifySuperAdmins } from "@/services/notification.service";
 import Business from "@/models/Business";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 // Required for .populate(...) below -- model must be registered before populate can resolve it.
 import "@/models/User";
 import "@/models/Business";
@@ -48,21 +49,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, message: err.message }, { status: err.code === "FORBIDDEN" ? 403 : 401 });
     }
 
-    const businessId = req.nextUrl.searchParams.get("businessId");
-    // Super Admin's approval queue (admin/masters/catalog-requests) needs
-    // to see requests raised from EVERY business, not just whichever one
-    // happens to be the admin's own currently-active business (a request
-    // from a vendor's staff has nothing to do with the admin's active
-    // business) -- so businessId is optional for a Super Admin, listing
-    // across all businesses when omitted. Any other caller (a vendor
-    // Owner/Manager with plain CATALOG.CREATE) still must scope to their
-    // own business -- omitting it for them would leak every other
-    // business's pending requests.
+    // SECURITY: businessId was required for a non-super-admin caller but
+    // never actually VERIFIED against their real business -- any caller
+    // holding the generic CATALOG.CREATE permission could pass another
+    // business's id and read its pending catalog requests. Super Admin's
+    // approval queue (admin/masters/catalog-requests) still sees every
+    // business when businessId is omitted (unchanged); anyone else is
+    // now locked to their own verified business regardless of what they
+    // pass.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      req.nextUrl.searchParams.get("businessId"),
+      !!session.isSuperAdmin,
+      session.business?.businessId || null
+    );
     if (!businessId && !session.isSuperAdmin) {
-      return NextResponse.json({ success: false, message: "businessId is required" }, { status: 400 });
-    }
-    if (businessId && !Types.ObjectId.isValid(businessId)) {
-      return NextResponse.json({ success: false, message: "Invalid businessId" }, { status: 400 });
+      return NextResponse.json({ success: true, requests: [] });
     }
     const status = req.nextUrl.searchParams.get("status");
 
@@ -104,7 +106,16 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { businessId, kind, name, category, brandId, seriesId, modelId } = body;
+    const { kind, name, category, brandId, seriesId, modelId } = body;
+    // SECURITY: same ownership check as GET above -- otherwise any caller
+    // with CATALOG.CREATE could submit (or, for an SC business, instantly
+    // self-approve-create) a catalog entry under any business's id.
+    const businessId = await resolveAuthorizedBusinessId(
+      session.user.id,
+      body.businessId,
+      !!session.isSuperAdmin,
+      session.business?.businessId || null
+    );
 
     if (!businessId || !Types.ObjectId.isValid(businessId)) {
       return NextResponse.json({ success: false, message: "businessId is required" }, { status: 400 });

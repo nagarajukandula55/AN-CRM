@@ -8,6 +8,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -48,7 +49,16 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const { searchParams } = new URL(req.url);
-    const businessId = searchParams.get("businessId");
+    // SECURITY: businessId used to be trusted straight from the query
+    // param with NO ownership check -- any authenticated user holding
+    // stock_transfers.view could pass another business's id and read its
+    // full stock-transfer history. Same fix pattern as customers/deals.
+    const businessId = await resolveAuthorizedBusinessId(
+      userId,
+      searchParams.get("businessId"),
+      !!session.isSuperAdmin,
+      session.business?.businessId || null
+    );
     const status = searchParams.get("status");
     const fromWarehouse = searchParams.get("fromWarehouse");
     const toWarehouse = searchParams.get("toWarehouse");
@@ -58,18 +68,11 @@ export async function GET(req: NextRequest) {
       Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10))
     );
 
-    if (!businessId) {
-      return NextResponse.json(
-        { error: "businessId is required" },
-        { status: 400 }
-      );
-    }
-
-    if (!Types.ObjectId.isValid(businessId)) {
-      return NextResponse.json(
-        { error: "Invalid businessId" },
-        { status: 400 }
-      );
+    if (!businessId || !Types.ObjectId.isValid(businessId)) {
+      if (session.isSuperAdmin) {
+        return NextResponse.json({ error: "businessId is required" }, { status: 400 });
+      }
+      return NextResponse.json({ success: true, data: [], pagination: { total: 0, page: 1, limit, pages: 0 } });
     }
 
     const filter: Record<string, unknown> = {
@@ -141,8 +144,15 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const body = await req.json();
+    // SECURITY: same ownership check as GET above -- otherwise a
+    // non-super-admin could create a transfer under any business id.
+    const authorizedBusinessId = await resolveAuthorizedBusinessId(
+      userId,
+      body.businessId,
+      !!session.isSuperAdmin,
+      session.business?.businessId || null
+    );
     const {
-      businessId,
       fromWarehouse,
       toWarehouse,
       items,
@@ -150,6 +160,7 @@ export async function POST(req: NextRequest) {
       status = "DRAFT",
       transferredAt,
     } = body;
+    const businessId = authorizedBusinessId;
 
     // --- Validate required fields ---
     if (!businessId || !Types.ObjectId.isValid(businessId)) {
