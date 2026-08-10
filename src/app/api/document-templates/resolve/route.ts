@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Warehouse from "@/models/Warehouse";
+import Business from "@/models/Business";
 import { getBusinessBySourceId } from "@/lib/centralApiRead";
 import { getTemplateForBusiness } from "@/core/documentTemplates/resolve";
 import { businessToCompany } from "@/core/documentTemplates/adapters";
 import type { DocumentTemplateType } from "@/models/DocumentTemplate";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+
+// Terms & Conditions (and signature/bank details) are saved from Settings
+// straight to THIS app's own local Business document -- they're AN-CRM-
+// specific fields central-api's shared "businesses" dataset never had, so
+// reading company info from central-api ONLY (as this route otherwise
+// correctly does, for cross-product consistency on name/address/GSTIN)
+// meant Terms & Conditions could never show on any printed document
+// regardless of what was saved in Settings. Overlaid from the local
+// document here -- the actual, root-cause fix for that report.
+const LOCAL_ONLY_FIELDS =
+  "workorderTerms serviceOrderTerms estimateTerms invoiceTerms termsAndConditions documentSignatureUrl";
 
 /**
  * GET /api/document-templates/resolve?businessId=&documentType=&warehouseId=
@@ -43,16 +55,19 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const [template, business, warehouse] = await Promise.all([
+    const [template, business, localBusiness, warehouse] = await Promise.all([
       getTemplateForBusiness(businessId, documentType),
       getBusinessBySourceId(businessId), // reads from central-api — see src/lib/centralApiRead.ts
+      Business.findById(businessId).select(LOCAL_ONLY_FIELDS).lean(),
       warehouseId ? Warehouse.findById(warehouseId).lean() : Promise.resolve(null),
     ]);
+
+    const mergedBusiness = { ...(business || {}), ...(localBusiness || {}) };
 
     return NextResponse.json({
       success: true,
       template,
-      company: businessToCompany(business, warehouse, documentType),
+      company: businessToCompany(mergedBusiness, warehouse, documentType),
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal Server Error";
