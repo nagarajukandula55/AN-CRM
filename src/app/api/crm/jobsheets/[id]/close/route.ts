@@ -132,28 +132,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    // A job sheet whose customer entered a company name is a B2B customer
-    // -- computed here (not just further down at numbering time) because
-    // it also decides whether the B2C tax toggle below applies at all.
-    const isB2B = Boolean((jobSheet as any).company?.trim());
-    // Business.applyTaxOnB2CBilling (default true) -- when a Super
-    // Admin/vendor Owner-Manager has turned this OFF, a plain B2C bill
-    // (no company name) is generated with NO tax at all, regardless of
-    // what taxRate each line item/BOM part normally carries. B2B
-    // invoices are never affected by this toggle, per explicit direction.
-    const applyB2CTax = (business as any)?.applyTaxOnB2CBilling !== false;
-    // Explicit per-invoice choice from the Handover & Close screen
-    // ("Raise as GST Invoice" / "Raise as Non-GST Invoice") overrides the
-    // business-level applyTaxOnB2CBilling default for THIS invoice only --
-    // lets a shop that normally bills with GST still hand a customer a
-    // simple zero-tax bill for a specific job, or vice versa, without
-    // changing a business-wide setting. B2B is unaffected (never zero-tax).
-    const forceInvoiceType: "GST" | "NON_GST" | undefined =
-      body.invoiceType === "GST" || body.invoiceType === "NON_GST" ? body.invoiceType : undefined;
-    const zeroTaxForB2C = !isB2B && (forceInvoiceType ? forceInvoiceType === "NON_GST" : !applyB2CTax);
-    // Per-workorder "Tax Apply" toggle (Parts & Service Lines) -- lets a
-    // service center switch tax off for this job regardless of what each
-    // line's own tax rate is set to, without having to zero every line.
+    // GST vs Non-GST is no longer a manual choice or an automatic B2C
+    // default -- it's driven ENTIRELY by whether the customer's GSTIN is
+    // on file. A GSTIN present means a real B2B GST customer: always
+    // taxed at each line's own BOM-decided rate, invoiced on the "INV"
+    // series. No GSTIN means the plain "BILL" series -- but still taxed
+    // at each line's own rate; nothing here forces tax to zero anymore.
+    // Per explicit direction: "0 tax should not apply as we are deciding
+    // rate with tax or without tax in bom already... GST only for b2b
+    // invoice we will give input and those invoices make user INV series
+    // and rest where Customer GST is not there all take under BILL
+    // Series."
+    const isB2B = Boolean((jobSheet as any).gstin?.trim());
+    // Per-workorder "Tax Apply" toggle (Parts & Service Lines) -- the one
+    // remaining, explicit, per-job override to skip tax entirely (e.g. a
+    // genuinely tax-exempt job), left as-is; everything else always uses
+    // each line's own BOM-decided taxRate.
     const taxApplyEnabled = (jobSheet as any).taxApplyEnabled !== false;
 
     /* ── Build invoice items with the same GST-split logic as
@@ -162,7 +156,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     let subtotal = 0, cgstTotal = 0, sgstTotal = 0, igstTotal = 0;
 
     const invoiceItems = jobSheet.lineItems.map((item: any) => {
-      const effectiveTaxRate = (zeroTaxForB2C || !taxApplyEnabled) ? 0 : (item.taxRate || 0);
+      const effectiveTaxRate = !taxApplyEnabled ? 0 : (item.taxRate || 0);
       const lineAmt = (item.quantity || 1) * (item.unitPrice || 0);
       const totalGST = lineAmt * (effectiveTaxRate / 100);
 
@@ -223,28 +217,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const taxTotal = cgstTotal + sgstTotal + igstTotal;
     const grandTotal = subtotal + taxTotal - (discountAmount || 0);
 
-    // GST-bearing invoices and non-GST (zero-tax/exempt) invoices get their
-    // own separate running number series -- a business needs its
-    // GST-taxable invoice numbers to be their own consecutive sequence for
-    // filing purposes, not interleaved with zero-GST bills. Determined by
-    // whether ANY line item actually carries GST, not the job sheet's
-    // overall total (a single taxed line is enough to make this a GST
-    // invoice even if others are zero-rated).
-    // isB2B/zeroTaxForB2C already computed above (they drove the tax
-    // zeroing on invoiceItems). A B2B customer (company name present)
-    // gets its own invoice number series (B2B_INVOICE) and invoiceType,
-    // separate from the walk-in/individual B2C series, per explicit
-    // requirement. GST-vs-non-GST series selection below still applies
-    // independently within either B2B or B2C -- checked against
-    // invoiceItems (the actual, possibly-zeroed rates), not the raw job
-    // sheet line items, so a B2C bill with tax turned off always lands on
-    // NON_GST_INVOICE even if its BOM parts normally carry GST.
-    const isGstInvoice = !isB2B && forceInvoiceType
-      ? forceInvoiceType === "GST"
-      : zeroTaxForB2C ? false : invoiceItems.some((item: any) => (item.taxRate || 0) > 0);
+    // Exactly two series now, decided purely by isB2B (customer GSTIN on
+    // file): the "INV" series (numbering type "INVOICE") for a real B2B
+    // GST customer, the "BILL" series (numbering type "NON_GST_INVOICE")
+    // for everyone else -- per explicit direction, replacing the previous
+    // three-way B2B_INVOICE/INVOICE/NON_GST_INVOICE split.
     const { value: invoiceNumber } = await generateDocumentNumber(
       jobSheet.businessId.toString(),
-      isB2B ? "B2B_INVOICE" : isGstInvoice ? "INVOICE" : "NON_GST_INVOICE"
+      isB2B ? "INVOICE" : "NON_GST_INVOICE"
     );
 
     const invoice = await SalesInvoice.create({

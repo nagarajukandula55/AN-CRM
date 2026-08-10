@@ -49,8 +49,12 @@ interface LineItem {
   hsnCode?: string
   serviceCenterBOMId?: string
 }
+// Default new Parts & Service lines to 18% GST -- per explicit direction,
+// the standard rate for the vast majority of parts/labour; still
+// per-line editable via the Tax % dropdown for the rare item at a
+// different slab.
 function emptyLine(): LineItem {
-  return { description: '', quantity: 1, unit: 'PCS', unitPrice: 0, taxRate: 0 }
+  return { description: '', quantity: 1, unit: 'PCS', unitPrice: 0, taxRate: 18 }
 }
 function lineTotal(l: LineItem, taxApplyEnabled: boolean): number {
   const base = (l.quantity || 0) * (l.unitPrice || 0)
@@ -473,7 +477,7 @@ export default function SCJobSheetScreen() {
 
   function addLine() { setLineItems((prev) => [...prev, emptyLine()]) }
   function addLabourCharge() {
-    setLineItems((prev) => [...prev, { description: 'Service / Labour Charge', quantity: 1, unit: 'PCS', unitPrice: defaultLabourCharge, taxRate: 0 }])
+    setLineItems((prev) => [...prev, { description: 'Service / Labour Charge', quantity: 1, unit: 'PCS', unitPrice: defaultLabourCharge, taxRate: 18 }])
   }
   function removeLine(i: number) { setLineItems((prev) => prev.filter((_, idx) => idx !== i)) }
   function updateLine(i: number, patch: Partial<LineItem>) {
@@ -557,8 +561,13 @@ export default function SCJobSheetScreen() {
     setShowPartPendingModal(false)
   }
 
-  const [showCompleteModal, setShowCompleteModal] = useState(false)
-  const [invoiceTypeChoice, setInvoiceTypeChoice] = useState<'GST' | 'NON_GST'>('GST')
+  // GST vs Non-GST is no longer a manual choice at complete-time -- it's
+  // derived straight from whether the customer's GSTIN is on file (B2B
+  // customer, entered at intake), never a popup interrupting the repair
+  // flow. Per explicit direction: "asking GST or Non-GST in a small modal
+  // that need ot be reoved based in customer GST no input it should move
+  // to the billing model."
+  const invoiceType: 'GST' | 'NON_GST' = intake.gstin?.trim() ? 'GST' : 'NON_GST'
 
   async function completeAndInvoice() {
     if (!jobId) return
@@ -575,11 +584,10 @@ export default function SCJobSheetScreen() {
       const res = await fetch(`/api/crm/jobsheets/${jobId}/close`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ remark, engineerName, invoiceType: invoiceTypeChoice }),
+        body: JSON.stringify({ remark, engineerName, invoiceType }),
       })
       const d = await res.json()
       if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to complete repair')
-      setShowCompleteModal(false)
       fetchJob()
     } catch (err: any) {
       setActionError(err.message || 'Something went wrong')
@@ -910,7 +918,7 @@ export default function SCJobSheetScreen() {
               <Button variant="secondary" size="sm" onClick={() => { setBrandJobNo(''); setShowPartPendingModal(true) }} disabled={saving}>Mark Part Pending</Button>
             )}
             {inRepair && (
-              <Button size="sm" onClick={() => setShowCompleteModal(true)} disabled={saving}>Complete Repair &amp; Invoice</Button>
+              <Button size="sm" onClick={completeAndInvoice} disabled={saving} icon={saving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Complete Repair &amp; Invoice</Button>
             )}
             {job.status === 'CREATED' && (
               <Button size="sm" onClick={proceedForRepair} disabled={saving}>Proceed for Repair</Button>
@@ -1158,44 +1166,6 @@ export default function SCJobSheetScreen() {
             <div className="flex justify-end gap-2 pt-1">
               <Button variant="secondary" size="sm" onClick={() => setShowAddCollectorModal(false)}>Cancel</Button>
               <Button size="sm" onClick={submitNewCollector} disabled={savingCollector || !newCollectorName.trim()} icon={savingCollector ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save &amp; Use</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showCompleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => !saving && setShowCompleteModal(false)}>
-          <div className="bg-surface border border-border rounded-card shadow-card-lg w-full max-w-sm p-5 space-y-3" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-ink">Complete Repair &amp; Invoice</h3>
-              <button onClick={() => !saving && setShowCompleteModal(false)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
-            </div>
-            {intake.company?.trim() ? (
-              <p className="text-xs text-ink-3">This is a B2B customer (company name on file) — always invoiced on the B2B series, GST/Non-GST choice below doesn't apply.</p>
-            ) : (
-              <div>
-                <label className={labelCls}>Raise as</label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setInvoiceTypeChoice('GST')}
-                    className={`flex-1 rounded-control border px-3 py-2 text-sm ${invoiceTypeChoice === 'GST' ? 'border-accent bg-accent-soft text-accent-deep' : 'border-border text-ink-2'}`}
-                  >
-                    GST Invoice
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInvoiceTypeChoice('NON_GST')}
-                    className={`flex-1 rounded-control border px-3 py-2 text-sm ${invoiceTypeChoice === 'NON_GST' ? 'border-accent bg-accent-soft text-accent-deep' : 'border-border text-ink-2'}`}
-                  >
-                    Non-GST Invoice
-                  </button>
-                </div>
-              </div>
-            )}
-            <div className="flex justify-end gap-2 pt-1">
-              <Button variant="secondary" size="sm" onClick={() => setShowCompleteModal(false)} disabled={saving}>Cancel</Button>
-              <Button size="sm" onClick={completeAndInvoice} disabled={saving} icon={saving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Confirm &amp; Invoice</Button>
             </div>
           </div>
         </div>
