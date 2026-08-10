@@ -121,7 +121,12 @@ function renderBlock(
       );
     }
 
-    case "items-table":
+    case "items-table": {
+      // Per-line CGST/SGST/IGST columns whenever ANY line carries a split
+      // (SalesInvoice items always do) -- otherwise the plain single
+      // "Tax %" column, unchanged for document types that don't split
+      // (workorder/estimate, which have no supplyType at print time).
+      const itemsHaveGstSplit = data.items.some((it) => !!(it.cgstRate || it.sgstRate || it.igstRate));
       return (
         <table className="w-full text-xs border-collapse">
           <thead>
@@ -130,7 +135,15 @@ function renderBlock(
               <th className="py-2 pr-2">HSN</th>
               <th className="py-2 pr-2 text-right">Qty</th>
               <th className="py-2 pr-2 text-right">Rate</th>
-              <th className="py-2 pr-2 text-right">Tax %</th>
+              {itemsHaveGstSplit ? (
+                <>
+                  <th className="py-2 pr-2 text-right">CGST%</th>
+                  <th className="py-2 pr-2 text-right">SGST%</th>
+                  <th className="py-2 pr-2 text-right">IGST%</th>
+                </>
+              ) : (
+                <th className="py-2 pr-2 text-right">Tax %</th>
+              )}
               <th className="py-2 text-right">Amount</th>
             </tr>
           </thead>
@@ -144,24 +157,52 @@ function renderBlock(
                 <td className="py-2 pr-2 text-gray-500">{item.hsnCode || "—"}</td>
                 <td className="py-2 pr-2 text-right">{item.qty} {item.unit || ""}</td>
                 <td className="py-2 pr-2 text-right">{fmtMoney(item.unitPrice)}</td>
-                <td className="py-2 pr-2 text-right">{item.taxRate}%</td>
+                {itemsHaveGstSplit ? (
+                  <>
+                    <td className="py-2 pr-2 text-right">{item.cgstRate ? `${item.cgstRate}%` : "—"}</td>
+                    <td className="py-2 pr-2 text-right">{item.sgstRate ? `${item.sgstRate}%` : "—"}</td>
+                    <td className="py-2 pr-2 text-right">{item.igstRate ? `${item.igstRate}%` : "—"}</td>
+                  </>
+                ) : (
+                  <td className="py-2 pr-2 text-right">{item.taxRate}%</td>
+                )}
                 <td className="py-2 text-right">{fmtMoney(item.amount)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       );
+    }
 
     case "totals": {
       // Service Record borrows the reference report's bold, highlighted
       // "Paid Amount" line instead of a plain "Total" -- this document
       // represents money actually collected, not just a running total.
       const isServiceRecord = data.docTypeLabel === "SERVICE RECORD";
+      // GST is shown as its actual CGST/SGST or IGST split whenever the
+      // adapter provided one, instead of a single opaque "Tax" line --
+      // per explicit direction ("implement showing CGST, IGST types and
+      // values in invoices and in system everywhere").
+      const hasGstSplit = !!(data.totals.cgst || data.totals.sgst || data.totals.igst);
       return (
         <div className="flex justify-end">
           <div className="w-60 text-xs space-y-1">
             <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{fmtMoney(data.totals.subtotal)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Tax</span><span>{fmtMoney(data.totals.tax)}</span></div>
+            {hasGstSplit ? (
+              <>
+                {!!data.totals.cgst && (
+                  <div className="flex justify-between"><span className="text-gray-500">CGST</span><span>{fmtMoney(data.totals.cgst)}</span></div>
+                )}
+                {!!data.totals.sgst && (
+                  <div className="flex justify-between"><span className="text-gray-500">SGST</span><span>{fmtMoney(data.totals.sgst)}</span></div>
+                )}
+                {!!data.totals.igst && (
+                  <div className="flex justify-between"><span className="text-gray-500">IGST</span><span>{fmtMoney(data.totals.igst)}</span></div>
+                )}
+              </>
+            ) : (
+              <div className="flex justify-between"><span className="text-gray-500">Tax</span><span>{fmtMoney(data.totals.tax)}</span></div>
+            )}
             {!!data.totals.discount && (
               <div className="flex justify-between"><span className="text-gray-500">Discount</span><span>-{fmtMoney(data.totals.discount)}</span></div>
             )}

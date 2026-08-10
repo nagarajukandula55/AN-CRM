@@ -12,6 +12,12 @@ export interface DocumentRenderItem {
   unitPrice: number;
   taxRate: number;
   amount: number;
+  /** Per-line CGST/SGST or IGST split (only one pair non-zero) -- shown as
+   * its own columns in the items table when present, same source-of-truth
+   * fields SalesInvoice.items already carries. */
+  cgstRate?: number;
+  sgstRate?: number;
+  igstRate?: number;
   /** Fault Phenomenon/Symptom/Solution codes for this line, when the
    * source line item has them set -- currently only CrmJobSheet line
    * items carry these (see jobSheetToRenderData). */
@@ -60,6 +66,13 @@ export interface DocumentRenderData {
     tax: number;
     discount?: number;
     grandTotal: number;
+    /** CGST/SGST (intrastate) or IGST (interstate) split of `tax` above --
+     * only one pair is ever non-zero per the standard GST intrastate/
+     * interstate rule. Undefined/all-zero falls back to the old flat
+     * "Tax" line (renderer.tsx's "totals" case). */
+    cgst?: number;
+    sgst?: number;
+    igst?: number;
   };
   notes?: string;
   footerText?: string;

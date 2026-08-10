@@ -184,8 +184,18 @@ export function serviceRecordToRenderData(
       unitPrice: it.unitPrice || 0,
       taxRate: it.taxRate || 0,
       amount: it.total ?? (it.quantity || 0) * (it.unitPrice || 0) * (1 + (it.taxRate || 0) / 100),
+      cgstRate: it.cgstRate || 0,
+      sgstRate: it.sgstRate || 0,
+      igstRate: it.igstRate || 0,
     }));
-    totals = { subtotal: invoice.subtotal || 0, tax: invoice.taxTotal || 0, grandTotal: invoice.grandTotal || 0 };
+    totals = {
+      subtotal: invoice.subtotal || 0,
+      tax: invoice.taxTotal || 0,
+      grandTotal: invoice.grandTotal || 0,
+      cgst: invoice.cgstTotal || 0,
+      sgst: invoice.sgstTotal || 0,
+      igst: invoice.igstTotal || 0,
+    };
   } else {
     const taxApplyEnabled = jobSheet.taxApplyEnabled !== false;
     const lineItems = (jobSheet.lineItems || []).filter((l: any) => l.description?.trim());
@@ -466,12 +476,18 @@ export function salesInvoiceToRenderData(
       unitPrice: item.unitPrice || 0,
       taxRate: item.taxRate || 0,
       amount: item.total ?? (item.quantity || 0) * (item.unitPrice || 0) + (item.taxAmount || 0),
+      cgstRate: item.cgstRate || 0,
+      sgstRate: item.sgstRate || 0,
+      igstRate: item.igstRate || 0,
     })),
     totals: {
       subtotal: invoice.subtotal || 0,
       tax: invoice.taxTotal || 0,
       discount: invoice.discountAmount || 0,
       grandTotal: invoice.grandTotal || 0,
+      cgst: invoice.cgstTotal || 0,
+      sgst: invoice.sgstTotal || 0,
+      igst: invoice.igstTotal || 0,
     },
     notes: invoice.notes,
   };
