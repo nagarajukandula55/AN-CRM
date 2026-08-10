@@ -31,6 +31,7 @@ export default function ServiceRecordPage() {
   const id = params?.id as string
 
   const [jobSheet, setJobSheet] = useState<JobSheetRaw | null>(null)
+  const [invoice, setInvoice] = useState<any>(null)
   const [vendor, setVendor] = useState<Vendor | null>(null)
   const [renderData, setRenderData] = useState<DocumentRenderData | null>(null)
   const [template, setTemplate] = useState<{ blocks: any[]; accentColor: string; logoUrl?: string } | null>(null)
@@ -43,6 +44,7 @@ export default function ServiceRecordPage() {
       .then((d) => {
         if (!d.success) throw new Error(d.message || 'Failed to load service record')
         setJobSheet(d.jobSheet)
+        setInvoice(d.invoice)
         setVendor(d.vendor)
       })
       .catch((err) => setError(err.message || 'Failed to load service record'))
@@ -66,7 +68,7 @@ export default function ServiceRecordPage() {
             ccoName: jobSheet.ccoName,
             hours: vendor?.serviceCenterInfo?.hours,
             hotline: vendor?.serviceCenterInfo?.hotline,
-          })
+          }, invoice)
         )
       })
       .catch((err) => setError(err.message))

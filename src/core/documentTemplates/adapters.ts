@@ -153,38 +153,51 @@ export function jobSheetToRenderData(
  * shape as jobSheetToRenderData, but totals reflect what was actually PAID
  * (serviceCharge + parts, not an estimate), and notes carry the technical
  * consultant + service-center hours/hotline this document has always shown
- * (see the page it replaces, print/jobsheets/[id]/service-record). */
+ * (see the page it replaces, print/jobsheets/[id]/service-record).
+ *
+ * `invoice` (the real, persisted SalesInvoice created at close time) is
+ * used as the source of truth for items/totals when present -- reported
+ * live that the Service Record and the actual Invoice showed different
+ * totals for the same workorder, because this used to always recompute
+ * its own numbers straight from jobSheet.lineItems, which can diverge
+ * from what the invoice actually has (Non-GST forces every line's tax to
+ * zero regardless of the line's own taxRate, discountAmount can apply,
+ * B2B uses a different series/shape entirely). Falls back to the old
+ * recompute-from-lineItems path only if no invoice was generated yet. */
 export function serviceRecordToRenderData(
   jobSheet: any,
   company: DocumentRenderData["company"],
-  extra: { technicalConsultant?: string; ccoName?: string; hours?: string; hotline?: string }
+  extra: { technicalConsultant?: string; ccoName?: string; hours?: string; hotline?: string },
+  invoice?: any
 ): DocumentRenderData {
-  const taxApplyEnabled = jobSheet.taxApplyEnabled !== false;
-  const lineItems = (jobSheet.lineItems || []).filter((l: any) => l.description?.trim());
-  const materialTotal = lineItems.reduce((s: number, l: any) => s + (l.quantity || 0) * (l.unitPrice || 0), 0);
-  const tax = taxApplyEnabled
-    ? lineItems.reduce(
-        (s: number, l: any) => s + (l.quantity || 0) * (l.unitPrice || 0) * ((l.taxRate || 0) / 100),
-        0
-      )
-    : 0;
-  const serviceCharge = jobSheet.serviceCharge || 0;
-  const grandTotal = materialTotal + tax + serviceCharge;
   const brandName = (typeof jobSheet.brandId === "object" ? jobSheet.brandId?.name : undefined) || jobSheet.pendingBrandName;
 
-  return {
-    docTypeLabel: "SERVICE RECORD",
-    docNumber: jobSheet.jobSheetNumber,
-    date: fmtDate(jobSheet.handedOverAt || jobSheet.completedAt || jobSheet.createdAt),
-    status: jobSheet.status?.replace(/_/g, " "),
-    company,
-    party: {
-      name: jobSheet.customerName,
-      address: [jobSheet.address, jobSheet.city, jobSheet.state, jobSheet.pincode].filter(Boolean).join(", "),
-      phone: jobSheet.phone,
-      email: jobSheet.email,
-    },
-    items: [
+  let items: DocumentRenderData["items"];
+  let totals: DocumentRenderData["totals"];
+
+  if (invoice) {
+    items = (invoice.items || []).map((it: any) => ({
+      description: it.description,
+      hsnCode: it.hsnCode,
+      qty: it.quantity || 0,
+      unit: it.unit,
+      unitPrice: it.unitPrice || 0,
+      taxRate: it.taxRate || 0,
+      amount: it.total ?? (it.quantity || 0) * (it.unitPrice || 0) * (1 + (it.taxRate || 0) / 100),
+    }));
+    totals = { subtotal: invoice.subtotal || 0, tax: invoice.taxTotal || 0, grandTotal: invoice.grandTotal || 0 };
+  } else {
+    const taxApplyEnabled = jobSheet.taxApplyEnabled !== false;
+    const lineItems = (jobSheet.lineItems || []).filter((l: any) => l.description?.trim());
+    const materialTotal = lineItems.reduce((s: number, l: any) => s + (l.quantity || 0) * (l.unitPrice || 0), 0);
+    const tax = taxApplyEnabled
+      ? lineItems.reduce(
+          (s: number, l: any) => s + (l.quantity || 0) * (l.unitPrice || 0) * ((l.taxRate || 0) / 100),
+          0
+        )
+      : 0;
+    const serviceCharge = jobSheet.serviceCharge || 0;
+    items = [
       ...lineItems.map((l: any) => {
         const effRate = taxApplyEnabled ? (l.taxRate || 0) : 0;
         return {
@@ -200,8 +213,24 @@ export function serviceRecordToRenderData(
       ...(serviceCharge > 0
         ? [{ description: "Repair Labor Cost", qty: 1, unitPrice: serviceCharge, taxRate: 0, amount: serviceCharge }]
         : []),
-    ],
-    totals: { subtotal: materialTotal + serviceCharge, tax, grandTotal },
+    ];
+    totals = { subtotal: materialTotal + serviceCharge, tax, grandTotal: materialTotal + tax + serviceCharge };
+  }
+
+  return {
+    docTypeLabel: "SERVICE RECORD",
+    docNumber: jobSheet.jobSheetNumber,
+    date: fmtDate(jobSheet.handedOverAt || jobSheet.completedAt || jobSheet.createdAt),
+    status: jobSheet.status?.replace(/_/g, " "),
+    company,
+    party: {
+      name: jobSheet.customerName,
+      address: [jobSheet.address, jobSheet.city, jobSheet.state, jobSheet.pincode].filter(Boolean).join(", "),
+      phone: jobSheet.phone,
+      email: jobSheet.email,
+    },
+    items,
+    totals,
     notes: [
       jobSheet.title && `Issue Reported: ${jobSheet.title}`,
       extra.ccoName && `Logged By (CCO): ${extra.ccoName}`,

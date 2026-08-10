@@ -25,6 +25,7 @@ import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
 import Business from "@/models/Business";
+import SalesInvoice from "@/models/SalesInvoice";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -75,9 +76,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       ? await Business.findById(ctx.vendor.businessId).select("documentSignatureUrl").lean()
       : null;
 
+    // The Service Record used to recompute its own totals straight from
+    // jobSheet.lineItems (raw, at-repair-time tax rates) -- but the
+    // ACTUAL invoice generated at close time (see
+    // api/crm/jobsheets/[id]/close) can legitimately differ from that:
+    // Non-GST forces every line's tax to zero regardless of what the
+    // line items say, discountAmount can be applied, and GST vs B2B
+    // series selection changes which numbers are "real". Reported live:
+    // the printed Service Record and the actual Invoice showed different
+    // totals for the same workorder. Now fetches the real persisted
+    // SalesInvoice (job.invoiceId) and sends it along so the print page
+    // can render from it directly instead of recomputing a second,
+    // possibly-diverging set of numbers.
+    const invoice = (jobSheet as any).invoiceId
+      ? await SalesInvoice.findById((jobSheet as any).invoiceId)
+          .select("invoiceNumber invoiceType items subtotal taxTotal discountAmount grandTotal supplyType")
+          .lean()
+      : null;
+
     return NextResponse.json({
       success: true,
       jobSheet,
+      invoice,
       vendor: ctx?.vendor
         ? {
             companyName: (ctx.vendor as any).companyName,
