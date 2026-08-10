@@ -7,6 +7,19 @@ import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+
+// SECURITY: PUT/DELETE below looked a model up by its Mongo _id ONLY -- no
+// check that its businessId belongs to the caller, so any authenticated
+// user holding the generic device_models.edit/delete permission could
+// edit or delete another business's device model just by knowing/
+// guessing its id.
+async function assertOwnsModel(model: { businessId: unknown } | null, userId: string, isSuperAdmin: boolean, sessionBusinessId: string | null) {
+  if (!model) return false;
+  if (isSuperAdmin) return true;
+  const authorizedBusinessId = await resolveAuthorizedBusinessId(userId, String(model.businessId), isSuperAdmin, sessionBusinessId);
+  return authorizedBusinessId === String(model.businessId);
+}
 
 // PUT /api/device-models/[id]
 export async function PUT(
@@ -39,6 +52,11 @@ export async function PUT(
     }
 
     await connectDB();
+
+    const existingModel = await DeviceModel.findById(id).lean();
+    if (!existingModel || !(await assertOwnsModel(existingModel as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
+      return NextResponse.json({ error: "Model not found" }, { status: 404 });
+    }
 
     const updates: Record<string, unknown> = {};
     if (name !== undefined) updates.name = name.trim();
@@ -98,6 +116,11 @@ export async function DELETE(
     }
 
     await connectDB();
+
+    const existingModel = await DeviceModel.findById(id).lean();
+    if (!existingModel || !(await assertOwnsModel(existingModel as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
+      return NextResponse.json({ error: "Model not found" }, { status: 404 });
+    }
 
     const model = await DeviceModel.findByIdAndDelete(id).lean();
     if (!model) {

@@ -7,6 +7,40 @@ import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+
+// SECURITY: GET/PUT/DELETE below looked a brand up by its Mongo _id ONLY
+// -- no check that its businessId belongs to the caller, so any
+// authenticated user holding the generic brands.view/edit/delete
+// permission could read, edit, or delete another business's brand just
+// by knowing/guessing its id.
+//
+// businessId is REQUIRED on every Brand (never null), even a shared one --
+// businessScope (SINGLE/MULTIPLE/ALL) decides who ELSE can see it beyond
+// the owning business (see core/catalog/businessScopeFilter.ts, the same
+// logic the list route already uses). A plain businessId-equality check
+// here would 404 a vendor viewing a legitimately-shared brand they didn't
+// create, so viewing (GET) allows any businessScope: ALL/MULTIPLE(if
+// businessIds includes the caller) record through. Editing/deleting
+// (PUT/DELETE) still requires actual ownership of the record's own
+// businessId -- sharing a brand for others to SEE was never meant to let
+// another business rename or delete it.
+async function assertCanViewBrand(brand: { businessId: unknown; businessScope?: string; businessIds?: unknown[] } | null, userId: string, isSuperAdmin: boolean, sessionBusinessId: string | null) {
+  if (!brand) return false;
+  if (isSuperAdmin) return true;
+  if (brand.businessScope === "ALL") return true;
+  const authorizedBusinessId = await resolveAuthorizedBusinessId(userId, String(brand.businessId), isSuperAdmin, sessionBusinessId);
+  if (authorizedBusinessId === String(brand.businessId)) return true;
+  if (brand.businessScope === "MULTIPLE" && authorizedBusinessId && (brand.businessIds || []).some((id) => String(id) === authorizedBusinessId)) return true;
+  return false;
+}
+
+async function assertOwnsBrand(brand: { businessId: unknown } | null, userId: string, isSuperAdmin: boolean, sessionBusinessId: string | null) {
+  if (!brand) return false;
+  if (isSuperAdmin) return true;
+  const authorizedBusinessId = await resolveAuthorizedBusinessId(userId, String(brand.businessId), isSuperAdmin, sessionBusinessId);
+  return authorizedBusinessId === String(brand.businessId);
+}
 
 // GET /api/brands/[id]
 export async function GET(
@@ -36,7 +70,7 @@ export async function GET(
 
     const brand = await Brand.findById(id).lean();
 
-    if (!brand) {
+    if (!brand || !(await assertCanViewBrand(brand as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
       return NextResponse.json({ error: "Brand not found" }, { status: 404 });
     }
 
@@ -75,6 +109,11 @@ export async function PUT(
     const { name, description, logoUrl, isActive, businessScope, businessIds, parentId, category, productCategoryId } = body;
 
     await connectDB();
+
+    const existingBrand = await Brand.findById(id).lean();
+    if (!existingBrand || !(await assertOwnsBrand(existingBrand as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
+      return NextResponse.json({ error: "Brand not found" }, { status: 404 });
+    }
 
     // A brand can't be its own parent, and can't be moved under one of its
     // own descendants (would create a cycle) -- one level of check here
@@ -152,6 +191,11 @@ export async function DELETE(
     }
 
     await connectDB();
+
+    const existingBrand = await Brand.findById(id).lean();
+    if (!existingBrand || !(await assertOwnsBrand(existingBrand as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
+      return NextResponse.json({ error: "Brand not found" }, { status: 404 });
+    }
 
     const brand = await Brand.findByIdAndDelete(id).lean();
 

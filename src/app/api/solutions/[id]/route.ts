@@ -5,12 +5,49 @@ import Solution from "@/models/Solution";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { logAction } from "@/lib/audit/logAction";
 import { requireSolutionsPermission } from "@/core/access/solutionsAccess";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveOwnerOrManagerVendor, resolveVendorTeamMembership } from "@/core/access/vendorAccess.service";
 
 function permissionErrorResponse(err: any) {
   return NextResponse.json(
     { success: false, error: err.message },
     { status: err.code === "FORBIDDEN" ? 403 : 401 }
   );
+}
+
+// SECURITY: PUT/DELETE below looked a solution up by its Mongo _id ONLY --
+// no check that its vendorId/businessId belongs to the caller, so any
+// authenticated user (or another vendor) holding the generic solutions/
+// fault_codes edit/delete permission could edit or deactivate another
+// vendor's/business's solution just by knowing/guessing its id.
+// - vendorId set: vendor-private, only that same vendor's team may touch it.
+// - vendorId null, businessId set: business-wide entry, scoped like any
+//   other businessId-owned catalog record.
+// - both null: global/platform-seeded, super admin only.
+async function assertOwnsSolution(
+  record: { vendorId?: unknown; businessId?: unknown } | null,
+  userId: string,
+  isSuperAdmin: boolean,
+  sessionBusinessId: string | null
+) {
+  if (!record) return false;
+  if (isSuperAdmin) return true;
+
+  if (record.vendorId) {
+    const ownerOrManager = await resolveOwnerOrManagerVendor(userId).catch(() => null);
+    const teamMembership = ownerOrManager || (await resolveVendorTeamMembership(userId).catch(() => null));
+    const callerVendorId = teamMembership ? String((teamMembership as any)._id) : null;
+    return !!callerVendorId && callerVendorId === String(record.vendorId);
+  }
+
+  if (record.businessId) {
+    const authorizedBusinessId = await resolveAuthorizedBusinessId(userId, String(record.businessId), isSuperAdmin, sessionBusinessId);
+    return authorizedBusinessId === String(record.businessId);
+  }
+
+  // Global/platform-seeded record (vendorId and businessId both null) --
+  // only super admin can modify it, already excluded above.
+  return false;
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -37,6 +74,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     await connectDB();
+    const existing = await Solution.findById(id).lean();
+    if (!existing || !(await assertOwnsSolution(existing as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
+      return NextResponse.json({ success: false, error: "Solution not found" }, { status: 404 });
+    }
+
     const solution = await Solution.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true });
     if (!solution) {
       return NextResponse.json({ success: false, error: "Solution not found" }, { status: 404 });
@@ -69,6 +111,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     await connectDB();
+    const existing = await Solution.findById(id).lean();
+    if (!existing || !(await assertOwnsSolution(existing as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
+      return NextResponse.json({ success: false, error: "Solution not found" }, { status: 404 });
+    }
+
     const solution = await Solution.findByIdAndUpdate(id, { $set: { isActive: false } }, { new: true });
     if (!solution) {
       return NextResponse.json({ success: false, error: "Solution not found" }, { status: 404 });

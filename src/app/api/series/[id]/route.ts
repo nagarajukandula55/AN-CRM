@@ -7,6 +7,19 @@ import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+
+// SECURITY: PUT/DELETE below looked a series up by its Mongo _id ONLY --
+// no check that its businessId belongs to the caller, so any
+// authenticated user holding the generic device_models.edit/delete
+// permission could edit or delete another business's series just by
+// knowing/guessing its id.
+async function assertOwnsSeries(series: { businessId: unknown } | null, userId: string, isSuperAdmin: boolean, sessionBusinessId: string | null) {
+  if (!series) return false;
+  if (isSuperAdmin) return true;
+  const authorizedBusinessId = await resolveAuthorizedBusinessId(userId, String(series.businessId), isSuperAdmin, sessionBusinessId);
+  return authorizedBusinessId === String(series.businessId);
+}
 
 // PUT /api/series/[id]
 export async function PUT(
@@ -36,6 +49,11 @@ export async function PUT(
     const { name, isActive, businessScope, businessIds } = body;
 
     await connectDB();
+
+    const existingSeries = await Series.findById(id).lean();
+    if (!existingSeries || !(await assertOwnsSeries(existingSeries as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
+      return NextResponse.json({ error: "Series not found" }, { status: 404 });
+    }
 
     const updates: Record<string, unknown> = {};
     if (name !== undefined) updates.name = name.trim();
@@ -96,6 +114,11 @@ export async function DELETE(
     }
 
     await connectDB();
+
+    const existingSeries = await Series.findById(id).lean();
+    if (!existingSeries || !(await assertOwnsSeries(existingSeries as any, session.user.id, !!session.isSuperAdmin, session.business?.businessId || null))) {
+      return NextResponse.json({ error: "Series not found" }, { status: 404 });
+    }
 
     const series = await Series.findByIdAndDelete(id).lean();
 

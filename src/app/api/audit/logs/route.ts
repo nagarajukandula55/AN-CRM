@@ -4,6 +4,9 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import AuditLog from "@/models/AuditLog";
+// Required for .populate("businessId") below -- model must be registered
+// before populate can resolve it.
+import "@/models/Business";
 
 /* =========================================================
  * GET AUDIT LOGS
@@ -39,29 +42,42 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Every non-super-admin is confined to their own active business's
+    // logs, unchanged. A super admin may pass an explicit businessId to
+    // view one vendor's activity, or omit it entirely to see EVERY
+    // vendor's actions in one feed -- per explicit direction ("for every
+    // action record vendor id... only super admin can see all the data").
+    // Previously a super admin who omitted businessId got a 401 instead
+    // of the cross-vendor view they're the one account meant to have.
     const targetBusinessId =
       session.isSuperAdmin && requestedBusinessId
         ? requestedBusinessId
-        : session.business?.businessId;
+        : !session.isSuperAdmin
+          ? session.business?.businessId
+          : null;
 
-    if (!targetBusinessId) {
+    if (!session.isSuperAdmin && !targetBusinessId) {
       return NextResponse.json(
         { error: "Unauthorized or missing business context" },
         { status: 401 }
       );
     }
 
-    const businessId = new Types.ObjectId(targetBusinessId);
-
-    const query: any = { businessId };
+    const query: any = {};
+    if (targetBusinessId) query.businessId = new Types.ObjectId(targetBusinessId);
 
     if (userId) query.userId = new Types.ObjectId(userId);
     if (entity) query.entity = entity;
     if (entityId) query.entityId = entityId;
 
+    // businessId populated with name/businessCode so a super admin's
+    // cross-vendor feed shows WHICH vendor each action belongs to, not
+    // just an opaque ObjectId -- per explicit direction ("in super admin
+    // view give vendor name and id").
     const logs = await AuditLog.find(query)
       .sort({ createdAt: -1 })
-      .limit(200);
+      .limit(200)
+      .populate("businessId", "name businessCode");
 
     return NextResponse.json({
       success: true,
