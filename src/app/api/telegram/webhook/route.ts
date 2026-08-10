@@ -75,6 +75,24 @@ import VendorProfile from "@/models/VendorProfile";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { buildReportMessage, periodStart, computePeriodNumbers, fmtINR } from "@/lib/telegramReport";
 import { runAllDueCronJobs } from "@/lib/cronRunner";
+import { getAllowedModuleKeys, getActivePlanKey } from "@/core/pricing/planAccess";
+
+// SECURITY/BILLING: "Automatic Telegram Business Report" is a paid,
+// plan-gated feature (see core/pricing/plans.ts's "telegram-reports"
+// moduleKey, ULTIMATE-tier only) -- the Settings UI hides the toggle for
+// a lower-tier plan, and PATCH /api/businesses/[id] and the scheduled
+// cron (api/cron/telegram-business-report) both re-check it server-side.
+// This bot, though, is a THIRD path to the exact same report content --
+// /link used to unconditionally turn telegramReportFrequency on, and
+// /report built and sent the report with no plan check at all, so a
+// Basic/Pro vendor got the paid feature for free just by messaging the
+// bot. Checked here the same way the cron job already does.
+async function hasTelegramReportsPlan(business: { _id: unknown; operatingMode?: string }): Promise<boolean> {
+  const mode = (business.operatingMode || "SC") as "BRAND" | "SC" | "POS";
+  const plan = await getActivePlanKey(String(business._id));
+  const allowed = await getAllowedModuleKeys(mode, plan);
+  return !allowed || allowed.includes("telegram-reports");
+}
 
 function isAdminChat(chatId: number | string): boolean {
   const allowlist = (process.env.ANOPS_TELEGRAM_ADMIN_CHAT_IDS || "")
@@ -166,15 +184,22 @@ export async function POST(req: NextRequest) {
       } else {
         business.telegramPersonalChatId = String(chatId);
       }
-      if (!business.telegramReportFrequency || business.telegramReportFrequency === "NONE") {
+      const reportsAllowed = await hasTelegramReportsPlan(business);
+      if (reportsAllowed && (!business.telegramReportFrequency || business.telegramReportFrequency === "NONE")) {
         business.telegramReportFrequency = "DAILY";
       }
       await business.save();
 
       await sendToChat(
         chatId,
-        `✅ Confirmed. <b>${vendor.companyName || business.name}</b> (${arg}) is now linked -- this ${isGroup ? "group" : "personal chat"} will receive ${isGroup ? "team" : "your own"} automated reports (daily by default — change the schedule any time in Settings).\n\nSending your first report now…`
+        reportsAllowed
+          ? `✅ Confirmed. <b>${vendor.companyName || business.name}</b> (${arg}) is now linked -- this ${isGroup ? "group" : "personal chat"} will receive ${isGroup ? "team" : "your own"} automated reports (daily by default — change the schedule any time in Settings).\n\nSending your first report now…`
+          : `✅ Confirmed. <b>${vendor.companyName || business.name}</b> (${arg}) is now linked -- this ${isGroup ? "group" : "personal chat"} can receive alerts, but automatic scheduled reports aren't included in your current plan. Upgrade from Plan &amp; Billing to turn those on.`
       );
+
+      if (!reportsAllowed) {
+        return NextResponse.json({ success: true });
+      }
 
       try {
         const isSC = (business.operatingMode || "SC") === "SC";
@@ -260,6 +285,13 @@ export async function POST(req: NextRequest) {
             ].join("\n");
             await sendToChat(chatId, msg);
           } else {
+            // /report reuses the same paid "Automatic Telegram Business
+            // Report" content the scheduled cron sends -- must be gated
+            // by the same plan check, not just /today's free snapshot.
+            if (!(await hasTelegramReportsPlan(business))) {
+              await sendToChat(chatId, `<b>${business.name}</b>: full reports aren't included in your current plan. Upgrade from Plan &amp; Billing to use /report -- /today's quick snapshot is still free.`);
+              continue;
+            }
             const frequency = business.telegramReportFrequency && business.telegramReportFrequency !== "NONE" ? business.telegramReportFrequency : "DAILY";
             const { text: reportText } = await buildReportMessage(business.name, frequency, isSC, String(business._id), now);
             await sendToChat(chatId, reportText);
