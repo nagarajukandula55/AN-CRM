@@ -607,7 +607,16 @@ export default function AdminSettingsPage() {
                 )}
 
                 <div className="mt-3 rounded-control border border-border bg-surface-2 p-3">
-                  <p className="text-xs font-medium text-ink mb-1">Easiest setup: link with a code</p>
+                  <p className="text-xs font-medium text-ink mb-1">
+                    Easiest setup: link with this business's Vendor ID
+                  </p>
+                  <p className="text-xs text-ink-3 mb-2">
+                    Add the bot to the chat you want linked (use "Connect to Telegram Bot" above), then send{' '}
+                    <span className="tabular font-medium text-ink">/link VND0001</span> (this business's own Vendor
+                    ID, from Vendors &gt; this business's profile) there -- a group chat becomes the group
+                    destination, a DM becomes the personal destination, automatically.
+                  </p>
+                  <p className="text-xs font-medium text-ink mb-1 pt-2 border-t border-border">Or link with a one-time code</p>
                   <ol className="text-xs text-ink-3 list-decimal list-inside space-y-0.5 mb-2">
                     <li>Add the bot to your personal chat or a group (use "Connect to Telegram Bot" above).</li>
                     <li>Click "Generate Link Code" below.</li>

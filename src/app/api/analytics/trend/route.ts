@@ -172,8 +172,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, message: "granularity must be DAY, WEEK, MONTH, or YEAR" }, { status: 400 });
     }
 
+    // See api/analytics/overview's matching comment -- BRAND/POS were
+    // removed entirely (SC-only platform now), but legacy rows can still
+    // carry an unbackfilled "" operatingMode, so this must default to SC
+    // rather than require an exact "SC" match.
     const business = businessId ? await Business.findById(businessId).select("operatingMode").lean<any>() : null;
-    const isSC = business?.operatingMode === "SC";
+    const isSC = business?.operatingMode !== "BRAND" && business?.operatingMode !== "POS";
 
     const now = new Date();
     const currentStart = startOfBucketRange(granularity, now);

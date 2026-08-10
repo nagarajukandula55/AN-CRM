@@ -45,6 +45,10 @@ export async function GET(req: NextRequest) {
     const query: Record<string, unknown> = {};
     if (businessId && Types.ObjectId.isValid(businessId)) {
       query.businessId = new Types.ObjectId(businessId);
+    } else if (!session.isSuperAdmin) {
+      // No resolvable business for a non-super-admin caller -- return
+      // nothing rather than every business's deals pipeline.
+      return NextResponse.json({ success: true, deals: [], total: 0 });
     }
     if (stage && (DEAL_STAGES as readonly string[]).includes(stage)) {
       query.stage = stage;

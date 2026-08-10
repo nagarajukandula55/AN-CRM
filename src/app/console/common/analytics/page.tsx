@@ -27,7 +27,7 @@ import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 
 interface Overview {
   isSC?: boolean
-  revenue: { total: number; totalInvoices: number; thisMonth: number; thisMonthInvoices: number }
+  revenue: { total: number; totalInvoices: number; totalInvoicesAllStatuses: number; thisMonth: number; thisMonthInvoices: number }
   bySource: { source: string; revenue: number; count: number }[]
   statusBreakdown: { status: string; count: number }[]
   monthlyTrend: { label: string; revenue: number; activity: number }[]
@@ -127,9 +127,10 @@ export default function AnalyticsPage() {
         <Card><CardBody>Couldn't load analytics.</CardBody></Card>
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
             <StatCard label="Total Revenue" value={fmt(data.revenue.total)} sub={`${data.revenue.totalInvoices} paid invoices`} />
             <StatCard label={`This Month (${new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })})`} value={fmt(data.revenue.thisMonth)} sub={`${data.revenue.thisMonthInvoices} invoices`} />
+            <StatCard label="Invoices" value={String(data.revenue.totalInvoicesAllStatuses)} sub="all statuses" />
             <StatCard label={data.isSC ? 'Total Workorders' : 'Total Calls'} value={String(data.operations.totalCalls)} />
             <StatCard label="Open Workorders" value={String(data.operations.openWorkorders)} />
             <StatCard label="Closed Workorders" value={String(data.operations.closedWorkorders)} />

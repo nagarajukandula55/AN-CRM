@@ -1,28 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import Business from "@/models/Business";
-import { resolveVendorContext } from "@/lib/auth/vendorContext";
 import { getVendorTelegramMessageTypes } from "@/core/telegram/vendorMessageTypes";
 import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 /**
  * Vendor-facing version of /api/businesses/[id]/telegram-routing -- same
  * config (Business.telegramChatId/telegramPersonalChatId/
  * telegramMessageRouting), but the business id is resolved from the
- * caller's OWN vendor context (resolveVendorContext) instead of trusting a
- * URL param, so a vendor can only ever read/write their own business's
- * routing, never another vendor's. Lets an Owner/Manager set this up
- * themselves from console/admin/vendors/[id]/telegram's sibling at
- * /vendor/telegram, without needing AN Group staff to do it for them.
+ * caller's OWN verified business instead of trusting a URL param, so a
+ * vendor can only ever read/write their own business's routing, never
+ * another vendor's. Lets an Owner/Manager set this up themselves from
+ * console/admin/vendors/[id]/telegram's sibling at /vendor/telegram,
+ * without needing AN Group staff to do it for them.
+ *
+ * BUG FIX: this used to resolve the business ONLY via resolveVendorContext
+ * (VendorProfile ownership, or BusinessMember.vendorId-linked staff) --
+ * plain business staff/owners with a real BusinessMember row but no
+ * vendorId link (the common case outside the vendor-onboarding signup
+ * flow) got null back, a silent 404, and an empty message-type list on
+ * the page with no explanation. Now goes through the same
+ * resolveAuthorizedBusinessId every other authenticated route uses,
+ * which checks the session's own verified business first and only falls
+ * back to resolveVendorContext for vendor Owners who have no
+ * BusinessMember row at all.
  */
 async function resolveOwnBusinessId(): Promise<string | null> {
-  const h = await headers();
-  const userId = h.get("x-user-id");
-  if (!userId) return null;
-  const ctx = await resolveVendorContext(userId);
-  const businessId = (ctx?.vendor as any)?.businessId;
-  return businessId ? String(businessId) : null;
+  const session = await getEnrichedSession();
+  if (!session?.user) return null;
+  return resolveAuthorizedBusinessId(
+    session.user.id,
+    null,
+    !!session.isSuperAdmin,
+    session.business?.businessId || null
+  );
 }
 
 export async function GET() {

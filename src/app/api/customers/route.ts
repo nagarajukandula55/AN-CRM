@@ -60,7 +60,13 @@ export async function GET(req: NextRequest) {
     // workorder intake with a fresh IMEI/city/state, and the directory
     // still showing those columns blank.
     const filter: Record<string, any> = { isActive: true };
-    if (businessId && Types.ObjectId.isValid(businessId)) filter.businessId = businessId;
+    if (businessId && Types.ObjectId.isValid(businessId)) {
+      filter.businessId = businessId;
+    } else if (!session.isSuperAdmin) {
+      // No resolvable business for a non-super-admin caller -- return
+      // nothing rather than every business's customer PII.
+      return NextResponse.json({ success: true, customers: [], total: 0 });
+    }
     if (search?.trim()) {
       const re = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
       filter.$or = [{ name: re }, { phone: re }, { email: re }, { gstin: re }, { imeiOrSerialNumbers: re }];

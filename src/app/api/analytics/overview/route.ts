@@ -111,8 +111,16 @@ export async function GET(req: NextRequest) {
     // CrmCall count, which would otherwise always read 0 (or, worse,
     // pick up unrelated data since this route wasn't previously even
     // scoped to a single business by the frontend). See analytics/page.tsx.
+    //
+    // BRAND/POS vendor types were removed from AN-CRM entirely -- SC-only
+    // platform now -- but plenty of Business rows still carry a legacy
+    // operatingMode of "" (never backfilled) rather than "SC", so checking
+    // `=== "SC"` silently fell back to the CrmCall series (which an SC
+    // business never populates) and the charts looked empty/broken. Only
+    // an explicit BRAND/POS legacy row should still use calls; everyone
+    // else -- including no-business super-admin aggregate views -- is SC.
     const business = businessId ? await Business.findById(businessId).select("operatingMode").lean<any>() : null;
-    const isSC = business?.operatingMode === "SC";
+    const isSC = business?.operatingMode !== "BRAND" && business?.operatingMode !== "POS";
     const activityModel: any = isSC ? CrmJobSheet : CrmCall;
     const activityMatch = isSC ? jobsheetMatch : callMatch;
 
@@ -147,12 +155,18 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    const totalInvoicesAllStatuses = (invoiceAgg?.statusBreakdown || []).reduce(
+      (sum: number, s: any) => sum + (s.count || 0),
+      0
+    );
+
     return NextResponse.json({
       success: true,
       isSC,
       revenue: {
         total: invoiceAgg?.totals?.[0]?.sum || 0,
         totalInvoices: invoiceAgg?.totals?.[0]?.count || 0,
+        totalInvoicesAllStatuses,
         thisMonth: invoiceAgg?.thisMonth?.[0]?.sum || 0,
         thisMonthInvoices: invoiceAgg?.thisMonth?.[0]?.count || 0,
       },
