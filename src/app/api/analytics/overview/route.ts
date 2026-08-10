@@ -143,13 +143,18 @@ export async function GET(req: NextRequest) {
     // happened to have PAID rows for") so a month with workorders/calls
     // but no revenue yet (or vice versa) still shows up instead of being
     // silently dropped from one series.
+    // $year/$month above group in UTC by default, so the key built here
+    // must also be UTC-based -- using local getters/setters (as this used
+    // to) silently drifted from Mongo's grouping on any host whose local
+    // timezone isn't UTC, same bug class as api/analytics/trend's bucket
+    // loop (see that file's comment).
     const monthlyTrend: { label: string; revenue: number; activity: number }[] = [];
     for (let i = 0; i < 6; i++) {
       const d = new Date(sixMonthsAgo);
-      d.setMonth(d.getMonth() + i);
-      const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      d.setUTCMonth(d.getUTCMonth() + i);
+      const key = `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}`;
       monthlyTrend.push({
-        label: `${monthNames[d.getMonth()]} ${d.getFullYear()}`,
+        label: `${monthNames[d.getUTCMonth()]} ${d.getUTCFullYear()}`,
         revenue: revenueByKey.get(key) || 0,
         activity: activityByKey.get(key) || 0,
       });

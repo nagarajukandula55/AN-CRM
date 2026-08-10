@@ -244,6 +244,31 @@ export default function AdminSettingsPage() {
   const { data: integrationsRes, isLoading: loadingIntegrations } = useSWR(
     businessId && view === 'business' && tab === 'integrations' && isSuperAdmin ? `/api/integrations?businessId=${businessId}` : null
   )
+
+  // Super-admin-only message TEXT editor per alert type -- applies
+  // platform-wide to every vendor's alert of that type (see
+  // api/admin/telegram-templates and core/telegram/sendVendorTelegramMessage's
+  // rendering step). A vendor's own view of this same tab never fetches
+  // this -- they only get the Group/Personal routing checkboxes above.
+  const { data: templatesRes, mutate: refetchTemplates } = useSWR(
+    view === 'business' && tab === 'integrations' && isSuperAdmin ? '/api/admin/telegram-templates' : null
+  )
+  const [expandedTemplateKey, setExpandedTemplateKey] = useState<string | null>(null)
+  const [templateDrafts, setTemplateDrafts] = useState<Record<string, string>>({})
+  const [savingTemplateKey, setSavingTemplateKey] = useState<string | null>(null)
+  async function saveTemplate(key: string) {
+    setSavingTemplateKey(key)
+    try {
+      await fetch('/api/admin/telegram-templates', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, template: templateDrafts[key] ?? '' }),
+      })
+      refetchTemplates()
+    } finally {
+      setSavingTemplateKey(null)
+    }
+  }
   const integrations: Record<string, any> = (() => {
     if (!integrationsRes?.success) return {}
     const byProvider: Record<string, any> = {}
@@ -884,28 +909,82 @@ export default function AdminSettingsPage() {
               <div className="divide-y divide-border rounded-control border border-border overflow-hidden mb-5">
                 {(notifRes?.messageTypes || []).map((t: any) => {
                   const cur = notifRouting[t.key] || { group: t.defaultGroup, personal: t.defaultPersonal }
+                  const tmpl = templatesRes?.messageTypes?.find((x: any) => x.key === t.key)
+                  const expanded = expandedTemplateKey === t.key
                   return (
-                    <div key={t.key} className="px-4 py-3 flex items-center justify-between gap-4 bg-surface">
-                      <div>
-                        <p className="text-sm font-medium text-ink">{t.label}</p>
-                        <p className="text-xs text-ink-3">{t.description}</p>
+                    <div key={t.key} className="bg-surface">
+                      <div className="px-4 py-3 flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-medium text-ink">{t.label}</p>
+                          <p className="text-xs text-ink-3">{t.description}</p>
+                        </div>
+                        <div className="flex items-center gap-4 flex-shrink-0">
+                          <label className="flex items-center gap-1.5 text-xs text-ink-2">
+                            <input
+                              type="checkbox"
+                              checked={!!cur.group}
+                              onChange={() => setNotifRouting((prev) => ({ ...prev, [t.key]: { ...cur, group: !cur.group } }))}
+                            /> Group
+                          </label>
+                          <label className="flex items-center gap-1.5 text-xs text-ink-2">
+                            <input
+                              type="checkbox"
+                              checked={!!cur.personal}
+                              onChange={() => setNotifRouting((prev) => ({ ...prev, [t.key]: { ...cur, personal: !cur.personal } }))}
+                            /> Personal
+                          </label>
+                          {/* Message wording -- super admin only, applies to every
+                              vendor's alert of this type. Vendors never see this
+                              button, only the Group/Personal toggles above. */}
+                          {isSuperAdmin && tmpl && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!expanded) setTemplateDrafts((d) => ({ ...d, [t.key]: d[t.key] ?? tmpl.template ?? '' }))
+                                setExpandedTemplateKey(expanded ? null : t.key)
+                              }}
+                              className="text-xs font-medium text-accent hover:underline whitespace-nowrap"
+                            >
+                              {expanded ? 'Close' : 'Configure Message'}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4 flex-shrink-0">
-                        <label className="flex items-center gap-1.5 text-xs text-ink-2">
-                          <input
-                            type="checkbox"
-                            checked={!!cur.group}
-                            onChange={() => setNotifRouting((prev) => ({ ...prev, [t.key]: { ...cur, group: !cur.group } }))}
-                          /> Group
-                        </label>
-                        <label className="flex items-center gap-1.5 text-xs text-ink-2">
-                          <input
-                            type="checkbox"
-                            checked={!!cur.personal}
-                            onChange={() => setNotifRouting((prev) => ({ ...prev, [t.key]: { ...cur, personal: !cur.personal } }))}
-                          /> Personal
-                        </label>
-                      </div>
+                      {isSuperAdmin && expanded && tmpl && (
+                        <div className="px-4 pb-4 bg-surface-2 border-t border-border">
+                          <label className="text-xs text-ink-3 mb-1 block mt-3">
+                            Message text (applies to every vendor for this alert type)
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={templateDrafts[t.key] ?? tmpl.template ?? ''}
+                            onChange={(e) => setTemplateDrafts((d) => ({ ...d, [t.key]: e.target.value }))}
+                            placeholder="Leave blank to use the built-in default wording"
+                            className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong font-mono"
+                          />
+                          <div className="flex items-center flex-wrap gap-1.5 mt-2">
+                            <span className="text-xs text-ink-3">Tokens:</span>
+                            {(tmpl.tokens || []).map((tok: string) => (
+                              <code
+                                key={tok}
+                                className="text-xs bg-surface border border-border rounded px-1.5 py-0.5 text-ink-2 cursor-pointer"
+                                onClick={() => setTemplateDrafts((d) => ({ ...d, [t.key]: (d[t.key] ?? tmpl.template ?? '') + `{{${tok}}}` }))}
+                                title="Click to insert"
+                              >
+                                {`{{${tok}}}`}
+                              </code>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => saveTemplate(t.key)}
+                            disabled={savingTemplateKey === t.key}
+                            className="mt-3 text-xs font-medium bg-accent text-accent-fg rounded-control px-3 py-1.5 hover:bg-accent-hover disabled:opacity-50"
+                          >
+                            {savingTemplateKey === t.key ? 'Saving…' : 'Save Message'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )
                 })}

@@ -330,7 +330,12 @@ export async function POST(req: NextRequest) {
     sendVendorTelegramMessage(
       effectiveBizId,
       "NEW_WORKORDER",
-      `New workorder ${jobSheet.jobSheetNumber} created for ${jobSheet.customerName} (${jobSheet.phone}).`
+      `New workorder ${jobSheet.jobSheetNumber} created for ${jobSheet.customerName} (${jobSheet.phone}).`,
+      {
+        workorderNumber: jobSheet.jobSheetNumber || "",
+        customerName: jobSheet.customerName || "",
+        phone: jobSheet.phone || "",
+      }
     ).catch(() => {});
 
     logAction({

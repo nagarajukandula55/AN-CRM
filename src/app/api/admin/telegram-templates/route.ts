@@ -1,0 +1,76 @@
+/**
+ * GET/PUT /api/admin/telegram-templates — super-admin-only editing of the
+ * message TEXT for each Telegram alert type (see
+ * core/telegram/vendorMessageTypes.ts's catalog and
+ * models/TelegramMessageTemplate.ts). Applies platform-wide to every
+ * vendor's alerts of that type -- a vendor's own Integrations tab only
+ * ever shows the Group/Personal destination toggle, never this editor,
+ * per explicit direction ("only vendors should have UI for group or
+ * personal selection only").
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { connectDB } from "@/lib/mongodb";
+import TelegramMessageTemplate from "@/models/TelegramMessageTemplate";
+import { getVendorTelegramMessageTypes } from "@/core/telegram/vendorMessageTypes";
+import { tokensFor } from "@/core/telegram/messageTokens";
+import { getEnrichedSession } from "@/lib/auth/session-enriched";
+
+async function requireSuperAdmin(): Promise<{ ok: true; userId: string } | { ok: false; res: NextResponse }> {
+  const session = await getEnrichedSession();
+  if (!session?.user) {
+    return { ok: false, res: NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 }) };
+  }
+  if (!session.isSuperAdmin) {
+    return { ok: false, res: NextResponse.json({ success: false, message: "Super admin only" }, { status: 403 }) };
+  }
+  return { ok: true, userId: session.user.id };
+}
+
+export async function GET() {
+  const auth = await requireSuperAdmin();
+  if (!auth.ok) return auth.res;
+
+  await connectDB();
+  const [messageTypes, templates] = await Promise.all([
+    getVendorTelegramMessageTypes(),
+    TelegramMessageTemplate.find({}).lean(),
+  ]);
+  const templateByKey = new Map(templates.map((t: any) => [t.key, t.template]));
+
+  return NextResponse.json({
+    success: true,
+    messageTypes: messageTypes.map((t) => ({
+      ...t,
+      template: templateByKey.get(t.key) || "",
+      tokens: tokensFor(t.key),
+    })),
+  });
+}
+
+export async function PUT(req: NextRequest) {
+  const auth = await requireSuperAdmin();
+  if (!auth.ok) return auth.res;
+
+  await connectDB();
+  const body = await req.json().catch(() => ({}));
+  const key = String(body.key || "").trim().toUpperCase();
+  const template = typeof body.template === "string" ? body.template : "";
+  if (!key) {
+    return NextResponse.json({ success: false, message: "key is required" }, { status: 400 });
+  }
+
+  if (!template.trim()) {
+    // Blank template = "go back to this type's hardcoded fallback text" --
+    // delete the override rather than storing an empty string that would
+    // send blank messages.
+    await TelegramMessageTemplate.deleteOne({ key });
+    return NextResponse.json({ success: true, cleared: true });
+  }
+
+  await TelegramMessageTemplate.findOneAndUpdate(
+    { key },
+    { key, template, updatedBy: auth.userId },
+    { upsert: true, new: true }
+  );
+  return NextResponse.json({ success: true });
+}

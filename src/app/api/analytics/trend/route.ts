@@ -44,9 +44,26 @@ const TRUNC_UNIT: Record<Granularity, "day" | "week" | "month" | "year"> = {
   YEAR: "year",
 };
 
+// SECURITY/CORRECTNESS: $dateTrunc (used in fetchSeries below) truncates
+// in UTC by default, so every bucket boundary Mongo returns is UTC-
+// anchored. This file's bucket-loop start/end math used to be built with
+// LOCAL setters (setDate/setMonth/setFullYear/setHours) while bucketKey
+// read the result back with UTC getters (getUTCFullYear/getUTCMonth) for
+// MONTH/YEAR, and toISOString() (also UTC) for DAY/WEEK -- so on any
+// server/dev machine whose local timezone isn't UTC (this app's IST
+// userbase, or a developer's own machine, as opposed to Vercel's UTC
+// runtime), local midnight is NOT the same instant as UTC midnight, and
+// the loop-computed keys silently drifted from what Mongo actually
+// grouped by. With 30 DAY buckets a one-bucket drift was easy to miss;
+// with only 12 WEEK/MONTH or 5 YEAR buckets, the whole chart came up
+// empty. Every date computed below is now built and read with UTC
+// methods throughout, matching $dateTrunc's own UTC anchoring exactly
+// regardless of the host machine's timezone. Labels alone still use
+// toLocaleDateString for readable display -- that's cosmetic, not part
+// of the key/lookup path.
 function shiftYears(d: Date, years: number): Date {
   const copy = new Date(d);
-  copy.setFullYear(copy.getFullYear() + years);
+  copy.setUTCFullYear(copy.getUTCFullYear() + years);
   return copy;
 }
 
@@ -56,29 +73,29 @@ function shiftYears(d: Date, years: number): Date {
 // missed and the chart showed no data at all.
 function alignToMonday(d: Date): Date {
   const copy = new Date(d);
-  const day = copy.getDay(); // Sun=0..Sat=6
+  const day = copy.getUTCDay(); // Sun=0..Sat=6
   const diff = (day + 6) % 7; // days since most recent Monday
-  copy.setDate(copy.getDate() - diff);
-  copy.setHours(0, 0, 0, 0);
+  copy.setUTCDate(copy.getUTCDate() - diff);
+  copy.setUTCHours(0, 0, 0, 0);
   return copy;
 }
 
 function startOfBucketRange(granularity: Granularity, now: Date): Date {
   const count = BUCKET_COUNT[granularity];
   const start = new Date(now);
-  if (granularity === "DAY") start.setDate(start.getDate() - (count - 1));
-  else if (granularity === "WEEK") start.setDate(start.getDate() - (count - 1) * 7);
-  else if (granularity === "MONTH") start.setMonth(start.getMonth() - (count - 1), 1);
-  else start.setFullYear(start.getFullYear() - (count - 1), 0, 1);
-  start.setHours(0, 0, 0, 0);
+  if (granularity === "DAY") start.setUTCDate(start.getUTCDate() - (count - 1));
+  else if (granularity === "WEEK") start.setUTCDate(start.getUTCDate() - (count - 1) * 7);
+  else if (granularity === "MONTH") start.setUTCMonth(start.getUTCMonth() - (count - 1), 1);
+  else start.setUTCFullYear(start.getUTCFullYear() - (count - 1), 0, 1);
+  start.setUTCHours(0, 0, 0, 0);
   return granularity === "WEEK" ? alignToMonday(start) : start;
 }
 
 function bucketLabel(granularity: Granularity, d: Date): string {
-  if (granularity === "DAY") return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
-  if (granularity === "WEEK") return `Wk of ${d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`;
-  if (granularity === "MONTH") return d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
-  return String(d.getFullYear());
+  if (granularity === "DAY") return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "UTC" });
+  if (granularity === "WEEK") return `Wk of ${d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "UTC" })}`;
+  if (granularity === "MONTH") return d.toLocaleDateString("en-IN", { month: "short", year: "numeric", timeZone: "UTC" });
+  return String(d.getUTCFullYear());
 }
 
 function bucketKey(granularity: Granularity, d: Date): string {
@@ -193,10 +210,10 @@ export async function GET(req: NextRequest) {
     const buckets = [];
     for (let i = 0; i < count; i++) {
       const d = new Date(currentStart);
-      if (granularity === "DAY") d.setDate(d.getDate() + i);
-      else if (granularity === "WEEK") d.setDate(d.getDate() + i * 7);
-      else if (granularity === "MONTH") d.setMonth(d.getMonth() + i);
-      else d.setFullYear(d.getFullYear() + i);
+      if (granularity === "DAY") d.setUTCDate(d.getUTCDate() + i);
+      else if (granularity === "WEEK") d.setUTCDate(d.getUTCDate() + i * 7);
+      else if (granularity === "MONTH") d.setUTCMonth(d.getUTCMonth() + i);
+      else d.setUTCFullYear(d.getUTCFullYear() + i);
 
       const priorD = shiftYears(d, -1);
       const key = bucketKey(granularity, d);

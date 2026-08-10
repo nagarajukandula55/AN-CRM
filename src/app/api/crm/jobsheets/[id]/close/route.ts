@@ -296,7 +296,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     sendVendorTelegramMessage(
       jobSheet.businessId.toString(),
       "WORKORDER_CLOSED",
-      `Workorder ${jobSheet.jobSheetNumber} closed and invoiced (${invoice.invoiceNumber}) for ${jobSheet.customerName}.`
+      `Workorder ${jobSheet.jobSheetNumber} closed and invoiced (${invoice.invoiceNumber}) for ${jobSheet.customerName}.`,
+      {
+        workorderNumber: jobSheet.jobSheetNumber || "",
+        customerName: jobSheet.customerName || "",
+        invoiceNumber: invoice.invoiceNumber || "",
+        amount: String(invoice.grandTotal ?? ""),
+      }
     ).catch(() => {});
 
     // Deduct stock now that the invoice is confirmed created -- every
