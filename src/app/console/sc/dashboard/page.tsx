@@ -80,18 +80,7 @@ export default function ScDashboard() {
   const { data: statsData, isLoading: loadingStats } = useSWR(
     businessId ? `/api/crm/jobsheets/stats?businessId=${businessId}` : null
   )
-
-  // Calls-by-status card -- phone-in leads before they're converted to a
-  // workorder (see app/vendor/crm/calls). limit=1 since only statusCounts
-  // (computed alongside the page of results, not a separate stats route)
-  // is needed here, not the actual call rows.
-  const { data: callsData, isLoading: loadingCalls } = useSWR(
-    businessId ? `/api/crm/calls?businessId=${businessId}&limit=1` : null
-  )
-  const callStatusBreakdown: Record<string, number> = callsData?.statusCounts || {}
-  const totalCalls = callsData?.total ?? 0
   const workorderStatusBreakdown: Record<string, number> = statsData?.byStatus || {}
-  const totalForBreakdown = Object.values(workorderStatusBreakdown).reduce((a, b) => a + b, 0)
   const openWorkorders = statsData?.openCount ?? 0
   const overdueWorkorders = statsData?.overdueCount ?? 0
   const closedThisMonth = statsData?.closedThisMonth ?? 0
@@ -105,7 +94,7 @@ export default function ScDashboard() {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 8)
 
-  const loading = !gateChecked || loadingWorkorders || loadingStats || loadingCalls
+  const loading = !gateChecked || loadingWorkorders || loadingStats
 
   if (loading) {
     return <LoadingPanel label="Loading CRM overview…" />
@@ -169,58 +158,24 @@ export default function ScDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <Card className="p-6">
-          <p className="eyebrow mb-4">Workorders by Status</p>
-          {Object.keys(workorderStatusBreakdown).length === 0 ? (
-            <p className="text-sm text-ink-3">No data yet</p>
-          ) : (
-            <div className="space-y-3">
-              {Object.entries(workorderStatusBreakdown).map(([status, count]) => (
-                <div key={status}>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-ink-2">{status}</span>
-                    <span className="text-ink-3 tabular">{count}</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                    <div
-                      className="h-full bg-accent rounded-full"
-                      style={{ width: `${totalForBreakdown ? Math.round((count / totalForBreakdown) * 100) : 0}%` }}
-                    />
-                  </div>
+      {/* One small stat card per workorder status -- same card style as the
+          Today/Week/Month/Year row above, per explicit direction (replaced
+          the earlier list-with-progress-bar version). */}
+      {Object.keys(workorderStatusBreakdown).length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {Object.entries(workorderStatusBreakdown).map(([status, count]) => (
+            <Card key={status} className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-ink-3 text-sm">{status}</span>
+                <div className="w-8 h-8 rounded-control bg-surface-2 flex items-center justify-center">
+                  <ClipboardList className="w-4 h-4 text-ink-2" />
                 </div>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <p className="eyebrow">Calls by Status</p>
-            <span className="text-xs text-ink-3 tabular">{totalCalls} total</span>
-          </div>
-          {Object.keys(callStatusBreakdown).length === 0 ? (
-            <p className="text-sm text-ink-3">No data yet</p>
-          ) : (
-            <div className="space-y-3">
-              {Object.entries(callStatusBreakdown).map(([status, count]) => (
-                <div key={status}>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-ink-2">{status}</span>
-                    <span className="text-ink-3 tabular">{count}</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                    <div
-                      className="h-full bg-info rounded-full"
-                      style={{ width: `${totalCalls ? Math.round((count / totalCalls) * 100) : 0}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      </div>
+              </div>
+              <p className="text-2xl font-semibold text-ink tabular">{count}</p>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {recentActivity.length > 0 && (
         <Card className="overflow-hidden mb-8">

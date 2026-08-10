@@ -36,7 +36,7 @@ import DocumentNumbersPanel from '@/components/admin/DocumentNumbersPanel'
  */
 
 type View = 'business' | 'platform'
-type Tab = 'integrations' | 'ai' | 'invoicing' | 'operations' | 'communication' | 'numbering' | 'notifications'
+type Tab = 'integrations' | 'ai' | 'invoicing' | 'operations' | 'communication' | 'numbering'
 
 interface SsoMapping {
   _id: string
@@ -91,7 +91,6 @@ export default function AdminSettingsPage() {
     estimateTerms: '',
     invoiceTerms: '',
     enabledDeviceCategories: [] as string[],
-    telegramChatId: '',
     telegramReportFrequency: 'NONE',
   })
   const [savingOperations, setSavingOperations] = useState(false)
@@ -135,33 +134,14 @@ export default function AdminSettingsPage() {
   const isSC = activeBiz?.operatingMode === 'SC'
 
   const { data: planStatus } = useSWR(
-    view === 'business' && tab === 'operations' ? '/api/subscriptions/status' : null
+    view === 'business' && tab === 'integrations' ? '/api/subscriptions/status' : null
   )
 
   const { data: telegramBotInfo } = useSWR(
-    view === 'business' && tab === 'operations' ? '/api/telegram/bot-info' : null
+    view === 'business' && tab === 'integrations' ? '/api/telegram/bot-info' : null
   )
   const telegramBotUsername: string | null = telegramBotInfo?.success ? telegramBotInfo.username : null
 
-  // "Generate Link Code" -- the easier alternative to copy-pasting a raw
-  // chat id: the admin sends `/link <code>` to the bot (see
-  // api/telegram/webhook's /link handler) and the chat gets linked +
-  // starts receiving reports automatically, no manual paste-and-save step.
-  const [telegramLinkCode, setTelegramLinkCode] = useState<{ code: string; expiresAt: string } | null>(null)
-  const [generatingLinkCode, setGeneratingLinkCode] = useState(false)
-  async function generateTelegramLinkCode() {
-    if (!businessId) return
-    setGeneratingLinkCode(true)
-    try {
-      const res = await fetch(`/api/businesses/${businessId}/telegram-link-code`, { method: 'POST' })
-      const d = await res.json()
-      if (d.success) setTelegramLinkCode({ code: d.code, expiresAt: d.expiresAt })
-    } catch {
-      /* best-effort */
-    } finally {
-      setGeneratingLinkCode(false)
-    }
-  }
   const hasTelegramReportFeature: boolean = Array.isArray(planStatus?.moduleKeys)
     ? planStatus.moduleKeys.includes('telegram-reports')
     : true // unknown allowlist (null) means "not gated" -- don't block on a load error
@@ -187,7 +167,7 @@ export default function AdminSettingsPage() {
   }, [invoicingRes])
 
   const { data: operationsRes } = useSWR(
-    businessId && view === 'business' && tab === 'operations' ? `/api/businesses/${businessId}` : null
+    businessId && view === 'business' && (tab === 'operations' || tab === 'integrations') ? `/api/businesses/${businessId}` : null
   )
   useEffect(() => {
     if (operationsRes?.success && operationsRes.business) {
@@ -207,7 +187,6 @@ export default function AdminSettingsPage() {
         estimateTerms: b.estimateTerms || '',
         invoiceTerms: b.invoiceTerms || '',
         enabledDeviceCategories: b.enabledDeviceCategories || [],
-        telegramChatId: b.telegramChatId || '',
         telegramReportFrequency: b.telegramReportFrequency || 'NONE',
       })
     }
@@ -218,11 +197,19 @@ export default function AdminSettingsPage() {
   )
   const quota = quotaRes?.success ? quotaRes.quota : null
 
-  // Same Telegram routing this vendor's own /vendor/telegram page uses --
-  // reused here so an SC business (which never touches the /vendor portal
-  // at all, it works entirely inside /console) has a way to reach it too.
+  // Vendor SELF-service Telegram routing -- this settings page is always
+  // the caller's OWN business (never staff managing someone else's, that's
+  // the separate console/admin/vendors/[id]/telegram page), so it must use
+  // /api/vendor/telegram-routing (resolves the business from the caller's
+  // own session) rather than /api/businesses/[id]/telegram-routing (staff-
+  // only, requires a "vendors.edit" permission a vendor's own account
+  // never holds). Using the staff-only route here meant this GET silently
+  // 401'd for every non-staff caller and the page just showed an empty
+  // alert-routing list with no explanation -- the actual root cause of
+  // that report, distinct from the /vendor/telegram page's matching bug
+  // (see that route's own comment).
   const { data: notifRes, mutate: refetchNotif } = useSWR(
-    businessId && view === 'business' && tab === 'notifications' ? `/api/businesses/${businessId}/telegram-routing` : null
+    businessId && view === 'business' && tab === 'integrations' ? '/api/vendor/telegram-routing' : null
   )
   const [notifGroupChatId, setNotifGroupChatId] = useState('')
   const [notifPersonalChatId, setNotifPersonalChatId] = useState('')
@@ -239,7 +226,7 @@ export default function AdminSettingsPage() {
     if (!businessId) return
     setSavingNotif(true)
     try {
-      await fetch(`/api/businesses/${businessId}/telegram-routing`, {
+      await fetch('/api/vendor/telegram-routing', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -255,7 +242,7 @@ export default function AdminSettingsPage() {
   }
 
   const { data: integrationsRes, isLoading: loadingIntegrations } = useSWR(
-    businessId && view === 'business' && tab === 'integrations' ? `/api/integrations?businessId=${businessId}` : null
+    businessId && view === 'business' && tab === 'integrations' && isSuperAdmin ? `/api/integrations?businessId=${businessId}` : null
   )
   const integrations: Record<string, any> = (() => {
     if (!integrationsRes?.success) return {}
@@ -360,9 +347,17 @@ export default function AdminSettingsPage() {
   // POS still saw them, which was the same "vendor-facing thing that's
   // actually a super-admin concern" gap this whole tab bar has already
   // been trimmed for once before).
+  // Telegram config (chat ids, alert routing, report frequency) lives
+  // entirely in the Integrations tab now -- it used to be split three ways
+  // (Operations tab's chat-id field, a separate Notifications tab, and the
+  // standalone /vendor/telegram page), which is exactly why it looked
+  // broken/scattered. One tab, reachable by the business itself (not
+  // Super-Admin-only like the rest of this tab used to be -- a vendor
+  // configuring their own Telegram chat is a business-level concern, not a
+  // platform one), per explicit direction.
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'operations', label: 'Operations', icon: <Building2 size={14} /> },
-    { key: 'notifications', label: 'Notifications', icon: <Send size={14} /> },
+    { key: 'integrations', label: 'Integrations', icon: <Plug size={14} /> },
     { key: 'numbering', label: 'Document Numbers', icon: <Receipt size={14} /> },
     // Invoicing Rules is entirely a marketplace/Brand concept (the
     // dual-invoice B2B+B2C split and vendor cost basis for orders a
@@ -371,7 +366,6 @@ export default function AdminSettingsPage() {
     // nothing relevant to an SC business. Reported live as still showing
     // even after the fields inside it were hidden.
     ...(!isSC ? [{ key: 'invoicing' as Tab, label: 'Invoicing Rules', icon: <Receipt size={14} /> }] : []),
-    ...(isSuperAdmin ? [{ key: 'integrations' as Tab, label: 'Integrations', icon: <Plug size={14} /> }] : []),
     ...(isSuperAdmin ? [{ key: 'communication' as Tab, label: 'Communication Quota', icon: <Globe2 size={14} /> }] : []),
     ...(isSuperAdmin ? [{ key: 'ai' as Tab, label: 'AI / ANu', icon: <Sparkles size={14} /> }] : []),
   ]
@@ -579,90 +573,9 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs text-ink-3 mb-1 block">Telegram Chat / Group ID</label>
-                <input
-                  type="text"
-                  value={operations.telegramChatId}
-                  onChange={(e) => setOperations({ ...operations, telegramChatId: e.target.value })}
-                  placeholder="e.g. 123456789 or -1001234567890"
-                  className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong"
-                />
-                <div className="text-xs text-ink-3 mt-1">
-                  Daily/weekly/monthly reports and alerts are sent here via our Telegram bot. Don't know your
-                  ID? Message the bot and send <span className="tabular">/tgid</span> — it replies with your
-                  personal chat ID, or add the bot to a group and send the same command there for the group ID.
-                  Once linked, send <span className="tabular">/today</span> or <span className="tabular">/report</span> to
-                  the bot any time for an on-demand summary.
-                </div>
-                {telegramBotUsername && (
-                  <a
-                    href={`https://t.me/${telegramBotUsername}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-accent hover:underline"
-                  >
-                    <Send className="w-3.5 h-3.5" /> Connect to Telegram Bot
-                  </a>
-                )}
-
-                <div className="mt-3 rounded-control border border-border bg-surface-2 p-3">
-                  <p className="text-xs font-medium text-ink mb-1">
-                    Easiest setup: link with this business's Vendor ID
-                  </p>
-                  <p className="text-xs text-ink-3 mb-2">
-                    Add the bot to the chat you want linked (use "Connect to Telegram Bot" above), then send{' '}
-                    <span className="tabular font-medium text-ink">/link VND0001</span> (this business's own Vendor
-                    ID, from Vendors &gt; this business's profile) there -- a group chat becomes the group
-                    destination, a DM becomes the personal destination, automatically.
-                  </p>
-                  <p className="text-xs font-medium text-ink mb-1 pt-2 border-t border-border">Or link with a one-time code</p>
-                  <ol className="text-xs text-ink-3 list-decimal list-inside space-y-0.5 mb-2">
-                    <li>Add the bot to your personal chat or a group (use "Connect to Telegram Bot" above).</li>
-                    <li>Click "Generate Link Code" below.</li>
-                    <li>Send <span className="tabular font-medium text-ink">/link CODE</span> to the bot in that chat.</li>
-                  </ol>
-                  <button
-                    type="button"
-                    onClick={generateTelegramLinkCode}
-                    disabled={generatingLinkCode}
-                    className="text-xs font-medium bg-accent text-accent-fg rounded-control px-3 py-1.5 hover:bg-accent-hover disabled:opacity-50"
-                  >
-                    {generatingLinkCode ? 'Generating…' : 'Generate Link Code'}
-                  </button>
-                  {telegramLinkCode && (
-                    <div className="mt-2 text-xs">
-                      <span className="text-ink-3">Send: </span>
-                      <span className="tabular font-semibold text-ink">/link {telegramLinkCode.code}</span>
-                      <span className="text-ink-3"> — expires {new Date(telegramLinkCode.expiresAt).toLocaleTimeString('en-IN')}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs text-ink-3 mb-1 block">Automatic Business Report</label>
-                {hasTelegramReportFeature ? (
-                  <select
-                    value={operations.telegramReportFrequency}
-                    onChange={(e) => setOperations({ ...operations, telegramReportFrequency: e.target.value })}
-                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong"
-                  >
-                    <option value="NONE">Off</option>
-                    <option value="DAILY">Daily</option>
-                    <option value="WEEKLY">Weekly</option>
-                    <option value="MONTHLY">Monthly</option>
-                  </select>
-                ) : (
-                  <div className="rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-ink-3">
-                    Not available on your current plan — upgrade from Plan &amp; Billing to unlock automatic Telegram reports.
-                  </div>
-                )}
-                <div className="text-xs text-ink-3 mt-1">
-                  Sends a full business summary (revenue, workorders, a trend chart) to the Chat/Group ID above
-                  on the schedule you pick — separate from any custom Report Builder schedule.
-                </div>
-              </div>
+              {/* Telegram (chat ids, alert routing, report frequency) moved
+                  entirely to the Integrations tab -- see that tab's own
+                  comment. */}
 
               <div className="pt-4 border-t border-border">
                 <div className="text-sm font-medium text-ink mb-1">Bank Details</div>
@@ -883,59 +796,91 @@ export default function AdminSettingsPage() {
           </div>
         )}
 
+        {/* Everything Telegram-related lives here now -- chat ids, which
+            alert type goes to which chat, and the automatic report
+            schedule. Used to be split across this Operations tab's own
+            chat-id field, a separate Notifications tab, and the standalone
+            /vendor/telegram page; consolidated into one place per explicit
+            direction ("move that entire telegram related thing to
+            telegram integrations tab only"). Reachable by the business
+            itself, not Super-Admin-gated, since this is the caller's own
+            Telegram setup. */}
         {tab === 'integrations' && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-5">Notification Integrations</h3>
-            {loadingIntegrations ? (
-              <p className="text-sm text-gray-500">Loading…</p>
-            ) : (
-              <div className="space-y-3">
-                {['TELEGRAM', 'WHATSAPP', 'SLACK', 'EMAIL'].map((provider) => (
-                  <div key={provider} className="rounded-xl border border-gray-200 p-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{provider}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {integrations[provider]?.isActive ? 'Connected' : 'Not configured'}
-                      </p>
-                    </div>
-                    <span className={`h-2.5 w-2.5 rounded-full ${integrations[provider]?.isActive ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                  </div>
-                ))}
-                <p className="text-xs text-gray-400 pt-2">
-                  Full credential editing (bot tokens, webhook URLs) uses the existing /console/integrations screen — this view is a status summary.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {tab === 'notifications' && (
           <div className="space-y-6">
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">Telegram Alerts</h3>
-              <p className="text-xs text-gray-500 mb-5">
-                Choose which chat gets which type of alert -- your team group, your personal chat, or both.
+            <div className="rounded-card border border-border bg-surface p-6">
+              <h3 className="h-section mb-1">Telegram</h3>
+              <p className="text-xs text-ink-3 mb-5">
+                One bot serves every business -- link it to your own chat(s), then choose which alert types go
+                where.
               </p>
+
+              <div className="rounded-control border border-border bg-surface-2 p-4 mb-6">
+                <p className="text-xs font-medium text-ink mb-1">Link with this business's Vendor ID</p>
+                <p className="text-xs text-ink-3 mb-2">
+                  Add the bot to the chat you want linked, then send{' '}
+                  <span className="tabular font-medium text-ink">/link VND0001</span> (this business's own Vendor
+                  ID, from Vendors &gt; this business's profile) there -- a group chat becomes the group
+                  destination, a DM becomes the personal destination, automatically. No code to generate or copy.
+                </p>
+                {telegramBotUsername && (
+                  <a
+                    href={`https://t.me/${telegramBotUsername}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:underline"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Connect to Telegram Bot
+                  </a>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Group / Team Chat ID</label>
+                  <label className="block text-xs font-medium text-ink-3 mb-1.5">Group / Team Chat ID</label>
                   <input
                     value={notifGroupChatId}
                     onChange={(e) => setNotifGroupChatId(e.target.value)}
                     placeholder="e.g. -1001234567890"
-                    className="w-full rounded-control border border-border-strong bg-surface px-3 py-2 text-sm text-ink"
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Your Personal Chat ID</label>
+                  <label className="block text-xs font-medium text-ink-3 mb-1.5">Your Personal Chat ID</label>
                   <input
                     value={notifPersonalChatId}
                     onChange={(e) => setNotifPersonalChatId(e.target.value)}
                     placeholder="e.g. 987654321"
-                    className="w-full rounded-control border border-border-strong bg-surface px-3 py-2 text-sm text-ink"
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink"
                   />
                 </div>
               </div>
+
+              <div className="mb-6">
+                <label className="text-xs text-ink-3 mb-1 block">Automatic Business Report</label>
+                {hasTelegramReportFeature ? (
+                  <select
+                    value={operations.telegramReportFrequency}
+                    onChange={(e) => setOperations({ ...operations, telegramReportFrequency: e.target.value })}
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong"
+                  >
+                    <option value="NONE">Off</option>
+                    <option value="DAILY">Daily</option>
+                    <option value="WEEKLY">Weekly</option>
+                    <option value="MONTHLY">Monthly</option>
+                  </select>
+                ) : (
+                  <div className="rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-ink-3">
+                    Not available on your current plan — upgrade from Plan &amp; Billing to unlock automatic Telegram reports.
+                  </div>
+                )}
+                <div className="text-xs text-ink-3 mt-1">
+                  Sends a full business summary (revenue, workorders, a trend chart) to the chat(s) above on the
+                  schedule you pick.
+                </div>
+              </div>
+
+              <p className="text-xs font-medium text-ink mb-1">Alert Routing</p>
+              <p className="text-xs text-ink-3 mb-3">Choose which chat gets which type of alert.</p>
               <div className="divide-y divide-border rounded-control border border-border overflow-hidden mb-5">
                 {(notifRes?.messageTypes || []).map((t: any) => {
                   const cur = notifRouting[t.key] || { group: t.defaultGroup, personal: t.defaultPersonal }
@@ -965,14 +910,49 @@ export default function AdminSettingsPage() {
                   )
                 })}
               </div>
-              <button
-                onClick={saveNotificationRouting}
-                disabled={savingNotif}
-                className="px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition"
-              >
-                {savingNotif ? 'Saving…' : 'Save Notification Settings'}
-              </button>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={saveNotificationRouting}
+                  disabled={savingNotif}
+                  className="btn-primary rounded-control px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Save size={13} /> {savingNotif ? 'Saving…' : 'Save Chat IDs & Routing'}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => saveOperations(e as unknown as React.FormEvent)}
+                  disabled={savingOperations}
+                  className="rounded-control border border-border-strong px-5 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
+                >
+                  {savingOperations ? 'Saving…' : 'Save Report Schedule'}
+                </button>
+              </div>
             </div>
+
+            {isSuperAdmin && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-6">
+                <h3 className="text-sm font-semibold text-gray-900 mb-5">Notification Integrations (platform status)</h3>
+                {loadingIntegrations ? (
+                  <p className="text-sm text-gray-500">Loading…</p>
+                ) : (
+                  <div className="space-y-3">
+                    {['TELEGRAM', 'WHATSAPP', 'SLACK', 'EMAIL'].map((provider) => (
+                      <div key={provider} className="rounded-xl border border-gray-200 p-4 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{provider}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {integrations[provider]?.isActive ? 'Connected' : 'Not configured'}
+                          </p>
+                        </div>
+                        <span className={`h-2.5 w-2.5 rounded-full ${integrations[provider]?.isActive ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

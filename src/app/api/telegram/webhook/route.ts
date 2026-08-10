@@ -87,9 +87,8 @@ function isAdminChat(chatId: number | string): boolean {
 const HELP_TEXT = [
   "<b>AN CRM Bot — Commands</b>",
   "",
-  "/link CODE — link this chat to your business using the one-time code from Settings > Operations, and start receiving reports automatically",
-  "/link VND0001 — or link straight from your Vendor ID (no code needed) -- send it from your team GROUP to set the group chat, and separately from your OWN personal chat to set your personal chat",
-  "/tgid — show this chat's Telegram ID (paste into Settings > Operations)",
+  "/link VND0001 — link this chat using your business's Vendor ID (Settings &gt; Integrations, or Vendors &gt; this business's profile) -- send it from your team GROUP to set the group chat, and separately from your OWN personal chat to set your personal chat",
+  "/tgid — show this chat's Telegram ID",
   "/today — quick revenue &amp; activity snapshot, today vs. yesterday",
   "/report — full period report for every business linked to this chat",
   "/runjobs — (admin only) manually run every due scheduled job now",
@@ -137,71 +136,36 @@ export async function POST(req: NextRequest) {
 
     if (command === "/link") {
       const arg = text.trim().split(/\s+/)[1]?.trim().toUpperCase();
-      if (!arg) {
-        await sendToChat(chatId, "Usage: <code>/link CODE</code> or <code>/link VND0001</code> (your Vendor ID) — get either from Settings &gt; Operations &gt; Telegram in the app first.");
+      if (!arg || !VENDOR_ID_RE.test(arg)) {
+        await sendToChat(chatId, "Usage: <code>/link VND0001</code> — send this business's own Vendor ID (Settings &gt; Integrations, or Vendors &gt; this business's profile).");
         return NextResponse.json({ success: true });
       }
 
       const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
 
-      // Vendor-ID path: send the SAME Vendor ID from two different
-      // chats to configure both destinations independently -- send it
-      // from your team GROUP once (sets telegramChatId), then again
-      // from your own personal DM with the bot (sets
-      // telegramPersonalChatId). No one-time code to generate/copy.
-      // Per explicit direction ("send our bot should give confirmation
-      // and take that tgid and add that group id as group and personal
-      // id to person tgid automatically").
-      if (VENDOR_ID_RE.test(arg)) {
-        const vendor = await VendorProfile.findOne({ vendorId: arg, isDeleted: { $ne: true } }).select("companyName businessId");
-        if (!vendor || !vendor.businessId) {
-          await sendToChat(chatId, `No vendor found for <code>${arg}</code>. Double-check the Vendor ID in your Profile page and try again.`);
-          return NextResponse.json({ success: true });
-        }
-        const business = await Business.findById(vendor.businessId);
-        if (!business) {
-          await sendToChat(chatId, `Vendor <code>${arg}</code> has no active business on file yet. Contact support.`);
-          return NextResponse.json({ success: true });
-        }
-
-        if (isGroup) {
-          business.telegramChatId = String(chatId);
-        } else {
-          business.telegramPersonalChatId = String(chatId);
-        }
-        if (!business.telegramReportFrequency || business.telegramReportFrequency === "NONE") {
-          business.telegramReportFrequency = "DAILY";
-        }
-        await business.save();
-
-        await sendToChat(
-          chatId,
-          `✅ Confirmed. <b>${vendor.companyName || business.name}</b> (${arg}) is now linked -- this ${isGroup ? "group" : "personal chat"} will receive ${isGroup ? "team" : "your own"} automated reports (daily by default — change the schedule any time in Settings).\n\nSending your first report now…`
-        );
-
-        try {
-          const isSC = (business.operatingMode || "SC") === "SC";
-          const { text: reportText } = await buildReportMessage(business.name, business.telegramReportFrequency, isSC, String(business._id), new Date());
-          await sendToChat(chatId, reportText);
-        } catch (err) {
-          console.error("[telegram-webhook] /link (vendor id) first-report failed:", err);
-        }
-
+      // Send the SAME Vendor ID from two different chats to configure both
+      // destinations independently -- send it from your team GROUP once
+      // (sets telegramChatId), then again from your own personal DM with
+      // the bot (sets telegramPersonalChatId). This is the ONLY linking
+      // path -- the legacy one-time telegramLinkCode flow was removed
+      // entirely per explicit direction ("this link command to be removed
+      // totally... only plain vendor id should register this").
+      const vendor = await VendorProfile.findOne({ vendorId: arg, isDeleted: { $ne: true } }).select("companyName businessId");
+      if (!vendor || !vendor.businessId) {
+        await sendToChat(chatId, `No vendor found for <code>${arg}</code>. Double-check the Vendor ID in your Profile page and try again.`);
         return NextResponse.json({ success: true });
       }
-
-      // Legacy path: a one-time code generated from Settings > Operations
-      // > Telegram. Always sets the group chat id (unchanged behavior) --
-      // this path predates per-chat personal/group distinction; use the
-      // Vendor ID path above to set the personal chat specifically.
-      const business = await Business.findOne({ telegramLinkCode: arg, telegramLinkCodeExpiresAt: { $gt: new Date() } });
+      const business = await Business.findById(vendor.businessId);
       if (!business) {
-        await sendToChat(chatId, "That code is invalid or has expired. Generate a new one from Settings &gt; Operations &gt; Telegram, or send your Vendor ID (e.g. <code>VND0001</code>) instead.");
+        await sendToChat(chatId, `Vendor <code>${arg}</code> has no active business on file yet. Contact support.`);
         return NextResponse.json({ success: true });
       }
-      business.telegramChatId = String(chatId);
-      business.telegramLinkCode = undefined;
-      business.telegramLinkCodeExpiresAt = undefined;
+
+      if (isGroup) {
+        business.telegramChatId = String(chatId);
+      } else {
+        business.telegramPersonalChatId = String(chatId);
+      }
       if (!business.telegramReportFrequency || business.telegramReportFrequency === "NONE") {
         business.telegramReportFrequency = "DAILY";
       }
@@ -209,7 +173,7 @@ export async function POST(req: NextRequest) {
 
       await sendToChat(
         chatId,
-        `✅ Linked to <b>${business.name}</b>. ${isGroup ? "This group" : "This chat"} will now receive automated reports (daily by default — change the schedule any time in Settings).\n\nSending your first report now…`
+        `✅ Confirmed. <b>${vendor.companyName || business.name}</b> (${arg}) is now linked -- this ${isGroup ? "group" : "personal chat"} will receive ${isGroup ? "team" : "your own"} automated reports (daily by default — change the schedule any time in Settings).\n\nSending your first report now…`
       );
 
       try {
@@ -217,7 +181,7 @@ export async function POST(req: NextRequest) {
         const { text: reportText } = await buildReportMessage(business.name, business.telegramReportFrequency, isSC, String(business._id), new Date());
         await sendToChat(chatId, reportText);
       } catch (err) {
-        console.error("[telegram-webhook] /link first-report failed:", err);
+        console.error("[telegram-webhook] /link (vendor id) first-report failed:", err);
       }
 
       return NextResponse.json({ success: true });
@@ -226,8 +190,8 @@ export async function POST(req: NextRequest) {
     if (/^\/(tgid|start)\b/i.test(command)) {
       const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
       const reply = isGroup
-        ? `This group's Telegram ID is:\n<code>${chatId}</code>\n\nEasiest setup: in the app go to Settings &gt; Operations &gt; Telegram and click "Generate Link Code", then send <code>/link CODE</code> here — no copy-pasting needed and reports start right away. Or paste this ID directly into the Telegram Chat/Group ID field yourself.\n\nSend /help to see everything this bot can do.`
-        : `Your Telegram ID is:\n<code>${chatId}</code>\n\nEasiest setup: in the app go to Settings &gt; Operations &gt; Telegram and click "Generate Link Code", then send <code>/link CODE</code> here — no copy-pasting needed and reports start right away. Or paste this ID directly into the Telegram Chat/Group ID field yourself.\n\nSend /help to see everything this bot can do.`;
+        ? `This group's Telegram ID is:\n<code>${chatId}</code>\n\nEasiest setup: send <code>/link VND0001</code> here (this business's own Vendor ID, from Settings &gt; Integrations) and this group is linked immediately — no copy-pasting needed.\n\nSend /help to see everything this bot can do.`
+        : `Your Telegram ID is:\n<code>${chatId}</code>\n\nEasiest setup: send <code>/link VND0001</code> here (this business's own Vendor ID, from Settings &gt; Integrations) and this chat is linked immediately — no copy-pasting needed.\n\nSend /help to see everything this bot can do.`;
       await sendToChat(chatId, reply);
       return NextResponse.json({ success: true });
     }
@@ -269,7 +233,7 @@ export async function POST(req: NextRequest) {
       if (businesses.length === 0) {
         await sendToChat(
           chatId,
-          "No business is linked to this chat yet. Paste this chat's ID (/tgid) into Settings &gt; Operations &gt; Telegram Chat/Group ID first."
+          "No business is linked to this chat yet. Send <code>/link VND0001</code> (this business's own Vendor ID, from Settings &gt; Integrations) here first."
         );
         return NextResponse.json({ success: true });
       }
