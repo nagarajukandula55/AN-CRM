@@ -12,11 +12,12 @@ function toObjectId(id: any) {
 📊 CORE: STOCK + VALUATION (MOVING AVERAGE MODEL)
 ========================================================= */
 export async function getStockValuation(payload: any) {
-  const { businessId, materialId, warehouseId } = payload;
+  const { businessId, vendorId, materialId, warehouseId } = payload;
 
   const match: any = {};
 
   if (businessId) match.businessId = toObjectId(businessId);
+  if (vendorId) match.vendorId = toObjectId(vendorId);
   if (materialId) match.materialId = toObjectId(materialId);
   if (warehouseId) match.warehouseId = toObjectId(warehouseId);
 

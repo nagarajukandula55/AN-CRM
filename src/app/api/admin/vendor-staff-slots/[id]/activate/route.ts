@@ -15,9 +15,9 @@ import { logAction } from "@/lib/audit/logAction";
 // widen/narrow it afterwards from their profile page.
 const DESIGNATION_TO_MODULES: Record<string, { modules: string[]; isManager?: boolean }> = {
   MANAGER: { modules: [], isManager: true },
-  CCO: { modules: ["crm", "crm_calls", "crm_jobsheets", "fault_codes", "solutions", "inventory"] },
-  TELECALLER: { modules: ["crm", "crm_calls", "crm_jobsheets", "fault_codes", "solutions"] },
-  ENGINEER: { modules: ["crm", "crm_calls", "crm_jobsheets", "fault_codes", "solutions", "inventory"] },
+  CCO: { modules: ["crm", "crm_jobsheets", "fault_codes", "solutions", "inventory"] },
+  TELECALLER: { modules: ["crm", "crm_jobsheets", "fault_codes", "solutions"] },
+  ENGINEER: { modules: ["crm", "crm_jobsheets", "fault_codes", "solutions", "inventory"] },
   WAREHOUSE_MANAGER: { modules: ["inventory", "warehouses", "stock_transfers", "stock_adjustments", "grn", "products", "vendor_products"] },
 };
 

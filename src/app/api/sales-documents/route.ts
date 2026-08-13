@@ -7,7 +7,7 @@ import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { generateDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 // GET /api/sales-documents?businessId=&docType=&status=&search=&page=&limit=
 export async function GET(req: NextRequest) {
@@ -29,12 +29,13 @@ export async function GET(req: NextRequest) {
     // param with NO ownership check -- any authenticated user holding
     // sales_documents.view could pass another business's id and read its
     // full sales-document list. Same fix pattern as customers/deals.
-    const businessId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       session.user.id,
       searchParams.get("businessId"),
       !!session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const businessId = scope?.businessId || null;
     const docType = searchParams.get("docType") as SalesDocumentType | null;
     const status = searchParams.get("status");
     const search = searchParams.get("search");
@@ -50,6 +51,7 @@ export async function GET(req: NextRequest) {
     }
 
     const query: Record<string, unknown> = { businessId, docType, isDeleted: false };
+    if (scope?.vendorId) query.vendorId = scope.vendorId;
     if (status) query.status = status;
     if (search) {
       query.$or = [
@@ -92,12 +94,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { docType, party, items, discountAmount, notes, referenceInvoiceId } = body;
     // SECURITY: same ownership check as GET above.
-    const businessId = await resolveAuthorizedBusinessId(
+    const createScope = await resolveAuthorizedVendorScope(
       session.user.id,
       body.businessId,
       !!session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const businessId = createScope?.businessId || null;
 
     if (!businessId || !docType || !SALES_DOCUMENT_TYPES.includes(docType)) {
       return NextResponse.json({ success: false, message: "businessId and a valid docType are required" }, { status: 400 });
@@ -121,6 +124,7 @@ export async function POST(req: NextRequest) {
 
     const doc = await SalesDocument.create({
       businessId,
+      vendorId: createScope?.vendorId || null,
       docType,
       docNumber,
       party,

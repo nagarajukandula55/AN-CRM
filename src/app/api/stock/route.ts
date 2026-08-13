@@ -5,7 +5,7 @@ import StockLedger from "@/models/StockLedger";
 import "@/models/Material";
 import "@/models/Warehouse";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 export async function GET(req: NextRequest) {
   // SECURITY: had no auth check and no businessId scoping at all --
@@ -16,17 +16,21 @@ export async function GET(req: NextRequest) {
   }
   await connectDB();
 
-  const businessId = await resolveAuthorizedBusinessId(
+  const scope = await resolveAuthorizedVendorScope(
     session.user.id,
     req.nextUrl.searchParams.get("businessId") || req.headers.get("x-active-business-id"),
     session.isSuperAdmin,
     session.business?.businessId || null
   );
+  const businessId = scope?.businessId || null;
   if (!businessId && !session.isSuperAdmin) {
     return NextResponse.json({ success: true, data: [] });
   }
 
-  const data = await StockLedger.find(businessId ? { businessId } : {})
+  const filter: Record<string, unknown> = businessId ? { businessId } : {};
+  if (scope?.vendorId) filter.vendorId = scope.vendorId;
+
+  const data = await StockLedger.find(filter)
     .populate("materialId")
     .populate("warehouseId")
     .sort({ createdAt: -1 });

@@ -28,7 +28,6 @@ export const SERVICE_ONLY_KEYS = [
   "masters-solutions",
   "masters-crm-options",
   "crm",
-  "crm_calls",
   "crm_jobsheets",
 ];
 

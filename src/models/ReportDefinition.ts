@@ -13,7 +13,7 @@
 
 import mongoose, { Schema, Model, Document, Types } from "mongoose";
 
-export type ReportDataSource = "CRM_CALLS" | "CRM_JOBSHEETS" | "SALES_INVOICES" | "VENDORS" | "CUSTOMERS";
+export type ReportDataSource = "CRM_JOBSHEETS" | "SALES_INVOICES" | "VENDORS" | "CUSTOMERS";
 export type ChartType = "TABLE" | "BAR" | "LINE" | "PIE";
 export type ScheduleFrequency = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
 
@@ -59,7 +59,7 @@ const ReportDefinitionSchema = new Schema<IReportDefinition>(
   {
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true, index: true },
     name: { type: String, required: true, trim: true },
-    dataSource: { type: String, enum: ["CRM_CALLS", "CRM_JOBSHEETS", "SALES_INVOICES", "VENDORS", "CUSTOMERS"], required: true },
+    dataSource: { type: String, enum: ["CRM_JOBSHEETS", "SALES_INVOICES", "VENDORS", "CUSTOMERS"], required: true },
     fields: { type: [String], default: [] },
     filters: { type: [ReportFilterSchema], default: [] },
     groupByField: { type: String },

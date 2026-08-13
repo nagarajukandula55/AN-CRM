@@ -14,17 +14,15 @@
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { PhoneCall, ClipboardList, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { ClipboardList, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { LoadingPanel } from '@/components/ui/Spinner'
 
 interface StaffMember { _id: string; userId: { _id: string } | string }
-interface Appointment { _id: string; customerName: string; subject?: string; status: string; createdAt: string }
 interface Workorder { _id: string; jobSheetNumber: string; customerName: string; title: string; status: string; createdAt: string }
 
-const OPEN_APPOINTMENT_STATUSES = new Set(['NEW', 'CONTACTED', 'QUALIFIED', 'IN_PROGRESS'])
 const OPEN_WORKORDER_STATUSES = new Set(['CREATED', 'REPAIR_STARTED', 'REPAIR_IN_PROGRESS', 'REPAIR_COMPLETED'])
 
 function ageingDays(createdAt: string): number {
@@ -46,22 +44,15 @@ export default function VendorCrmOverviewPage() {
 
   const listParams = new URLSearchParams({ assignedToIn: teamIds.join(','), limit: '100' })
   const listKey = teamIds.length > 0 ? listParams.toString() : null
-  const { data: callsRes, isLoading: loadingCalls } = useSWR(listKey ? `/api/crm/calls?${listKey}` : null)
   const { data: jobsRes, isLoading: loadingJobs } = useSWR(listKey ? `/api/crm/jobsheets?${listKey}` : null)
-  const appointments: Appointment[] = callsRes?.calls || []
   const workorders: Workorder[] = jobsRes?.jobSheets || []
-  const loading = loadingCalls || loadingJobs
+  const loading = loadingJobs
 
   const workorderStatusBreakdown = workorders.reduce<Record<string, number>>((acc, w) => {
     acc[w.status] = (acc[w.status] || 0) + 1
     return acc
   }, {})
-  const appointmentStatusBreakdown = appointments.reduce<Record<string, number>>((acc, a) => {
-    acc[a.status] = (acc[a.status] || 0) + 1
-    return acc
-  }, {})
 
-  const openAppointments = appointments.filter((a) => OPEN_APPOINTMENT_STATUSES.has(a.status)).length
   const openWorkorders = workorders.filter((w) => OPEN_WORKORDER_STATUSES.has(w.status)).length
   const overdueWorkorders = workorders.filter((w) => OPEN_WORKORDER_STATUSES.has(w.status) && ageingDays(w.createdAt) >= 7).length
   const now = new Date()
@@ -72,7 +63,6 @@ export default function VendorCrmOverviewPage() {
   }).length
 
   const recentActivity = [
-    ...appointments.map((a) => ({ id: a._id, kind: 'Appointment' as const, title: a.customerName, sub: a.subject || a.status, date: a.createdAt, href: `/vendor/crm/calls/${a._id}` })),
     ...workorders.map((w) => ({ id: w._id, kind: 'Workorder' as const, title: w.jobSheetNumber, sub: w.title, date: w.createdAt, href: `/vendor/crm/jobsheets/${w._id}` })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8)
 
@@ -83,11 +73,10 @@ export default function VendorCrmOverviewPage() {
   return (
     <div className="min-h-screen bg-bg text-ink">
       <div className="px-6 py-10">
-        <PageHeader title="CRM Overview" description="Your team's appointments and workorders" />
+        <PageHeader title="CRM Overview" description="Your team's workorders" />
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
-            { icon: PhoneCall, label: 'Open Appointments', value: String(openAppointments) },
             { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
             { icon: AlertCircle, label: 'Overdue (7d+)', value: String(overdueWorkorders) },
             { icon: CheckCircle2, label: 'Closed This Month', value: String(closedThisMonth) },
@@ -106,7 +95,6 @@ export default function VendorCrmOverviewPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           {[
-            { title: 'Appointments by Status', data: appointmentStatusBreakdown, total: appointments.length },
             { title: 'Workorders by Status', data: workorderStatusBreakdown, total: workorders.length },
           ].map(({ title, data, total }) => (
             <Card key={title} className="p-6">
@@ -148,7 +136,7 @@ export default function VendorCrmOverviewPage() {
                   className="w-full flex items-center justify-between px-6 py-3 text-left hover:bg-surface-2 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <Badge tone={item.kind === 'Appointment' ? 'info' : 'success'}>{item.kind}</Badge>
+                    <Badge tone="success">{item.kind}</Badge>
                     <span className="text-sm font-medium text-ink">{item.title}</span>
                     <span className="text-sm text-ink-3">{item.sub}</span>
                   </div>
@@ -160,18 +148,6 @@ export default function VendorCrmOverviewPage() {
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Link href="/vendor/crm/calls">
-            <Card className="p-6 hover:shadow-card-lg hover:border-accent/40 transition group flex items-center gap-4">
-              <div className="w-11 h-11 rounded-control bg-accent-soft text-accent flex items-center justify-center">
-                <PhoneCall className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-ink">Appointments</h3>
-                <p className="text-sm text-ink-3">Appointment entry, disposition, and follow-ups</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-ink-3 group-hover:text-ink transition-colors" />
-            </Card>
-          </Link>
           <Link href="/vendor/crm/jobsheets">
             <Card className="p-6 hover:shadow-card-lg hover:border-accent/40 transition group flex items-center gap-4">
               <div className="w-11 h-11 rounded-control bg-accent-soft text-accent flex items-center justify-center">

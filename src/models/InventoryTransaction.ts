@@ -13,6 +13,13 @@ const InventoryTransactionSchema = new mongoose.Schema(
       index: true,
     },
 
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "VendorProfile",
+      default: null,
+      index: true,
+    },
+
     warehouseId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Warehouse",

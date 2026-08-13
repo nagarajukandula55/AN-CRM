@@ -59,7 +59,7 @@ export default function ReportBuilderPage() {
 
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
-  const [dataSource, setDataSource] = useState('CRM_CALLS')
+  const [dataSource, setDataSource] = useState('CRM_JOBSHEETS')
   const [fields, setFields] = useState<string[]>([])
   const [groupByField, setGroupByField] = useState('')
   const [chartType, setChartType] = useState<'TABLE' | 'BAR' | 'LINE' | 'PIE'>('TABLE')

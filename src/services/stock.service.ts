@@ -14,6 +14,7 @@ function toObjectId(id: any) {
 export async function stockIn(payload: any) {
   const {
     businessId,
+    vendorId = null,
     materialId,
     warehouseId,
     quantity,
@@ -28,6 +29,7 @@ export async function stockIn(payload: any) {
 
   return StockLedger.create({
     businessId,
+    vendorId,
     materialId,
     warehouseId,
     type: "IN",
@@ -45,6 +47,7 @@ export async function stockIn(payload: any) {
 export async function stockOut(payload: any) {
   const {
     businessId,
+    vendorId = null,
     materialId,
     warehouseId,
     quantity,
@@ -71,6 +74,7 @@ export async function stockOut(payload: any) {
 
   return StockLedger.create({
     businessId,
+    vendorId,
     materialId,
     warehouseId,
     type: "OUT",

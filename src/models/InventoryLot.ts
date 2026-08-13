@@ -2,6 +2,7 @@ import mongoose, { Schema, Model, Document } from "mongoose";
 
 export interface IInventoryLot extends Document {
   businessId: mongoose.Types.ObjectId;
+  vendorId?: mongoose.Types.ObjectId | null;
   itemId: mongoose.Types.ObjectId;
   lotNumber: string;
   batchNumber?: string;
@@ -24,6 +25,7 @@ export interface IInventoryLot extends Document {
 const InventoryLotSchema = new Schema<IInventoryLot>(
   {
     businessId: { type: Schema.Types.ObjectId, required: true, index: true },
+    vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
     itemId: {
       type: Schema.Types.ObjectId,
       required: true,

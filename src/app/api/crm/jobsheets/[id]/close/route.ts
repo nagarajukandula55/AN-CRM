@@ -292,6 +292,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     for (const d of deductions) {
       await updateInventoryStock({
         businessId: jobSheet.businessId,
+        vendorId: (jobSheet as any).vendorId || null,
         warehouseId: jobSheet.warehouseId,
         itemType: "MATERIAL",
         materialId: d.materialId,

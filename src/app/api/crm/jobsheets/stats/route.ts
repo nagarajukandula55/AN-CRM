@@ -15,7 +15,7 @@ import CrmJobSheet from "@/models/CrmJobSheet";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 const OPEN_STATUSES = ["CREATED", "REPAIR_STARTED", "REPAIR_IN_PROGRESS", "REPAIR_COMPLETED"];
 
@@ -38,17 +38,19 @@ export async function GET(req: NextRequest) {
     const requestedBizId = h.get("x-active-business-id") || req.nextUrl.searchParams.get("businessId");
 
     await connectDB();
-    const bizId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       session.user.id,
       requestedBizId,
       session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const bizId = scope?.businessId || null;
     if (!bizId || !mongoose.Types.ObjectId.isValid(bizId)) {
       return NextResponse.json({ success: false, message: "businessId is required" }, { status: 400 });
     }
     const businessId = new mongoose.Types.ObjectId(bizId);
-    const baseFilter = { isDeleted: false, businessId };
+    const baseFilter: Record<string, unknown> = { isDeleted: false, businessId };
+    if (scope?.vendorId) baseFilter.vendorId = new mongoose.Types.ObjectId(scope.vendorId);
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());

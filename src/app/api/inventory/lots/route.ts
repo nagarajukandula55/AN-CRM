@@ -4,7 +4,7 @@ import { Types } from "mongoose";
 import InventoryLot from "@/models/InventoryLot";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 // Required for .populate(...) below -- model must be registered before populate can resolve it.
 import "@/models/Material";
 import "@/models/VendorProfile";
@@ -32,12 +32,13 @@ export async function GET(req: NextRequest) {
     // pass another business's id and read its full inventory lot list
     // (cost/quantity/supplier data), not just their own. Same fix pattern
     // as customers/route.ts and deals/route.ts.
-    const businessId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       userId,
       searchParams.get("businessId"),
       !!session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const businessId = scope?.businessId || null;
     const itemId = searchParams.get("itemId");
     const status = searchParams.get("status");
 
@@ -54,6 +55,7 @@ export async function GET(req: NextRequest) {
     const filter: Record<string, unknown> = {
       businessId: new Types.ObjectId(businessId),
     };
+    if (scope?.vendorId) filter.vendorId = new Types.ObjectId(scope.vendorId);
 
     if (itemId) {
       filter.itemId = new Types.ObjectId(itemId);
@@ -109,12 +111,13 @@ export async function POST(req: NextRequest) {
     const rawBusinessId = body.businessId;
     // SECURITY: same ownership check as GET above -- a non-super-admin
     // could otherwise create a lot under any business id they supplied.
-    const authorizedBusinessId = await resolveAuthorizedBusinessId(
+    const createScope = await resolveAuthorizedVendorScope(
       userId,
       rawBusinessId,
       !!session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const authorizedBusinessId = createScope?.businessId || null;
     if (!authorizedBusinessId) {
       return NextResponse.json({ success: false, error: "No authorized business for this account" }, { status: 403 });
     }
@@ -164,6 +167,7 @@ export async function POST(req: NextRequest) {
 
     const lot = await InventoryLot.create({
       businessId: new Types.ObjectId(businessId),
+      vendorId: createScope?.vendorId ? new Types.ObjectId(createScope.vendorId) : null,
       itemId: new Types.ObjectId(itemId),
       lotNumber: lotNumber.toString().trim(),
       batchNumber: batchNumber?.toString().trim(),

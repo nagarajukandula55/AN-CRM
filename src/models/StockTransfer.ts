@@ -12,6 +12,7 @@ export interface IStockTransferItem {
 export interface IStockTransfer extends Document {
   transferNumber: string;
   businessId: mongoose.Types.ObjectId;
+  vendorId?: mongoose.Types.ObjectId | null;
   fromWarehouse: string;
   toWarehouse: string;
   items: IStockTransferItem[];
@@ -41,6 +42,7 @@ const StockTransferSchema = new Schema<IStockTransfer>(
   {
     transferNumber: { type: String },
     businessId: { type: Schema.Types.ObjectId, required: true, index: true },
+    vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
     fromWarehouse: { type: String, required: true },
     toWarehouse: { type: String, required: true },
     items: { type: [StockTransferItemSchema], default: [] },

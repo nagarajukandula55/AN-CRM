@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { getInventoryValuation } from "@/services/stockValuation.service";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,17 +17,18 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
 
-    const businessId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       session.user.id,
       searchParams.get("businessId"),
       session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const businessId = scope?.businessId || null;
     if (!businessId && !session.isSuperAdmin) {
       return NextResponse.json({ success: true, data: [] });
     }
 
-    const data = await getInventoryValuation({ businessId });
+    const data = await getInventoryValuation({ businessId, vendorId: scope?.vendorId || undefined });
 
     return NextResponse.json({
       success: true,

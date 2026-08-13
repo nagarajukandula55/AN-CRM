@@ -8,7 +8,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -53,12 +53,13 @@ export async function GET(req: NextRequest) {
     // param with NO ownership check -- any authenticated user holding
     // stock_transfers.view could pass another business's id and read its
     // full stock-transfer history. Same fix pattern as customers/deals.
-    const businessId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       userId,
       searchParams.get("businessId"),
       !!session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const businessId = scope?.businessId || null;
     const status = searchParams.get("status");
     const fromWarehouse = searchParams.get("fromWarehouse");
     const toWarehouse = searchParams.get("toWarehouse");
@@ -78,6 +79,7 @@ export async function GET(req: NextRequest) {
     const filter: Record<string, unknown> = {
       businessId: new Types.ObjectId(businessId),
     };
+    if (scope?.vendorId) filter.vendorId = new Types.ObjectId(scope.vendorId);
 
     if (status) filter.status = status;
     if (fromWarehouse) filter.fromWarehouse = fromWarehouse;
@@ -146,12 +148,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     // SECURITY: same ownership check as GET above -- otherwise a
     // non-super-admin could create a transfer under any business id.
-    const authorizedBusinessId = await resolveAuthorizedBusinessId(
+    const createScope = await resolveAuthorizedVendorScope(
       userId,
       body.businessId,
       !!session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const authorizedBusinessId = createScope?.businessId || null;
     const {
       fromWarehouse,
       toWarehouse,
@@ -234,6 +237,7 @@ export async function POST(req: NextRequest) {
     const transfer = await StockTransfer.create({
       transferNumber,
       businessId: new Types.ObjectId(businessId),
+      vendorId: createScope?.vendorId ? new Types.ObjectId(createScope.vendorId) : null,
       fromWarehouse: fromWarehouse.trim(),
       toWarehouse: toWarehouse.trim(),
       items: items.map((item: {

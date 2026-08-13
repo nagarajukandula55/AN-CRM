@@ -45,6 +45,7 @@ export interface ISalesDocumentItem {
 
 export interface ISalesDocument extends Document {
   businessId: mongoose.Types.ObjectId;
+  vendorId?: mongoose.Types.ObjectId | null;
   docType: SalesDocumentType;
   docNumber: string;
   party: {
@@ -84,6 +85,7 @@ const SalesDocumentItemSchema = new Schema<ISalesDocumentItem>(
 const SalesDocumentSchema = new Schema<ISalesDocument>(
   {
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true, index: true },
+    vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
     docType: { type: String, enum: SALES_DOCUMENT_TYPES, required: true, index: true },
     docNumber: { type: String, required: true },
     party: {

@@ -8,6 +8,13 @@ const StockLedgerSchema = new mongoose.Schema(
       index: true,
     },
 
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "VendorProfile",
+      default: null,
+      index: true,
+    },
+
     materialId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Material",

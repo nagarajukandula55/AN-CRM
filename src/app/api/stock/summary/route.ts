@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import StockLedger from "@/models/StockLedger";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,18 +15,23 @@ export async function GET(req: NextRequest) {
     }
     await connectDB();
 
-    const businessId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       session.user.id,
       req.nextUrl.searchParams.get("businessId") || req.headers.get("x-active-business-id"),
       session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const businessId = scope?.businessId || null;
     if (!businessId && !session.isSuperAdmin) {
       return NextResponse.json({ success: true, data: [] });
     }
 
+    const match: Record<string, unknown> = {};
+    if (businessId) match.businessId = new mongoose.Types.ObjectId(businessId);
+    if (scope?.vendorId) match.vendorId = new mongoose.Types.ObjectId(scope.vendorId);
+
     const data = await StockLedger.aggregate([
-      ...(businessId ? [{ $match: { businessId: new mongoose.Types.ObjectId(businessId) } }] : []),
+      ...(Object.keys(match).length ? [{ $match: match }] : []),
       {
         $group: {
           _id: {

@@ -13,6 +13,16 @@ const InventorySchema = new mongoose.Schema(
       index: true,
     },
 
+    // VendorProfile._id of the owning Service Center; null = business-
+    // level stock (visible business-wide). See CrmJobSheet.ts for why
+    // this is needed on top of businessId.
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "VendorProfile",
+      default: null,
+      index: true,
+    },
+
     warehouseId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Warehouse",

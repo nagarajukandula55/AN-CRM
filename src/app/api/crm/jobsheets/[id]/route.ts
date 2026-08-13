@@ -18,7 +18,6 @@ import { buildPermissionCode } from "@/core/access/actions";
 import { requireAssignedEngineer } from "@/core/access/crmJobsheetAccess";
 // Required for .populate(...) below -- model must be registered before populate can resolve it.
 import "@/models/User";
-import "@/models/CrmCall";
 import "@/models/Brand";
 import "@/models/Series";
 import "@/models/FaultCode";
@@ -54,7 +53,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     const jobSheet = await CrmJobSheet.findOne({ _id: id, isDeleted: false })
       .populate("assignedTo", "name email")
-      .populate("callId", "callNumber status")
       .populate("brandId", "name")
       .populate("seriesId", "name")
       .populate("variantId", "name")

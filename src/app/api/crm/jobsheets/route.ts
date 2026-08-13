@@ -1,10 +1,7 @@
 /**
  * CRM Job Sheets API
  * GET  /api/crm/jobsheets — list job sheets (filter by status/assignedTo/search)
- * POST /api/crm/jobsheets — create a standalone job sheet (not tied to a
- *                           call — e.g. a direct walk-in service request).
- *                           Converting an existing call goes through
- *                           /api/crm/calls/[id]/convert instead.
+ * POST /api/crm/jobsheets — create a job sheet (walk-in / direct service request).
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -13,13 +10,12 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
 import { validateGSTIN } from "@/lib/validation/gst";
-import CrmCall from "@/models/CrmCall";
 import { generateDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
 import { captureCustomer } from "@/services/customer.service";
 import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
@@ -53,16 +49,20 @@ export async function GET(req: NextRequest) {
     // x-active-business-id header (stale JWT) used to fall through to
     // trusting a raw ?businessId= from the client with no ownership
     // check at all.
-    const bizId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       userId,
       requestedBizId,
       session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const bizId = scope?.businessId || null;
 
     const filter: any = { isDeleted: false };
     if (bizId && mongoose.Types.ObjectId.isValid(bizId)) {
       filter.businessId = new mongoose.Types.ObjectId(bizId);
+      if (scope?.vendorId) {
+        filter.vendorId = new mongoose.Types.ObjectId(scope.vendorId);
+      }
     } else if (!session.isSuperAdmin) {
       return NextResponse.json({ success: true, jobSheets: [], total: 0, page: 1, totalPages: 0 });
     }
@@ -179,7 +179,6 @@ export async function POST(req: NextRequest) {
       scheduledAt,
       assignedTo,
       lineItems,
-      callId,
     } = body;
 
     // SECURITY: body.businessId used to win outright over the trusted
@@ -188,12 +187,14 @@ export async function POST(req: NextRequest) {
     // new job sheet to any business just by putting that businessId in
     // the request body.
     await connectDB();
-    const effectiveBizId = await resolveAuthorizedBusinessId(
+    const createScope = await resolveAuthorizedVendorScope(
       userId,
       body.businessId || bizId,
       session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const effectiveBizId = createScope?.businessId || null;
+    const effectiveVendorId = createScope?.vendorId || null;
 
     if (!customerName?.trim()) {
       return NextResponse.json({ success: false, message: "Customer name is required" }, { status: 400 });
@@ -216,25 +217,12 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
-    // Optional link to an existing call — validated but not required, so
-    // job sheets can also be created directly for walk-in / phone-less work.
-    let linkedCall = null;
-    if (callId && mongoose.Types.ObjectId.isValid(callId)) {
-      linkedCall = await CrmCall.findOne({ _id: callId, isDeleted: false });
-      if (linkedCall?.jobSheetId) {
-        return NextResponse.json(
-          { success: false, message: "This call has already been converted to a job sheet." },
-          { status: 409 }
-        );
-      }
-    }
-
     const { value: jobSheetNumber } = await generateDocumentNumber(effectiveBizId, "JOB_SHEET");
 
     const jobSheet = await CrmJobSheet.create({
       businessId: new mongoose.Types.ObjectId(effectiveBizId),
+      vendorId: effectiveVendorId ? new mongoose.Types.ObjectId(effectiveVendorId) : null,
       jobSheetNumber,
-      callId: linkedCall?._id,
       customerName: customerName.trim(),
       company: company?.trim(),
       gstin: gstin?.trim()?.toUpperCase(),
@@ -297,20 +285,12 @@ export async function POST(req: NextRequest) {
       status: "CREATED",
       lineItems: Array.isArray(lineItems) ? lineItems : [],
       createdBy: new mongoose.Types.ObjectId(userId),
-      // CCO name snapshot -- copied from the originating call's CCO when
-      // converting a call, else this creating user's own name for a
-      // standalone/walk-in job sheet. See CrmJobSheet.ts's field comment.
+      // CCO name snapshot -- this creating user's own name for the
+      // walk-in job sheet. See CrmJobSheet.ts's field comment.
       // Editable at intake (see console/crm/jobsheets/sc's CCO Name field) --
-      // defaults to the same call/session-derived name as before when the
-      // caller doesn't override it.
-      ccoName: ccoNameOverride?.trim() || (linkedCall as any)?.createdByName || session.user.name || "",
+      // defaults to the session-derived name when the caller doesn't override it.
+      ccoName: ccoNameOverride?.trim() || session.user.name || "",
     });
-
-    if (linkedCall) {
-      linkedCall.jobSheetId = jobSheet._id as any;
-      linkedCall.status = "JOB_CREATED";
-      await linkedCall.save();
-    }
 
     captureCustomer({
       businessId: effectiveBizId,

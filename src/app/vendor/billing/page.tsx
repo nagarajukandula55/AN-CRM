@@ -15,7 +15,7 @@ const MODULE_LABELS: Record<string, string> = {
   product_categories: "Product Categories", materials: "Materials", bom: "BOM",
   grn: "Goods Receipts", warehouses: "Warehouses", stock_transfers: "Stock Transfers",
   stock_adjustments: "Stock Adjustments", purchase: "Purchase", vendor_products: "Vendor Products",
-  logistics: "Logistics", finance: "Finance", gst: "GST", crm: "CRM", crm_calls: "CRM Calls",
+  logistics: "Logistics", finance: "Finance", gst: "GST", crm: "CRM",
   crm_jobsheets: "CRM Job Sheets", fault_codes: "Fault Codes", solutions: "Solutions",
   banners: "Banners", blog: "Blog", staff: "Staff", brands: "Brands", device_models: "Device Models",
 };

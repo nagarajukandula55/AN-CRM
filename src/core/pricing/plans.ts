@@ -157,8 +157,8 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // here too so plan-gating never retroactively removes an
       // already-in-use feature.
       moduleKeys: [
-        "crm", "crm_calls", "crm_jobsheets", "material-catalog", "customers", "sales",
-        "reports", "report-builder", "analytics", "deals",
+        "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
+        "reports", "report-builder", "analytics",
         "admin-settings", "admin-plan", "admin-intg", "send-feedback",
         "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
       ],
@@ -180,10 +180,10 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Priority support",
       ],
       moduleKeys: [
-        "crm", "crm_calls", "crm_jobsheets", "material-catalog", "customers", "sales",
+        "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
         "reports", "admin-settings", "admin-plan", "admin-intg", "send-feedback",
         "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
-        "deals", "report-builder", "analytics",
+        "report-builder", "analytics",
       ],
     },
     {
@@ -203,10 +203,10 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Dedicated onboarding + SLA support, API access",
       ],
       moduleKeys: [
-        "crm", "crm_calls", "crm_jobsheets", "material-catalog", "customers", "sales",
+        "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
         "reports", "admin-settings", "admin-plan", "admin-intg", "send-feedback",
         "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
-        "deals", "report-builder", "analytics", "sub-accounts", "telegram-reports", "admin-modules",
+        "report-builder", "analytics", "sub-accounts", "telegram-reports", "admin-modules",
       ],
       commsQuota: { emailPerMonth: 10000, whatsappPerMonth: 5000 },
     },

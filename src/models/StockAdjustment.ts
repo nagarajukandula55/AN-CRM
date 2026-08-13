@@ -4,6 +4,7 @@ export type AdjustmentType = "ADD" | "REMOVE" | "SET";
 
 export interface IStockAdjustment extends Document {
   businessId: mongoose.Types.ObjectId;
+  vendorId?: mongoose.Types.ObjectId | null;
   /**
    * Human-facing, admin-configurable document number (e.g. "SA-2025-26-0001"),
    * generated via core/numbering/numberingService.ts's generateDocumentNumber()
@@ -33,6 +34,7 @@ export interface IStockAdjustment extends Document {
 const StockAdjustmentSchema = new Schema<IStockAdjustment>(
   {
     businessId: { type: Schema.Types.ObjectId, required: true, index: true },
+    vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
     adjustmentNumber: { type: String, sparse: true },
     inventoryItemId: {
       type: Schema.Types.ObjectId,

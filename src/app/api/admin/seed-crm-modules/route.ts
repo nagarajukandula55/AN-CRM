@@ -8,8 +8,8 @@
  * accessMatrix.service.ts). Kept in one route/file (rather than a
  * separately-named "seed-reports-module" route) since both were added in
  * the same pass and share the exact same seeding mechanics — route name is
- * CRM-specific for historical reasons but covers "crm", "crm_calls",
- * "crm_jobsheets", and "reports". Until this route is run once, none of
+ * CRM-specific for historical reasons but covers "crm", "crm_jobsheets",
+ * and "reports". Until this route is run once, none of
  * these have Permission rows at all, so no role (including ones a super
  * admin creates) can ever be granted access to them — this is the same
  * class of gap the codebase's own comments describe for other modules
@@ -47,15 +47,6 @@ const CRM_SYSTEM_MODULES = [
     // could never correspond to anything a role could meaningfully do.
     applicableActions: ["view"],
     sortOrder: 199,
-  },
-  {
-    key: "crm_calls",
-    label: "Appointment",
-    pluralLabel: "Appointments",
-    description: "Appointment entry, disposition tracking, and follow-up pipeline.",
-    icon: "PhoneCall",
-    route: "/console/brand/crm/calls",
-    sortOrder: 200,
   },
   {
     key: "crm_jobsheets",

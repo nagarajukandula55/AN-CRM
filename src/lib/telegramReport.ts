@@ -8,7 +8,6 @@
  */
 import mongoose from "mongoose";
 import SalesInvoice from "@/models/SalesInvoice";
-import CrmCall from "@/models/CrmCall";
 import CrmJobSheet from "@/models/CrmJobSheet";
 
 export function periodStart(frequency: string, now: Date): Date {
@@ -35,14 +34,12 @@ const WORKORDER_STATUSES = [
 
 export async function computePeriodNumbers(businessId: string, isSC: boolean, from: Date, to: Date) {
   const businessObjectId = new mongoose.Types.ObjectId(businessId);
-  const [revenueAgg, callCount, statusAgg] = await Promise.all([
+  const [revenueAgg, jobSheetCount, statusAgg] = await Promise.all([
     SalesInvoice.aggregate([
       { $match: { businessId: businessObjectId, isDeleted: { $ne: true }, status: "PAID", createdAt: { $gte: from, $lt: to } } },
       { $group: { _id: null, sum: { $sum: "$grandTotal" }, count: { $sum: 1 } } },
     ]),
-    isSC
-      ? CrmJobSheet.countDocuments({ businessId: businessObjectId, isDeleted: { $ne: true }, createdAt: { $gte: from, $lt: to } })
-      : CrmCall.countDocuments({ businessId: businessObjectId, createdAt: { $gte: from, $lt: to } }),
+    CrmJobSheet.countDocuments({ businessId: businessObjectId, isDeleted: { $ne: true }, createdAt: { $gte: from, $lt: to } }),
     // Per-status workorder breakdown for the period -- SC only (see
     // buildReportMessage's own comment on why non-SC never had a
     // workorder concept). Skipped entirely for non-SC to avoid an
@@ -59,7 +56,7 @@ export async function computePeriodNumbers(businessId: string, isSC: boolean, fr
   return {
     revenue: revenueAgg?.[0]?.sum || 0,
     invoices: revenueAgg?.[0]?.count || 0,
-    activity: callCount || 0,
+    activity: jobSheetCount || 0,
     byStatus,
   };
 }

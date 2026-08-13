@@ -91,7 +91,6 @@ interface JobSheet {
   invoiceId?: string
   invoiceNumber?: string
   brandJobNoForPartOrder?: string
-  callId?: { callNumber?: string; status?: string } | string
   assignedTo?: { _id?: string; name?: string } | string
   cancelReason?: string
   warehouseId?: string

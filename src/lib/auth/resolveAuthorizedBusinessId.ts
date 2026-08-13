@@ -72,3 +72,43 @@ export async function resolveAuthorizedBusinessId(
 
   return sessionBusinessId || ownBusinessId || null;
 }
+
+/**
+ * SECURITY: closes the vendor-level cross-tenant leak that
+ * resolveAuthorizedBusinessId alone cannot -- most onboarded Service
+ * Centers (VendorProfile docs, VND0001/VND0002/...) share ONE default
+ * public Business (getDefaultPublicBusinessId), so scoping only by
+ * businessId returns every vendor's data to every other vendor sharing
+ * that Business. This wraps resolveAuthorizedBusinessId and additionally
+ * resolves the caller's own vendorId (VendorProfile._id) from the same
+ * resolveVendorContext lookup, so callers can filter by
+ * {businessId, vendorId} instead of businessId alone.
+ *
+ * vendorId is null for: super admins (unless requestedVendorId is
+ * explicitly passed), and business-level staff/owners with no
+ * VendorProfile link -- both legitimately see/act on all vendors' data
+ * under that business, same as before this change.
+ */
+export async function resolveAuthorizedVendorScope(
+  userId: string | null | undefined,
+  requestedBusinessId: string | null | undefined,
+  isSuperAdmin: boolean,
+  sessionBusinessId?: string | null,
+  requestedVendorId?: string | null
+): Promise<{ businessId: string; vendorId: string | null } | null> {
+  const businessId = await resolveAuthorizedBusinessId(
+    userId,
+    requestedBusinessId,
+    isSuperAdmin,
+    sessionBusinessId
+  );
+  if (!businessId) return null;
+
+  if (isSuperAdmin) {
+    return { businessId, vendorId: requestedVendorId || null };
+  }
+
+  const ctx = await resolveVendorContext(userId);
+  const vendorId = ctx?.vendor?._id ? String(ctx.vendor._id) : null;
+  return { businessId, vendorId };
+}

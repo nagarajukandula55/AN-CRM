@@ -171,10 +171,9 @@ export const ACCESS_HIERARCHY: Category[] = [
       // CRM.VIEW (see seed-modules/route.ts) -- this list is what the Roles
       // & Permissions grid renders checkboxes from, so there was never a
       // way to actually grant CRM.VIEW through the UI. Granting only
-      // crm_calls/crm_jobsheets (Appointments/Workorders) left the CRM
-      // Dashboard page itself invisible in the sidebar no matter what.
+      // crm_jobsheets (Workorders) left the CRM Dashboard page itself
+      // invisible in the sidebar no matter what.
       { key: "crm", label: "CRM Dashboard", description: "See the CRM overview/landing page." },
-      { key: "crm_calls", label: "CRM Calls", description: "Manage customer appointment/call requests." },
       { key: "crm_jobsheets", label: "CRM Job Sheets", description: "Manage repair/service workorders end-to-end." },
       { key: "fault_codes", label: "Fault Codes", description: "Manage the list of standard fault/issue codes." },
       { key: "solutions", label: "Solutions", description: "Manage standard fixes/solutions linked to fault codes." },

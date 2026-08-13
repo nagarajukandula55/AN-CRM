@@ -10,7 +10,6 @@ import mongoose from "mongoose";
 import crypto from "crypto";
 import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
-import CrmCall from "@/models/CrmCall";
 import SalesInvoice from "@/models/SalesInvoice";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
@@ -92,15 +91,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       });
     }
 
-    let closedCall = null;
-    if (jobSheet.callId) {
-      closedCall = await CrmCall.findOneAndUpdate(
-        { _id: jobSheet.callId, isDeleted: false },
-        { $set: { status: "CLOSED_WON", closedAt: new Date(), closedReason: "Handed over to customer" } },
-        { new: true }
-      );
-    }
-
     logAction({
       action: "HANDOVER",
       entity: "CrmJobSheet",
@@ -110,7 +100,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       actor: { id: userId, businessId: jobSheet.businessId.toString() },
     });
 
-    return NextResponse.json({ success: true, jobSheet, call: closedCall });
+    return NextResponse.json({ success: true, jobSheet });
   } catch (err: any) {
     console.error("CRM jobsheet handover error:", err);
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });

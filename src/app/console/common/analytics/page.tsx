@@ -13,43 +13,41 @@ import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 
 /**
  * Business-wide analytics, rebuilt on AN-CRM's own data (SalesInvoice/
- * CrmCall/CrmJobSheet via /api/analytics/overview) after the old version
+ * CrmJobSheet via /api/analytics/overview) after the old version
  * of this page (built on the ecommerce Order model) was removed along
  * with the rest of AN-CRM's leftover ANgroup storefront surface area.
  *
  * The Daily/Weekly/Monthly/Yearly section below (api/analytics/trend) adds
  * the year-on-date comparison view per explicit direction ("Daily, weekly,
  * monthly and yearly and year as on date comparisons and graphs and also
- * comparison clusters on both calls and revenue both") -- each bucket is
+ * comparison clusters on both workorders and revenue both") -- each bucket is
  * charted alongside the same bucket exactly one year earlier, for both
- * revenue and call volume.
+ * revenue and workorder volume.
  */
 
 interface Overview {
-  isSC?: boolean
   revenue: { total: number; totalInvoices: number; totalInvoicesAllStatuses: number; thisMonth: number; thisMonthInvoices: number }
   bySource: { source: string; revenue: number; count: number }[]
   statusBreakdown: { status: string; count: number }[]
   monthlyTrend: { label: string; revenue: number; activity: number }[]
-  operations: { totalCalls: number; openWorkorders: number; closedWorkorders: number }
+  operations: { totalWorkorders: number; openWorkorders: number; closedWorkorders: number }
 }
 
 interface TrendBucket {
   label: string
   revenue: number
-  calls: number
+  workorders: number
   priorYearLabel: string
   priorYearRevenue: number
-  priorYearCalls: number
+  priorYearWorkorders: number
 }
 
 interface TrendData {
   granularity: string
-  isSC?: boolean
   buckets: TrendBucket[]
   summary: {
     revenue: { current: number; priorYear: number; changePct: number | null }
-    calls: { current: number; priorYear: number; changePct: number | null }
+    workorders: { current: number; priorYear: number; changePct: number | null }
   }
 }
 
@@ -111,10 +109,10 @@ export default function AnalyticsPage() {
     [`Same period last year`]: b.priorYearRevenue,
   })) || []
 
-  const callsChartData = trend?.buckets.map((b) => ({
+  const workordersChartData = trend?.buckets.map((b) => ({
     label: b.label,
-    'This period': b.calls,
-    [`Same period last year`]: b.priorYearCalls,
+    'This period': b.workorders,
+    [`Same period last year`]: b.priorYearWorkorders,
   })) || []
 
   return (
@@ -131,7 +129,7 @@ export default function AnalyticsPage() {
             <StatCard label="Total Revenue" value={fmt(data.revenue.total)} sub={`${data.revenue.totalInvoices} paid invoices`} />
             <StatCard label={`This Month (${new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })})`} value={fmt(data.revenue.thisMonth)} sub={`${data.revenue.thisMonthInvoices} invoices`} />
             <StatCard label="Invoices" value={String(data.revenue.totalInvoicesAllStatuses)} sub="all statuses" />
-            <StatCard label={data.isSC ? 'Total Workorders' : 'Total Calls'} value={String(data.operations.totalCalls)} />
+            <StatCard label="Total Workorders" value={String(data.operations.totalWorkorders)} />
             <StatCard label="Open Workorders" value={String(data.operations.openWorkorders)} />
             <StatCard label="Closed Workorders" value={String(data.operations.closedWorkorders)} />
           </div>
@@ -139,7 +137,7 @@ export default function AnalyticsPage() {
           <Card>
             <CardBody>
               <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-                <div className="h-section">Revenue &amp; {trend?.isSC ? 'Workorders' : 'Calls'} — Year-on-Date Comparison</div>
+                <div className="h-section">Revenue &amp; Workorders — Year-on-Date Comparison</div>
                 <div className="inline-flex rounded-control border border-border-strong bg-surface p-1 gap-1">
                   {GRANULARITIES.map((g) => (
                     <button
@@ -202,12 +200,12 @@ export default function AnalyticsPage() {
 
                   <div className="space-y-5">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-medium text-ink-2">{trend.isSC ? 'Workorders' : 'Calls'} — Bar</div>
-                      <ChangeBadge pct={trend.summary.calls.changePct} />
+                      <div className="text-sm font-medium text-ink-2">Workorders — Bar</div>
+                      <ChangeBadge pct={trend.summary.workorders.changePct} />
                     </div>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={callsChartData} margin={{ top: 20, right: 8, left: 0, bottom: 0 }}>
+                        <BarChart data={workordersChartData} margin={{ top: 20, right: 8, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                           <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
@@ -221,10 +219,10 @@ export default function AnalyticsPage() {
                       </ResponsiveContainer>
                     </div>
 
-                    <div className="text-sm font-medium text-ink-2">{trend.isSC ? 'Workorders' : 'Calls'} — Line</div>
+                    <div className="text-sm font-medium text-ink-2">Workorders — Line</div>
                     <div className="h-56">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={callsChartData}>
+                        <LineChart data={workordersChartData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                           <XAxis dataKey="label" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
                           <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
@@ -245,7 +243,7 @@ export default function AnalyticsPage() {
 
           <Card>
             <CardBody>
-              <div className="h-section mb-4">Revenue &amp; {data.isSC ? 'Workorders' : 'Calls'} Trend (last 6 months)</div>
+              <div className="h-section mb-4">Revenue &amp; Workorders Trend (last 6 months)</div>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={data.monthlyTrend} margin={{ top: 20, right: 8, left: 0, bottom: 0 }}>
@@ -265,7 +263,7 @@ export default function AnalyticsPage() {
                       <LabelList dataKey="revenue" position="top" formatter={(v: any) => (v ? fmt(Number(v)) : '')} style={{ fontSize: 10, fill: 'var(--ink-2)' }} />
                     </Bar>
                     <Area yAxisId="revenue" type="monotone" dataKey="revenue" name="Revenue" stroke="var(--accent)" strokeWidth={2} fill="url(#revTrend6mo)" fillOpacity={0.5} legendType="none" />
-                    <Line yAxisId="activity" type="monotone" dataKey="activity" name={data.isSC ? 'Workorders' : 'Calls'} stroke="var(--info)" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line yAxisId="activity" type="monotone" dataKey="activity" name="Workorders" stroke="var(--info)" strokeWidth={2} dot={{ r: 3 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>

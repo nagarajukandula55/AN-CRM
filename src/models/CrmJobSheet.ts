@@ -1,8 +1,7 @@
 /**
- * CrmJobSheet — created when a CrmCall is converted into actual work
- * (a technician visit, a service job, a fulfillment task, etc.). This is
- * the "call entry -> job sheet -> invoice -> closure" middle step the CRM
- * lifecycle needs: it records what work was scoped/performed, by whom, and
+ * CrmJobSheet — records a service/repair job (a technician visit, a
+ * service job, a fulfillment task, etc.), from intake through invoicing
+ * and closure. It records what work was scoped/performed, by whom, and
  * links forward to the SalesInvoice generated at closure.
  *
  * Deliberately generic ("lineItems" with free-text description + qty/rate,
@@ -76,13 +75,18 @@ export interface ICrmJobSheetLineItem {
 
 export interface ICrmJobSheet extends Document {
   businessId: Types.ObjectId;
+  // VendorProfile._id of the Service Center this job sheet belongs to.
+  // Most onboarded vendors share one default public Business, so
+  // businessId alone does not isolate one vendor's job sheets from
+  // another's -- null means a business-level (non-vendor) staff action,
+  // which legitimately stays visible business-wide.
+  vendorId?: Types.ObjectId | null;
   jobSheetNumber: string;
   // Service center this job sheet was issued from -- optional; when set,
   // its Warehouse.logoUrl overrides the business logo on the printed
   // workorder/estimate. See core/documentTemplates/resolve.ts.
   warehouseId?: Types.ObjectId;
 
-  callId?: Types.ObjectId; // originating CrmCall -- absent for a standalone/walk-in job sheet
   customerName: string;
   company?: string;
   // GSTIN for a B2B customer -- close/route.ts's invoice generation
@@ -270,16 +274,10 @@ const CrmJobSheetLineItemSchema = new Schema<ICrmJobSheetLineItem>(
 const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
   {
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true, index: true },
+    vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
     jobSheetNumber: { type: String, required: true, index: true },
     warehouseId: { type: Schema.Types.ObjectId, ref: "Warehouse", default: null },
 
-    // Was `required: true` -- directly contradicted this route's own
-    // documented purpose ("create a STANDALONE job sheet, not tied to a
-    // call -- e.g. a direct walk-in service request", see
-    // api/crm/jobsheets/route.ts's top comment). Every walk-in/direct
-    // job sheet creation failed schema validation outright; only
-    // call-conversion (which does set callId) ever worked.
-    callId: { type: Schema.Types.ObjectId, ref: "CrmCall", index: true },
     customerName: { type: String, required: true, trim: true },
     company: { type: String, trim: true },
     gstin: { type: String, trim: true, uppercase: true },
@@ -369,6 +367,7 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
   { timestamps: true }
 );
 
+CrmJobSheetSchema.index({ businessId: 1, vendorId: 1, createdAt: -1 });
 CrmJobSheetSchema.index({ businessId: 1, createdAt: -1 });
 CrmJobSheetSchema.index({ businessId: 1, status: 1 });
 CrmJobSheetSchema.index({ businessId: 1, jobSheetNumber: 1 }, { unique: true });

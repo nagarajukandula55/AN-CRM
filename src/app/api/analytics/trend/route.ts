@@ -4,17 +4,16 @@
  * Powers the Analytics page's Daily/Weekly/Monthly/Yearly view with a
  * year-on-date comparison: for each bucket in the current period (last 30
  * days / 12 weeks / 12 months / 5 years, depending on granularity), returns
- * both this period's revenue+calls AND the same bucket exactly one year
+ * both this period's revenue+workorders AND the same bucket exactly one year
  * earlier -- so the page can render "this week vs. same week last year"
  * comparison clusters for both series, per explicit direction ("year and
  * year as on date comparisons and graphs and also comparison clusters on
- * both calls and revenue both").
+ * both workorders and revenue both").
  *
  * Revenue = SalesInvoice.grandTotal where status PAID (same definition
- * api/analytics/overview already uses). Calls = CrmCall count, all
- * statuses (every call logged, not just converted ones -- "calls" here
- * means call volume, matching how api/analytics/overview's totalCalls is
- * defined).
+ * api/analytics/overview already uses). Workorders = CrmJobSheet count, all
+ * statuses (every job sheet created, matching how api/analytics/overview's
+ * totalWorkorders is defined).
  *
  * Both the current and prior-year ranges are aggregated with the same
  * $dateTrunc-based $group so bucket boundaries line up exactly; the prior
@@ -26,13 +25,11 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import SalesInvoice from "@/models/SalesInvoice";
-import CrmCall from "@/models/CrmCall";
 import CrmJobSheet from "@/models/CrmJobSheet";
-import Business from "@/models/Business";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 type Granularity = "DAY" | "WEEK" | "MONTH" | "YEAR";
 
@@ -112,7 +109,7 @@ async function fetchSeries(
   rangeStart: Date,
   rangeEnd: Date,
   businessId: string | null,
-  isSC: boolean
+  vendorId?: string | null
 ) {
   const unit = TRUNC_UNIT[granularity];
 
@@ -128,12 +125,9 @@ async function fetchSeries(
   };
   if (businessObjectId) invoiceMatch.businessId = businessObjectId;
 
-  // SC has no calls/appointment pipeline -- its "calls" series is
-  // workorder-creation volume instead (see api/analytics/overview's
-  // identical isSC swap and analytics/page.tsx for the label change).
-  const callMatch: Record<string, any> = { createdAt: { $gte: rangeStart, $lte: rangeEnd } };
-  if (businessObjectId) callMatch.businessId = businessObjectId;
-  if (isSC) callMatch.isDeleted = { $ne: true };
+  const jobsheetMatch: Record<string, any> = { createdAt: { $gte: rangeStart, $lte: rangeEnd }, isDeleted: { $ne: true } };
+  if (businessObjectId) jobsheetMatch.businessId = businessObjectId;
+  if (vendorId && mongoose.Types.ObjectId.isValid(vendorId)) jobsheetMatch.vendorId = new mongoose.Types.ObjectId(vendorId);
 
   // startOfWeek: "monday" only matters (and is only valid) for unit
   // "week" -- Mongo rejects it for other units, so it's added
@@ -141,20 +135,20 @@ async function fetchSeries(
   const truncSpec: Record<string, any> = { date: "$createdAt", unit };
   if (unit === "week") truncSpec.startOfWeek = "monday";
 
-  const [revenueRows, callRows] = await Promise.all([
+  const [revenueRows, jobsheetRows] = await Promise.all([
     SalesInvoice.aggregate([
       { $match: invoiceMatch },
       { $group: { _id: { $dateTrunc: truncSpec }, revenue: { $sum: "$grandTotal" } } },
     ]),
-    (isSC ? CrmJobSheet : CrmCall).aggregate([
-      { $match: callMatch },
-      { $group: { _id: { $dateTrunc: truncSpec }, calls: { $sum: 1 } } },
+    CrmJobSheet.aggregate([
+      { $match: jobsheetMatch },
+      { $group: { _id: { $dateTrunc: truncSpec }, workorders: { $sum: 1 } } },
     ]),
   ]);
 
   const revenueByKey = new Map(revenueRows.map((r: any) => [bucketKey(granularity, new Date(r._id)), r.revenue as number]));
-  const callsByKey = new Map(callRows.map((r: any) => [bucketKey(granularity, new Date(r._id)), r.calls as number]));
-  return { revenueByKey, callsByKey };
+  const workordersByKey = new Map(jobsheetRows.map((r: any) => [bucketKey(granularity, new Date(r._id)), r.workorders as number]));
+  return { revenueByKey, workordersByKey };
 }
 
 export async function GET(req: NextRequest) {
@@ -175,12 +169,13 @@ export async function GET(req: NextRequest) {
     // SECURITY: businessId used to be trusted straight from the query
     // param with no ownership check -- see resolveAuthorizedBusinessId's
     // own comment and api/analytics/overview's matching fix.
-    const businessId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       session.user.id,
       searchParams.get("businessId"),
       session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const businessId = scope?.businessId || null;
     if (!businessId && !session.isSuperAdmin) {
       return NextResponse.json({ success: false, message: "No business context for this account" }, { status: 400 });
     }
@@ -189,21 +184,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, message: "granularity must be DAY, WEEK, MONTH, or YEAR" }, { status: 400 });
     }
 
-    // See api/analytics/overview's matching comment -- BRAND/POS were
-    // removed entirely (SC-only platform now), but legacy rows can still
-    // carry an unbackfilled "" operatingMode, so this must default to SC
-    // rather than require an exact "SC" match.
-    const business = businessId ? await Business.findById(businessId).select("operatingMode").lean<any>() : null;
-    const isSC = business?.operatingMode !== "BRAND" && business?.operatingMode !== "POS";
-
     const now = new Date();
     const currentStart = startOfBucketRange(granularity, now);
     const priorStart = shiftYears(currentStart, -1);
     const priorEnd = shiftYears(now, -1);
 
     const [current, prior] = await Promise.all([
-      fetchSeries(granularity, currentStart, now, businessId, isSC),
-      fetchSeries(granularity, priorStart, priorEnd, businessId, isSC),
+      fetchSeries(granularity, currentStart, now, businessId, scope?.vendorId),
+      fetchSeries(granularity, priorStart, priorEnd, businessId, scope?.vendorId),
     ]);
 
     const count = BUCKET_COUNT[granularity];
@@ -222,22 +210,21 @@ export async function GET(req: NextRequest) {
       buckets.push({
         label: bucketLabel(granularity, d),
         revenue: current.revenueByKey.get(key) || 0,
-        calls: current.callsByKey.get(key) || 0,
+        workorders: current.workordersByKey.get(key) || 0,
         priorYearLabel: bucketLabel(granularity, priorD),
         priorYearRevenue: prior.revenueByKey.get(priorKey) || 0,
-        priorYearCalls: prior.callsByKey.get(priorKey) || 0,
+        priorYearWorkorders: prior.workordersByKey.get(priorKey) || 0,
       });
     }
 
     const totalCurrentRevenue = buckets.reduce((s, b) => s + b.revenue, 0);
     const totalPriorRevenue = buckets.reduce((s, b) => s + b.priorYearRevenue, 0);
-    const totalCurrentCalls = buckets.reduce((s, b) => s + b.calls, 0);
-    const totalPriorCalls = buckets.reduce((s, b) => s + b.priorYearCalls, 0);
+    const totalCurrentWorkorders = buckets.reduce((s, b) => s + b.workorders, 0);
+    const totalPriorWorkorders = buckets.reduce((s, b) => s + b.priorYearWorkorders, 0);
 
     return NextResponse.json({
       success: true,
       granularity,
-      isSC,
       buckets,
       summary: {
         revenue: {
@@ -245,10 +232,10 @@ export async function GET(req: NextRequest) {
           priorYear: totalPriorRevenue,
           changePct: totalPriorRevenue > 0 ? ((totalCurrentRevenue - totalPriorRevenue) / totalPriorRevenue) * 100 : null,
         },
-        calls: {
-          current: totalCurrentCalls,
-          priorYear: totalPriorCalls,
-          changePct: totalPriorCalls > 0 ? ((totalCurrentCalls - totalPriorCalls) / totalPriorCalls) * 100 : null,
+        workorders: {
+          current: totalCurrentWorkorders,
+          priorYear: totalPriorWorkorders,
+          changePct: totalPriorWorkorders > 0 ? ((totalCurrentWorkorders - totalPriorWorkorders) / totalPriorWorkorders) * 100 : null,
         },
       },
     });

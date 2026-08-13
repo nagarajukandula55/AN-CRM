@@ -32,6 +32,7 @@ import {
   Store,
   Send,
 } from 'lucide-react'
+// Note: `Phone` icon import removed along with the Appointments nav entry below.
 
 // NOTE: Product Bill of Materials is intentionally NOT a top-level nav
 // item — that BOM is per-product (see /vendor/products/[id]/bom, already
@@ -51,12 +52,11 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   { href: '/vendor/materials', label: 'Materials', icon: Layers, modules: ['materials'] },
   { href: '/vendor/warehouses', label: 'Warehouses', icon: Warehouse, modules: ['warehouses'] },
   // Service-center staff (CCO/Engineer/Centre Manager) already get
-  // crm_calls/crm_jobsheets permissions via MEMBER_TYPE_IMPLIED_MODULES
+  // crm_jobsheets permissions via MEMBER_TYPE_IMPLIED_MODULES
   // (see vendor/staff/create/route.ts) but had no vendor-side page to use
   // them on -- only /console/crm existed, which isn't theirs to navigate
-  // into. These reuse the exact same /api/crm/calls, /api/crm/jobsheets
-  // endpoints, just scoped to this vendor's own team.
-  { href: '/vendor/crm/calls', label: 'Appointments', icon: Phone, modules: ['crm_calls', 'crm'] },
+  // into. This reuses the exact same /api/crm/jobsheets endpoint, just
+  // scoped to this vendor's own team.
   { href: '/vendor/crm/jobsheets', label: 'Workorders', icon: ClipboardList, modules: ['crm_jobsheets', 'crm'] },
   { href: '/vendor/service-bom', label: 'Service Center BOM', icon: Wrench, modules: ['crm_jobsheets', 'crm'] },
   { href: '/vendor/stock-transfers', label: 'Stock Transfers', icon: ArrowLeftRight, modules: ['stock_transfers'] },

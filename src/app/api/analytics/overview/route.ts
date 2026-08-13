@@ -1,6 +1,6 @@
 /**
  * GET /api/analytics/overview — business-wide analytics built entirely on
- * AN-CRM's own data (SalesInvoice, CrmCall, CrmJobSheet), not the
+ * AN-CRM's own data (SalesInvoice, CrmJobSheet), not the
  * ecommerce Order collection the old (deleted) version of this route used.
  * Covers both CRM-originated invoices (sourceOrderId "CRM_JOBSHEET:...")
  * and POS quick-sale invoices (sourceOrderId "POS:...") -- see
@@ -11,13 +11,11 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import SalesInvoice from "@/models/SalesInvoice";
-import CrmCall from "@/models/CrmCall";
 import CrmJobSheet from "@/models/CrmJobSheet";
-import Business from "@/models/Business";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 export async function GET(req: NextRequest) {
   try {
@@ -42,12 +40,13 @@ export async function GET(req: NextRequest) {
     // resolved live against the caller's own verified business (see
     // lib/auth/resolveAuthorizedBusinessId.ts); non-super-admins can
     // never end up unscoped.
-    const businessId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       session.user.id,
       searchParams.get("businessId"),
       session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const businessId = scope?.businessId || null;
     if (!businessId && !session.isSuperAdmin) {
       return NextResponse.json({ success: false, message: "No business context for this account" }, { status: 400 });
     }
@@ -101,35 +100,24 @@ export async function GET(req: NextRequest) {
       },
     ]);
 
-    const callMatch: Record<string, any> = {};
-    if (businessId) callMatch.businessId = businessId;
     const jobsheetMatch: Record<string, any> = { isDeleted: { $ne: true } };
     if (businessId) jobsheetMatch.businessId = businessId;
+    if (scope?.vendorId) {
+      jobsheetMatch.vendorId = scope.vendorId;
+    }
 
-    // SC has no calls/appointment pipeline (workorders only) -- for an SC
-    // business, "totalCalls" is workorder-creation volume instead of
-    // CrmCall count, which would otherwise always read 0 (or, worse,
-    // pick up unrelated data since this route wasn't previously even
-    // scoped to a single business by the frontend). See analytics/page.tsx.
-    //
-    // BRAND/POS vendor types were removed from AN-CRM entirely -- SC-only
-    // platform now -- but plenty of Business rows still carry a legacy
-    // operatingMode of "" (never backfilled) rather than "SC", so checking
-    // `=== "SC"` silently fell back to the CrmCall series (which an SC
-    // business never populates) and the charts looked empty/broken. Only
-    // an explicit BRAND/POS legacy row should still use calls; everyone
-    // else -- including no-business super-admin aggregate views -- is SC.
-    const business = businessId ? await Business.findById(businessId).select("operatingMode").lean<any>() : null;
-    const isSC = business?.operatingMode !== "BRAND" && business?.operatingMode !== "POS";
-    const activityModel: any = isSC ? CrmJobSheet : CrmCall;
-    const activityMatch = isSC ? jobsheetMatch : callMatch;
+    // Calls (CrmCall) were removed from the product -- every business is
+    // effectively SC (workorders only) now, so "totalWorkorders" is simply
+    // workorder-creation volume. `isSC` is still returned below since the
+    // frontend still keys some labels off it.
+    const isSC = true;
 
-    const [totalCalls, openJobsheets, closedJobsheets, monthlyActivity] = await Promise.all([
-      activityModel.countDocuments(activityMatch),
+    const [totalWorkorders, openJobsheets, closedJobsheets, monthlyActivity] = await Promise.all([
+      CrmJobSheet.countDocuments(jobsheetMatch),
       CrmJobSheet.countDocuments({ ...jobsheetMatch, status: { $nin: ["CLOSED", "CANCELLED"] } }),
       CrmJobSheet.countDocuments({ ...jobsheetMatch, status: { $in: ["CLOSED", "REPAIR_COMPLETED"] } }),
-      activityModel.aggregate([
-        { $match: { ...activityMatch, ...(businessObjectId ? { businessId: businessObjectId } : {}), createdAt: { $gte: sixMonthsAgo } } },
+      CrmJobSheet.aggregate([
+        { $match: { ...jobsheetMatch, ...(businessObjectId ? { businessId: businessObjectId } : {}), createdAt: { $gte: sixMonthsAgo } } },
         { $group: { _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }, count: { $sum: 1 } } },
         { $sort: { "_id.year": 1, "_id.month": 1 } },
       ]),
@@ -179,7 +167,7 @@ export async function GET(req: NextRequest) {
       statusBreakdown: (invoiceAgg?.statusBreakdown || []).map((s: any) => ({ status: s._id, count: s.count })),
       monthlyTrend,
       operations: {
-        totalCalls,
+        totalWorkorders,
         openWorkorders: openJobsheets,
         closedWorkorders: closedJobsheets,
       },

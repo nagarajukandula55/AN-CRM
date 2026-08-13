@@ -9,6 +9,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface INotification extends Document {
   userId: mongoose.Types.ObjectId;
   businessId?: mongoose.Types.ObjectId;
+  vendorId?: mongoose.Types.ObjectId | null;
   title: string;
   message: string;
   type: "info" | "success" | "warning" | "error";
@@ -21,6 +22,7 @@ const NotificationSchema = new Schema<INotification>(
   {
     userId: { type: Schema.Types.ObjectId, required: true, index: true },
     businessId: { type: Schema.Types.ObjectId, index: true },
+    vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
     title: { type: String, required: true },
     message: { type: String, required: true },
     type: { type: String, enum: ["info", "success", "warning", "error"], default: "info" },

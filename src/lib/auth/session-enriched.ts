@@ -8,6 +8,7 @@ import RolePermission from "@/models/RolePermission";
 import Permission from "@/models/Permission";
 import Business from "@/models/Business";
 import VendorProfile from "@/models/VendorProfile";
+import { resolveVendorContext } from "./vendorContext";
 import { expandWithAliases } from "@/core/access/moduleKeyAliases";
 import { getOrCreateANGroupBusinessId } from "@/core/access/anGroupBusiness.service";
 import { getVendorAvailableModules, permissionCodesForModules } from "@/core/access/vendorAccess.service";
@@ -36,6 +37,14 @@ export interface IEnrichedSession {
     businessId: string;
     organizationId: string;
     membershipId: string;
+    // Caller's own VendorProfile._id, when they're a vendor (Service
+    // Center) rather than plain business-level staff. Most onboarded
+    // vendors share one default public Business, so businessId alone
+    // does not identify a tenant -- callers doing per-vendor data
+    // isolation must scope by vendorId too. Null for business-level
+    // staff/owners with no vendor link and for super admins (both
+    // legitimately see all vendors under a business).
+    vendorId: string | null;
   } | null;
 
   roles: string[];
@@ -286,29 +295,25 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
   // Now builds a DENY-list instead: only a module EXPLICITLY saved with
   // enabled:false gets stripped; everything else (including keys the
   // array has no opinion on) stays granted.
-  // SC is architecturally single-login with NO role concept at all --
-  // "there is no roles and only single login will be there... we need to
-  // give all the access to single ID only" (explicit direction, distinct
-  // from BRAND which does have Manager/CCO/Engineer roles). Whatever role
-  // documents that login happens to hold (or doesn't) is irrelevant for
-  // an SC business: grant every operational module this business hasn't
-  // explicitly disabled, same module set a vendor Owner/Manager would
-  // get (getVendorAvailableModules already excludes platform-admin-only
-  // modules like Users/Roles/Businesses, which SC has no use for either).
+  // Every vendor is architecturally single-login with NO role concept at
+  // all -- "nothing required only one type of user that is vendor should
+  // be there... roles, permissions nothing required" (explicit direction).
+  // Whatever role documents a login happens to hold (or doesn't, which is
+  // now the norm) is irrelevant: grant every operational module this
+  // business hasn't explicitly disabled, unconditionally, for every
+  // vendor business (not just operatingMode === "SC" as before --
+  // getVendorAvailableModules already excludes platform-admin-only
+  // modules like Users/Roles/Businesses, which no vendor has use for).
   // This replaces relying on a Role document actually holding the right
-  // permissions for an SC login -- the same root-cause class as the
-  // Settings/Integrations staleness bug fixed earlier, just for a
-  // business type that was never meant to route through Role/Permission
-  // at all.
+  // permissions -- the same root-cause class as the Settings/Integrations
+  // staleness bug fixed earlier, now applied to every vendor rather than
+  // just SC-mode ones.
   if (!isSuperAdmin && businessContext?.businessId) {
     try {
-      const business = await businessModulesPromise;
-      if ((business as any)?.operatingMode === "SC") {
-        const available = await getVendorAvailableModules(String(businessContext.businessId)).catch(() => []);
-        permissions = Array.from(new Set([...permissions, ...permissionCodesForModules(available.map((m) => m.key))]));
-      }
+      const available = await getVendorAvailableModules(String(businessContext.businessId)).catch(() => []);
+      permissions = Array.from(new Set([...permissions, ...permissionCodesForModules(available.map((m) => m.key))]));
     } catch {
-      // Fall through -- an SC login keeps whatever it already resolved
+      // Fall through -- a vendor login keeps whatever it already resolved
       // above rather than losing access entirely if this lookup fails.
     }
   }
@@ -349,6 +354,17 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
       ? await isSubscriptionBlocked(businessContext.businessId).catch(() => false)
       : false;
 
+  let ownVendorId: string | null = null;
+  if (!isSuperAdmin && businessContext?.businessId) {
+    try {
+      const vctx = await resolveVendorContext(userId);
+      ownVendorId = vctx?.vendor?._id ? String(vctx.vendor._id) : null;
+    } catch {
+      // Fall through -- vendorId just stays null (business-wide scope),
+      // never widens access.
+    }
+  }
+
   return {
     user: { id: userId, name: userName, email: userEmail },
     business: businessContext
@@ -356,6 +372,7 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
           businessId: businessContext.businessId,
           organizationId: businessContext.organizationId,
           membershipId: businessContext.membershipId,
+          vendorId: ownVendorId,
         }
       : null,
     roles,

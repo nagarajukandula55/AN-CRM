@@ -4,7 +4,6 @@
  * Never expose a field here that isn't meant to be report-visible (no
  * password hashes, no internal-only flags).
  */
-import CrmCall from "@/models/CrmCall";
 import CrmJobSheet from "@/models/CrmJobSheet";
 import SalesInvoice from "@/models/SalesInvoice";
 import VendorProfile from "@/models/VendorProfile";
@@ -19,25 +18,6 @@ export interface DataSourceDef {
 }
 
 export const DATA_SOURCES: Record<ReportDataSource, DataSourceDef> = {
-  CRM_CALLS: {
-    model: CrmCall,
-    label: "Calls",
-    dateField: "createdAt",
-    fields: [
-      { key: "callNumber", label: "Call Number", type: "string" },
-      { key: "customerName", label: "Customer Name", type: "string" },
-      { key: "phone", label: "Phone", type: "string" },
-      { key: "email", label: "Email", type: "string" },
-      { key: "company", label: "Company", type: "string" },
-      { key: "subject", label: "Subject", type: "string" },
-      { key: "status", label: "Status", type: "enum" },
-      { key: "priority", label: "Priority", type: "enum" },
-      { key: "source", label: "Source", type: "string" },
-      { key: "estimatedValue", label: "Estimated Value", type: "number" },
-      { key: "nextFollowUpAt", label: "Next Follow-Up", type: "date" },
-      { key: "createdAt", label: "Created At", type: "date" },
-    ],
-  },
   CRM_JOBSHEETS: {
     model: CrmJobSheet,
     label: "Workorders",

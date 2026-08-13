@@ -2,14 +2,12 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import CatalogChangeRequest from "@/models/CatalogChangeRequest";
 import CrmJobSheet from "@/models/CrmJobSheet";
-import CrmCall from "@/models/CrmCall";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { callAIWithFailover } from "@/core/ai/orchestrator";
 
 export const runtime = "nodejs";
 
 const OPEN_JOBSHEET_STATUSES = ["CREATED", "REPAIR_STARTED", "REPAIR_IN_PROGRESS", "PART_PENDING", "REPAIR_COMPLETED"];
-const OPEN_CALL_STATUSES = ["NEW", "CONTACTED", "QUALIFIED", "JOB_CREATED", "IN_PROGRESS"];
 
 /**
  * Daily ops report: a handful of cheap countDocuments() metrics, summarized
@@ -32,22 +30,19 @@ function isAuthorized(req: Request): boolean {
 async function gatherAndSend() {
   await connectDB();
 
-  const [pendingCatalogRequests, openJobSheets, openCalls] = await Promise.all([
+  const [pendingCatalogRequests, openJobSheets] = await Promise.all([
     CatalogChangeRequest.countDocuments({ status: "PENDING" }),
     CrmJobSheet.countDocuments({ status: { $in: OPEN_JOBSHEET_STATUSES } }),
-    CrmCall.countDocuments({ status: { $in: OPEN_CALL_STATUSES } }),
   ]);
 
   const metrics = {
     pendingCatalogRequests,
     openJobSheets,
-    openCalls,
   };
 
   const rawSummary = [
     `Pending catalog change requests: ${pendingCatalogRequests}`,
     `Open job sheets (in repair/awaiting parts): ${openJobSheets}`,
-    `Open CRM calls (not yet closed): ${openCalls}`,
   ].join("\n");
 
   let finalText = `Daily Ops Report\n\n${rawSummary}`;

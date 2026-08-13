@@ -3,6 +3,7 @@ import InventoryTransaction from "@/models/InventoryTransaction";
 
 export async function updateInventoryStock({
   businessId,
+  vendorId = null,
   warehouseId,
 
   itemType,
@@ -41,6 +42,8 @@ export async function updateInventoryStock({
   if (!inventory) {
     inventory = await Inventory.create({
       businessId,
+
+      vendorId,
 
       warehouseId,
 
@@ -138,6 +141,8 @@ export async function updateInventoryStock({
 
   await InventoryTransaction.create({
     businessId,
+
+    vendorId,
 
     warehouseId,
 

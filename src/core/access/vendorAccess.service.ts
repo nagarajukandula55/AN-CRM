@@ -53,7 +53,6 @@ export const VENDOR_MODULE_KEYS = [
   "finance",
   "gst",
   "crm",
-  "crm_calls",
   "crm_jobsheets",
   "fault_codes",
   "solutions",
@@ -477,9 +476,12 @@ export async function resolveVendorTeamMembership(userId: string | null) {
  * options list to match it against.
  */
 export const MEMBER_TYPE_IMPLIED_MODULES: Record<string, string[]> = {
-  ENGINEER: ["crm_calls", "crm_jobsheets", "brands", "device_models", "fault_codes", "solutions"],
-  CCO: ["crm_calls", "brands", "device_models", "fault_codes", "solutions"],
-  CENTRE_MANAGER: ["crm_calls", "crm_jobsheets", "brands", "device_models", "fault_codes", "solutions"],
+  ENGINEER: ["crm_jobsheets", "brands", "device_models", "fault_codes", "solutions"],
+  // CCO used to get crm_calls (Appointments) only, no crm_jobsheets --
+  // Calls were removed from the product, so CCO now gets crm_jobsheets
+  // instead so this role keeps real CRM access rather than losing it.
+  CCO: ["crm_jobsheets", "brands", "device_models", "fault_codes", "solutions"],
+  CENTRE_MANAGER: ["crm_jobsheets", "brands", "device_models", "fault_codes", "solutions"],
 };
 
 // Anyone holding ONLY these floor roles has no admin-panel business at all

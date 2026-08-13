@@ -1,10 +1,10 @@
 /**
  * POST /api/appointment-requests — PUBLIC, unauthenticated. Lets a
  * customer on a storefront (e.g. Native) request an on-site/service-center
- * appointment without logging in. Creates a CrmCall (status "NEW", source
- * "Public Appointment Request") in the target business, following the same
- * CrmCall-creation shape as app/api/crm/calls/route.ts's POST — just without
- * a session, since there isn't one.
+ * appointment without logging in. Creates a CrmJobSheet directly (status
+ * "CREATED", appointmentType "ONSITE") in the target business — Calls
+ * (CrmCall) have been removed from the product, so this intake now goes
+ * straight to a job sheet instead of a call that would later be converted.
  *
  * businessId resolution follows the same convention as
  * app/api/newsletter/subscribe/route.ts and app/api/businesses/public/route.ts:
@@ -13,10 +13,9 @@
  * client-supplied businessId blindly.
  *
  * Vendor routing: if exactly one VendorProfile in this business has the
- * submitted pincode in its servicePincodes list, the matched vendor is
- * notified via lib/notify.ts (CrmCall has no vendor-linkage field, and
- * assignedTo refs a User, not a VendorProfile, so we don't force-fit the
- * match there). Zero or multiple matches still create the CrmCall
+ * submitted pincode in its servicePincodes list (or coverage tree), the
+ * matched vendor is set directly as the job sheet's vendorId and notified
+ * via lib/notify.ts. Zero or multiple matches still create the job sheet
  * unassigned — the business's CRM dashboard can triage it manually either
  * way.
  */
@@ -25,7 +24,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import Business from "@/models/Business";
-import CrmCall from "@/models/CrmCall";
+import CrmJobSheet from "@/models/CrmJobSheet";
 import VendorProfile from "@/models/VendorProfile";
 import PublicEmailVerification from "@/models/PublicEmailVerification";
 import { lookupPincode } from "@/lib/centralApiPincode";
@@ -116,7 +115,7 @@ export async function POST(req: NextRequest) {
     // Native's own storefront appointment widget, per this file's header
     // comment) that predates these fields and doesn't send them; rejecting
     // those requests here would silently break that integration instead of
-    // just leaving these fields unset on the resulting CrmCall.
+    // just leaving these fields unset on the resulting job sheet.
     if (deviceCategory && !(DEVICE_CATEGORIES as readonly string[]).includes(deviceCategory)) {
       return NextResponse.json(
         { success: false, message: "Invalid device type" },
@@ -165,39 +164,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { value: callNumber } = await generateDocumentNumber(businessId, "CALL");
-
-    const addressParts = [address, trimmedPincode].filter(Boolean).join(", ");
-
-    const call = await CrmCall.create({
-      businessId: new mongoose.Types.ObjectId(businessId),
-      callNumber,
-      customerName: customerName.trim(),
-      phone: phone.trim(),
-      email: email?.toLowerCase()?.trim(),
-      address: addressParts || undefined,
-      source: "Public Appointment Request",
-      subject: subject.trim(),
-      description: description?.trim(),
-      deviceCategory: deviceCategory || undefined,
-      brandId: brandId ? new mongoose.Types.ObjectId(brandId) : undefined,
-      deviceModelId: deviceModelId ? new mongoose.Types.ObjectId(deviceModelId) : undefined,
-      // "When can we contact you or visit" -- appointmentDate already
-      // exists on CrmCall for this exact purpose (see that field's
-      // comment), just never populated by this public flow before.
-      appointmentDate: parsedPreferredDate || undefined,
-      priority: "MEDIUM",
-      status: "NEW",
-      tags: trimmedPincode ? [`pincode:${trimmedPincode}`] : [],
-      createdBy: null,
-    });
-
-    // Vendor routing — best-effort, never blocks the response. Matches on
-    // the legacy exact-pincode list (servicePincodes) OR the newer
-    // state/city/pincode coverage tree (serviceCoverage.onsite), since a
-    // request submitted with just a pincode is always an onsite-style
-    // request (no walk-in option on this public form).
+    // Vendor routing — resolved BEFORE creation so a single match can be
+    // set as the job sheet's vendorId directly. Matches on the legacy
+    // exact-pincode list (servicePincodes) OR the newer state/city/pincode
+    // coverage tree (serviceCoverage.onsite), since a request submitted
+    // with just a pincode is always an onsite-style request (no walk-in
+    // option on this public form).
     let routedVendorId: string | null = null;
+    let needsAssignment = false;
     if (trimmedPincode) {
       try {
         const pincodeEntry = await lookupPincode(trimmedPincode);
@@ -226,56 +200,70 @@ export async function POST(req: NextRequest) {
           .select("_id companyName")
           .lean();
 
-        if (matches.length >= 1) {
-          // Tag the call with every matched vendor so each SC's own CRM
-          // view can filter to "requests near me" — CrmCall itself has no
-          // vendor-linkage field, so we piggyback on the tags array (same
-          // approach already used for the pincode tag above).
-          const vendorTags = matches.map((m) => `matchedVendor:${(m as any)._id}`);
-          await CrmCall.updateOne({ _id: call._id }, { $push: { tags: { $each: vendorTags } } });
-
-          if (matches.length === 1) {
-            routedVendorId = String((matches[0] as any)._id);
-            await CrmCall.updateOne(
-              { _id: call._id },
-              { $set: { routedVendorId: new mongoose.Types.ObjectId(routedVendorId) } }
-            );
-          }
-
-          for (const m of matches) {
-            notify({
-              event: "NEW_CRM_CALL",
-              businessId: String(businessId),
-              message: `📅 New appointment request ${call.callNumber} matched to your service area\nCustomer: ${call.customerName}\nPhone: ${call.phone}\nPincode: ${trimmedPincode}\nSubject: ${call.subject}`,
-            }).catch(() => {});
-          }
-        } else {
-          // No vendor covers this pincode -- flag it so the Appointments
-          // admin view can surface it for a Super Admin to manually assign
-          // a vendor (see api/crm/calls/[id]/assign-vendor).
-          await CrmCall.updateOne({ _id: call._id }, { $push: { tags: "needsAssignment" } });
+        if (matches.length === 1) {
+          routedVendorId = String((matches[0] as any)._id);
+        } else if (matches.length === 0) {
+          // No vendor covers this pincode -- flag it so the admin view can
+          // surface it for a Super Admin to manually assign a vendor.
+          needsAssignment = true;
         }
+        // matches.length > 1: left unassigned, same as before -- the
+        // business's CRM dashboard can triage it manually.
       } catch {
-        // Routing is best-effort — request already succeeded above.
+        // Routing is best-effort — request already succeeds regardless.
       }
     } else {
       // No pincode submitted at all -- can't auto-route, flag for manual
       // assignment same as the zero-match case above.
-      await CrmCall.updateOne({ _id: call._id }, { $push: { tags: "needsAssignment" } }).catch(() => {});
+      needsAssignment = true;
+    }
+
+    const { value: jobSheetNumber } = await generateDocumentNumber(businessId, "JOB_SHEET");
+
+    const jobSheet = await CrmJobSheet.create({
+      businessId: new mongoose.Types.ObjectId(businessId),
+      vendorId: routedVendorId ? new mongoose.Types.ObjectId(routedVendorId) : null,
+      jobSheetNumber,
+      customerName: customerName.trim(),
+      phone: phone.trim(),
+      email: email?.toLowerCase()?.trim(),
+      address: address || undefined,
+      pincode: trimmedPincode || undefined,
+      deviceCategory: deviceCategory || undefined,
+      brandId: brandId ? new mongoose.Types.ObjectId(brandId) : undefined,
+      deviceModelId: deviceModelId ? new mongoose.Types.ObjectId(deviceModelId) : undefined,
+      // "When can we contact you or visit" -- preferredDate maps to
+      // scheduledAt, the job sheet's equivalent field.
+      scheduledAt: parsedPreferredDate || undefined,
+      title: subject.trim(),
+      description: description?.trim(),
+      issueDescription: description?.trim(),
+      appointmentType: "ONSITE",
+      requestType: "REPAIR",
+      status: "CREATED",
+      createdBy: null,
+    });
+
+    if (routedVendorId) {
+      notify({
+        event: "STAFF_ALERT",
+        businessId: String(businessId),
+        message: `📅 New appointment request ${jobSheet.jobSheetNumber} matched to your service area\nCustomer: ${jobSheet.customerName}\nPhone: ${jobSheet.phone}\nPincode: ${trimmedPincode}\nSubject: ${jobSheet.title}`,
+      }).catch(() => {});
     }
 
     notify({
-      event: "NEW_CRM_CALL",
+      event: "STAFF_ALERT",
       businessId: String(businessId),
-      message: `📞 New appointment request ${call.callNumber}\nCustomer: ${call.customerName}\nSubject: ${call.subject}`,
+      message: `📞 New appointment request ${jobSheet.jobSheetNumber}\nCustomer: ${jobSheet.customerName}\nSubject: ${jobSheet.title}`,
     }).catch(() => {});
 
     captureCustomer({
       businessId,
-      name: call.customerName,
-      phone: call.phone,
-      email: call.email,
-      address: addressParts,
+      name: jobSheet.customerName,
+      phone: jobSheet.phone,
+      email: jobSheet.email,
+      address,
       sourceModule: "APPOINTMENT_REQUEST",
       sourceLabel: "Public Appointment Request",
       vendorId: routedVendorId,
@@ -283,9 +271,9 @@ export async function POST(req: NextRequest) {
 
     logAction({
       action: "CREATE",
-      entity: "CrmCall",
-      entityId: call._id?.toString(),
-      after: call,
+      entity: "CrmJobSheet",
+      entityId: jobSheet._id?.toString(),
+      after: jobSheet,
       req,
       actor: { id: "public", businessId: String(businessId) },
     });
@@ -294,8 +282,9 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         message: "Appointment request submitted successfully",
-        referenceNumber: call.callNumber,
+        referenceNumber: jobSheet.jobSheetNumber,
         routed: Boolean(routedVendorId),
+        needsAssignment,
       },
       { status: 201 }
     );

@@ -7,7 +7,7 @@ import InventoryItem from "@/models/InventoryItem";
 import { generateDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 
@@ -33,12 +33,13 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     // SECURITY: businessId used to be trusted straight from the query
     // param with no ownership check.
-    const businessId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       session.user.id,
       searchParams.get("businessId"),
       session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const businessId = scope?.businessId || null;
     if (!businessId) {
       return NextResponse.json(
         { error: "businessId is required" },
@@ -58,6 +59,7 @@ export async function GET(req: NextRequest) {
     const filter: Record<string, unknown> = {
       businessId: new Types.ObjectId(businessId),
     };
+    if (scope?.vendorId) filter.vendorId = new Types.ObjectId(scope.vendorId);
     if (inventoryItemId) {
       filter.inventoryItemId = new Types.ObjectId(inventoryItemId);
     }
@@ -120,12 +122,13 @@ export async function POST(req: NextRequest) {
       body;
 
     // SECURITY: body.businessId used to be trusted directly.
-    const businessId = await resolveAuthorizedBusinessId(
+    const createScope = await resolveAuthorizedVendorScope(
       session.user.id,
       body.businessId,
       session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const businessId = createScope?.businessId || null;
 
     if (!businessId || !inventoryItemId || !adjustmentType || quantity === undefined) {
       return NextResponse.json(
@@ -196,6 +199,7 @@ export async function POST(req: NextRequest) {
     // Persist the adjustment record first
     const adjustment = await StockAdjustment.create({
       businessId: new Types.ObjectId(businessId),
+      vendorId: createScope?.vendorId ? new Types.ObjectId(createScope.vendorId) : null,
       adjustmentNumber,
       inventoryItemId: new Types.ObjectId(inventoryItemId),
       adjustmentType,
