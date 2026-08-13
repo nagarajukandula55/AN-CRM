@@ -23,6 +23,9 @@ function LoginForm() {
 
   useEffect(() => {
     if (searchParams?.get('reason') === 'inactivity') setInactivityNotice(true)
+    if (searchParams?.get('error') === 'admin_only') {
+      setError('This domain is reserved for platform administrators. Use the regular login if you\'re a vendor.')
+    }
   }, [searchParams])
 
   async function handleLogin(e: React.FormEvent) {

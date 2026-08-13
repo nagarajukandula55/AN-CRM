@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Suspense } from 'react'
 import useSWR from 'swr'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Search, Download, Eye, Printer, FileText } from 'lucide-react'
@@ -121,6 +121,14 @@ function inRange(dateStr: string, range: string): boolean {
 }
 
 export default function JobSheetsListPage() {
+  return (
+    <Suspense fallback={null}>
+      <JobSheetsListPageInner />
+    </Suspense>
+  )
+}
+
+function JobSheetsListPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { businessId } = useActiveBusinessId()

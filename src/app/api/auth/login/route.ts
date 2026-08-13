@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { buildAuthSession } from "@/lib/auth/buildAuthSession";
+import { SUPER_ADMIN_ONLY_HOSTS } from "@/lib/auth/superAdminHosts";
 
 export async function POST(req: Request) {
   try {
@@ -137,6 +138,19 @@ export async function POST(req: Request) {
     if (user.isActive === false) {
       return NextResponse.json(
         { success: false, message: "Your account is not active yet. Please wait for approval or contact support." },
+        { status: 403 }
+      );
+    }
+
+    // crmadmin.angroup.in is the dedicated super-admin login/usage domain
+    // (see middleware.ts's matching enforcement, which is the authoritative
+    // check -- this is just a clean, immediate rejection at login instead
+    // of a confusing "logged in then bounced" experience for anyone who
+    // isn't super admin trying to sign in there).
+    const host = req.headers.get("host") || "";
+    if (SUPER_ADMIN_ONLY_HOSTS.has(host) && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json(
+        { success: false, message: "This login is reserved for platform administrators." },
         { status: 403 }
       );
     }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { SUPER_ADMIN_ONLY_HOSTS } from "@/lib/auth/superAdminHosts";
 
 // Was a module-level throw -- same bug class as lib/auth/jwt.ts (see that
 // file's comment): crashes the whole build the moment JWT_SECRET is
@@ -304,6 +305,26 @@ export async function middleware(req: NextRequest) {
     }
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // crmadmin.angroup.in is reserved for super admin only -- authoritative
+  // check (api/auth/login's own pre-check is just a cleaner UX for the
+  // common case; this is what actually protects every route on that host,
+  // including a stale/reused token that predates the login-time check).
+  // A host-only cookie set on the main domain is never even sent here, so
+  // in practice this only ever fires for a Bearer-token reuse or future
+  // cookie-domain change -- defense in depth, not the primary path.
+  const host = req.headers.get("host") || "";
+  if (SUPER_ADMIN_ONLY_HOSTS.has(host) && !payload.isSuperAdmin) {
+    if (pathname.startsWith("/api/")) {
+      return applyCors(
+        NextResponse.json({ error: "This domain is reserved for platform administrators." }, { status: 403 }),
+        origin
+      );
+    }
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("error", "admin_only");
     return NextResponse.redirect(loginUrl);
   }
 
