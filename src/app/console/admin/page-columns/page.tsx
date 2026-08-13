@@ -14,7 +14,86 @@ interface ColumnRow {
   label: string
   visible: boolean
   order: number
+  group?: string
 }
+
+// The sidebar's real group/subgroup identifiers (src/components/
+// sidebar-nav.ts's NAV_GROUPS) -- a sidebar item can be reassigned to any
+// of THESE existing groups, not an arbitrary new one, same "no add, only
+// rename/hide/reorder/regroup existing" boundary as every other config
+// screen here. Flat top-level groups have no `key` in sidebar-nav.ts
+// itself (only a `label`), so they're addressed here as "grp:<label>";
+// the Admin group's 4 subgroups DO have real keys, used as-is.
+const SIDEBAR_GROUPS = [
+  { key: 'grp:Overview', label: 'Overview' },
+  { key: 'grp:SC', label: 'SC' },
+  { key: 'grp:Sales', label: 'Sales' },
+  { key: 'grp:Materials & Inventory', label: 'Materials & Inventory' },
+  { key: 'grp:Finance', label: 'Finance' },
+  { key: 'grp:Business', label: 'Business' },
+  { key: 'grp:Documents', label: 'Documents' },
+  { key: 'grp:Reports', label: 'Reports' },
+  { key: 'grp:Support', label: 'Support' },
+  { key: 'adm-users', label: 'Admin > Users & Access' },
+  { key: 'adm-vendors', label: 'Admin > Vendors' },
+  { key: 'adm-system', label: 'Admin > System' },
+  { key: 'adm-docs', label: 'Admin > Documents & Billing' },
+]
+
+// Every real sidebar-nav.ts item, seeded with its current label + which
+// group it structurally lives in today -- shown in the picker even before
+// a config has ever been saved. Kept in sync manually with
+// sidebar-nav.ts's NAV_GROUPS; sidebar.tsx applies a saved override only
+// when its `group` value matches a real key above.
+const SIDEBAR_NAV_ROWS: ColumnRow[] = [
+  { key: 'dashboard', defaultLabel: 'Dashboard', label: 'Dashboard', visible: true, order: 0, group: 'grp:Overview' },
+  { key: 'sc_dashboard', defaultLabel: 'CRM Overview', label: 'CRM Overview', visible: true, order: 1, group: 'grp:SC' },
+  { key: 'sc_jobsheets', defaultLabel: 'Workorders', label: 'Workorders', visible: true, order: 2, group: 'grp:SC' },
+  { key: 'sc-masters-brands', defaultLabel: 'Brands & Models', label: 'Brands & Models', visible: true, order: 3, group: 'grp:SC' },
+  { key: 'sc-masters-solutions', defaultLabel: 'Solutions', label: 'Solutions', visible: true, order: 4, group: 'grp:SC' },
+  { key: 'sub-accounts', defaultLabel: 'SC Sub-Accounts', label: 'SC Sub-Accounts', visible: true, order: 5, group: 'grp:SC' },
+  { key: 'orders', defaultLabel: 'Orders', label: 'Orders', visible: true, order: 6, group: 'grp:Sales' },
+  { key: 'sales', defaultLabel: 'Sales', label: 'Sales', visible: true, order: 7, group: 'grp:Sales' },
+  { key: 'inventory', defaultLabel: 'Inventory', label: 'Inventory', visible: true, order: 8, group: 'grp:Materials & Inventory' },
+  { key: 'warehouses', defaultLabel: 'Warehouses', label: 'Warehouses', visible: true, order: 9, group: 'grp:Materials & Inventory' },
+  { key: 'material-catalog', defaultLabel: 'Material Catalog', label: 'Material Catalog', visible: true, order: 10, group: 'grp:Materials & Inventory' },
+  { key: 'masters-catalog-requests', defaultLabel: 'Catalog Change Requests', label: 'Catalog Change Requests', visible: true, order: 11, group: 'grp:Materials & Inventory' },
+  { key: 'stock-transfers', defaultLabel: 'Stock Transfers', label: 'Stock Transfers', visible: true, order: 12, group: 'grp:Materials & Inventory' },
+  { key: 'stock-adjustments', defaultLabel: 'Stock Adjustments', label: 'Stock Adjustments', visible: true, order: 13, group: 'grp:Materials & Inventory' },
+  { key: 'finance', defaultLabel: 'Finance', label: 'Finance', visible: true, order: 14, group: 'grp:Finance' },
+  { key: 'customers', defaultLabel: 'Customer Data', label: 'Customer Data', visible: true, order: 15, group: 'grp:Business' },
+  { key: 'sub-vendors', defaultLabel: 'Sub-Vendors', label: 'Sub-Vendors', visible: true, order: 16, group: 'grp:Business' },
+  { key: 'agreements', defaultLabel: 'Agreements', label: 'Agreements', visible: true, order: 17, group: 'grp:Documents' },
+  { key: 'quotations', defaultLabel: 'Quotations', label: 'Quotations', visible: true, order: 18, group: 'grp:Documents' },
+  { key: 'delivery-challans', defaultLabel: 'Delivery Challans', label: 'Delivery Challans', visible: true, order: 19, group: 'grp:Documents' },
+  { key: 'credit-notes', defaultLabel: 'Credit Notes', label: 'Credit Notes', visible: true, order: 20, group: 'grp:Documents' },
+  { key: 'debit-notes', defaultLabel: 'Debit Notes', label: 'Debit Notes', visible: true, order: 21, group: 'grp:Documents' },
+  { key: 'proforma-invoices', defaultLabel: 'Proforma Invoices', label: 'Proforma Invoices', visible: true, order: 22, group: 'grp:Documents' },
+  { key: 'reports', defaultLabel: 'Reports & Downloads', label: 'Reports & Downloads', visible: true, order: 23, group: 'grp:Reports' },
+  { key: 'report-builder', defaultLabel: 'Report Builder', label: 'Report Builder', visible: true, order: 24, group: 'grp:Reports' },
+  { key: 'analytics', defaultLabel: 'Analytics', label: 'Analytics', visible: true, order: 25, group: 'grp:Reports' },
+  { key: 'support_tickets', defaultLabel: 'Support Tickets', label: 'Support Tickets', visible: true, order: 26, group: 'grp:Support' },
+  { key: 'contact-messages', defaultLabel: 'Contact Messages', label: 'Contact Messages', visible: true, order: 27, group: 'grp:Support' },
+  { key: 'admin-users', defaultLabel: 'User Management', label: 'User Management', visible: true, order: 28, group: 'adm-users' },
+  { key: 'admin-access', defaultLabel: 'Access Control', label: 'Access Control', visible: true, order: 29, group: 'adm-users' },
+  { key: 'admin-roles', defaultLabel: 'Roles & Permissions', label: 'Roles & Permissions', visible: true, order: 30, group: 'adm-users' },
+  { key: 'admin-an-group-staff', defaultLabel: 'Platform Staff', label: 'Platform Staff', visible: true, order: 31, group: 'adm-users' },
+  { key: 'vendors', defaultLabel: 'Vendors', label: 'Vendors', visible: true, order: 32, group: 'adm-vendors' },
+  { key: 'vendor-subscriptions', defaultLabel: 'Vendor Subscriptions', label: 'Vendor Subscriptions', visible: true, order: 33, group: 'adm-vendors' },
+  { key: 'admin-vendor-billing', defaultLabel: 'Vendor Billing', label: 'Vendor Billing', visible: true, order: 34, group: 'adm-vendors' },
+  { key: 'admin-vendor-settlements', defaultLabel: 'Vendor Settlements', label: 'Vendor Settlements', visible: true, order: 35, group: 'adm-vendors' },
+  { key: 'admin-plan-features', defaultLabel: 'Plan Features', label: 'Plan Features', visible: true, order: 36, group: 'adm-system' },
+  { key: 'admin-page-columns', defaultLabel: 'Page Columns & Cards', label: 'Page Columns & Cards', visible: true, order: 37, group: 'adm-system' },
+  { key: 'admin-option-lists', defaultLabel: 'Option Lists', label: 'Option Lists', visible: true, order: 38, group: 'adm-system' },
+  { key: 'admin-settings', defaultLabel: 'Settings', label: 'Settings', visible: true, order: 39, group: 'adm-system' },
+  { key: 'admin-plan', defaultLabel: 'Plan & Billing', label: 'Plan & Billing', visible: true, order: 40, group: 'adm-system' },
+  { key: 'admin-help', defaultLabel: 'Help & System Guide', label: 'Help & System Guide', visible: true, order: 41, group: 'adm-system' },
+  { key: 'admin-document-templates', defaultLabel: 'Document Templates', label: 'Document Templates', visible: true, order: 42, group: 'adm-docs' },
+  { key: 'admin-invoice-templates', defaultLabel: 'Invoice Branding', label: 'Invoice Branding', visible: true, order: 43, group: 'adm-docs' },
+  { key: 'admin-gst', defaultLabel: 'GST', label: 'GST', visible: true, order: 44, group: 'adm-docs' },
+  { key: 'admin-product-feedback', defaultLabel: 'Product Feedback', label: 'Product Feedback', visible: true, order: 45, group: 'adm-docs' },
+  { key: 'admin-telegram-users', defaultLabel: 'Telegram Users', label: 'Telegram Users', visible: true, order: 46, group: 'adm-docs' },
+]
 
 // Every page wired to useColumnConfig() so far, plus their real hardcoded
 // current columns -- shown in the picker even before a config has ever been
@@ -65,6 +144,9 @@ const KNOWN_PAGES: Record<string, ColumnRow[]> = {
     { key: 'overdueWorkorders', defaultLabel: 'Overdue (7d+)', label: 'Overdue (7d+)', visible: true, order: 1 },
     { key: 'closedThisMonth', defaultLabel: 'Closed This Month', label: 'Closed This Month', visible: true, order: 2 },
   ],
+  // Sidebar menu items -- rename + reassign to a different EXISTING group
+  // (see sidebar.tsx's application of this same "sidebar-nav" pageKey).
+  'sidebar-nav': SIDEBAR_NAV_ROWS,
 }
 
 export default function PageColumnsAdminPage() {
@@ -108,7 +190,7 @@ export default function PageColumnsAdminPage() {
           const merged = defaults.map((def, i) => {
             const ov = savedMap.get(def.key)
             return ov
-              ? { key: def.key, defaultLabel: def.defaultLabel, label: ov.label ?? def.defaultLabel, visible: ov.visible !== false, order: ov.order ?? i }
+              ? { key: def.key, defaultLabel: def.defaultLabel, label: ov.label ?? def.defaultLabel, visible: ov.visible !== false, order: ov.order ?? i, group: ov.group ?? def.group }
               : { ...def, order: i }
           })
           setRows(merged.sort((a, b) => a.order - b.order))
@@ -194,6 +276,7 @@ export default function PageColumnsAdminPage() {
                   <th className="text-left px-4 py-3">Order</th>
                   <th className="text-left px-4 py-3">Key</th>
                   <th className="text-left px-4 py-3">Label</th>
+                  {selectedKey === 'sidebar-nav' && <th className="text-left px-4 py-3">Group</th>}
                   <th className="text-left px-4 py-3">Visible</th>
                 </tr>
               </thead>
@@ -228,6 +311,19 @@ export default function PageColumnsAdminPage() {
                         className="max-w-xs"
                       />
                     </td>
+                    {selectedKey === 'sidebar-nav' && (
+                      <td className="px-4 py-3">
+                        <Select
+                          value={row.group ?? ''}
+                          onChange={(e) => updateRow(idx, { group: e.target.value })}
+                          className="max-w-xs"
+                        >
+                          {SIDEBAR_GROUPS.map((g) => (
+                            <option key={g.key} value={g.key}>{g.label}</option>
+                          ))}
+                        </Select>
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"

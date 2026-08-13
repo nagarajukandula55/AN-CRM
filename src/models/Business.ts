@@ -745,20 +745,6 @@ const BusinessSchema = new mongoose.Schema(
       type: Date,
     },
 
-    // One-time linking code shown in Settings > Operations -- the admin
-    // adds the bot to their chat/group and sends "/link <code>" instead of
-    // manually copy-pasting a raw chat id into telegramChatId above (see
-    // api/telegram/webhook's /link handler). Short-lived; cleared once
-    // consumed or expired.
-    telegramLinkCode: {
-      type: String,
-      trim: true,
-      uppercase: true,
-    },
-    telegramLinkCodeExpiresAt: {
-      type: Date,
-    },
-
     // A vendor's OWN chat, separate from telegramChatId above (which is
     // this app's shared ops-facing group/business chat) -- a vendor Owner
     // links their personal Telegram DM the same /link <code> way, so

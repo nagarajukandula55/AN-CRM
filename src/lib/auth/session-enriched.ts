@@ -355,10 +355,28 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
       : false;
 
   let ownVendorId: string | null = null;
+  let effectiveVendorId: string | null = null;
   if (!isSuperAdmin && businessContext?.businessId) {
     try {
       const vctx = await resolveVendorContext(userId);
       ownVendorId = vctx?.vendor?._id ? String(vctx.vendor._id) : null;
+      effectiveVendorId = ownVendorId;
+
+      // A parent vendor Owner who switched into a sub-vendor (see
+      // api/auth/switch-vendor) carries x-active-vendor-id -- re-validated
+      // here the same way resolveAuthorizedVendorScope does, never just
+      // trusted from the header/claim.
+      if (ownVendorId) {
+        const activeVendorIdHeader = headersList.get("x-active-vendor-id");
+        if (activeVendorIdHeader && activeVendorIdHeader !== ownVendorId) {
+          const target = await VendorProfile.findOne({ _id: activeVendorIdHeader, isDeleted: { $ne: true } })
+            .select("parentVendorId")
+            .lean<any>();
+          if (target && String(target.parentVendorId || "") === ownVendorId) {
+            effectiveVendorId = activeVendorIdHeader;
+          }
+        }
+      }
     } catch {
       // Fall through -- vendorId just stays null (business-wide scope),
       // never widens access.
@@ -372,7 +390,7 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
           businessId: businessContext.businessId,
           organizationId: businessContext.organizationId,
           membershipId: businessContext.membershipId,
-          vendorId: ownVendorId,
+          vendorId: effectiveVendorId,
         }
       : null,
     roles,

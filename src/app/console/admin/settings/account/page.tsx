@@ -217,7 +217,6 @@ export default function AccountSettingsPage() {
                 <ul className="mt-2 space-y-1 text-xs text-gray-600 font-mono">
                   <li>MONGODB_URI — MongoDB Atlas connection string</li>
                   <li>JWT_SECRET — Auth signing secret</li>
-                  <li>SSO_SECRET — SSO token secret</li>
                   <li>NEXT_PUBLIC_APP_URL — Your deployment URL</li>
                   <li>CLOUDINARY_* — File upload credentials</li>
                 </ul>

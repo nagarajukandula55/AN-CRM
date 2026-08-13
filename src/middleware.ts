@@ -25,6 +25,7 @@ interface JWTPayload {
   isPlatformStaff?: boolean;
   businessIds: string[];
   activeBusinessId?: string;
+  activeVendorId?: string;
   organizationId?: string;
   mustChangePassword?: boolean;
   sessionVersion?: number;
@@ -341,6 +342,7 @@ export async function middleware(req: NextRequest) {
 
   if (payload.organizationId)   requestHeaders.set("x-organization-id",   payload.organizationId);
   if (payload.activeBusinessId) requestHeaders.set("x-active-business-id", payload.activeBusinessId);
+  if (payload.activeVendorId) requestHeaders.set("x-active-vendor-id", payload.activeVendorId);
   if (payload.businessIds?.length) {
     requestHeaders.set("x-business-ids", payload.businessIds.join(","));
   }

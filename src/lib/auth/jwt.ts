@@ -19,16 +19,6 @@ function getJwtSecret(): string {
   return secret;
 }
 
-function getSsoSecret(): string {
-  const secret = process.env.SSO_SECRET;
-  if (!secret) {
-    throw new Error(
-      "SSO_SECRET environment variable is required and must not use the insecure default. Set it before starting the app."
-    );
-  }
-  return secret;
-}
-
 export interface JWTPayload {
   id: string;
   email: string;
@@ -39,6 +29,16 @@ export interface JWTPayload {
   isPlatformStaff?: boolean;
   businessIds: string[];
   activeBusinessId?: string;
+  /** VendorProfile._id currently being viewed -- lets a parent vendor
+   * Owner switch into one of their own sub-vendors (VendorProfile.
+   * parentVendorId) without a separate Business (sub-vendors share their
+   * parent's businessId, so activeBusinessId alone can't express this).
+   * See api/auth/switch-vendor/route.ts. Absent/undefined means "my own
+   * vendor", resolved the normal way via resolveVendorContext -- this
+   * claim is only ever an override, never trusted as sole authorization
+   * (resolveAuthorizedVendorScope re-validates parentVendorId server-side
+   * on every request, never just believes the claim). */
+  activeVendorId?: string;
   organizationId?: string;
   mustChangePassword?: boolean;
   /** This user's role name (free text, admin-defined -- see central-api's
@@ -62,39 +62,6 @@ export interface JWTPayload {
   exp?: number;
 }
 
-export interface SSOPayload {
-  userId: string;
-  email: string;
-  name: string;
-  /** The user's unique, public user ID collected at signup — doubles as
-   * their "vendor code": a vendor owner or super admin uses this to look
-   * the user up and add them as vendor staff (see /api/vendor/staff and
-   * /api/admin/vendor-staff). Consuming apps can display/use this without
-   * exposing the user's email. */
-  username?: string | null;
-  role: string;
-  isSuperAdmin: boolean;
-  permissions: string[];
-  issuer: string;
-  /**
-   * Business tagging — every platform (Native e-commerce, other business
-   * front-ends) consuming this SSO token gets the user's business scope,
-   * so a vendor/staff login on any platform is automatically scoped to
-   * the right business(es) in the centralized system.
-   */
-  businessIds?: string[];
-  activeBusinessId?: string;
-  memberType?: string; // e.g. VENDOR | STAFF | OWNER for the active business
-  /** Vendor-staff memberships specifically — completes the hierarchy
-   * (Business > Vendor > Warehouse > Staff) for cross-app consumers: a
-   * user might be plain-customer everywhere else but staff for one
-   * specific vendor, which a generic businessIds/memberType pair alone
-   * can't express once a user has multiple vendor memberships. */
-  vendorMemberships?: { vendorId: string; vendorRole: string | null; memberType?: string }[];
-  iat?: number;
-  exp?: number;
-}
-
 /**
  * Sign a standard auth JWT (7 days)
  */
@@ -108,24 +75,6 @@ export function signToken(payload: Omit<JWTPayload, "iat" | "exp">): string {
 export function verifyToken(token: string): JWTPayload | null {
   try {
     return jwt.verify(token, getJwtSecret()) as JWTPayload;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Sign an SSO token (valid for 1 hour, cross-app)
- */
-export function signSSOToken(payload: Omit<SSOPayload, "iat" | "exp">): string {
-  return jwt.sign(payload, getSsoSecret(), { expiresIn: "1h" });
-}
-
-/**
- * Verify SSO token
- */
-export function verifySSOToken(token: string): SSOPayload | null {
-  try {
-    return jwt.verify(token, getSsoSecret()) as SSOPayload;
   } catch {
     return null;
   }

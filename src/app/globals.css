@@ -188,6 +188,15 @@ select {
   font-feature-settings: "tnum";
 }
 
+/* Adaptive stat-card grid: fills the row evenly for a variable card count
+   (cards may be individually hidden via admin column/card config) instead
+   of a fixed column count that orphan-wraps one card alone onto a new row. */
+.grid-cards-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
 /* Subtle background treatment so dense screens don't read as flat white/
    paper -- two soft accent-tinted glows plus a fine dot grid, faint
    enough to sit behind every card without competing with content. Layered

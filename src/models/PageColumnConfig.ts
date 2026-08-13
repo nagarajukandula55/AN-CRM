@@ -14,6 +14,10 @@ export interface IPageColumnConfigColumn {
   label: string;
   visible: boolean;
   order: number;
+  // Only meaningful for the "sidebar-nav" pageKey -- which existing
+  // sidebar-nav.ts group/subgroup key this item is reassigned to. Unused
+  // (undefined) by every table/card pageKey; harmless no-op there.
+  group?: string;
 }
 
 export interface IPageColumnConfig extends Document {

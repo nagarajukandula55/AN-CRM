@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import useSWR from 'swr'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Search, Download, Eye, Printer, FileText } from 'lucide-react'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 import { useColumnConfig } from '@/lib/hooks/useColumnConfig'
@@ -95,12 +95,45 @@ function exportCsv(rows: JobSheetRow[]) {
   URL.revokeObjectURL(url)
 }
 
+// Quick-filter and created-date-range values that the dashboard's stat
+// cards can deep-link into via ?status=/?quick=/?range= -- read once on
+// mount below, same client-side-filter pattern already used for quickFilter.
+const QUICK_FILTER_VALUES = new Set(['ALL', 'OPEN', 'CLOSED_THIS_MONTH', 'PART_PENDING'])
+const RANGE_VALUES = new Set(['today', 'week', 'month', 'year'])
+
+function inRange(dateStr: string, range: string): boolean {
+  const d = new Date(dateStr)
+  const now = new Date()
+  switch (range) {
+    case 'today':
+      return d.toDateString() === now.toDateString()
+    case 'week': {
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      return d >= weekAgo && d <= now
+    }
+    case 'month':
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    case 'year':
+      return d.getFullYear() === now.getFullYear()
+    default:
+      return true
+  }
+}
+
 export default function JobSheetsListPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { businessId } = useActiveBusinessId()
   const columns = useColumnConfig('jobsheets', JOBSHEETS_DEFAULT_COLUMNS).filter((c) => c.visible)
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('ALL')
+  const [status, setStatus] = useState(() => {
+    const s = searchParams.get('status')
+    return s && Object.prototype.hasOwnProperty.call(STATUS_TONE, s) ? s : 'ALL'
+  })
+  const [range] = useState(() => {
+    const r = searchParams.get('range')
+    return r && RANGE_VALUES.has(r) ? r : null
+  })
 
   const params = new URLSearchParams()
   if (businessId) params.set('businessId', businessId)
@@ -128,24 +161,33 @@ export default function JobSheetsListPage() {
   // spans CREATED/REPAIR_STARTED/REPAIR_IN_PROGRESS/REPAIR_COMPLETED/
   // PART_PENDING), so their cards clear the server-side status filter and
   // filter client-side instead; Closed maps directly to one real status.
-  const [quickFilter, setQuickFilter] = useState<'ALL' | 'OPEN' | 'CLOSED_THIS_MONTH' | 'PART_PENDING'>('ALL')
+  const [quickFilter, setQuickFilter] = useState<'ALL' | 'OPEN' | 'CLOSED_THIS_MONTH' | 'PART_PENDING'>(() => {
+    const q = searchParams.get('quick')
+    return q && QUICK_FILTER_VALUES.has(q) ? (q as 'ALL' | 'OPEN' | 'CLOSED_THIS_MONTH' | 'PART_PENDING') : 'ALL'
+  })
   const displayedJobSheets = useMemo(() => {
     const now = new Date()
+    let rows: JobSheetRow[]
     switch (quickFilter) {
       case 'OPEN':
-        return jobSheets.filter((j) => OPEN_STATUSES.has(j.status))
+        rows = jobSheets.filter((j) => OPEN_STATUSES.has(j.status))
+        break
       case 'CLOSED_THIS_MONTH':
-        return jobSheets.filter((j) => {
+        rows = jobSheets.filter((j) => {
           if (j.status !== 'CLOSED') return false
           const d = new Date(j.createdAt)
           return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
         })
+        break
       case 'PART_PENDING':
-        return jobSheets.filter((j) => j.status === 'PART_PENDING')
+        rows = jobSheets.filter((j) => j.status === 'PART_PENDING')
+        break
       default:
-        return jobSheets
+        rows = jobSheets
     }
-  }, [jobSheets, quickFilter])
+    if (range) rows = rows.filter((j) => inRange(j.createdAt, range))
+    return rows
+  }, [jobSheets, quickFilter, range])
 
   return (
     <div className="min-h-screen bg-bg text-ink p-6">

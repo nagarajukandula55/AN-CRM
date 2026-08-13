@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -14,6 +14,26 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
 import { getAuthMe, invalidateAuthMeCache } from "@/lib/authMeCache";
+import { useColumnConfig } from "@/lib/hooks/useColumnConfig";
+
+// Every real nav item, flattened once with its structural default group id
+// (flat top-level groups -> "grp:<label>"; Admin's subgroup items -> the
+// subgroup's real key) -- this is exactly what the "sidebar-nav" pageKey's
+// admin config (console/admin/page-columns) is seeded against, so a saved
+// label/group override always finds its match by key.
+const ALL_NAV_ITEMS_WITH_GROUP: { item: NavItem; defaultGroup: string }[] = NAV_GROUPS.flatMap((g) =>
+  g.items
+    ? g.items.map((item) => ({ item, defaultGroup: `grp:${g.label}` }))
+    : (g.subgroups ?? []).flatMap((sg) => sg.items.map((item) => ({ item, defaultGroup: sg.key })))
+);
+
+// Only a group/subgroup id that structurally exists today is a valid
+// reassignment target -- an admin-saved `group` value that doesn't match
+// one (e.g. sidebar-nav.ts changed since the config was saved) is ignored,
+// falling back to the item's own structural default rather than vanishing.
+const VALID_NAV_GROUP_IDS = new Set<string>(
+  NAV_GROUPS.flatMap((g) => (g.items ? [`grp:${g.label}`] : (g.subgroups ?? []).map((sg) => sg.key)))
+);
 
 const SIDEBAR_COLLAPSED_KEY = "an_sidebar_collapsed";
 // Every full page refresh re-fetched /api/auth/me + /api/ui/sidebar from a
@@ -53,6 +73,8 @@ interface UserInfo {
   isPlatformStaff?: boolean;
   moduleOrder?: string[];
 }
+
+interface SubVendor { _id: string; vendorId?: string; companyName?: string }
 
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   LayoutDashboard, Package, ShoppingCart, TrendingUp, DollarSign,
@@ -113,6 +135,13 @@ export default function Sidebar() {
   const [activeBiz, setActiveBiz]       = useState<Business | null>(null);
   const [bizDropdown, setBizDropdown]   = useState(false);
   const [switching, setSwitching]       = useState(false);
+  // A parent vendor Owner's own sub-vendors (VendorProfile.parentVendorId)
+  // -- listed in the same business-switcher dropdown alongside their own
+  // business, so switching into one is a single familiar action. Empty for
+  // everyone else (business staff, sub-vendors themselves, super admin).
+  const [ownVendorId, setOwnVendorId]   = useState<string | null>(null);
+  const [subVendors, setSubVendors]     = useState<SubVendor[]>([]);
+  const [activeVendorId, setActiveVendorId] = useState<string | null>(null);
   // Tracks which subgroups are open — default all open
   const [openSubgroups, setOpenSubgroups] = useState<Record<string, boolean>>(() => {
     const allOpen: Record<string, boolean> = {};
@@ -151,6 +180,53 @@ export default function Sidebar() {
   }, []);
 
   useEffect(() => { loadUser(); }, []);
+
+  // Fetch the caller's own vendorId + their sub-vendors (if any) once the
+  // user is known -- skipped entirely for super admin/platform staff
+  // (who have no vendor identity of their own) and for anyone with zero
+  // sub-vendors (the fetch returns an empty list, no extra UI shown).
+  useEffect(() => {
+    if (!user || user.isSuperAdmin || user.isPlatformStaff) return;
+    let cancelled = false;
+    fetch('/api/vendor/type-context')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d?.vendorId) return;
+        setOwnVendorId(d.vendorId);
+        setActiveVendorId(d.vendorId);
+        return fetch(`/api/vendors/${d.vendorId}/sub-vendors`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((sd) => {
+            if (cancelled) return;
+            const list = Array.isArray(sd?.subVendors) ? sd.subVendors : Array.isArray(sd?.vendors) ? sd.vendors : [];
+            setSubVendors(list);
+          });
+      })
+      .catch(() => {});
+    return () => { cancelled = true };
+  }, [user?.id]);
+
+  async function switchVendor(vendorId: string) {
+    if (switching || vendorId === activeVendorId) { setBizDropdown(false); return }
+    setSwitching(true)
+    try {
+      const res = await fetch('/api/auth/switch-vendor', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendorId }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        invalidateAuthMeCache()
+        setActiveVendorId(vendorId)
+        setBizDropdown(false)
+        router.refresh()
+      } else {
+        toast.error(data.message || 'Failed to switch vendor')
+      }
+    } catch {
+      toast.error('Failed to connect to server')
+    } finally { setSwitching(false) }
+  }
 
   // Unread-count badge now lives on the floating NotificationBell icon
   // (AdminShell.tsx) instead of this sidebar nav item, since Notifications
@@ -365,6 +441,41 @@ export default function Sidebar() {
     (key === "admin-feedback" && user?.isSuperAdmin) ||
     (key === "masters-crm-options" && user?.isSuperAdmin);
 
+  const vendorWordmark =
+    !user?.isSuperAdmin && !user?.isPlatformStaff && activeBiz && !activeBiz.isPlatform
+      ? (activeBiz.brandName || activeBiz.name)
+      : "My Biz Flow";
+
+  // Super-admin-editable rename/regroup config for sidebar items (see
+  // console/admin/page-columns's "sidebar-nav" pageKey). Built defensively:
+  // every real item from ALL_NAV_ITEMS_WITH_GROUP always renders somewhere
+  // (its own structural default group/label) even if it's missing from the
+  // saved config or the config fails to load -- an override only ever
+  // relabels/reassigns, it can never make an item disappear except via its
+  // own explicit visible:false.
+  const sidebarNavConfig = useColumnConfig(
+    "sidebar-nav",
+    ALL_NAV_ITEMS_WITH_GROUP.map(({ item, defaultGroup }) => ({ key: item.key, label: item.label, group: defaultGroup }))
+  );
+  const navOverrideByKey = useMemo(() => {
+    const m = new Map<string, (typeof sidebarNavConfig)[number]>();
+    sidebarNavConfig.forEach((c) => m.set(c.key, c));
+    return m;
+  }, [sidebarNavConfig]);
+  const effectiveGroupItems = useMemo(() => {
+    const map: Record<string, { item: NavItem; order: number }[]> = {};
+    ALL_NAV_ITEMS_WITH_GROUP.forEach(({ item, defaultGroup }, idx) => {
+      const ov = navOverrideByKey.get(item.key);
+      if (ov?.visible === false) return;
+      const groupId = ov?.group && VALID_NAV_GROUP_IDS.has(ov.group) ? ov.group : defaultGroup;
+      const order = ov?.order ?? idx;
+      const label = ov?.label ?? item.label;
+      (map[groupId] ??= []).push({ item: { ...item, label }, order });
+    });
+    Object.values(map).forEach((arr) => arr.sort((a, b) => a.order - b.order));
+    return map;
+  }, [navOverrideByKey]);
+
   return (
     <>
       {/* Mobile toggle */}
@@ -399,12 +510,21 @@ export default function Sidebar() {
 
         {/* Brand -- a real mark (gradient monogram tile) instead of a bare
             wordmark + status dot, so the console reads as its own product
-            rather than a generic admin-dashboard template. */}
+            rather than a generic admin-dashboard template.
+            For a real vendor (not super admin/platform staff), the top
+            wordmark shows THEIR business name instead of the generic
+            platform name -- this is separate from the business-switcher
+            label below, which already correctly showed the vendor's name;
+            this wordmark was a second, unconditional "My Biz Flow" that
+            never reflected activeBiz at all. Super admin/platform staff
+            keep "My Biz Flow" since that context genuinely is the
+            platform, not a vendor; same for the brief window before
+            activeBiz has resolved. */}
         <div className="px-5 pt-5 pb-4 border-b border-border">
           {isCollapsed ? (
             <div className="flex justify-center">
               <div
-                title="My Biz Flow"
+                title={vendorWordmark}
                 className="h-8 w-8 rounded-control flex items-center justify-center text-[11px] font-bold text-accent-fg"
                 style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-hover))" }}
               >
@@ -420,7 +540,7 @@ export default function Sidebar() {
                 AN
               </div>
               <div className="min-w-0">
-                <h2 className="text-base font-bold tracking-tight text-ink leading-tight">My Biz Flow</h2>
+                <h2 className="text-base font-bold tracking-tight text-ink leading-tight truncate">{vendorWordmark}</h2>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse shrink-0" />
                   <p className="text-[10px] text-ink-3 truncate">
@@ -490,6 +610,38 @@ export default function Sidebar() {
                     </button>
                   );
                 })}
+                {/* A parent vendor Owner's own sub-vendors (VendorProfile.
+                    parentVendorId) -- listed in this same dropdown since
+                    they share the parent's businessId (no separate
+                    Business to switch to via the entries above); picking
+                    one calls switch-vendor instead of switch-business. */}
+                {subVendors.length > 0 && (
+                  <>
+                    <p className="px-3 pt-2 pb-1 text-[9px] uppercase tracking-[0.35em] text-ink-3 font-semibold bg-surface-2">Sub-Vendors</p>
+                    {ownVendorId && (
+                      <button
+                        onClick={() => ownVendorId && switchVendor(ownVendorId)}
+                        className="flex w-full items-center justify-between px-3 py-2.5 text-left hover:bg-surface-2 border-b border-border"
+                      >
+                        <span className="truncate text-xs text-ink font-medium">My Vendor Account</span>
+                        {activeVendorId === ownVendorId && <Check size={11} className="shrink-0 text-success ml-2" />}
+                      </button>
+                    )}
+                    {subVendors.map((sv) => (
+                      <button
+                        key={sv._id}
+                        onClick={() => switchVendor(sv._id)}
+                        className="flex w-full items-center justify-between px-3 py-2.5 text-left hover:bg-surface-2 border-b border-border last:border-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-xs text-ink font-medium">{sv.companyName || 'Sub-Vendor'}</p>
+                          {sv.vendorId && <p className="text-[10px] text-ink-3">{sv.vendorId}</p>}
+                        </div>
+                        {activeVendorId === sv._id && <Check size={11} className="shrink-0 text-success ml-2" />}
+                      </button>
+                    ))}
+                  </>
+                )}
                 {/* Right in the same dropdown that already lists this login's
                     SC businesses -- an SC account has no Owner/Manager staff
                     hierarchy, so "add another SC" belongs at the account-
@@ -545,10 +697,15 @@ export default function Sidebar() {
             direction. */}
         <nav className="flex-1 overflow-y-auto px-2 py-3 scrollbar-none overscroll-contain">
           {NAV_GROUPS.map((group) => {
-            // Collect all items from this group (flat or nested)
-            const allItems: NavItem[] = group.items
-              ? group.items
-              : (group.subgroups ?? []).flatMap((sg) => sg.items);
+            // Collect this group's EFFECTIVE items (after any admin
+            // rename/regroup override -- see effectiveGroupItems above),
+            // not the raw structural group.items/sg.items, since an item
+            // may have been reassigned INTO this group from elsewhere (or
+            // OUT of it) via the "sidebar-nav" admin config.
+            const flatGroupId = group.items ? `grp:${group.label}` : null;
+            const allItems: NavItem[] = flatGroupId
+              ? (effectiveGroupItems[flatGroupId] ?? []).map((x) => x.item)
+              : (group.subgroups ?? []).flatMap((sg) => (effectiveGroupItems[sg.key] ?? []).map((x) => x.item));
             // item.modes restricts a nav entry to specific operating modes
             // (see sidebar-nav.ts) -- e.g. Workorders/Fault Codes make no
             // sense for POS. No operatingMode set on the business yet (""
@@ -621,7 +778,7 @@ export default function Sidebar() {
                 {/* Flat items */}
                 {group.items && (
                   <div className="space-y-0.5">
-                    {applyModuleOrder(group.items.filter((item) => isVisible(item.key) && modeAllows(item)))
+                    {applyModuleOrder(allItems.filter((item) => isVisible(item.key) && modeAllows(item)))
                       .map((item) => renderItem(item))}
                   </div>
                 )}
@@ -637,7 +794,8 @@ export default function Sidebar() {
                   // separating there.
                   <div className={isCollapsed ? "space-y-2.5" : "space-y-0.5"}>
                     {group.subgroups.map((sg, sgIndex) => {
-                      const visibleSgItems = applyModuleOrder(sg.items.filter((i) => isVisible(i.key) && modeAllows(i)));
+                      const sgEffectiveItems = (effectiveGroupItems[sg.key] ?? []).map((x) => x.item);
+                      const visibleSgItems = applyModuleOrder(sgEffectiveItems.filter((i) => isVisible(i.key) && modeAllows(i)));
                       if (visibleSgItems.length === 0) return null;
                       const sgOpen = openSubgroups[sg.key] !== false;
 

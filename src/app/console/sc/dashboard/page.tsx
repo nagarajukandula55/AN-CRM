@@ -36,6 +36,21 @@ const DASHBOARD_CARD_ICONS: Record<string, typeof ClipboardList> = {
   closedThisMonth: CheckCircle2,
 }
 
+// Each stat card links into the jobsheets list pre-filtered to what it
+// represents, reusing that page's existing ?status=/?quick=/?range= params
+// (see console/sc/jobsheets/page.tsx). "Overdue" has no overdue concept on
+// that list page yet, so it falls back to the plain unfiltered list rather
+// than inventing new overdue-detection logic.
+const DASHBOARD_CARD_HREFS: Record<string, string> = {
+  workordersToday: '/console/sc/jobsheets?range=today',
+  workordersWeek: '/console/sc/jobsheets?range=week',
+  workordersMonth: '/console/sc/jobsheets?range=month',
+  workordersYear: '/console/sc/jobsheets?range=year',
+  openWorkorders: '/console/sc/jobsheets?quick=OPEN',
+  overdueWorkorders: '/console/sc/jobsheets',
+  closedThisMonth: '/console/sc/jobsheets?quick=CLOSED_THIS_MONTH',
+}
+
 interface Workorder {
   _id: string
   jobSheetNumber: string
@@ -162,11 +177,11 @@ export default function ScDashboard() {
       {/* Workorder volume by period -- created-count rollups, not revenue.
           Per explicit direction: this page is about workorder throughput,
           not money (that's Sales/Reports' job). */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid-cards-auto mb-6">
         {periodCards.filter(c => c.visible).map(({ key, label }) => {
           const Icon = DASHBOARD_CARD_ICONS[key] ?? ClipboardList
           return (
-            <Card key={key} className="p-6">
+            <Card key={key} className="p-6" href={DASHBOARD_CARD_HREFS[key]}>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-ink-3 text-sm">{label}</span>
                 <div className="w-8 h-8 rounded-control bg-surface-2 flex items-center justify-center">
@@ -179,11 +194,11 @@ export default function ScDashboard() {
         })}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      <div className="grid-cards-auto mb-6">
         {summaryCards.filter(c => c.visible).map(({ key, label }) => {
           const Icon = DASHBOARD_CARD_ICONS[key] ?? ClipboardList
           return (
-            <Card key={key} className="p-6">
+            <Card key={key} className="p-6" href={DASHBOARD_CARD_HREFS[key]}>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-ink-3 text-sm">{label}</span>
                 <div className="w-8 h-8 rounded-control bg-surface-2 flex items-center justify-center">

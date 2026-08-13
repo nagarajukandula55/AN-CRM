@@ -862,21 +862,45 @@ export default function AdminSettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="block text-xs font-medium text-ink-3 mb-1.5">Group / Team Chat ID</label>
-                  <input
-                    value={notifGroupChatId}
-                    onChange={(e) => setNotifGroupChatId(e.target.value)}
-                    placeholder="e.g. -1001234567890"
-                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink"
-                  />
+                  {isSuperAdmin ? (
+                    <input
+                      value={notifGroupChatId}
+                      onChange={(e) => setNotifGroupChatId(e.target.value)}
+                      placeholder="e.g. -1001234567890"
+                      className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink"
+                    />
+                  ) : (
+                    <>
+                      <div className="w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-ink-3">
+                        {notifGroupChatId || 'Not linked yet'}
+                      </div>
+                      <p className="text-xs text-ink-3 mt-1">
+                        Set automatically when you message the bot with /link VND#### from the group or your
+                        personal chat — message the bot again to relink.
+                      </p>
+                    </>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-ink-3 mb-1.5">Your Personal Chat ID</label>
-                  <input
-                    value={notifPersonalChatId}
-                    onChange={(e) => setNotifPersonalChatId(e.target.value)}
-                    placeholder="e.g. 987654321"
-                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink"
-                  />
+                  {isSuperAdmin ? (
+                    <input
+                      value={notifPersonalChatId}
+                      onChange={(e) => setNotifPersonalChatId(e.target.value)}
+                      placeholder="e.g. 987654321"
+                      className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink"
+                    />
+                  ) : (
+                    <>
+                      <div className="w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-ink-3">
+                        {notifPersonalChatId || 'Not linked yet'}
+                      </div>
+                      <p className="text-xs text-ink-3 mt-1">
+                        Set automatically when you message the bot with /link VND#### from the group or your
+                        personal chat — message the bot again to relink.
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 

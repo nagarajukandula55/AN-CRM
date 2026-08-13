@@ -7,11 +7,15 @@ export interface ColumnConfigItem {
   label: string;
   visible: boolean;
   order: number;
+  // Only meaningful for pageKey "sidebar-nav" -- which group/subgroup key
+  // this item is reassigned to. Undefined/unused for table & card pageKeys.
+  group?: string;
 }
 
 export interface ColumnConfigDefault {
   key: string;
   label: string;
+  group?: string;
 }
 
 /**
@@ -42,6 +46,7 @@ export function useColumnConfig(pageKey: string, defaultColumns: ColumnConfigDef
               label: c.label ?? c.defaultLabel,
               visible: c.visible !== false,
               order: c.order ?? 0,
+              group: c.group,
             }))
           );
         } else {
@@ -65,6 +70,7 @@ export function useColumnConfig(pageKey: string, defaultColumns: ColumnConfigDef
       label: override?.label ?? def.label,
       visible: override?.visible ?? true,
       order: override?.order ?? i,
+      group: override?.group ?? def.group,
     };
   });
 

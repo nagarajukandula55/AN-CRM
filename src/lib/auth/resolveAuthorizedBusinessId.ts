@@ -1,6 +1,8 @@
 import { resolveVendorContext } from "./vendorContext";
 import BusinessMember from "@/models/BusinessMember";
+import VendorProfile from "@/models/VendorProfile";
 import { Types } from "mongoose";
+import { headers } from "next/headers";
 
 /**
  * SECURITY: closes a cross-tenant data leak in every route that scoped a
@@ -109,6 +111,27 @@ export async function resolveAuthorizedVendorScope(
   }
 
   const ctx = await resolveVendorContext(userId);
-  const vendorId = ctx?.vendor?._id ? String(ctx.vendor._id) : null;
+  const ownVendorId = ctx?.vendor?._id ? String(ctx.vendor._id) : null;
+
+  // A parent vendor Owner who switched into one of their own sub-vendors
+  // (api/auth/switch-vendor) carries an x-active-vendor-id header set from
+  // the JWT's activeVendorId claim (see middleware.ts) -- re-validated
+  // here on every request (never just trusted from the claim/header) so a
+  // stale or tampered header can never scope a request to a vendor that
+  // isn't genuinely a sub-vendor of the caller.
+  let vendorId = ownVendorId;
+  if (ownVendorId) {
+    const h = await headers();
+    const activeVendorIdHeader = h.get("x-active-vendor-id");
+    if (activeVendorIdHeader && activeVendorIdHeader !== ownVendorId) {
+      const target = await VendorProfile.findOne({ _id: activeVendorIdHeader, isDeleted: { $ne: true } })
+        .select("parentVendorId")
+        .lean<any>();
+      if (target && String(target.parentVendorId || "") === ownVendorId) {
+        vendorId = activeVendorIdHeader;
+      }
+    }
+  }
+
   return { businessId, vendorId };
 }
