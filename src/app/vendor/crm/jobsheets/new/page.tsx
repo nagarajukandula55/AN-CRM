@@ -49,6 +49,12 @@ export default function NewVendorJobSheetPage() {
   const { data: requestTypesRes } = useSWR(businessId ? `/api/crm-option-lists?listType=REQUEST_TYPE&businessId=${businessId}` : null)
   const requestTypes: CrmOption[] = requestTypesRes?.options || []
 
+  const { data: warrantyStatusesRes } = useSWR(businessId ? `/api/crm-option-lists?listType=WARRANTY_STATUS&businessId=${businessId}` : null)
+  const warrantyStatuses: CrmOption[] = warrantyStatusesRes?.options || []
+
+  const { data: deviceAppearancesRes } = useSWR(businessId ? `/api/crm-option-lists?listType=DEVICE_APPEARANCE&businessId=${businessId}` : null)
+  const deviceAppearances: CrmOption[] = deviceAppearancesRes?.options || []
+
   const catalogKey = businessId && form.deviceCategory ? true : false
   const { data: brandsRes } = useSWR(catalogKey ? `/api/brands?businessId=${businessId}&category=${form.deviceCategory}` : null)
   const brands: Brand[] = brandsRes ? (brandsRes.brands || brandsRes.data || []) : []
@@ -201,18 +207,14 @@ export default function NewVendorJobSheetPage() {
                 <label className={labelCls}>Warranty Status</label>
                 <select value={form.warrantyStatus} onChange={e => setForm(p => ({ ...p, warrantyStatus: e.target.value }))} className={inputCls}>
                   <option value="">—</option>
-                  <option value="IW">In Warranty (IW)</option>
-                  <option value="OOW">Out of Warranty (OOW)</option>
+                  {warrantyStatuses.map(o => <option key={o._id} value={o.code}>{o.label}</option>)}
                 </select>
               </div>
               <div>
                 <label className={labelCls}>Device Appearance</label>
                 <select value={form.deviceAppearance} onChange={e => setForm(p => ({ ...p, deviceAppearance: e.target.value }))} className={inputCls}>
                   <option value="">—</option>
-                  <option value="GOOD">Good</option>
-                  <option value="USED">Used</option>
-                  <option value="DENTS">Dents</option>
-                  <option value="BROKEN">Broken</option>
+                  {deviceAppearances.map(o => <option key={o._id} value={o.code}>{o.label}</option>)}
                 </select>
               </div>
               <div>

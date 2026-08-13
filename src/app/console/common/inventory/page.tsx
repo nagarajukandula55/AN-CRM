@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingPanel } from '@/components/ui/Spinner'
 import { Field, Input } from '@/components/ui/Input'
+import { useColumnConfig } from '@/lib/hooks/useColumnConfig'
 
 interface InventoryItem {
   _id: string
@@ -50,8 +51,21 @@ function getStockStatus(item: InventoryItem): { label: string; tone: Tone } {
   return { label: 'In Stock', tone: 'success' }
 }
 
+// Default column set for this page's pageKey ("inventory") -- super admin
+// can toggle visibility/order/labels via Admin > Page Columns.
+const INVENTORY_DEFAULT_COLUMNS = [
+  { key: 'name', label: 'Name' },
+  { key: 'sku', label: 'SKU' },
+  { key: 'category', label: 'Category' },
+  { key: 'quantity', label: 'Qty' },
+  { key: 'unit', label: 'Unit' },
+  { key: 'reorderLevel', label: 'Reorder' },
+  { key: 'status', label: 'Status' },
+]
+
 export default function InventoryPage() {
   const router = useRouter()
+  const columns = useColumnConfig('inventory', INVENTORY_DEFAULT_COLUMNS).filter((c) => c.visible)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('ALL')
 
@@ -232,46 +246,67 @@ export default function InventoryPage() {
           <table className="w-full text-sm min-w-[720px]">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left px-6 py-3 text-ink-3 font-medium">Name</th>
-                <th className="text-left px-6 py-3 text-ink-3 font-medium">SKU</th>
-                <th className="text-left px-6 py-3 text-ink-3 font-medium">Category</th>
-                <th className="text-right px-6 py-3 text-ink-3 font-medium">Qty</th>
-                <th className="text-left px-6 py-3 text-ink-3 font-medium">Unit</th>
-                <th className="text-right px-6 py-3 text-ink-3 font-medium">Reorder</th>
-                <th className="text-center px-6 py-3 text-ink-3 font-medium">Status</th>
+                {columns.map((col) => (
+                  <th
+                    key={col.key}
+                    className={`px-6 py-3 text-ink-3 font-medium ${
+                      col.key === 'quantity' || col.key === 'reorderLevel' ? 'text-right' : col.key === 'status' ? 'text-center' : 'text-left'
+                    }`}
+                  >
+                    {col.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.length === 0 ? (
-                <tr><td colSpan={7}><EmptyState kind="empty" title="No items found" /></td></tr>
+                <tr><td colSpan={columns.length}><EmptyState kind="empty" title="No items found" /></td></tr>
               ) : (
                 filtered.map((item) => {
                   const { label, tone } = getStockStatus(item)
+                  const cellFor = (key: string) => {
+                    switch (key) {
+                      case 'name':
+                        return <td key={key} className="px-6 py-3 font-medium text-ink">{item.name}</td>
+                      case 'sku':
+                        return <td key={key} className="px-6 py-3 text-ink-3 tabular text-xs">{item.sku ?? '—'}</td>
+                      case 'category':
+                        return <td key={key} className="px-6 py-3 text-ink-3">{item.category ?? '—'}</td>
+                      case 'quantity':
+                        return (
+                          <td key={key} className="px-6 py-3 text-right tabular text-ink">
+                            <button
+                              onClick={() => {
+                                setAdjustModal(item)
+                                setAdjustQty(0)
+                                setAdjustNote('')
+                                setAdjustError(null)
+                              }}
+                              className="flex items-center gap-1.5 justify-end w-full hover:text-accent transition-colors"
+                              title="Adjust stock"
+                            >
+                              {item.quantity ?? 0}
+                              <ArrowUpDown className="w-3 h-3 text-ink-3" />
+                            </button>
+                          </td>
+                        )
+                      case 'unit':
+                        return <td key={key} className="px-6 py-3 text-ink-3">{item.unit ?? '—'}</td>
+                      case 'reorderLevel':
+                        return <td key={key} className="px-6 py-3 text-right tabular text-ink-3">{item.reorderLevel ?? 0}</td>
+                      case 'status':
+                        return (
+                          <td key={key} className="px-6 py-3 text-center">
+                            <Badge tone={tone}>{label}</Badge>
+                          </td>
+                        )
+                      default:
+                        return <td key={key} className="px-6 py-3">—</td>
+                    }
+                  }
                   return (
                     <tr key={item._id} className="hover:bg-surface-2 transition-colors">
-                      <td className="px-6 py-3 font-medium text-ink">{item.name}</td>
-                      <td className="px-6 py-3 text-ink-3 tabular text-xs">{item.sku ?? '—'}</td>
-                      <td className="px-6 py-3 text-ink-3">{item.category ?? '—'}</td>
-                      <td className="px-6 py-3 text-right tabular text-ink">
-                        <button
-                          onClick={() => {
-                            setAdjustModal(item)
-                            setAdjustQty(0)
-                            setAdjustNote('')
-                            setAdjustError(null)
-                          }}
-                          className="flex items-center gap-1.5 justify-end w-full hover:text-accent transition-colors"
-                          title="Adjust stock"
-                        >
-                          {item.quantity ?? 0}
-                          <ArrowUpDown className="w-3 h-3 text-ink-3" />
-                        </button>
-                      </td>
-                      <td className="px-6 py-3 text-ink-3">{item.unit ?? '—'}</td>
-                      <td className="px-6 py-3 text-right tabular text-ink-3">{item.reorderLevel ?? 0}</td>
-                      <td className="px-6 py-3 text-center">
-                        <Badge tone={tone}>{label}</Badge>
-                      </td>
+                      {columns.map((col) => cellFor(col.key))}
                     </tr>
                   )
                 })

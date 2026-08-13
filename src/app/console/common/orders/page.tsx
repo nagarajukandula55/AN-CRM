@@ -234,7 +234,7 @@ export default function OrdersPage() {
                       <td className="px-6 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Link
-                            href={`/console/orders/${ord._id}/print`}
+                            href={`/console/common/orders/${ord._id}/print`}
                             target="_blank"
                             title="Print"
                             className="inline-flex items-center justify-center w-8 h-8 rounded-control text-ink-3 hover:text-ink hover:bg-surface-2"

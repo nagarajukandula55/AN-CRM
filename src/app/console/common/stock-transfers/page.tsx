@@ -587,7 +587,7 @@ export default function StockTransfersPage() {
                         View
                       </button>
                       <Link
-                        href={`/console/stock-transfers/${transfer._id}/print`}
+                        href={`/console/common/stock-transfers/${transfer._id}/print`}
                         target="_blank"
                         className="px-2.5 py-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:text-gray-900 hover:border-gray-400 flex items-center gap-1"
                       >

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { verifyToken, signToken } from "@/lib/auth/jwt";
 import { connectDB } from "@/lib/mongodb";
 import BusinessMember from "@/models/BusinessMember";
-import Business from "@/models/Business";
 import { logAction, actorFromPayload } from "@/lib/audit/logAction";
 import { resolveCentralRoleForBusiness } from "@/lib/auth/resolveCentralRole";
 
@@ -11,8 +10,19 @@ import { resolveCentralRoleForBusiness } from "@/lib/auth/resolveCentralRole";
  * Body: { businessId: string }
  *
  * Re-issues the JWT with a new activeBusinessId.
- * - Super admins can switch to ANY business in the system.
- * - Regular users can only switch to their assigned (ACTIVE) businesses.
+ *
+ * SECURITY: super admin/platform staff used to be able to switch into ANY
+ * business with no membership check at all -- since every subsequent
+ * request scopes off the resulting activeBusinessId exactly like a real
+ * vendor session (x-active-business-id header, middleware.ts), this let a
+ * super admin operate the normal vendor console UI/API as that vendor --
+ * create/edit/delete their job sheets, stock, sales, etc. Per explicit
+ * direction, super admin's role is platform administration (billing,
+ * Telegram config, cross-vendor READ visibility for admin/support
+ * purposes via resolveAuthorizedBusinessId/resolveAuthorizedVendorScope,
+ * which are untouched by this), not acting as a vendor inside their own
+ * operational data. Now requires a real ACTIVE BusinessMember row for
+ * EVERYONE, super admin included -- same check, no special case.
  */
 export async function POST(req: Request) {
   try {
@@ -38,32 +48,24 @@ export async function POST(req: Request) {
     await connectDB();
 
     /* ── Authorise the switch ──────────────────────────────────────── */
-    if (payload.isSuperAdmin || payload.isPlatformStaff) {
-      // Super admin / AN Group platform staff can switch to any active business
-      const biz = await (Business as any).findById(businessId).select("_id name").lean();
-      if (!biz) {
-        return NextResponse.json({ success: false, message: "Business not found" }, { status: 404 });
-      }
-    } else {
-      // Regular user — must have an ACTIVE membership
-      const membership = await BusinessMember.findOne({
-        userId: payload.id,
-        businessId,
-        status: "ACTIVE",
-      }).lean();
+    // Everyone (including super admin/platform staff) must have a real
+    // ACTIVE BusinessMember row for the target business -- no bypass.
+    const membership = await BusinessMember.findOne({
+      userId: payload.id,
+      businessId,
+      status: "ACTIVE",
+    }).lean();
 
-      if (!membership) {
-        return NextResponse.json(
-          { success: false, message: "You do not have access to this business" },
-          { status: 403 }
-        );
-      }
+    if (!membership) {
+      return NextResponse.json(
+        { success: false, message: "You do not have access to this business" },
+        { status: 403 }
+      );
     }
 
     /* ── Re-issue token with new activeBusinessId ──────────────────── */
-    // Build updated businessIds for super admin (they don't have a fixed list)
     let businessIds = payload.businessIds;
-    if ((payload.isSuperAdmin || payload.isPlatformStaff) && !businessIds.includes(businessId)) {
+    if (!businessIds.includes(businessId)) {
       businessIds = [...businessIds, businessId];
     }
 

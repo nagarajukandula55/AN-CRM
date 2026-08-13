@@ -31,6 +31,12 @@ interface VendorSubscriptionRow {
   business: { _id: string; name?: string } | null
 }
 
+interface VendorOption {
+  _id: string
+  companyName?: string
+  email?: string
+}
+
 function toDateInputValue(d?: string) {
   if (!d) return ''
   return new Date(d).toISOString().slice(0, 10)
@@ -53,6 +59,16 @@ export default function VendorSubscriptionsPage() {
   const [expiryDate, setExpiryDate] = useState('')
   const [status, setStatus] = useState('')
   const [saving, setSaving] = useState(false)
+  const [cancelling, setCancelling] = useState<string | null>(null)
+
+  const [creating, setCreating] = useState(false)
+  const [newVendorId, setNewVendorId] = useState('')
+  const [newStatus, setNewStatus] = useState('TRIAL')
+  const [newTrialEndsAt, setNewTrialEndsAt] = useState('')
+  const [newExpiryDate, setNewExpiryDate] = useState('')
+  const [createSaving, setCreateSaving] = useState(false)
+  const { data: vendorsData } = useSWR(creating ? '/api/vendors?businessId=ALL&limit=1000' : null)
+  const vendorOptions: VendorOption[] = vendorsData?.success ? vendorsData.vendors || [] : []
 
   function openEdit(row: VendorSubscriptionRow) {
     setEditing(row)
@@ -84,11 +100,60 @@ export default function VendorSubscriptionsPage() {
     }
   }
 
+  async function cancelSubscription(row: VendorSubscriptionRow) {
+    if (!confirm(`Cancel the subscription for ${row.vendor?.companyName || 'this vendor'}?`)) return
+    setCancelling(row._id)
+    try {
+      const res = await fetch(`/api/vendor-subscriptions/${row._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'CANCELLED' }),
+      })
+      const json = await res.json()
+      if (json.success) await mutate()
+    } finally {
+      setCancelling(null)
+    }
+  }
+
+  function openCreate() {
+    setNewVendorId('')
+    setNewStatus('TRIAL')
+    setNewTrialEndsAt('')
+    setNewExpiryDate('')
+    setCreating(true)
+  }
+
+  async function createSubscription() {
+    if (!newVendorId) return
+    setCreateSaving(true)
+    try {
+      const res = await fetch('/api/vendor-subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vendorId: newVendorId,
+          status: newStatus,
+          trialEndsAt: newTrialEndsAt || null,
+          expiryDate: newExpiryDate || null,
+        }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        await mutate()
+        setCreating(false)
+      }
+    } finally {
+      setCreateSaving(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-bg text-ink p-6">
       <PageHeader
         title="Vendor Subscriptions"
         description="Trial and paid subscription status for every vendor -- extend or edit trial/expiry dates here."
+        actions={<Button onClick={openCreate}>New Subscription</Button>}
       />
 
       {isLoading ? (
@@ -125,7 +190,19 @@ export default function VendorSubscriptionsPage() {
                     <td className="px-4 py-3 text-ink-2 tabular">{row.trialEndsAt ? new Date(row.trialEndsAt).toLocaleDateString() : '—'}</td>
                     <td className="px-4 py-3 text-ink-2 tabular">{row.expiryDate ? new Date(row.expiryDate).toLocaleDateString() : '—'}</td>
                     <td className="px-4 py-3 text-right">
-                      <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>Edit dates</Button>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>Edit dates</Button>
+                        {row.status !== 'CANCELLED' && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            loading={cancelling === row._id}
+                            onClick={() => cancelSubscription(row)}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -164,6 +241,49 @@ export default function VendorSubscriptionsPage() {
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={() => setEditing(null)} disabled={saving}>Cancel</Button>
               <Button onClick={save} loading={saving}>Save</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {creating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="bg-surface border border-border rounded-card shadow-card-lg w-full max-w-md p-6 space-y-4">
+            <div>
+              <h2 className="h-section">New vendor subscription</h2>
+              <p className="text-sm text-ink-3 mt-1">Create a subscription row for a vendor.</p>
+            </div>
+
+            <Field label="Vendor">
+              <Select value={newVendorId} onChange={(e) => setNewVendorId(e.target.value)}>
+                <option value="">Select vendor…</option>
+                {vendorOptions.map((v) => (
+                  <option key={v._id} value={v._id}>{v.companyName || v.email || v._id}</option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Status">
+              <Select value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
+                <option value="TRIAL">Trial</option>
+                <option value="PENDING_PAYMENT">Pending Payment</option>
+                <option value="ACTIVE">Active</option>
+                <option value="EXPIRED">Expired</option>
+                <option value="CANCELLED">Cancelled</option>
+              </Select>
+            </Field>
+
+            <Field label="Trial ends at">
+              <Input type="date" value={newTrialEndsAt} onChange={(e) => setNewTrialEndsAt(e.target.value)} />
+            </Field>
+
+            <Field label="Expiry date">
+              <Input type="date" value={newExpiryDate} onChange={(e) => setNewExpiryDate(e.target.value)} />
+            </Field>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={() => setCreating(false)} disabled={createSaving}>Cancel</Button>
+              <Button onClick={createSubscription} loading={createSaving} disabled={!newVendorId}>Create</Button>
             </div>
           </div>
         </div>

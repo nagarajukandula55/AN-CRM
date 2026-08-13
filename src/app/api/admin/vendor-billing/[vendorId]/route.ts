@@ -80,3 +80,26 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ vend
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }
+
+// DELETE /api/admin/vendor-billing/:vendorId — remove this vendor's saved
+// module plan entirely (VendorSubscription doc), resetting them back to
+// NOT_SET. Does not touch past invoices -- billing history is kept, only
+// the current pricing plan/paid-through period is cleared.
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ vendorId: string }> }) {
+  try {
+    const session = await requireSuperAdmin();
+    if (!session) return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 403 });
+
+    const { vendorId } = await params;
+    await connectDB();
+
+    const result = await VendorSubscription.deleteOne({ vendorId });
+    if (!result.deletedCount) {
+      return NextResponse.json({ success: false, message: "No plan found for this vendor" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+  }
+}

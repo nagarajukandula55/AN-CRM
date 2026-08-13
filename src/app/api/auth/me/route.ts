@@ -82,15 +82,40 @@ export async function GET(req: Request) {
     let businesses: any[] = [];
 
     if (isPlatformStaff) {
-      // Super admin or AN Group platform staff: see every active business
-      // (per-page/module permission checks still gate what data within
-      // each business they can actually view/edit). Ensures AN Group's own
-      // real Business record exists so it's always present in this list,
-      // not just after some other feature happens to create it first.
+      // Super admin / AN Group platform staff used to see EVERY active
+      // business here, which fed the sidebar's business-switcher dropdown
+      // and let them "switch into" any vendor's business and operate its
+      // console as if logged in as that vendor -- switch-business/route.ts
+      // now rejects that (platform administration only, no acting-as-a-
+      // vendor), so offering those businesses in the switcher would just
+      // be a dead-end dropdown entry that 403s on click. Show only the AN
+      // Group platform business (always present -- see
+      // getOrCreateANGroupBusinessId below) plus any business they hold a
+      // REAL ACTIVE BusinessMember row for, same as a regular user -- a
+      // super admin who is ALSO a genuine staff member of some business
+      // keeps that legitimate switch working.
       await getOrCreateANGroupBusinessId();
-      businesses = await (Business as any).find({ isActive: true })
+      const anGroupBiz = await (Business as any).find({ isActive: true, isPlatform: true })
         .select("_id name brandName businessCode type isPlatform operatingMode")
         .lean();
+
+      const memberships = await BusinessMember.find({ userId: user._id, status: "ACTIVE" })
+        .select("businessId")
+        .lean() as any[];
+      const memberBusinessIds = memberships.map((m) => m.businessId);
+      const memberBiz = memberBusinessIds.length
+        ? await (Business as any).find({ _id: { $in: memberBusinessIds }, isActive: true })
+            .select("_id name brandName businessCode type isPlatform operatingMode")
+            .lean()
+        : [];
+
+      const seen = new Set<string>();
+      businesses = [...anGroupBiz, ...memberBiz].filter((b: any) => {
+        const id = String(b._id);
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
     } else {
       // Regular users: load via BusinessMember
       const memberships = await BusinessMember.find({

@@ -25,6 +25,16 @@ const DEFAULTS: Record<CrmOptionListType, { code: string; label: string }[]> = {
     { code: "REPAIR", label: "Repair" },
     { code: "INSTALLATION", label: "Installation" },
   ],
+  WARRANTY_STATUS: [
+    { code: "IW", label: "In Warranty" },
+    { code: "OOW", label: "Out of Warranty" },
+  ],
+  DEVICE_APPEARANCE: [
+    { code: "GOOD", label: "Good" },
+    { code: "USED", label: "Used" },
+    { code: "DENTS", label: "Dents/Scratches" },
+    { code: "BROKEN", label: "Broken/Damaged" },
+  ],
 };
 
 async function ensureSeeded(listType: CrmOptionListType) {
@@ -46,6 +56,10 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const listType = searchParams.get("listType") as CrmOptionListType | null;
     const businessId = searchParams.get("businessId");
+    // Super-admin-only escape hatch so the Option Lists admin page can see
+    // (and re-activate) rows it previously deactivated -- every other
+    // consumer (job sheet dropdowns) keeps getting only active rows.
+    const includeInactive = searchParams.get("all") === "true" && h.get("x-is-super-admin") === "true";
 
     if (!listType || !DEFAULTS[listType]) {
       return NextResponse.json({ success: false, error: "A valid listType is required" }, { status: 400 });
@@ -54,7 +68,7 @@ export async function GET(req: NextRequest) {
     await connectDB();
     await ensureSeeded(listType);
 
-    const query: Record<string, unknown> = { listType, isActive: true };
+    const query: Record<string, unknown> = includeInactive ? { listType } : { listType, isActive: true };
     if (businessId && Types.ObjectId.isValid(businessId)) {
       query.$or = [{ businessId: null }, { businessId }];
     } else {

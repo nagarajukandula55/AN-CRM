@@ -9,7 +9,7 @@
 import mongoose, { Schema, Model, Document, Types } from "mongoose";
 import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
-export type CrmOptionListType = "APPOINTMENT_TYPE" | "REQUEST_TYPE";
+export type CrmOptionListType = "APPOINTMENT_TYPE" | "REQUEST_TYPE" | "WARRANTY_STATUS" | "DEVICE_APPEARANCE";
 
 export interface ICrmOptionList extends Document {
   businessId?: Types.ObjectId | null;
@@ -25,7 +25,7 @@ export interface ICrmOptionList extends Document {
 const CrmOptionListSchema = new Schema<ICrmOptionList>(
   {
     businessId: { type: Schema.Types.ObjectId, ref: "Business", default: null, index: true },
-    listType: { type: String, enum: ["APPOINTMENT_TYPE", "REQUEST_TYPE"], required: true },
+    listType: { type: String, enum: ["APPOINTMENT_TYPE", "REQUEST_TYPE", "WARRANTY_STATUS", "DEVICE_APPEARANCE"], required: true },
     code: { type: String, required: true, trim: true, uppercase: true },
     label: { type: String, required: true, trim: true },
     sortOrder: { type: Number, default: 0 },

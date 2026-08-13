@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Plus, X, Search, Download, Upload, Users, Loader2 } from 'lucide-react'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
+import { useColumnConfig } from '@/lib/hooks/useColumnConfig'
 
 interface Customer {
   _id: string
@@ -18,6 +19,18 @@ interface Customer {
   imeiOrSerialNumbers?: string[]
   createdAt: string
 }
+
+// Default column set for this page's pageKey ("customers") -- super admin
+// can toggle visibility/order/labels via Admin > Page Columns.
+const CUSTOMERS_DEFAULT_COLUMNS = [
+  { key: 'name', label: 'Name' },
+  { key: 'contact', label: 'Contact' },
+  { key: 'gstin', label: 'GSTIN' },
+  { key: 'location', label: 'Location' },
+  { key: 'imeiOrSerial', label: 'IMEI/Serial' },
+  { key: 'source', label: 'Source' },
+  { key: 'date', label: 'Date' },
+]
 
 function downloadTemplate() {
   const rows = [
@@ -36,6 +49,7 @@ function downloadTemplate() {
 export default function CustomersPage() {
   const router = useRouter()
   const { businessId } = useActiveBusinessId()
+  const columns = useColumnConfig('customers', CUSTOMERS_DEFAULT_COLUMNS).filter((c) => c.visible)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -180,44 +194,60 @@ export default function CustomersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left px-6 py-3 text-gray-400 font-medium">Name</th>
-                <th className="text-left px-6 py-3 text-gray-400 font-medium">Contact</th>
-                <th className="text-left px-6 py-3 text-gray-400 font-medium">GSTIN</th>
-                <th className="text-left px-6 py-3 text-gray-400 font-medium">Location</th>
-                <th className="text-left px-6 py-3 text-gray-400 font-medium">IMEI/Serial</th>
-                <th className="text-left px-6 py-3 text-gray-400 font-medium">Source</th>
-                <th className="text-left px-6 py-3 text-gray-400 font-medium">Date</th>
+                {columns.map((col) => (
+                  <th key={col.key} className="text-left px-6 py-3 text-gray-400 font-medium">{col.label}</th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={7} className="px-6 py-10 text-center text-gray-400">Loading…</td></tr>
+                <tr><td colSpan={columns.length} className="px-6 py-10 text-center text-gray-400">Loading…</td></tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-10 text-center text-gray-400">
+                  <td colSpan={columns.length} className="px-6 py-10 text-center text-gray-400">
                     <Users className="w-6 h-6 mx-auto mb-2 text-gray-300" />
                     No customers found
                   </td>
                 </tr>
               ) : (
-                customers.map((c) => (
-                  <tr key={c._id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-3 font-medium text-gray-900">{c.name}</td>
-                    <td className="px-6 py-3 text-gray-500">
-                      <p>{c.phone}</p>
-                      {c.email && <p className="text-xs text-gray-400">{c.email}</p>}
-                    </td>
-                    <td className="px-6 py-3 text-gray-500 text-xs">{c.gstin || '—'}</td>
-                    <td className="px-6 py-3 text-gray-500">{[c.city, c.state].filter(Boolean).join(', ') || '—'}</td>
-                    <td className="px-6 py-3 text-gray-400 text-xs">
-                      {Array.isArray(c.imeiOrSerialNumbers) && c.imeiOrSerialNumbers.length > 0
-                        ? c.imeiOrSerialNumbers.join(', ')
-                        : '—'}
-                    </td>
-                    <td className="px-6 py-3 text-gray-400 text-xs">{c.source || '—'}</td>
-                    <td className="px-6 py-3 text-gray-400">{new Date(c.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                  </tr>
-                ))
+                customers.map((c) => {
+                  const cellFor = (key: string) => {
+                    switch (key) {
+                      case 'name':
+                        return <td key={key} className="px-6 py-3 font-medium text-gray-900">{c.name}</td>
+                      case 'contact':
+                        return (
+                          <td key={key} className="px-6 py-3 text-gray-500">
+                            <p>{c.phone}</p>
+                            {c.email && <p className="text-xs text-gray-400">{c.email}</p>}
+                          </td>
+                        )
+                      case 'gstin':
+                        return <td key={key} className="px-6 py-3 text-gray-500 text-xs">{c.gstin || '—'}</td>
+                      case 'location':
+                        return <td key={key} className="px-6 py-3 text-gray-500">{[c.city, c.state].filter(Boolean).join(', ') || '—'}</td>
+                      case 'imeiOrSerial':
+                        return (
+                          <td key={key} className="px-6 py-3 text-gray-400 text-xs">
+                            {Array.isArray(c.imeiOrSerialNumbers) && c.imeiOrSerialNumbers.length > 0
+                              ? c.imeiOrSerialNumbers.join(', ')
+                              : '—'}
+                          </td>
+                        )
+                      case 'source':
+                        return <td key={key} className="px-6 py-3 text-gray-400 text-xs">{c.source || '—'}</td>
+                      case 'date':
+                        return <td key={key} className="px-6 py-3 text-gray-400">{new Date(c.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                      default:
+                        return <td key={key} className="px-6 py-3">—</td>
+                    }
+                  }
+                  return (
+                    <tr key={c._id} className="hover:bg-gray-50 transition">
+                      {columns.map((col) => cellFor(col.key))}
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>

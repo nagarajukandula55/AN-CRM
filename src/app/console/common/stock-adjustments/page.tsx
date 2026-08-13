@@ -506,7 +506,7 @@ export default function StockAdjustmentsPage() {
                   <td className="px-4 py-3">{statusBadge(adj.status)}</td>
                   <td className="px-4 py-3">
                     <Link
-                      href={`/console/stock-adjustments/${adj._id}/print`}
+                      href={`/console/common/stock-adjustments/${adj._id}/print`}
                       target="_blank"
                       className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
                       title="Print"

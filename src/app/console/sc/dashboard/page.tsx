@@ -19,6 +19,22 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { LoadingPanel } from '@/components/ui/Spinner'
+import { useColumnConfig } from '@/lib/hooks/useColumnConfig'
+
+// Icon lookup for the fixed stat cards below -- useColumnConfig only
+// carries key/label/visible/order (it's shared with table-column config,
+// which has no icon concept), so the icon stays keyed locally by the same
+// card key the super-admin config (pageKey "sc-dashboard-cards", see
+// console/admin/page-columns) renames/hides/reorders.
+const DASHBOARD_CARD_ICONS: Record<string, typeof ClipboardList> = {
+  workordersToday: CalendarClock,
+  workordersWeek: CalendarDays,
+  workordersMonth: Calendar,
+  workordersYear: CalendarRange,
+  openWorkorders: ClipboardList,
+  overdueWorkorders: AlertCircle,
+  closedThisMonth: CheckCircle2,
+}
 
 interface Workorder {
   _id: string
@@ -96,6 +112,31 @@ export default function ScDashboard() {
 
   const loading = !gateChecked || loadingWorkorders || loadingStats
 
+  // Super-admin-configurable dashboard card set (rename/hide/reorder) --
+  // same mechanism as the table column config (console/admin/page-columns),
+  // just a different pageKey namespace. Card values are computed here since
+  // they depend on live workorder data the config itself doesn't carry.
+  const dashboardCardValues: Record<string, string> = {
+    workordersToday: String(workordersToday),
+    workordersWeek: String(workordersThisWeek),
+    workordersMonth: String(workordersThisMonth),
+    workordersYear: String(workordersThisYear),
+    openWorkorders: String(openWorkorders),
+    overdueWorkorders: String(overdueWorkorders),
+    closedThisMonth: String(closedThisMonth),
+  }
+  const periodCards = useColumnConfig('sc-dashboard-cards-period', [
+    { key: 'workordersToday', label: 'Workorders Today' },
+    { key: 'workordersWeek', label: 'Workorders This Week' },
+    { key: 'workordersMonth', label: 'Workorders This Month' },
+    { key: 'workordersYear', label: 'Workorders This Year' },
+  ])
+  const summaryCards = useColumnConfig('sc-dashboard-cards-summary', [
+    { key: 'openWorkorders', label: 'Open Workorders' },
+    { key: 'overdueWorkorders', label: 'Overdue (7d+)' },
+    { key: 'closedThisMonth', label: 'Closed This Month' },
+  ])
+
   if (loading) {
     return <LoadingPanel label="Loading CRM overview…" />
   }
@@ -122,40 +163,37 @@ export default function ScDashboard() {
           Per explicit direction: this page is about workorder throughput,
           not money (that's Sales/Reports' job). */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {[
-          { icon: CalendarClock, label: 'Workorders Today', value: String(workordersToday) },
-          { icon: CalendarDays, label: 'Workorders This Week', value: String(workordersThisWeek) },
-          { icon: Calendar, label: 'Workorders This Month', value: String(workordersThisMonth) },
-          { icon: CalendarRange, label: 'Workorders This Year', value: String(workordersThisYear) },
-        ].map(({ icon: Icon, label, value }) => (
-          <Card key={label} className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-ink-3 text-sm">{label}</span>
-              <div className="w-8 h-8 rounded-control bg-surface-2 flex items-center justify-center">
-                <Icon className="w-4 h-4 text-ink-2" />
+        {periodCards.filter(c => c.visible).map(({ key, label }) => {
+          const Icon = DASHBOARD_CARD_ICONS[key] ?? ClipboardList
+          return (
+            <Card key={key} className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-ink-3 text-sm">{label}</span>
+                <div className="w-8 h-8 rounded-control bg-surface-2 flex items-center justify-center">
+                  <Icon className="w-4 h-4 text-ink-2" />
+                </div>
               </div>
-            </div>
-            <p className="text-2xl font-semibold text-ink tabular">{value}</p>
-          </Card>
-        ))}
+              <p className="text-2xl font-semibold text-ink tabular">{dashboardCardValues[key] ?? '0'}</p>
+            </Card>
+          )
+        })}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {[
-          { icon: ClipboardList, label: 'Open Workorders', value: String(openWorkorders) },
-          { icon: AlertCircle, label: 'Overdue (7d+)', value: String(overdueWorkorders) },
-          { icon: CheckCircle2, label: 'Closed This Month', value: String(closedThisMonth) },
-        ].map(({ icon: Icon, label, value }) => (
-          <Card key={label} className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-ink-3 text-sm">{label}</span>
-              <div className="w-8 h-8 rounded-control bg-surface-2 flex items-center justify-center">
-                <Icon className="w-4 h-4 text-ink-2" />
+        {summaryCards.filter(c => c.visible).map(({ key, label }) => {
+          const Icon = DASHBOARD_CARD_ICONS[key] ?? ClipboardList
+          return (
+            <Card key={key} className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-ink-3 text-sm">{label}</span>
+                <div className="w-8 h-8 rounded-control bg-surface-2 flex items-center justify-center">
+                  <Icon className="w-4 h-4 text-ink-2" />
+                </div>
               </div>
-            </div>
-            <p className="text-2xl font-semibold text-ink tabular">{value}</p>
-          </Card>
-        ))}
+              <p className="text-2xl font-semibold text-ink tabular">{dashboardCardValues[key] ?? '0'}</p>
+            </Card>
+          )
+        })}
       </div>
 
       {/* One small stat card per workorder status -- same card style as the

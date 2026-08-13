@@ -65,6 +65,7 @@ interface BOMPart {
   _id: string; partName: string; partCode: string; unit: string; gstRate: number; rate: number; partType?: string; hsnCode?: string
 }
 interface Solution { _id: string; code: string; description: string }
+interface CrmOption { _id: string; code: string; label: string }
 
 interface JobSheet {
   _id: string; jobSheetNumber: string; customerName: string; phone: string; email?: string
@@ -156,6 +157,9 @@ export default function SCJobSheetScreen() {
       router.replace('/console/sc/dashboard')
     }
   }, [typeContext, typeContextLoading, router])
+
+  const { data: deviceAppearancesRes } = useSWR(businessId ? `/api/crm-option-lists?listType=DEVICE_APPEARANCE&businessId=${businessId}` : null)
+  const deviceAppearances: CrmOption[] = deviceAppearancesRes?.options || []
 
   const { data: businessData, mutate: fetchBusiness } = useSWR(businessId ? `/api/businesses/${businessId}` : null)
   const defaultLabourCharge: number = businessData?.business?.defaultLabourCharge || 0
@@ -410,7 +414,7 @@ export default function SCJobSheetScreen() {
   // Tax. A real dropdown does both: consistent styling and an onClick that
   // fills the whole line from the picked BOM part.
   const [openPartDropdown, setOpenPartDropdown] = useState<number | null>(null)
-  const [newPart, setNewPart] = useState({ partName: '', hsnCode: '', rate: '', gstRate: '18', unit: 'PCS', partType: 'SPARE_PART' as BOMPart['partType'] })
+  const [newPart, setNewPart] = useState({ partName: '', hsnCode: '', rate: '', gstRate: '18', unit: 'PCS', partType: 'SPARE_PART' as BOMPart['partType'], priceIncludesTax: false })
   const [savingPart, setSavingPart] = useState(false)
   const [addPartError, setAddPartError] = useState<string | null>(null)
 
@@ -427,6 +431,7 @@ export default function SCJobSheetScreen() {
         body: JSON.stringify({
           partName: newPart.partName, hsnCode: newPart.hsnCode, rate: Number(newPart.rate),
           gstRate: Number(newPart.gstRate) || 0, unit: newPart.unit, partType: newPart.partType,
+          priceIncludesTax: newPart.priceIncludesTax,
         }),
       })
       const d = await res.json()
@@ -439,7 +444,7 @@ export default function SCJobSheetScreen() {
       }
       fetchBomParts()
       setAddPartForLine(null)
-      setNewPart({ partName: '', hsnCode: '', rate: '', gstRate: '18', unit: 'PCS', partType: 'SPARE_PART' })
+      setNewPart({ partName: '', hsnCode: '', rate: '', gstRate: '18', unit: 'PCS', partType: 'SPARE_PART', priceIncludesTax: false })
     } catch (err: any) {
       setAddPartError(err.message || 'Something went wrong')
     } finally {
@@ -799,10 +804,7 @@ export default function SCJobSheetScreen() {
                     <label className={labelCls}>Appearance</label>
                     <select value={intake.deviceAppearance} onChange={e => setIntake(p => ({ ...p, deviceAppearance: e.target.value as typeof intake.deviceAppearance }))} className={inputCls}>
                       <option value="">Select…</option>
-                      <option value="GOOD">Good</option>
-                      <option value="USED">Used</option>
-                      <option value="DENTS">Dents</option>
-                      <option value="BROKEN">Broken</option>
+                      {deviceAppearances.map(o => <option key={o._id} value={o.code}>{o.label}</option>)}
                     </select>
                   </div>
                   <div>
@@ -1330,6 +1332,22 @@ export default function SCJobSheetScreen() {
                   <option value="LABOUR">Labour</option>
                 </select>
               </div>
+            </div>
+            <div>
+              {/* Same "This rate is" GST-inclusive/exclusive basis toggle as
+                  the Material Catalogue (console/common/material-catalog) --
+                  /api/service-center-bom's POST already backs a tax-inclusive
+                  entered rate out into the canonical tax-exclusive BOM.rate
+                  when priceIncludesTax is true, same as that page's flow. */}
+              <label className={labelCls}>This rate is</label>
+              <select
+                value={newPart.priceIncludesTax ? 'INCLUSIVE' : 'EXCLUSIVE'}
+                onChange={e => setNewPart(p => ({ ...p, priceIncludesTax: e.target.value === 'INCLUSIVE' }))}
+                className={inputCls}
+              >
+                <option value="EXCLUSIVE">Without tax</option>
+                <option value="INCLUSIVE">With tax (inclusive)</option>
+              </select>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" size="sm" onClick={() => setAddPartForLine(null)}>Cancel</Button>

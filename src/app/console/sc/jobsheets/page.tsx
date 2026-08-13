@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { Plus, Search, Download, Eye, Printer, FileText } from 'lucide-react'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
+import { useColumnConfig } from '@/lib/hooks/useColumnConfig'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody } from '@/components/ui/Card'
@@ -36,6 +37,21 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'n
 }
 
 const OPEN_STATUSES = new Set(['CREATED', 'REPAIR_STARTED', 'REPAIR_IN_PROGRESS', 'REPAIR_COMPLETED', 'PART_PENDING'])
+
+// Default column set for this page's pageKey ("jobsheets") -- super admin
+// can toggle visibility/order/labels for these via Admin > Page Columns
+// (src/app/console/admin/page-columns). Defaults win for any key not yet
+// present in a saved config.
+const JOBSHEETS_DEFAULT_COLUMNS = [
+  { key: 'jobSheetNumber', label: 'Job Sheet #' },
+  { key: 'customerName', label: 'Customer' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'title', label: 'Title' },
+  { key: 'status', label: 'Status' },
+  { key: 'tat', label: 'TAT' },
+  { key: 'createdAt', label: 'Created' },
+  { key: 'actions', label: 'Actions' },
+]
 
 function statusLabel(status: string) {
   return status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -82,6 +98,7 @@ function exportCsv(rows: JobSheetRow[]) {
 export default function JobSheetsListPage() {
   const router = useRouter()
   const { businessId } = useActiveBusinessId()
+  const columns = useColumnConfig('jobsheets', JOBSHEETS_DEFAULT_COLUMNS).filter((c) => c.visible)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('ALL')
 
@@ -223,59 +240,75 @@ export default function JobSheetsListPage() {
             <table className="w-full text-sm">
               <thead className="bg-surface-2 text-ink-3 text-xs eyebrow">
                 <tr>
-                  <th className="text-left px-4 py-3">Job Sheet #</th>
-                  <th className="text-left px-4 py-3">Customer</th>
-                  <th className="text-left px-4 py-3">Phone</th>
-                  <th className="text-left px-4 py-3">Title</th>
-                  <th className="text-left px-4 py-3">Status</th>
-                  <th className="text-left px-4 py-3">TAT</th>
-                  <th className="text-left px-4 py-3">Created</th>
-                  <th className="text-left px-4 py-3">Actions</th>
+                  {columns.map((col) => (
+                    <th key={col.key} className="text-left px-4 py-3">{col.label}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {displayedJobSheets.map((job) => (
-                  <tr
-                    key={job._id}
-                    className="border-t border-border hover:bg-surface-2 cursor-pointer"
-                    onClick={() => router.push(`/console/sc/jobsheets/${job._id}`)}
-                  >
-                    <td className="px-4 py-3 tabular font-medium">{job.jobSheetNumber}</td>
-                    <td className="px-4 py-3">{job.customerName}</td>
-                    <td className="px-4 py-3 tabular text-ink-2">{job.phone}</td>
-                    <td className="px-4 py-3 text-ink-2">{job.title || '—'}</td>
-                    <td className="px-4 py-3">
-                      <Badge tone={STATUS_TONE[job.status] || 'neutral'}>{statusLabel(job.status)}</Badge>
-                    </td>
-                    <td className="px-4 py-3 tabular text-ink-2">{tatLabel(job)}</td>
-                    <td className="px-4 py-3 text-ink-2">{new Date(job.createdAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          title="View"
-                          className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2"
-                          onClick={() => router.push(`/console/sc/jobsheets/${job._id}`)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          title="Print Workorder"
-                          className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2"
-                          onClick={() => openPrintPopup(`/print/jobsheets/${job._id}`)}
-                        >
-                          <Printer className="w-4 h-4" />
-                        </button>
-                        <button
-                          title="Print Estimate"
-                          className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2"
-                          onClick={() => openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)}
-                        >
-                          <FileText className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {displayedJobSheets.map((job) => {
+                  const cellFor = (key: string) => {
+                    switch (key) {
+                      case 'jobSheetNumber':
+                        return <td key={key} className="px-4 py-3 tabular font-medium">{job.jobSheetNumber}</td>
+                      case 'customerName':
+                        return <td key={key} className="px-4 py-3">{job.customerName}</td>
+                      case 'phone':
+                        return <td key={key} className="px-4 py-3 tabular text-ink-2">{job.phone}</td>
+                      case 'title':
+                        return <td key={key} className="px-4 py-3 text-ink-2">{job.title || '—'}</td>
+                      case 'status':
+                        return (
+                          <td key={key} className="px-4 py-3">
+                            <Badge tone={STATUS_TONE[job.status] || 'neutral'}>{statusLabel(job.status)}</Badge>
+                          </td>
+                        )
+                      case 'tat':
+                        return <td key={key} className="px-4 py-3 tabular text-ink-2">{tatLabel(job)}</td>
+                      case 'createdAt':
+                        return <td key={key} className="px-4 py-3 text-ink-2">{new Date(job.createdAt).toLocaleDateString()}</td>
+                      case 'actions':
+                        return (
+                          <td key={key} className="px-4 py-3">
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                title="View"
+                                className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2"
+                                onClick={() => router.push(`/console/sc/jobsheets/${job._id}`)}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                title="Print Workorder"
+                                className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2"
+                                onClick={() => openPrintPopup(`/print/jobsheets/${job._id}`)}
+                              >
+                                <Printer className="w-4 h-4" />
+                              </button>
+                              <button
+                                title="Print Estimate"
+                                className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2"
+                                onClick={() => openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)}
+                              >
+                                <FileText className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        )
+                      default:
+                        return <td key={key} className="px-4 py-3">—</td>
+                    }
+                  }
+                  return (
+                    <tr
+                      key={job._id}
+                      className="border-t border-border hover:bg-surface-2 cursor-pointer"
+                      onClick={() => router.push(`/console/sc/jobsheets/${job._id}`)}
+                    >
+                      {columns.map((col) => cellFor(col.key))}
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

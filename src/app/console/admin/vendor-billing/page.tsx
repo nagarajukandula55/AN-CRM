@@ -69,7 +69,7 @@ export default function VendorBillingListPage() {
                     {v.currentPeriodEnd ? new Date(v.currentPeriodEnd).toLocaleDateString() : "—"}
                   </td>
                   <td className="p-3">
-                    <Link href={`/console/vendor-billing/${v.vendorId}`} className="text-violet-600 text-xs font-medium">
+                    <Link href={`/console/admin/vendor-billing/${v.vendorId}`} className="text-violet-600 text-xs font-medium">
                       Manage plan →
                     </Link>
                   </td>
