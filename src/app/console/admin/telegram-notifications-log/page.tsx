@@ -20,6 +20,7 @@ interface LogRow {
   _id: string
   businessName?: string
   type: string
+  channel: 'TELEGRAM' | 'WHATSAPP'
   text: string
   sentToGroup: boolean
   sentToPersonal: boolean
@@ -29,27 +30,40 @@ interface LogRow {
 
 export default function TelegramNotificationsLogPage() {
   const [typeFilter, setTypeFilter] = useState('')
+  const [channelFilter, setChannelFilter] = useState('')
+  const params = new URLSearchParams()
+  if (typeFilter) params.set('type', typeFilter)
   const { data, isLoading } = useSWR(
-    `/api/admin/telegram-log${typeFilter ? `?type=${encodeURIComponent(typeFilter)}` : ''}`,
+    `/api/admin/telegram-log${params.toString() ? `?${params.toString()}` : ''}`,
     (url: string) => fetch(url, { credentials: 'include' }).then((r) => r.json())
   )
-  const logs: LogRow[] = data?.success ? data.logs : []
-  const types = Array.from(new Set(logs.map((l) => l.type))).sort()
+  const allLogs: LogRow[] = data?.success ? data.logs : []
+  const logs = channelFilter ? allLogs.filter((l) => (l.channel || 'TELEGRAM') === channelFilter) : allLogs
+  const types = Array.from(new Set(allLogs.map((l) => l.type))).sort()
 
   return (
     <div className="min-h-screen bg-bg text-ink p-6">
       <PageHeader
-        title="Telegram Notifications Log"
-        description="Every automated Telegram alert the system has attempted to send, newest first."
+        title="Notifications Log"
+        description="Every automated Telegram/WhatsApp alert the system has attempted to send, newest first."
       />
 
-      <div className="mb-4 max-w-xs">
-        <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-          <option value="">All alert types</option>
-          {types.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </Select>
+      <div className="mb-4 flex flex-wrap gap-3">
+        <div className="max-w-xs">
+          <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+            <option value="">All alert types</option>
+            {types.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </Select>
+        </div>
+        <div className="max-w-xs">
+          <Select value={channelFilter} onChange={(e) => setChannelFilter(e.target.value)}>
+            <option value="">All channels</option>
+            <option value="TELEGRAM">Telegram</option>
+            <option value="WHATSAPP">WhatsApp</option>
+          </Select>
+        </div>
       </div>
 
       {isLoading ? (
@@ -65,6 +79,7 @@ export default function TelegramNotificationsLogPage() {
                   <th className="text-left px-4 py-2.5">When</th>
                   <th className="text-left px-4 py-2.5">Business</th>
                   <th className="text-left px-4 py-2.5">Type</th>
+                  <th className="text-left px-4 py-2.5">Channel</th>
                   <th className="text-left px-4 py-2.5">Message</th>
                   <th className="text-left px-4 py-2.5">Destination</th>
                   <th className="text-left px-4 py-2.5">Status</th>
@@ -79,6 +94,9 @@ export default function TelegramNotificationsLogPage() {
                     <td className="px-4 py-2.5 text-ink">{l.businessName || '—'}</td>
                     <td className="px-4 py-2.5">
                       <Badge tone="neutral">{l.type}</Badge>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Badge tone={l.channel === 'WHATSAPP' ? 'success' : 'info'}>{l.channel === 'WHATSAPP' ? 'WhatsApp' : 'Telegram'}</Badge>
                     </td>
                     <td className="px-4 py-2.5 text-ink-2 max-w-xs truncate" title={l.text}>{l.text}</td>
                     <td className="px-4 py-2.5 text-ink-3">

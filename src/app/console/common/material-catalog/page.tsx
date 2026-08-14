@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { GST_SLABS } from '@/core/gst/gstSlabs'
+import { DEFAULT_SPARE_PART_HSN } from '@/core/gst/defaultHsn'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingPanel } from '@/components/ui/Spinner'
 
@@ -52,7 +53,7 @@ export default function MaterialCatalogPage() {
     partName: '',
     description: '',
     partType: 'SPARE_PART',
-    hsnCode: '',
+    hsnCode: DEFAULT_SPARE_PART_HSN,
     gstRate: 18,
     rate: 0,
     priceIncludesTax: false,
@@ -83,7 +84,7 @@ export default function MaterialCatalogPage() {
       })
       const result = await res.json()
       if (result.success) {
-        setForm({ partName: '', description: '', partType: 'SPARE_PART', hsnCode: '', gstRate: 18, rate: 0, priceIncludesTax: false, isSerialized: false, serialNumber: '' })
+        setForm({ partName: '', description: '', partType: 'SPARE_PART', hsnCode: DEFAULT_SPARE_PART_HSN, gstRate: 18, rate: 0, priceIncludesTax: false, isSerialized: false, serialNumber: '' })
         setShowForm(false)
         mutate()
       } else {

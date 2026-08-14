@@ -26,7 +26,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
-import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
+import { sendVendorAlert } from "@/core/telegram/sendVendorAlert";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -273,7 +273,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     notifyJobSheetStatusChange(jobSheet.businessId.toString(), jobSheet.phone, jobSheet.jobSheetNumber, jobSheet.status);
 
-    sendVendorTelegramMessage(
+    sendVendorAlert(
       jobSheet.businessId.toString(),
       "WORKORDER_CLOSED",
       `Workorder ${jobSheet.jobSheetNumber} closed and invoiced (${invoice.invoiceNumber}) for ${jobSheet.customerName}.`,

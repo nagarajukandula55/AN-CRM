@@ -21,6 +21,7 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Field, Input, Select } from '@/components/ui/Input'
+import { DEFAULT_SPARE_PART_HSN } from '@/core/gst/defaultHsn'
 
 interface UploadRowResult { row: number; status: 'created' | 'error'; partCode?: string; error?: string }
 interface UploadSummary { total: number; created: number; failed: number }
@@ -45,7 +46,7 @@ interface Part {
 
 const emptyForm = {
   partName: '', description: '', partType: 'SPARE_PART', unit: 'pcs',
-  hsnCode: '', gstRate: '18', rate: '', warrantyDays: '', brandId: '', deviceModelId: '',
+  hsnCode: DEFAULT_SPARE_PART_HSN, gstRate: '18', rate: '', warrantyDays: '', brandId: '', deviceModelId: '',
 }
 
 function idOf(ref: any): string {

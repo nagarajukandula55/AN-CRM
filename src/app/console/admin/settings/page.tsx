@@ -255,8 +255,9 @@ export default function AdminSettingsPage() {
   // for super admin, it should be directly configurable only"). A vendor's
   // own Integrations tab never fetches this -- they only get the
   // Group/Personal routing checkboxes.
+  const [templateChannel, setTemplateChannel] = useState<'TELEGRAM' | 'WHATSAPP'>('TELEGRAM')
   const { data: templatesRes, mutate: refetchTemplates } = useSWR(
-    isSuperAdmin && view === 'platform' ? '/api/admin/telegram-templates' : null
+    isSuperAdmin && view === 'platform' ? `/api/admin/telegram-templates?channel=${templateChannel}` : null
   )
   const [expandedTemplateKey, setExpandedTemplateKey] = useState<string | null>(null)
   const [templateDrafts, setTemplateDrafts] = useState<Record<string, string>>({})
@@ -270,7 +271,7 @@ export default function AdminSettingsPage() {
       await fetch('/api/admin/telegram-templates', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, template: templateDrafts[key] ?? tmpl?.template ?? '', enabled }),
+        body: JSON.stringify({ key, channel: templateChannel, template: templateDrafts[key] ?? tmpl?.template ?? '', enabled }),
       })
       refetchTemplates()
     } finally {
@@ -498,13 +499,25 @@ export default function AdminSettingsPage() {
             </div>
 
             <div className="rounded-card border border-border bg-surface p-6">
-              <h3 className="h-section mb-1">Telegram Notification Templates</h3>
-              <p className="text-xs text-ink-3 mb-5">
-                Every automated Telegram alert the system can send, in one place -- no vendor context needed.
-                Write the wording once here and it's used for every vendor's alert of that type; a vendor only
-                ever picks which of their own chats (group/personal) it goes to, from their own Settings &gt;
-                Integrations tab.
+              <h3 className="h-section mb-1">Notification Templates</h3>
+              <p className="text-xs text-ink-3 mb-4">
+                Every automated alert the system can send, in one place -- no vendor context needed. Write the
+                wording once here and it's used for every vendor's alert of that type. WhatsApp only actually
+                sends once a business has its own WhatsApp Business API connected (Integrations, per business);
+                the template/on-off config here is ready either way so nothing needs revisiting once that's added.
               </p>
+              <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 w-fit mb-4">
+                {(['TELEGRAM', 'WHATSAPP'] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => { setTemplateChannel(c); setExpandedTemplateKey(null); setTemplateDrafts({}); setEnabledDrafts({}) }}
+                    className={`rounded-lg px-4 py-1.5 text-sm transition-all ${templateChannel === c ? 'bg-gray-900 text-white font-semibold' : 'text-gray-500 hover:text-gray-900'}`}
+                  >
+                    {c === 'TELEGRAM' ? 'Telegram' : 'WhatsApp'}
+                  </button>
+                ))}
+              </div>
               {!templatesRes ? (
                 <p className="text-sm text-ink-3">Loading…</p>
               ) : (

@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { LoadingPanel } from '@/components/ui/Spinner'
 import { GST_SLABS } from '@/core/gst/gstSlabs'
+import { DEFAULT_SPARE_PART_HSN } from '@/core/gst/defaultHsn'
 import { openPrintPopup } from '@/lib/openPrintPopup'
 
 /**
@@ -427,7 +428,7 @@ export default function SCJobSheetScreen() {
   // Tax. A real dropdown does both: consistent styling and an onClick that
   // fills the whole line from the picked BOM part.
   const [openPartDropdown, setOpenPartDropdown] = useState<number | null>(null)
-  const [newPart, setNewPart] = useState({ partName: '', hsnCode: '', rate: '', gstRate: '18', unit: 'PCS', partType: 'SPARE_PART' as BOMPart['partType'], priceIncludesTax: false })
+  const [newPart, setNewPart] = useState({ partName: '', hsnCode: DEFAULT_SPARE_PART_HSN, rate: '', gstRate: '18', unit: 'PCS', partType: 'SPARE_PART' as BOMPart['partType'], priceIncludesTax: false })
   const [savingPart, setSavingPart] = useState(false)
   const [addPartError, setAddPartError] = useState<string | null>(null)
 
@@ -457,7 +458,7 @@ export default function SCJobSheetScreen() {
       }
       fetchBomParts()
       setAddPartForLine(null)
-      setNewPart({ partName: '', hsnCode: '', rate: '', gstRate: '18', unit: 'PCS', partType: 'SPARE_PART', priceIncludesTax: false })
+      setNewPart({ partName: '', hsnCode: DEFAULT_SPARE_PART_HSN, rate: '', gstRate: '18', unit: 'PCS', partType: 'SPARE_PART', priceIncludesTax: false })
     } catch (err: any) {
       setAddPartError(err.message || 'Something went wrong')
     } finally {

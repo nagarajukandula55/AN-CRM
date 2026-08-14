@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { validateGSTIN } from '@/lib/validation/gst'
 import {
   Loader2, ArrowLeft, Plus, X, Search, Eye, Trash2,
-  FileText, ShoppingCart, IndianRupee, Clock, Printer,
+  FileText, ShoppingCart, IndianRupee, Clock, Printer, Wrench, Download,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -18,6 +18,8 @@ import { Input } from '@/components/ui/Input'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 import { GST_SLABS } from '@/core/gst/gstSlabs'
 import { openPrintPopup } from '@/lib/openPrintPopup'
+import { useColumnConfig } from '@/lib/hooks/useColumnConfig'
+import { downloadCsv, type CsvColumn } from '@/lib/csvExport'
 
 interface Customer {
   name: string
@@ -40,7 +42,12 @@ interface Invoice {
   dueDate?: string
   paidAt?: string
   supplyType?: 'INTRASTATE' | 'INTERSTATE'
-  invoiceType?: 'GST' | 'NON_GST'
+  // Real B2B/B2C classification (models/SalesInvoice.ts) -- STANDARD for
+  // most invoices created directly on this page, B2B/B2C set by the
+  // job-sheet-close flow based on whether a GSTIN was on file. (Not a
+  // "GST vs Non-GST" flag -- this page's own form uses a separate local
+  // `invoiceType` state for that toggle, never persisted under this name.)
+  invoiceType?: 'B2B' | 'B2C' | 'STANDARD'
   cgstTotal?: number
   sgstTotal?: number
   igstTotal?: number
@@ -60,6 +67,11 @@ interface Invoice {
   }>
   businessName?: string
   discountAmount?: number
+  // Set only when this invoice was generated from a workorder close (see
+  // api/crm/jobsheets/[id]/close/route.ts) -- "CRM_JOBSHEET:<id>". Absent
+  // for an invoice created directly on this page.
+  sourceOrderId?: string
+  paymentMethod?: string
 }
 
 interface Order {
@@ -306,16 +318,60 @@ export default function SalesPage() {
 
   const getCustomerName = (inv: Invoice) => inv.customer?.name || inv.customerName || '—'
   const getAmount       = (inv: Invoice) => inv.grandTotal ?? inv.totalAmount ?? 0
-  const isGST           = (inv: Invoice) => inv.invoiceType !== 'NON_GST'
+  // NON_GST here was never actually persisted (that's this form's own
+  // local `invoiceType` state above, a GST/Non-GST toggle at creation time
+  // that the create route never saves back onto the invoice) -- kept as
+  // an always-true no-op rather than silently changing preview behavior.
+  const isGST            = (_inv: Invoice) => true
+  const isFromWorkorder  = (inv: Invoice) => !!inv.sourceOrderId?.startsWith('CRM_JOBSHEET:')
+  const getSourceLabel   = (inv: Invoice) => isFromWorkorder(inv) ? 'Workorder' : 'Direct Sale'
+  const getInvoiceCategory = (inv: Invoice) => inv.invoiceType || 'STANDARD'
+
+  const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'B2B' | 'B2C' | 'STANDARD'>('ALL')
+  const [paymentFilter, setPaymentFilter] = useState<string>('ALL')
+  const paymentMethods = Array.from(new Set(invoices.map(i => i.paymentMethod).filter(Boolean))) as string[]
 
   const filteredInvoices = invoices.filter(inv => {
     const matchStatus = statusFilter === 'ALL' || inv.status === statusFilter
+    const matchCategory = categoryFilter === 'ALL' || getInvoiceCategory(inv) === categoryFilter
+    const matchPayment = paymentFilter === 'ALL' || inv.paymentMethod === paymentFilter
     const q = search.toLowerCase()
     const matchSearch = !search ||
       inv.invoiceNumber?.toLowerCase().includes(q) ||
       getCustomerName(inv).toLowerCase().includes(q)
-    return matchStatus && matchSearch
+    return matchStatus && matchCategory && matchPayment && matchSearch
   })
+
+  const EXPORT_VALUE_GETTERS: Record<string, (inv: Invoice) => unknown> = {
+    invoiceNumber: (inv) => inv.invoiceNumber,
+    source: (inv) => getSourceLabel(inv),
+    customerName: (inv) => getCustomerName(inv),
+    gstin: (inv) => inv.customer?.gstin || '',
+    invoiceCategory: (inv) => getInvoiceCategory(inv),
+    date: (inv) => fmtDate(inv.createdAt),
+    paymentDate: (inv) => inv.paidAt ? fmtDate(inv.paidAt) : '',
+    paymentMethod: (inv) => inv.paymentMethod || '',
+    subtotal: (inv) => inv.subtotal ?? '',
+    taxTotal: (inv) => inv.taxTotal ?? '',
+    amount: (inv) => getAmount(inv),
+    status: (inv) => inv.status,
+  }
+  const EXPORT_DEFAULT_COLUMNS = [
+    { key: 'invoiceNumber', label: 'Invoice #' },
+    { key: 'source', label: 'Source' },
+    { key: 'customerName', label: 'Customer' },
+    { key: 'gstin', label: 'GSTIN' },
+    { key: 'invoiceCategory', label: 'B2B / B2C' },
+    { key: 'date', label: 'Date' },
+    { key: 'paymentDate', label: 'Payment Date' },
+    { key: 'paymentMethod', label: 'Payment Type' },
+    { key: 'amount', label: 'Amount' },
+    { key: 'status', label: 'Status' },
+  ]
+  const exportColumnConfig = useColumnConfig('sales-invoices-export', EXPORT_DEFAULT_COLUMNS)
+  const exportColumns: CsvColumn<Invoice>[] = exportColumnConfig
+    .filter(c => c.visible && EXPORT_VALUE_GETTERS[c.key])
+    .map(c => ({ header: c.label, value: EXPORT_VALUE_GETTERS[c.key] }))
 
   const filteredOrders = orders.filter(ord =>
     !search ||
@@ -395,13 +451,40 @@ export default function SalesPage() {
               value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
           {tab === 'invoices' && (
+            <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={() => downloadCsv('sales-invoices', exportColumns, filteredInvoices)}>
+              Export CSV {filteredInvoices.length !== invoices.length ? `(${filteredInvoices.length} filtered)` : ''}
+            </Button>
+          )}
+        </div>
+
+        {tab === 'invoices' && (
+          <div className="flex flex-wrap items-center gap-3 mb-4">
             <div className="flex gap-1">
               {STATUSES.map(s => (
                 <Button key={s} variant={statusFilter === s ? 'primary' : 'secondary'} size="sm" onClick={() => setStatus(s)}>{s}</Button>
               ))}
             </div>
-          )}
-        </div>
+            <div className="w-px h-5 bg-border" />
+            <div className="flex gap-1">
+              {(['ALL', 'B2B', 'B2C', 'STANDARD'] as const).map(c => (
+                <Button key={c} variant={categoryFilter === c ? 'primary' : 'secondary'} size="sm" onClick={() => setCategoryFilter(c)}>
+                  {c === 'STANDARD' ? 'Other' : c}
+                </Button>
+              ))}
+            </div>
+            {paymentMethods.length > 0 && (
+              <>
+                <div className="w-px h-5 bg-border" />
+                <div className="flex gap-1 flex-wrap">
+                  <Button variant={paymentFilter === 'ALL' ? 'primary' : 'secondary'} size="sm" onClick={() => setPaymentFilter('ALL')}>All Payments</Button>
+                  {paymentMethods.map(pm => (
+                    <Button key={pm} variant={paymentFilter === pm ? 'primary' : 'secondary'} size="sm" onClick={() => setPaymentFilter(pm)}>{pm}</Button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Invoices Table */}
         {tab === 'invoices' && (
@@ -410,9 +493,11 @@ export default function SalesPage() {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Invoice #</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Source</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Customer</th>
+                  <th className="text-center px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Type</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Date</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Payment Date</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Payment</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Amount</th>
                   <th className="text-center px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Status</th>
                   <th className="px-5 py-3"></th>
@@ -420,21 +505,29 @@ export default function SalesPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredInvoices.length === 0 ? (
-                  <tr><td colSpan={7}><EmptyState kind="empty" title="No invoices found" /></td></tr>
+                  <tr><td colSpan={9}><EmptyState kind="empty" title="No invoices found" /></td></tr>
                 ) : filteredInvoices.map(inv => (
                   <tr key={inv._id} className="hover:bg-surface-2 transition-colors">
                     <td className="px-5 py-3">
                       <p className="font-medium text-ink">{inv.invoiceNumber}</p>
-                      {inv.invoiceType === 'NON_GST' && (
-                        <span className="text-[10px] text-ink-3 uppercase tracking-wide">Non-GST</span>
-                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-medium rounded-control px-2 py-0.5 ${isFromWorkorder(inv) ? 'bg-info-soft text-info' : 'bg-surface-2 text-ink-3'}`}>
+                        {isFromWorkorder(inv) && <Wrench size={10} />}
+                        {getSourceLabel(inv)}
+                      </span>
                     </td>
                     <td className="px-5 py-3">
                       <p className="text-ink">{getCustomerName(inv)}</p>
                       {inv.customer?.gstin && <p className="text-xs text-ink-3 tabular">{inv.customer.gstin}</p>}
                     </td>
+                    <td className="px-5 py-3 text-center">
+                      {getInvoiceCategory(inv) !== 'STANDARD' && (
+                        <Badge tone={getInvoiceCategory(inv) === 'B2B' ? 'info' : 'neutral'}>{getInvoiceCategory(inv)}</Badge>
+                      )}
+                    </td>
                     <td className="px-5 py-3 text-ink-3">{fmtDate(inv.createdAt)}</td>
-                    <td className="px-5 py-3 text-ink-3">{inv.paidAt ? fmtDate(inv.paidAt) : '—'}</td>
+                    <td className="px-5 py-3 text-ink-3">{inv.paymentMethod || '—'}</td>
                     <td className="px-5 py-3 text-right font-medium tabular text-ink">{fmt(getAmount(inv))}</td>
                     <td className="px-5 py-3 text-center">
                       <Badge tone={STATUS_TONE[inv.status] ?? 'neutral'}>{inv.status}</Badge>
@@ -847,8 +940,11 @@ export default function SalesPage() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50">
               <div className="flex items-center gap-3">
                 <Badge tone={STATUS_TONE[preview.status] ?? 'neutral'}>{preview.status}</Badge>
-                {preview.invoiceType === 'NON_GST' && (
-                  <Badge tone="warning">Non-GST</Badge>
+                {getInvoiceCategory(preview) !== 'STANDARD' && (
+                  <Badge tone={getInvoiceCategory(preview) === 'B2B' ? 'info' : 'neutral'}>{getInvoiceCategory(preview)}</Badge>
+                )}
+                {isFromWorkorder(preview) && (
+                  <Badge tone="neutral">From Workorder</Badge>
                 )}
               </div>
               <div className="flex items-center gap-2">

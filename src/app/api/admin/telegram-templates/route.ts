@@ -13,6 +13,7 @@ import { connectDB } from "@/lib/mongodb";
 import TelegramMessageTemplate from "@/models/TelegramMessageTemplate";
 import { getVendorTelegramMessageTypes } from "@/core/telegram/vendorMessageTypes";
 import { tokensFor } from "@/core/telegram/messageTokens";
+import { templateKeyFor, type MessageChannel } from "@/core/telegram/templateKey";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 
 async function requireSuperAdmin(): Promise<{ ok: true; userId: string } | { ok: false; res: NextResponse }> {
@@ -26,9 +27,11 @@ async function requireSuperAdmin(): Promise<{ ok: true; userId: string } | { ok:
   return { ok: true, userId: session.user.id };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const auth = await requireSuperAdmin();
   if (!auth.ok) return auth.res;
+
+  const channel = (new URL(req.url).searchParams.get("channel")?.toUpperCase() === "WHATSAPP" ? "WHATSAPP" : "TELEGRAM") as MessageChannel;
 
   await connectDB();
   const [messageTypes, templates] = await Promise.all([
@@ -39,11 +42,12 @@ export async function GET() {
 
   return NextResponse.json({
     success: true,
+    channel,
     messageTypes: messageTypes.map((t) => {
-      const saved: any = templateByKey.get(t.key);
+      const saved: any = templateByKey.get(templateKeyFor(t.key, channel));
       return {
         ...t,
-        template: saved?.template || "",
+        template: saved?.template && saved.template !== "(disabled)" ? saved.template : "",
         enabled: saved ? saved.enabled !== false : true,
         tokens: tokensFor(t.key),
       };
@@ -57,12 +61,14 @@ export async function PUT(req: NextRequest) {
 
   await connectDB();
   const body = await req.json().catch(() => ({}));
-  const key = String(body.key || "").trim().toUpperCase();
+  const type = String(body.key || "").trim().toUpperCase();
+  const channel = (String(body.channel || "TELEGRAM").toUpperCase() === "WHATSAPP" ? "WHATSAPP" : "TELEGRAM") as MessageChannel;
   const template = typeof body.template === "string" ? body.template : "";
   const enabled = body.enabled !== false;
-  if (!key) {
+  if (!type) {
     return NextResponse.json({ success: false, message: "key is required" }, { status: 400 });
   }
+  const key = templateKeyFor(type, channel);
 
   if (!template.trim() && enabled) {
     // Blank template + still enabled = "go back to this type's hardcoded
@@ -76,7 +82,7 @@ export async function PUT(req: NextRequest) {
   // kill switch survives -- only an explicit re-enable + blank text clears it.
   await TelegramMessageTemplate.findOneAndUpdate(
     { key },
-    { key, template: template || "(disabled)", enabled, updatedBy: auth.userId },
+    { key, channel, template: template || "(disabled)", enabled, updatedBy: auth.userId },
     { upsert: true, new: true }
   );
   return NextResponse.json({ success: true });

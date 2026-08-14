@@ -11,6 +11,7 @@ export interface ITelegramLog extends Document {
   businessId: mongoose.Types.ObjectId;
   businessName?: string;
   type: string;
+  channel: "TELEGRAM" | "WHATSAPP";
   text: string;
   sentToGroup: boolean;
   sentToPersonal: boolean;
@@ -23,6 +24,7 @@ const TelegramLogSchema = new Schema<ITelegramLog>(
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true, index: true },
     businessName: { type: String },
     type: { type: String, required: true, index: true },
+    channel: { type: String, enum: ["TELEGRAM", "WHATSAPP"], default: "TELEGRAM", index: true },
     text: { type: String, required: true },
     sentToGroup: { type: Boolean, default: false },
     sentToPersonal: { type: Boolean, default: false },

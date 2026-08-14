@@ -150,6 +150,25 @@ const KNOWN_PAGES: Record<string, ColumnRow[]> = {
   // Sidebar menu items -- rename + reassign to a different EXISTING group
   // (see sidebar.tsx's application of this same "sidebar-nav" pageKey).
   'sidebar-nav': SIDEBAR_NAV_ROWS,
+  // Which columns the Sales/Invoices page's CSV export includes, and in
+  // what order/labeled-as -- separate from that page's own table columns
+  // (a super admin may want a field in the export that isn't worth a table
+  // column, e.g. GSTIN or the raw payment reference). Hiding a row here
+  // only removes it from the CSV, never from the on-screen table.
+  'sales-invoices-export': [
+    { key: 'invoiceNumber', defaultLabel: 'Invoice #', label: 'Invoice #', visible: true, order: 0 },
+    { key: 'source', defaultLabel: 'Source', label: 'Source', visible: true, order: 1 },
+    { key: 'customerName', defaultLabel: 'Customer', label: 'Customer', visible: true, order: 2 },
+    { key: 'gstin', defaultLabel: 'GSTIN', label: 'GSTIN', visible: true, order: 3 },
+    { key: 'invoiceCategory', defaultLabel: 'B2B / B2C', label: 'B2B / B2C', visible: true, order: 4 },
+    { key: 'date', defaultLabel: 'Date', label: 'Date', visible: true, order: 5 },
+    { key: 'paymentDate', defaultLabel: 'Payment Date', label: 'Payment Date', visible: true, order: 6 },
+    { key: 'paymentMethod', defaultLabel: 'Payment Type', label: 'Payment Type', visible: true, order: 7 },
+    { key: 'subtotal', defaultLabel: 'Subtotal', label: 'Subtotal', visible: false, order: 8 },
+    { key: 'taxTotal', defaultLabel: 'Tax', label: 'Tax', visible: false, order: 9 },
+    { key: 'amount', defaultLabel: 'Amount', label: 'Amount', visible: true, order: 10 },
+    { key: 'status', defaultLabel: 'Status', label: 'Status', visible: true, order: 11 },
+  ],
 }
 
 export default function PageColumnsAdminPage() {
