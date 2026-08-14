@@ -245,24 +245,32 @@ export default function AdminSettingsPage() {
     businessId && view === 'business' && tab === 'integrations' && isSuperAdmin ? `/api/integrations?businessId=${businessId}` : null
   )
 
-  // Super-admin-only message TEXT editor per alert type -- applies
-  // platform-wide to every vendor's alert of that type (see
+  // Super-admin-only message TEXT + enabled/disabled editor per alert type --
+  // applies platform-wide to every vendor's alert of that type (see
   // api/admin/telegram-templates and core/telegram/sendVendorTelegramMessage's
-  // rendering step). A vendor's own view of this same tab never fetches
-  // this -- they only get the Group/Personal routing checkboxes above.
+  // rendering step). Lives under Platform (AN Group) view now, not the
+  // per-business Integrations tab -- a super admin has no "active vendor"
+  // of their own, so nesting platform-wide message wording inside a
+  // business-scoped tab made no sense ("there is no active vendor there
+  // for super admin, it should be directly configurable only"). A vendor's
+  // own Integrations tab never fetches this -- they only get the
+  // Group/Personal routing checkboxes.
   const { data: templatesRes, mutate: refetchTemplates } = useSWR(
-    view === 'business' && tab === 'integrations' && isSuperAdmin ? '/api/admin/telegram-templates' : null
+    isSuperAdmin && view === 'platform' ? '/api/admin/telegram-templates' : null
   )
   const [expandedTemplateKey, setExpandedTemplateKey] = useState<string | null>(null)
   const [templateDrafts, setTemplateDrafts] = useState<Record<string, string>>({})
+  const [enabledDrafts, setEnabledDrafts] = useState<Record<string, boolean>>({})
   const [savingTemplateKey, setSavingTemplateKey] = useState<string | null>(null)
-  async function saveTemplate(key: string) {
+  async function saveTemplate(key: string, enabledOverride?: boolean) {
     setSavingTemplateKey(key)
     try {
+      const tmpl = templatesRes?.messageTypes?.find((x: any) => x.key === key)
+      const enabled = enabledOverride ?? enabledDrafts[key] ?? tmpl?.enabled ?? true
       await fetch('/api/admin/telegram-templates', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, template: templateDrafts[key] ?? '' }),
+        body: JSON.stringify({ key, template: templateDrafts[key] ?? tmpl?.template ?? '', enabled }),
       })
       refetchTemplates()
     } finally {
@@ -489,6 +497,94 @@ export default function AdminSettingsPage() {
               )}
             </div>
 
+            <div className="rounded-card border border-border bg-surface p-6">
+              <h3 className="h-section mb-1">Telegram Notification Templates</h3>
+              <p className="text-xs text-ink-3 mb-5">
+                Every automated Telegram alert the system can send, in one place -- no vendor context needed.
+                Write the wording once here and it's used for every vendor's alert of that type; a vendor only
+                ever picks which of their own chats (group/personal) it goes to, from their own Settings &gt;
+                Integrations tab.
+              </p>
+              {!templatesRes ? (
+                <p className="text-sm text-ink-3">Loading…</p>
+              ) : (
+                <div className="divide-y divide-border rounded-control border border-border overflow-hidden">
+                  {(templatesRes?.messageTypes || []).map((t: any) => {
+                    const expanded = expandedTemplateKey === t.key
+                    const isEnabled = enabledDrafts[t.key] ?? t.enabled ?? true
+                    return (
+                      <div key={t.key} className="bg-surface">
+                        <div className="px-4 py-3 flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-ink">{t.label}</p>
+                            <p className="text-xs text-ink-3">{t.description}</p>
+                          </div>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <label className="flex items-center gap-1.5 text-xs text-ink-2">
+                              <input
+                                type="checkbox"
+                                checked={isEnabled}
+                                onChange={(e) => {
+                                  const next = e.target.checked
+                                  setEnabledDrafts((d) => ({ ...d, [t.key]: next }))
+                                  saveTemplate(t.key, next)
+                                }}
+                              /> Enabled
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!expanded) setTemplateDrafts((d) => ({ ...d, [t.key]: d[t.key] ?? t.template ?? '' }))
+                                setExpandedTemplateKey(expanded ? null : t.key)
+                              }}
+                              className="text-xs font-medium text-accent hover:underline whitespace-nowrap"
+                            >
+                              {expanded ? 'Close' : 'Format Message'}
+                            </button>
+                          </div>
+                        </div>
+                        {expanded && (
+                          <div className="px-4 pb-4 bg-surface-2 border-t border-border">
+                            <label className="text-xs text-ink-3 mb-1 block mt-3">
+                              Message text (applies to every vendor for this alert type)
+                            </label>
+                            <textarea
+                              rows={3}
+                              value={templateDrafts[t.key] ?? t.template ?? ''}
+                              onChange={(e) => setTemplateDrafts((d) => ({ ...d, [t.key]: e.target.value }))}
+                              placeholder="Leave blank to use the built-in default wording"
+                              className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong font-mono"
+                            />
+                            <div className="flex items-center flex-wrap gap-1.5 mt-2">
+                              <span className="text-xs text-ink-3">Tokens:</span>
+                              {(t.tokens || []).map((tok: string) => (
+                                <code
+                                  key={tok}
+                                  className="text-xs bg-surface border border-border rounded px-1.5 py-0.5 text-ink-2 cursor-pointer"
+                                  onClick={() => setTemplateDrafts((d) => ({ ...d, [t.key]: (d[t.key] ?? t.template ?? '') + `{{${tok}}}` }))}
+                                  title="Click to insert"
+                                >
+                                  {`{{${tok}}}`}
+                                </code>
+                              ))}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => saveTemplate(t.key)}
+                              disabled={savingTemplateKey === t.key}
+                              className="mt-3 text-xs font-medium bg-accent text-accent-fg rounded-control px-3 py-1.5 hover:bg-accent-hover disabled:opacity-50"
+                            >
+                              {savingTemplateKey === t.key ? 'Saving…' : 'Save Message'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
             <div className="rounded-2xl border border-gray-200 bg-white p-6">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Other Platform Configuration</h3>
               <div className="space-y-2 text-sm">
@@ -497,6 +593,12 @@ export default function AdminSettingsPage() {
                 </Link>
                 <Link href="/console/document-numbers" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
                   Document Numbers — "AN Group (Platform)" scope <ChevronRight size={14} className="text-gray-400" />
+                </Link>
+                <Link href="/console/admin/plan-features" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
+                  Plan Features — module access per plan tier <ChevronRight size={14} className="text-gray-400" />
+                </Link>
+                <Link href="/console/admin/vendor-subscriptions" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
+                  Vendor Subscriptions — plan status, payments, renewals <ChevronRight size={14} className="text-gray-400" />
                 </Link>
               </div>
             </div>
@@ -930,11 +1032,18 @@ export default function AdminSettingsPage() {
 
               <p className="text-xs font-medium text-ink mb-1">Alert Routing</p>
               <p className="text-xs text-ink-3 mb-3">Choose which chat gets which type of alert.</p>
+              {isSuperAdmin && (
+                <p className="text-xs text-ink-3 mb-3">
+                  Message wording and the on/off switch for each alert type are configured platform-wide under{' '}
+                  <button type="button" onClick={() => setView('platform')} className="text-accent hover:underline font-medium">
+                    Platform (AN Group) &gt; Telegram Notification Templates
+                  </button>
+                  , not per business.
+                </p>
+              )}
               <div className="divide-y divide-border rounded-control border border-border overflow-hidden mb-5">
                 {(notifRes?.messageTypes || []).map((t: any) => {
                   const cur = notifRouting[t.key] || { group: t.defaultGroup, personal: t.defaultPersonal }
-                  const tmpl = templatesRes?.messageTypes?.find((x: any) => x.key === t.key)
-                  const expanded = expandedTemplateKey === t.key
                   return (
                     <div key={t.key} className="bg-surface">
                       <div className="px-4 py-3 flex items-center justify-between gap-4">
@@ -957,58 +1066,8 @@ export default function AdminSettingsPage() {
                               onChange={() => setNotifRouting((prev) => ({ ...prev, [t.key]: { ...cur, personal: !cur.personal } }))}
                             /> Personal
                           </label>
-                          {/* Message wording -- super admin only, applies to every
-                              vendor's alert of this type. Vendors never see this
-                              button, only the Group/Personal toggles above. */}
-                          {isSuperAdmin && tmpl && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (!expanded) setTemplateDrafts((d) => ({ ...d, [t.key]: d[t.key] ?? tmpl.template ?? '' }))
-                                setExpandedTemplateKey(expanded ? null : t.key)
-                              }}
-                              className="text-xs font-medium text-accent hover:underline whitespace-nowrap"
-                            >
-                              {expanded ? 'Close' : 'Configure Message'}
-                            </button>
-                          )}
                         </div>
                       </div>
-                      {isSuperAdmin && expanded && tmpl && (
-                        <div className="px-4 pb-4 bg-surface-2 border-t border-border">
-                          <label className="text-xs text-ink-3 mb-1 block mt-3">
-                            Message text (applies to every vendor for this alert type)
-                          </label>
-                          <textarea
-                            rows={3}
-                            value={templateDrafts[t.key] ?? tmpl.template ?? ''}
-                            onChange={(e) => setTemplateDrafts((d) => ({ ...d, [t.key]: e.target.value }))}
-                            placeholder="Leave blank to use the built-in default wording"
-                            className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong font-mono"
-                          />
-                          <div className="flex items-center flex-wrap gap-1.5 mt-2">
-                            <span className="text-xs text-ink-3">Tokens:</span>
-                            {(tmpl.tokens || []).map((tok: string) => (
-                              <code
-                                key={tok}
-                                className="text-xs bg-surface border border-border rounded px-1.5 py-0.5 text-ink-2 cursor-pointer"
-                                onClick={() => setTemplateDrafts((d) => ({ ...d, [t.key]: (d[t.key] ?? tmpl.template ?? '') + `{{${tok}}}` }))}
-                                title="Click to insert"
-                              >
-                                {`{{${tok}}}`}
-                              </code>
-                            ))}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => saveTemplate(t.key)}
-                            disabled={savingTemplateKey === t.key}
-                            className="mt-3 text-xs font-medium bg-accent text-accent-fg rounded-control px-3 py-1.5 hover:bg-accent-hover disabled:opacity-50"
-                          >
-                            {savingTemplateKey === t.key ? 'Saving…' : 'Save Message'}
-                          </button>
-                        </div>
-                      )}
                     </div>
                   )
                 })}

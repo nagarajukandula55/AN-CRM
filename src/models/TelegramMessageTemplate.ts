@@ -12,6 +12,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface ITelegramMessageTemplate extends Document {
   key: string;
   template: string;
+  enabled: boolean;
   updatedBy?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -21,6 +22,10 @@ const TelegramMessageTemplateSchema = new Schema<ITelegramMessageTemplate>(
   {
     key: { type: String, required: true, unique: true, uppercase: true, trim: true },
     template: { type: String, required: true },
+    // Super-admin kill switch for this alert type platform-wide -- distinct
+    // from a vendor's own Group/Personal routing checkboxes, which only
+    // pick a destination, never whether the type fires at all.
+    enabled: { type: Boolean, default: true },
     updatedBy: { type: String },
   },
   { timestamps: true }

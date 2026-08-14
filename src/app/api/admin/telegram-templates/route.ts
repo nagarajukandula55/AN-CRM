@@ -35,15 +35,19 @@ export async function GET() {
     getVendorTelegramMessageTypes(),
     TelegramMessageTemplate.find({}).lean(),
   ]);
-  const templateByKey = new Map(templates.map((t: any) => [t.key, t.template]));
+  const templateByKey = new Map(templates.map((t: any) => [t.key, t]));
 
   return NextResponse.json({
     success: true,
-    messageTypes: messageTypes.map((t) => ({
-      ...t,
-      template: templateByKey.get(t.key) || "",
-      tokens: tokensFor(t.key),
-    })),
+    messageTypes: messageTypes.map((t) => {
+      const saved: any = templateByKey.get(t.key);
+      return {
+        ...t,
+        template: saved?.template || "",
+        enabled: saved ? saved.enabled !== false : true,
+        tokens: tokensFor(t.key),
+      };
+    }),
   });
 }
 
@@ -55,21 +59,24 @@ export async function PUT(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const key = String(body.key || "").trim().toUpperCase();
   const template = typeof body.template === "string" ? body.template : "";
+  const enabled = body.enabled !== false;
   if (!key) {
     return NextResponse.json({ success: false, message: "key is required" }, { status: 400 });
   }
 
-  if (!template.trim()) {
-    // Blank template = "go back to this type's hardcoded fallback text" --
-    // delete the override rather than storing an empty string that would
-    // send blank messages.
+  if (!template.trim() && enabled) {
+    // Blank template + still enabled = "go back to this type's hardcoded
+    // fallback text" -- delete the override rather than storing an empty
+    // string that would send blank messages.
     await TelegramMessageTemplate.deleteOne({ key });
     return NextResponse.json({ success: true, cleared: true });
   }
 
+  // A disabled type persists its row (even with a blank template) so the
+  // kill switch survives -- only an explicit re-enable + blank text clears it.
   await TelegramMessageTemplate.findOneAndUpdate(
     { key },
-    { key, template, updatedBy: auth.userId },
+    { key, template: template || "(disabled)", enabled, updatedBy: auth.userId },
     { upsert: true, new: true }
   );
   return NextResponse.json({ success: true });

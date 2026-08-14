@@ -35,7 +35,10 @@ export async function sendVendorTelegramMessage(
   if (!business) return { group: false, personal: false };
 
   const template = await TelegramMessageTemplate.findOne({ key: type }).lean<any>();
-  if (template?.template) {
+  // Super admin's platform-wide kill switch for this alert type -- distinct
+  // from a vendor's own Group/Personal destination checkboxes below.
+  if (template?.enabled === false) return { group: false, personal: false };
+  if (template?.template && template.template !== "(disabled)") {
     const merged: Record<string, string> = { businessName: business.name || "", date: new Date().toLocaleDateString("en-IN"), ...tokens };
     text = template.template.replace(/\{\{(\w+)\}\}/g, (_: string, name: string) => merged[name] ?? "");
   }
