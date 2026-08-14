@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import VendorLogoutButton from '@/components/vendor/VendorLogoutButton'
 import AnuWidget from '@/components/AnuWidget'
+import BrowserPushRegister from '@/components/shared/BrowserPushRegister'
 import { connectDB } from '@/lib/mongodb'
 import BusinessMember from '@/models/BusinessMember'
 import VendorProfile from '@/models/VendorProfile'
@@ -280,6 +281,7 @@ export default async function VendorLayout({
           portal -- notifications live inside ANu instead (see AnuWidget's
           showNotifications prop). */}
       <AnuWidget showNotifications />
+      <BrowserPushRegister />
     </div>
   )
 }

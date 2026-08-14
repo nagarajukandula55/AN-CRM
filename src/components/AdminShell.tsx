@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/sidebar';
 import AnuWidget from '@/components/AnuWidget';
+import { useBrowserPush } from '@/lib/hooks/useBrowserPush';
 // NotificationBell removed -- per explicit direction, everything (approvals,
 // updates) is delivered through ANu-branded prompts (see
 // components/shared/Toast.tsx) instead of a separate bell/dropdown.
@@ -27,6 +28,10 @@ const FULL_BLEED_PATTERN = /^\/console\/crm\/(calls|jobsheets)\/[^/]+/;
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || '';
   const fullBleed = FULL_BLEED_PATTERN.test(pathname);
+  // Every /console/* page requires an authenticated session already
+  // (enforced by middleware before this component ever renders), so no
+  // extra login check is needed before registering for browser push.
+  useBrowserPush(true);
 
   if (fullBleed) {
     return (
