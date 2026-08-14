@@ -105,7 +105,7 @@ function isAdminChat(chatId: number | string): boolean {
 const HELP_TEXT = [
   "<b>AN CRM Bot — Commands</b>",
   "",
-  "/link VND0001 — link this chat using your business's Vendor ID (Settings &gt; Integrations, or Vendors &gt; this business's profile) -- send it from your team GROUP to set the group chat, and separately from your OWN personal chat to set your personal chat",
+  "/link VND0001 — link this chat using your business's Vendor ID (Settings &gt; Integrations, or Vendors &gt; this business's profile) -- send it from your team GROUP to set the group chat, and separately from your OWN personal chat to set your personal chat. You can also just send <code>VND0001</code> alone, any time, with no /link needed -- or send /link with nothing after it and I'll ask you for it.",
   "/tgid — show this chat's Telegram ID",
   "/today — quick revenue &amp; activity snapshot, today vs. yesterday",
   "/report — full period report for every business linked to this chat",
@@ -152,10 +152,20 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
-    if (command === "/link") {
-      const arg = text.trim().split(/\s+/)[1]?.trim().toUpperCase();
+    // Two ways in: `/link VND0001` in one message, OR just `/link` (with no
+    // argument) which replies asking for the Vendor ID -- the very next
+    // plain-text message from this same chat that looks like a Vendor ID
+    // (VND\d+, matched below regardless of any /link command) completes
+    // the link. No server-side "awaiting reply" state needed for that --
+    // a bare Vendor ID is unambiguous and safe to treat as a link attempt
+    // from any chat, any time, per explicit direction ("either it should
+    // accept VND series number directly whenever any user sends message
+    // to the group... or allow user to send /link then ask for input
+    // vendor ID").
+    if (command === "/link" || VENDOR_ID_RE.test(text.trim())) {
+      const arg = (command === "/link" ? text.trim().split(/\s+/)[1] : text.trim())?.trim().toUpperCase();
       if (!arg || !VENDOR_ID_RE.test(arg)) {
-        await sendToChat(chatId, "Usage: <code>/link VND0001</code> — send this business's own Vendor ID (Settings &gt; Integrations, or Vendors &gt; this business's profile).");
+        await sendToChat(chatId, "Send your business's own Vendor ID to link this chat -- e.g. <code>VND0001</code> (found in Settings &gt; Integrations, or Vendors &gt; this business's profile). You can send it alone or as <code>/link VND0001</code>.");
         return NextResponse.json({ success: true });
       }
 
