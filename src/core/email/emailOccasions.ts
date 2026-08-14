@@ -25,6 +25,9 @@ export const EMAIL_OCCASIONS: EmailOccasion[] = [
   { key: "VENDOR_APPROVED", label: "Vendor Approved", description: "A vendor application was approved.", tokens: ["vendorName", "businessName", "loginUrl"] },
   { key: "VENDOR_REJECTED", label: "Vendor Rejected", description: "A vendor application was rejected.", tokens: ["vendorName", "businessName", "reason"] },
   { key: "AGREEMENT_OTP", label: "Agreement Signing OTP", description: "OTP to verify identity before e-signing an agreement.", tokens: ["partyName", "agreementTitle", "otp", "signingLink"] },
+  { key: "AGREEMENT_PARTIAL_SIGNED", label: "Agreement Partially Signed", description: "The vendor signed but the company side hasn't countersigned yet.", tokens: ["partyName", "agreementTitle"] },
+  { key: "AGREEMENT_FULLY_EXECUTED", label: "Agreement Fully Executed", description: "Both parties have now signed the agreement.", tokens: ["partyName", "agreementTitle"] },
+  { key: "INVOICE_SENT", label: "Invoice Emailed to Customer", description: "An invoice PDF is emailed to a customer.", tokens: ["customerName", "invoiceNumber", "grandTotal", "pdfUrl"] },
   { key: "NEWSLETTER_WELCOME", label: "Newsletter Welcome", description: "Sent after a newsletter subscription.", tokens: [] },
 ];
 

@@ -116,6 +116,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
           subject: `Your agreement "${agreement.title}" has been fully executed`,
           html: `<p>Hi ${vendorParty.name || ''},</p><p>Good news — your agreement <strong>${agreement.title}</strong> has now been signed by both parties and is fully executed. You'll receive a separate email shortly with your login details.</p>`,
           businessId: (agreement as any).businessId?.toString(),
+          templateKey: "AGREEMENT_FULLY_EXECUTED",
+          templateTokens: { partyName: vendorParty.name || '', agreementTitle: agreement.title },
         }).catch(() => {});
       }
 

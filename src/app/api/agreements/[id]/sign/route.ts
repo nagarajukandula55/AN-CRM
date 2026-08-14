@@ -135,6 +135,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         subject: 'Thanks for signing — please wait for confirmation',
         html: `<p>Hi ${sig.partyName || ''},</p><p>Thanks for signing <strong>${agreement.title}</strong>. We've received your signature and it's now with us for final confirmation. Please allow us a little time — you'll get a confirmation email as soon as it's been countersigned on our end.</p>`,
         businessId: (agreement as any).businessId?.toString(),
+        templateKey: "AGREEMENT_PARTIAL_SIGNED",
+        templateTokens: { partyName: sig.partyName || '', agreementTitle: agreement.title },
       }).catch(() => {});
     }
 

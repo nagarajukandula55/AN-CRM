@@ -309,13 +309,22 @@ export async function sendInvoiceEmail({
       businessId,
     });
 
+    await connectDB();
+    const override = await renderEmailTemplate("INVOICE_SENT", {
+      customerName: customerName || "",
+      invoiceNumber: invoiceNumber || "",
+      grandTotal: String(grandTotal ?? ""),
+      pdfUrl: pdfUrl || "",
+    });
+    if (override === "disabled") return { success: false, error: "Occasion disabled by admin" };
+
     const { apiKey, from } = await resolveResendCreds(businessId);
     if (!apiKey) {
       throw new Error("No Resend API key configured (neither business-specific nor global RESEND_API_KEY)");
     }
     const resend = new Resend(apiKey);
 
-    const html = buildInvoiceEmailTemplate({
+    const html = override?.html || buildInvoiceEmailTemplate({
       customerName,
       invoiceNumber,
       pdfUrl,
@@ -326,7 +335,7 @@ export async function sendInvoiceEmail({
     const result = await resend.emails.send({
       from,
       to,
-      subject: `Invoice ${invoiceNumber} | AN Group`,
+      subject: override?.subject || `Invoice ${invoiceNumber} | AN Group`,
       html,
     });
 

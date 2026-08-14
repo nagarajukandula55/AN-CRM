@@ -54,6 +54,20 @@ export async function POST(req: NextRequest, context: RouteContext) {
       vendor.reviewedAt = new Date();
       await vendor.save();
 
+      // Was never actually sent -- the applicant only ever heard back on
+      // approval, never rejection, leaving them with no record their
+      // application was even reviewed.
+      if (vendor.email) {
+        sendGenericEmail({
+          to: vendor.email,
+          subject: "Update on your partner application",
+          html: `<p>Hi ${vendor.contactPerson || ""},</p><p>Thanks for your interest in becoming a partner with <strong>${vendor.companyName}</strong>. After review, we're not able to move forward with this application at this time.</p>${vendor.rejectionReason ? `<p>Reason: ${vendor.rejectionReason}</p>` : ""}`,
+          businessId: (vendor.businessId as any)?.toString(),
+          templateKey: "VENDOR_REJECTED",
+          templateTokens: { vendorName: vendor.contactPerson || "", businessName: vendor.companyName || "", reason: vendor.rejectionReason || "" },
+        }).catch(() => {});
+      }
+
       logAction({
         action: "REJECT",
         entity: "VendorProfile",
