@@ -94,7 +94,8 @@ const SIDEBAR_NAV_ROWS: ColumnRow[] = [
   { key: 'admin-product-feedback', defaultLabel: 'Product Feedback', label: 'Product Feedback', visible: true, order: 45, group: 'adm-docs' },
   { key: 'admin-telegram-users', defaultLabel: 'Telegram Users', label: 'Telegram Users', visible: true, order: 46, group: 'adm-docs' },
   { key: 'admin-telegram-log', defaultLabel: 'Telegram Notifications Log', label: 'Telegram Notifications Log', visible: true, order: 47, group: 'adm-docs' },
-  { key: 'admin-email-templates', defaultLabel: 'Email Templates', label: 'Email Templates', visible: true, order: 48, group: 'adm-docs' },
+  { key: 'admin-telegram-ids', defaultLabel: 'Telegram Chat IDs', label: 'Telegram Chat IDs', visible: true, order: 48, group: 'adm-docs' },
+  { key: 'admin-email-templates', defaultLabel: 'Email Templates', label: 'Email Templates', visible: true, order: 49, group: 'adm-docs' },
 ]
 
 // Every page wired to useColumnConfig() so far, plus their real hardcoded

@@ -203,11 +203,12 @@ export async function POST(req: NextRequest) {
       }
       await business.save();
 
+      const greetName = vendor.companyName || business.name;
       await sendToChat(
         chatId,
         reportsAllowed
-          ? `✅ Confirmed. <b>${vendor.companyName || business.name}</b> (${arg}) is now linked -- this ${isGroup ? "group" : "personal chat"} will receive ${isGroup ? "team" : "your own"} automated reports (daily by default — change the schedule any time in Settings).\n\nSending your first report now…`
-          : `✅ Confirmed. <b>${vendor.companyName || business.name}</b> (${arg}) is now linked -- this ${isGroup ? "group" : "personal chat"} can receive alerts, but automatic scheduled reports aren't included in your current plan. Upgrade from Plan &amp; Billing to turn those on.`
+          ? `👋 Hi <b>${greetName}</b>! Confirmed -- Vendor ID ${arg} is now linked, and this ${isGroup ? "group" : "personal chat"} will receive ${isGroup ? "team" : "your own"} automated reports (daily by default — change the schedule any time in Settings).\n\nSending your first report now…`
+          : `👋 Hi <b>${greetName}</b>! Confirmed -- Vendor ID ${arg} is now linked, and this ${isGroup ? "group" : "personal chat"} can receive alerts, but automatic scheduled reports aren't included in your current plan. Upgrade from Plan &amp; Billing to turn those on.`
       );
 
       if (!reportsAllowed) {
