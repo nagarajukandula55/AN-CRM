@@ -123,3 +123,46 @@ export function buildChartUrl(businessName: string, frequency: string, activityL
   };
   return `https://quickchart.io/chart?width=600&height=350&c=${encodeURIComponent(JSON.stringify(chartConfig))}`;
 }
+
+// One period-length back per point, one DAILY interval each (daily report:
+// 7 days; weekly report: 6 weeks of daily points would be noisy, so weekly
+// reports plot 6 weeks; monthly reports plot 6 months) -- a real trend
+// line instead of just "prior vs. current", per explicit direction ("best
+// possible way rich texts and graphs and analytic data").
+const TREND_POINTS: Record<string, { count: number; stepDays: number; labelFmt: (d: Date) => string }> = {
+  DAILY: { count: 7, stepDays: 1, labelFmt: (d) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) },
+  WEEKLY: { count: 6, stepDays: 7, labelFmt: (d) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) },
+  MONTHLY: { count: 6, stepDays: 30, labelFmt: (d) => d.toLocaleDateString("en-IN", { month: "short", year: "2-digit" }) },
+};
+
+export async function buildTrendChartUrl(businessName: string, frequency: string, activityLabel: string, businessId: string, isSC: boolean, now: Date): Promise<string> {
+  const cfg = TREND_POINTS[frequency] || TREND_POINTS.DAILY;
+  const points: { label: string; revenue: number; activity: number }[] = [];
+  let periodEnd = new Date(now);
+  for (let i = 0; i < cfg.count; i++) {
+    const periodStartDate = new Date(periodEnd);
+    periodStartDate.setDate(periodStartDate.getDate() - cfg.stepDays);
+    const nums = await computePeriodNumbers(businessId, isSC, periodStartDate, periodEnd);
+    points.unshift({ label: cfg.labelFmt(periodStartDate), revenue: nums.revenue, activity: nums.activity });
+    periodEnd = periodStartDate;
+  }
+
+  const chartConfig = {
+    type: "line",
+    data: {
+      labels: points.map((p) => p.label),
+      datasets: [
+        { label: "Revenue (Rs)", data: points.map((p) => p.revenue), borderColor: "#5B3DF5", backgroundColor: "#5B3DF533", fill: true, yAxisID: "y", tension: 0.3 },
+        { label: activityLabel, data: points.map((p) => p.activity), borderColor: "#22D3EE", backgroundColor: "#22D3EE33", fill: true, yAxisID: "y1", tension: 0.3 },
+      ],
+    },
+    options: {
+      plugins: { title: { display: true, text: `${businessName} — last ${cfg.count} ${frequency === "DAILY" ? "days" : frequency === "WEEKLY" ? "weeks" : "months"}` } },
+      scales: {
+        y: { type: "linear", position: "left", title: { display: true, text: "Revenue (Rs)" } },
+        y1: { type: "linear", position: "right", title: { display: true, text: activityLabel }, grid: { drawOnChartArea: false } },
+      },
+    },
+  };
+  return `https://quickchart.io/chart?width=700&height=380&c=${encodeURIComponent(JSON.stringify(chartConfig))}`;
+}

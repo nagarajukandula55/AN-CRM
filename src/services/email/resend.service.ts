@@ -2,6 +2,8 @@ import { Resend } from "resend";
 import { buildInvoiceEmailTemplate } from "./invoiceEmail.template";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { getSharedIntegration } from "@/lib/centralApiRead";
+import { renderEmailTemplate } from "@/core/email/renderEmailTemplate";
+import { connectDB } from "@/lib/mongodb";
 
 /**
  * Central-api is now the ONLY source for Resend credentials -- per
@@ -46,6 +48,10 @@ export async function sendPasswordResetEmail({
   businessId?: string;
 }) {
   try {
+    await connectDB();
+    const override = await renderEmailTemplate("FORGOT_PASSWORD", { resetUrl });
+    if (override === "disabled") return { success: false, error: "Occasion disabled by admin" };
+
     const { apiKey, from } = await resolveResendCreds(businessId);
     if (!apiKey) {
       throw new Error("No Resend API key configured (neither business-specific nor global RESEND_API_KEY)");
@@ -55,8 +61,8 @@ export async function sendPasswordResetEmail({
     const result = await resend.emails.send({
       from,
       to,
-      subject: "Reset your password",
-      html: `
+      subject: override?.subject || "Reset your password",
+      html: override?.html || `
         <p>We received a request to reset your password.</p>
         <p><a href="${resetUrl}">Click here to reset your password</a>. This link expires in 30 minutes.</p>
         <p>If you didn't request this, you can safely ignore this email.</p>
@@ -89,6 +95,10 @@ export async function sendVerificationOtpEmail({
   businessId?: string;
 }) {
   try {
+    await connectDB();
+    const override = await renderEmailTemplate("VERIFICATION_OTP", { otp, purpose });
+    if (override === "disabled") return { success: false, error: "Occasion disabled by admin" };
+
     const { apiKey, from } = await resolveResendCreds(businessId);
     if (!apiKey) {
       throw new Error("No Resend API key configured (neither business-specific nor global RESEND_API_KEY)");
@@ -98,8 +108,8 @@ export async function sendVerificationOtpEmail({
     const result = await resend.emails.send({
       from,
       to,
-      subject: `Your verification code: ${otp}`,
-      html: `
+      subject: override?.subject || `Your verification code: ${otp}`,
+      html: override?.html || `
         <p>Your verification code for ${purpose} is:</p>
         <p style="font-size:28px;font-weight:700;letter-spacing:4px;">${otp}</p>
         <p>This code is valid for 10 minutes. If you didn't request this, you can ignore this email.</p>
@@ -122,6 +132,10 @@ export async function sendNewsletterWelcomeEmail({
   businessId?: string;
 }) {
   try {
+    await connectDB();
+    const override = await renderEmailTemplate("NEWSLETTER_WELCOME", {});
+    if (override === "disabled") return { success: false, error: "Occasion disabled by admin" };
+
     const { apiKey, from } = await resolveResendCreds(businessId);
     if (!apiKey) {
       throw new Error("No Resend API key configured (neither business-specific nor global RESEND_API_KEY)");
@@ -131,8 +145,8 @@ export async function sendNewsletterWelcomeEmail({
     const result = await resend.emails.send({
       from,
       to,
-      subject: "You're subscribed!",
-      html: `<p>Thanks for subscribing -- we'll keep you posted on new products and offers.</p>`,
+      subject: override?.subject || "You're subscribed!",
+      html: override?.html || `<p>Thanks for subscribing -- we'll keep you posted on new products and offers.</p>`,
     });
 
     return { success: true, result };
@@ -160,6 +174,10 @@ export async function sendAgreementOtpEmail({
   businessId?: string;
 }) {
   try {
+    await connectDB();
+    const override = await renderEmailTemplate("AGREEMENT_OTP", { partyName, agreementTitle, otp, signingLink: signingLink || "" });
+    if (override === "disabled") return { success: false, error: "Occasion disabled by admin" };
+
     const { apiKey, from } = await resolveResendCreds(businessId);
     if (!apiKey) {
       throw new Error("No Resend API key configured (neither business-specific nor global RESEND_API_KEY)");
@@ -169,8 +187,8 @@ export async function sendAgreementOtpEmail({
     const result = await resend.emails.send({
       from,
       to,
-      subject: `Action required: sign "${agreementTitle}"`,
-      html: `
+      subject: override?.subject || `Action required: sign "${agreementTitle}"`,
+      html: override?.html || `
         <p>Dear ${partyName},</p>
         <p>You have been requested to sign the agreement "${agreementTitle}".</p>
         ${signingLink ? `<p><a href="${signingLink}">Click here to review and sign</a></p>` : ""}
@@ -197,6 +215,10 @@ export async function sendWelcomeEmail({
   businessId?: string;
 }) {
   try {
+    await connectDB();
+    const override = await renderEmailTemplate("WELCOME_REGISTRATION", { name });
+    if (override === "disabled") return { success: false, error: "Occasion disabled by admin" };
+
     const { apiKey, from } = await resolveResendCreds(businessId);
     if (!apiKey) {
       throw new Error("No Resend API key configured (neither business-specific nor global RESEND_API_KEY)");
@@ -206,8 +228,8 @@ export async function sendWelcomeEmail({
     const result = await resend.emails.send({
       from,
       to,
-      subject: "Welcome to AN Group",
-      html: `
+      subject: override?.subject || "Welcome to AN Group",
+      html: override?.html || `
         <p>Hi ${name},</p>
         <p>Your account has been created successfully. You can now sign in and get started.</p>
       `,
@@ -238,6 +260,10 @@ export async function sendAccountCredentialsEmail({
   businessId?: string;
 }) {
   try {
+    await connectDB();
+    const override = await renderEmailTemplate("ACCOUNT_CREDENTIALS", { name, email: to, tempPassword: tempPassword || "", loginUrl: loginUrl || "" });
+    if (override === "disabled") return { success: false, error: "Occasion disabled by admin" };
+
     const { apiKey, from } = await resolveResendCreds(businessId);
     if (!apiKey) {
       throw new Error("No Resend API key configured (neither business-specific nor global RESEND_API_KEY)");
@@ -247,8 +273,8 @@ export async function sendAccountCredentialsEmail({
     const result = await resend.emails.send({
       from,
       to,
-      subject: "Your AN Group account is ready",
-      html: `
+      subject: override?.subject || "Your AN Group account is ready",
+      html: override?.html || `
         <p>Hi ${name},</p>
         <p>An account has been created for you on AN Group.</p>
         <p>Login email: <b>${to}</b></p>
@@ -343,19 +369,40 @@ export async function sendGenericEmail({
   subject,
   html,
   businessId,
+  templateKey,
+  templateTokens,
 }: {
   to: string | string[];
   subject: string;
   html: string;
   businessId?: string;
+  /** When set, checks for a super-admin-saved override for this occasion
+   * (see core/email/emailOccasions.ts) before falling back to the caller's
+   * own subject/html -- lets call sites with no dedicated sender function
+   * of their own (vendor application/approval, agreements, etc.) still be
+   * admin-configurable through the same template system. */
+  templateKey?: string;
+  templateTokens?: Record<string, string>;
 }) {
   try {
+    let effectiveSubject = subject;
+    let effectiveHtml = html;
+    if (templateKey) {
+      await connectDB();
+      const override = await renderEmailTemplate(templateKey, templateTokens || {});
+      if (override === "disabled") return { success: false, error: "Occasion disabled by admin" };
+      if (override) {
+        effectiveSubject = override.subject;
+        effectiveHtml = override.html;
+      }
+    }
+
     const { apiKey, from } = await resolveResendCreds(businessId);
     if (!apiKey) {
       throw new Error("No Resend API key configured (neither business-specific nor global RESEND_API_KEY)");
     }
     const resend = new Resend(apiKey);
-    const result = await resend.emails.send({ from, to, subject, html });
+    const result = await resend.emails.send({ from, to, subject: effectiveSubject, html: effectiveHtml });
     return { success: true, result };
   } catch (err: any) {
     console.error("RESEND GENERIC EMAIL ERROR", err);

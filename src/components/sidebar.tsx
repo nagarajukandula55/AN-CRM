@@ -11,6 +11,7 @@ import {
   Box, Hash, Truck, Activity, FileText, PhoneCall, ClipboardList,
   BarChart3, Ruler, Tags, Layers, Bot, MapPin, FolderOpen, Settings,
   ArrowLeftRight, SlidersHorizontal, ShieldCheck, Smartphone, LifeBuoy, Receipt, Plus,
+  Mail, Send,
 } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
 import { getAuthMe, invalidateAuthMeCache } from "@/lib/authMeCache";
@@ -83,7 +84,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: 
   Key, UserPlus, ShoppingBag, Box, Hash, Truck, Activity, FileText,
   PhoneCall, ClipboardList, BarChart3, Ruler, Tags, Layers, Bot,
   MapPin, FolderOpen, Settings, ArrowLeftRight, SlidersHorizontal,
-  ShieldCheck, Smartphone, LifeBuoy, Receipt,
+  ShieldCheck, Smartphone, LifeBuoy, Receipt, Mail, Send,
 };
 
 // Nav data moved to sidebar-nav.ts (a plain module) because the server-side

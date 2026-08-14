@@ -73,9 +73,11 @@ import { connectDB } from "@/lib/mongodb";
 import Business from "@/models/Business";
 import VendorProfile from "@/models/VendorProfile";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { buildReportMessage, periodStart, computePeriodNumbers, fmtINR } from "@/lib/telegramReport";
+import { buildReportMessage, buildTrendChartUrl, periodStart, computePeriodNumbers, fmtINR } from "@/lib/telegramReport";
+import { sendBusinessReport } from "@/core/telegram/sendBusinessReport";
 import { runAllDueCronJobs } from "@/lib/cronRunner";
 import { getAllowedModuleKeys, getActivePlanKey } from "@/core/pricing/planAccess";
+import { sendTelegramPhoto } from "@/lib/telegram";
 
 // SECURITY/BILLING: "Automatic Telegram Business Report" is a paid,
 // plan-gated feature (see core/pricing/plans.ts's "telegram-reports"
@@ -110,6 +112,7 @@ const HELP_TEXT = [
   "/today — quick revenue &amp; activity snapshot, today vs. yesterday",
   "/report — full period report for every business linked to this chat",
   "/runjobs — (admin only) manually run every due scheduled job now",
+  "/sendreports — (admin only) send every linked vendor their own business report right now",
   "/help — this list",
 ].join("\n");
 
@@ -254,6 +257,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+    // The actual trigger for scheduled Telegram business reports -- NOT a
+    // Vercel cron (deliberately not used here, per explicit direction).
+    // A platform admin sends this from an allowlisted chat
+    // (ANOPS_TELEGRAM_ADMIN_CHAT_IDS) and every vendor with a linked chat
+    // gets their own report sent to their own configured chat(s) right
+    // now -- each vendor's data stays scoped to their own business
+    // exactly as sendBusinessReport() already enforces. Vendors can also
+    // always pull their own report any time via /report -- this command
+    // is only for bulk-sending to everyone at once.
+    if (command === "/sendreports") {
+      if (!isAdminChat(chatId)) {
+        await sendToChat(chatId, "This command is restricted to platform admins.");
+        return NextResponse.json({ success: true });
+      }
+      await connectDB();
+      const candidates = await Business.find({
+        $or: [{ telegramChatId: { $nin: [null, ""] } }, { telegramPersonalChatId: { $nin: [null, ""] } }],
+        isActive: true,
+      }).select("name operatingMode telegramChatId telegramPersonalChatId telegramReportFrequency");
+
+      await sendToChat(chatId, `Sending reports to ${candidates.length} linked vendor(s)…`);
+      let sent = 0;
+      const skipped: string[] = [];
+      for (const business of candidates) {
+        try {
+          const result = await sendBusinessReport(business);
+          if (result.sent) sent++;
+          else skipped.push(`${business.name} (${result.reason})`);
+        } catch (err) {
+          console.error(`[telegram-webhook] /sendreports failed for business ${business._id}:`, err);
+          skipped.push(`${business.name} (error)`);
+        }
+      }
+      const summary = [`<b>Reports sent: ${sent}/${candidates.length}</b>`];
+      if (skipped.length > 0) summary.push("", "<pre>" + skipped.slice(0, 20).join("\n") + "</pre>");
+      await sendToChat(chatId, summary.join("\n"));
+      return NextResponse.json({ success: true });
+    }
+
     if (command === "/today" || command === "/report") {
       await connectDB();
       // Matches either the group chat id OR the personal chat id -- was
@@ -305,6 +347,9 @@ export async function POST(req: NextRequest) {
             const frequency = business.telegramReportFrequency && business.telegramReportFrequency !== "NONE" ? business.telegramReportFrequency : "DAILY";
             const { text: reportText } = await buildReportMessage(business.name, frequency, isSC, String(business._id), now);
             await sendToChat(chatId, reportText);
+            const activityLabel = isSC ? "Workorders" : "Calls";
+            const chartUrl = await buildTrendChartUrl(business.name, frequency, activityLabel, String(business._id), isSC, now);
+            await sendTelegramPhoto(chartUrl, { chatId: String(chatId) });
           }
         } catch (err) {
           console.error(`[telegram-webhook] ${command} failed for business ${business._id}:`, err);

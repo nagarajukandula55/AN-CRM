@@ -68,7 +68,15 @@ export async function POST(req: NextRequest) {
     user.resetPasswordExpires = new Date(Date.now() + TOKEN_TTL_MS);
     await user.save();
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    // NEXT_PUBLIC_APP_URL wasn't set in production, so this silently fell
+    // back to http://localhost:3000 in every real reset email ever sent --
+    // the request's own origin (protocol + host, as the browser that
+    // called this route actually sees it) is always correct and needs no
+    // env var to be configured at all, so prefer that; NEXT_PUBLIC_APP_URL
+    // (if set) still wins for cases where the public URL genuinely differs
+    // from the request's Host header (e.g. behind a proxy).
+    const requestOrigin = `${req.headers.get("x-forwarded-proto") || "https"}://${req.headers.get("host") || ""}`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || requestOrigin || "http://localhost:3000";
     const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
 
     try {

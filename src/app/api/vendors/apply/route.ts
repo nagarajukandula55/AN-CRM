@@ -323,6 +323,12 @@ export async function POST(req: NextRequest) {
              <p>Thanks for applying to become a partner${business ? ` with ${business.brandName || business.name}` : ""}. We've received your application.</p>
              <p>Your request number is <strong>${requestNumber}</strong> — please quote it in any follow-up. Our team will review your details and contact you with the partner agreement.</p>`,
         businessId: resolvedBusinessId ? String(resolvedBusinessId) : undefined,
+        // Only the "under review" branch maps to a configurable occasion --
+        // the instant-trial-activation branch has its own distinct wording
+        // not covered by this catalog entry yet.
+        ...(!trialActivated
+          ? { templateKey: "VENDOR_APPLICATION_RECEIVED", templateTokens: { vendorName: String(contactPerson).trim(), businessName: business?.brandName || business?.name || "" } }
+          : {}),
       }).catch((err) => console.error("Vendor application confirmation email failed:", err));
     }
 

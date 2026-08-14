@@ -215,7 +215,11 @@ By signing below, both parties agree to the terms above.`;
       agreement.status = "PENDING_SIGNATURE";
       await agreement.save();
 
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      // Same localhost-fallback bug as reset-password/request/route.ts --
+      // fall back to the request's own origin instead of hardcoding
+      // localhost when NEXT_PUBLIC_APP_URL isn't set.
+      const requestOrigin = `${req.headers.get("x-forwarded-proto") || "https"}://${req.headers.get("host") || ""}`;
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || requestOrigin || "http://localhost:3000";
       const signingLink = `${baseUrl}/agreements/${agreement._id}/sign?email=${encodeURIComponent(vendorParty.email)}`;
       sendAgreementOtpEmail({
         to: vendorParty.email,
@@ -235,6 +239,8 @@ By signing below, both parties agree to the terms above.`;
         subject: "Your application has been approved",
         html: `<p>Hi ${vendorParty.name || ""},</p><p>Good news — your application with <strong>${businessDisplay}</strong> has been approved. We've sent you a separate email with a link to review and sign your partner agreement. Once you've signed, please allow us a little time to countersign and confirm — you'll get a confirmation email as soon as that's done.</p>`,
         businessId: (vendor.businessId as any)?.toString(),
+        templateKey: "VENDOR_APPROVED",
+        templateTokens: { vendorName: vendorParty.name || "", businessName: businessDisplay, loginUrl: baseUrl },
       }).catch(() => {});
     }
 

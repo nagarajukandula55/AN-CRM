@@ -153,6 +153,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-product-feedback", label: "Product Feedback", route: "/console/admin/product-feedback", icon: "MessageSquare" },
       { key: "admin-telegram-users", label: "Telegram Users", route: "/console/admin/telegram-users", icon: "Send" },
       { key: "admin-telegram-log", label: "Telegram Notifications Log", route: "/console/admin/telegram-notifications-log", icon: "Send" },
+      { key: "admin-email-templates", label: "Email Templates", route: "/console/admin/email-templates", icon: "Mail" },
     ]},
   ]},
 ];
