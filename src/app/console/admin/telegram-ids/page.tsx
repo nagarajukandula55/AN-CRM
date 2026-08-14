@@ -1,9 +1,9 @@
 'use client'
 import { useState } from 'react'
 import useSWR from 'swr'
-import { Save, Loader2, Search } from 'lucide-react'
+import { Save, Loader2, Search, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { Card } from '@/components/ui/Card'
+import { Card, CardBody } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { LoadingPanel } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -30,6 +30,11 @@ interface Row {
 }
 
 export default function TelegramIdsAdminPage() {
+  const { data: webhookData, mutate: refetchWebhook, isLoading: webhookLoading } = useSWR('/api/telegram/set-webhook', (url: string) =>
+    fetch(url, { credentials: 'include' }).then((r) => r.json())
+  )
+  const info = webhookData?.success ? webhookData.info : null
+
   const { data, mutate, isLoading } = useSWR('/api/admin/telegram-ids', (url: string) =>
     fetch(url, { credentials: 'include' }).then((r) => r.json())
   )
@@ -73,6 +78,55 @@ export default function TelegramIdsAdminPage() {
         title="Telegram Chat IDs"
         description="Every vendor's Group/Personal Telegram chat ID in one place -- edit directly here, same effect as that vendor sending /link themselves."
       />
+
+      <Card className="mb-4">
+        <CardBody>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="h-section flex items-center gap-2">Bot Connectivity</h2>
+            <button
+              type="button"
+              onClick={() => refetchWebhook()}
+              className="text-xs font-medium text-accent hover:underline inline-flex items-center gap-1"
+            >
+              <RefreshCw size={12} className={webhookLoading ? 'animate-spin' : ''} /> Refresh
+            </button>
+          </div>
+          {webhookLoading ? (
+            <p className="text-xs text-ink-3">Checking with Telegram…</p>
+          ) : !webhookData?.success ? (
+            <div className="flex items-start gap-2 text-sm text-danger">
+              <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium">Can't reach Telegram: {webhookData?.error || 'Unknown error'}</p>
+                {webhookData?.error?.includes('ANOPS_TELEGRAM_BOT_TOKEN') && (
+                  <p className="text-xs text-ink-3 mt-1">This env var isn't set on this deployment -- the bot cannot send or receive anything at all until it is. Add it in Vercel's project env vars and redeploy.</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center gap-2">
+                {info?.url ? <CheckCircle2 size={14} className="text-success flex-shrink-0" /> : <AlertTriangle size={14} className="text-danger flex-shrink-0" />}
+                <span className="text-ink-2">Webhook URL:</span>
+                <span className="tabular text-ink">{info?.url || 'Not registered'}</span>
+              </div>
+              {info?.last_error_message && (
+                <div className="flex items-center gap-2 text-danger">
+                  <AlertTriangle size={14} className="flex-shrink-0" />
+                  <span>Last error: {info.last_error_message}{info.last_error_date ? ` (${new Date(info.last_error_date * 1000).toLocaleString('en-IN')})` : ''}</span>
+                </div>
+              )}
+              <div className="text-ink-3">Pending updates: {info?.pending_update_count ?? 0}</div>
+              {webhookData.relayEnabled && (
+                <div className="text-ink-3">Relay mode: this site uses central-api's shared bot -- the webhook above should point at central-api, not this site directly.</div>
+              )}
+              {!info?.url && !webhookData.relayEnabled && (
+                <p className="text-danger">No webhook registered at all -- Telegram has nowhere to send messages, so nothing will ever respond. This is the most likely reason for "no reply."</p>
+              )}
+            </div>
+          )}
+        </CardBody>
+      </Card>
 
       <div className="rounded-card border border-warning/20 bg-warning-soft px-4 py-3 text-xs text-warning mb-4">
         If a vendor's group isn't confirming a linked Vendor ID: Telegram groups only deliver plain (non-command)
