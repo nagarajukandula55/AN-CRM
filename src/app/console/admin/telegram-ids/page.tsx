@@ -35,6 +35,22 @@ export default function TelegramIdsAdminPage() {
   )
   const info = webhookData?.success ? webhookData.info : null
 
+  const [diagnosing, setDiagnosing] = useState(false)
+  const [diagnoseResult, setDiagnoseResult] = useState<{ success: boolean; message?: string; error?: string } | null>(null)
+  async function runDiagnose() {
+    setDiagnosing(true)
+    setDiagnoseResult(null)
+    try {
+      const res = await fetch('/api/admin/telegram-diagnose', { method: 'POST', credentials: 'include' })
+      const d = await res.json()
+      setDiagnoseResult(d)
+    } catch (err: any) {
+      setDiagnoseResult({ success: false, error: err?.message || 'Request failed' })
+    } finally {
+      setDiagnosing(false)
+    }
+  }
+
   const { data, mutate, isLoading } = useSWR('/api/admin/telegram-ids', (url: string) =>
     fetch(url, { credentials: 'include' }).then((r) => r.json())
   )
@@ -118,10 +134,39 @@ export default function TelegramIdsAdminPage() {
               )}
               <div className="text-ink-3">Pending updates: {info?.pending_update_count ?? 0}</div>
               {webhookData.relayEnabled && (
-                <div className="text-ink-3">Relay mode: this site uses central-api's shared bot -- the webhook above should point at central-api, not this site directly.</div>
+                <div className="text-ink-3">
+                  Relay mode: this site uses central-api's shared bot -- the webhook above points at central-api,
+                  not this site directly, so this info alone can't confirm central-api is actually forwarding to
+                  this site. Use the test below for that.
+                </div>
               )}
               {!info?.url && !webhookData.relayEnabled && (
                 <p className="text-danger">No webhook registered at all -- Telegram has nowhere to send messages, so nothing will ever respond. This is the most likely reason for "no reply."</p>
+              )}
+            </div>
+          )}
+
+          {webhookData?.relayEnabled && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <button
+                type="button"
+                onClick={runDiagnose}
+                disabled={diagnosing}
+                className="text-xs font-medium bg-accent text-accent-fg rounded-control px-3 py-1.5 hover:bg-accent-hover disabled:opacity-50 inline-flex items-center gap-1.5"
+              >
+                {diagnosing ? <Loader2 size={12} className="animate-spin" /> : null}
+                Test this site's own webhook directly
+              </button>
+              <p className="text-xs text-ink-3 mt-1.5">
+                Bypasses Telegram and central-api entirely -- sends a synthetic /help straight to this site's own
+                webhook route, addressed to your first configured admin chat (ANOPS_TELEGRAM_ADMIN_CHAT_IDS). If
+                you get a /help reply in Telegram after running this, this site's own bot logic works correctly
+                end-to-end and the real problem is central-api's relay config (its Sites tab), not this app.
+              </p>
+              {diagnoseResult && (
+                <div className={`mt-2 rounded-control px-3 py-2 text-xs ${diagnoseResult.success ? 'bg-success-soft text-success' : 'bg-danger-soft text-danger'}`}>
+                  {diagnoseResult.message || diagnoseResult.error}
+                </div>
               )}
             </div>
           )}
