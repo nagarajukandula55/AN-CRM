@@ -133,9 +133,14 @@ export async function GET(req: NextRequest) {
     };
     // resolved.vendorId is only omitted for the business-wide admin
     // fallback (see resolveVendorForRead) -- every real vendor caller
-    // still gets filtered to exactly their own entries.
+    // still gets both their OWN private entries and any global/shared
+    // ones (vendorId: null), same convention as Solutions/FaultCodes/
+    // SymptomCodes -- a brand-new vendor with no BOM entries of their own
+    // yet otherwise saw an almost-empty parts picker ("only showing 1")
+    // instead of a real materials list to start from.
+    const vendorAndClauses: Record<string, unknown>[] = [];
     if (resolved.vendorId) {
-      query.vendorId = resolved.vendorId;
+      vendorAndClauses.push({ $or: [{ vendorId: resolved.vendorId }, { vendorId: null }, { vendorId: { $exists: false } }] });
     }
     if (search) {
       query.$or = [
@@ -148,7 +153,7 @@ export async function GET(req: NextRequest) {
     // a universal consumable/labour line should still show up regardless
     // of which device brand the workorder is for.
     if (brandId && mongoose.Types.ObjectId.isValid(brandId)) {
-      query.$and = [{ $or: [{ brandId }, { brandId: null }, { brandId: { $exists: false } }] }];
+      vendorAndClauses.push({ $or: [{ brandId }, { brandId: null }, { brandId: { $exists: false } }] });
     }
     // Same inclusive pattern one level down -- a model-agnostic part under
     // that brand ("fits every model") still shows when browsing one model.
@@ -167,8 +172,11 @@ export async function GET(req: NextRequest) {
       if (modelDoc?.seriesId) {
         modelOrClauses.push({ seriesId: modelDoc.seriesId, deviceModelId: { $in: [null, undefined] } });
       }
-      const modelOr = { $or: modelOrClauses };
-      query.$and = query.$and ? [...(query.$and as any[]), modelOr] : [modelOr];
+      vendorAndClauses.push({ $or: modelOrClauses });
+    }
+
+    if (vendorAndClauses.length > 0) {
+      query.$and = vendorAndClauses;
     }
 
     const parts = await BOM.find(query)

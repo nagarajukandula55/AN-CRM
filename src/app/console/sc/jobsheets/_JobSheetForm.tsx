@@ -48,6 +48,19 @@ interface LineItem {
   taxRate: number
   hsnCode?: string
   serviceCenterBOMId?: string
+  // Display-only basis for the Rate input -- unitPrice is ALWAYS stored
+  // tax-EXCLUSIVE (every downstream calc -- lineTotal, the live CGST/SGST
+  // preview, and close-time invoice generation via item.unitPrice --
+  // assumes that), same convention as BOM.rate and the Add-to-BOM modal's
+  // priceIncludesTax. When true, the Rate cell shows/accepts the
+  // tax-INCLUSIVE figure and converts to canonical on every change.
+  priceIncludesTax?: boolean
+}
+function displayRate(l: LineItem): number {
+  return l.priceIncludesTax ? l.unitPrice * (1 + (l.taxRate || 0) / 100) : l.unitPrice
+}
+function canonicalRateFromInput(entered: number, l: LineItem): number {
+  return l.priceIncludesTax ? entered / (1 + (l.taxRate || 0) / 100) : entered
 }
 // Default new Parts & Service lines to 18% GST -- per explicit direction,
 // the standard rate for the vast majority of parts/labour; still
@@ -873,6 +886,16 @@ export default function SCJobSheetScreen() {
   }
 
   const total = lineItems.reduce((sum, l) => sum + lineTotal(l, taxApplyEnabled), 0)
+  // Live CGST/SGST/IGST preview -- mirrors the same split computed for
+  // real at close time (api/crm/jobsheets/[id]/close/route.ts), but that
+  // route's supplyType (INTRASTATE/INTERSTATE) is only chosen in the close
+  // modal, not known yet on this live form -- defaults to INTRASTATE (the
+  // same default the close route itself uses) since it's the common case;
+  // the close modal is still where the real, authoritative choice happens.
+  const taxSubtotal = lineItems.reduce((sum, l) => sum + (l.quantity || 0) * (l.unitPrice || 0), 0)
+  const taxAmountTotal = total - taxSubtotal
+  const cgstAmount = taxApplyEnabled ? taxAmountTotal / 2 : 0
+  const sgstAmount = cgstAmount
   const isOpen = job.status !== 'CLOSED' && job.status !== 'CANCELLED'
   const inRepair = job.status === 'REPAIR_STARTED' || job.status === 'REPAIR_IN_PROGRESS'
   // Parts/lines are only editable while repair is actually underway --
@@ -1008,7 +1031,7 @@ export default function SCJobSheetScreen() {
                 <tr className="border-b border-border">
                   <th className="text-left px-5 py-2 text-xs text-ink-3 font-medium">Description</th>
                   <th className="text-center px-2 py-2 text-xs text-ink-3 font-medium w-16">Qty</th>
-                  <th className="text-right px-2 py-2 text-xs text-ink-3 font-medium w-24">Rate</th>
+                  <th className="text-right px-2 py-2 text-xs text-ink-3 font-medium w-28">Rate</th>
                   <th className="text-right px-2 py-2 text-xs text-ink-3 font-medium w-20">Tax %</th>
                   <th className="text-right px-5 py-2 text-xs text-ink-3 font-medium w-24">Total</th>
                   <th className="w-8" />
@@ -1061,7 +1084,35 @@ export default function SCJobSheetScreen() {
                       })()}
                     </td>
                     <td className="px-2 py-1.5"><input disabled={!editable} type="number" onFocus={e => e.target.select()} min={1} value={l.quantity} onChange={e => updateLine(i, { quantity: Number(e.target.value) })} className={`${inputCls} py-1.5 text-center disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
-                    <td className="px-2 py-1.5"><input disabled={!editable} type="number" onFocus={e => e.target.select()} min={0} value={l.unitPrice} onChange={e => updateLine(i, { unitPrice: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`} /></td>
+                    <td className="px-2 py-1.5">
+                      <input
+                        disabled={!editable}
+                        type="number"
+                        onFocus={e => e.target.select()}
+                        min={0}
+                        value={displayRate(l)}
+                        onChange={e => updateLine(i, { unitPrice: canonicalRateFromInput(Number(e.target.value), l) })}
+                        className={`${inputCls} py-1 text-right disabled:opacity-60 disabled:cursor-not-allowed`}
+                      />
+                      {/* Same GST-inclusive/exclusive basis toggle as the
+                          Material Catalog / Add-to-BOM modal, applied
+                          per-line here -- unitPrice always stays canonical
+                          (tax-exclusive) underneath, see displayRate/
+                          canonicalRateFromInput above. */}
+                      <select
+                        disabled={!editable}
+                        value={l.priceIncludesTax ? 'INCLUSIVE' : 'EXCLUSIVE'}
+                        // The underlying canonical (exclusive) unitPrice
+                        // never changes here -- toggling only changes how
+                        // it's DISPLAYED/entered going forward (via
+                        // displayRate), never the actual price.
+                        onChange={e => updateLine(i, { priceIncludesTax: e.target.value === 'INCLUSIVE' })}
+                        className="mt-0.5 w-full text-[10px] text-ink-3 bg-transparent border-0 p-0 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <option value="EXCLUSIVE">Excl. GST</option>
+                        <option value="INCLUSIVE">Incl. GST</option>
+                      </select>
+                    </td>
                     <td className="px-2 py-1.5">
                       <select disabled={!editable || !taxApplyEnabled} value={l.taxRate} onChange={e => updateLine(i, { taxRate: Number(e.target.value) })} className={`${inputCls} py-1.5 text-right disabled:opacity-60 disabled:cursor-not-allowed`}>
                         {GST_SLABS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
@@ -1074,9 +1125,27 @@ export default function SCJobSheetScreen() {
               </tbody>
             </table>
           )}
-          <div className="px-5 py-3 border-t border-border flex items-center justify-between bg-surface-2/40">
-            <span className="text-sm text-ink-2">Total {!taxApplyEnabled && <span className="text-ink-3">(tax not applied)</span>}</span>
-            <span className="text-sm font-semibold text-ink tabular">₹{total.toFixed(2)}</span>
+          <div className="px-5 py-3 border-t border-border bg-surface-2/40 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-ink-3">Subtotal</span>
+              <span className="text-xs text-ink-2 tabular">₹{taxSubtotal.toFixed(2)}</span>
+            </div>
+            {taxApplyEnabled && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-ink-3">CGST</span>
+                  <span className="text-xs text-ink-2 tabular">₹{cgstAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-ink-3">SGST</span>
+                  <span className="text-xs text-ink-2 tabular">₹{sgstAmount.toFixed(2)}</span>
+                </div>
+              </>
+            )}
+            <div className="flex items-center justify-between pt-1 border-t border-border">
+              <span className="text-sm text-ink-2">Total {!taxApplyEnabled && <span className="text-ink-3">(tax not applied)</span>}</span>
+              <span className="text-sm font-semibold text-ink tabular">₹{total.toFixed(2)}</span>
+            </div>
           </div>
         </Card>
       )}

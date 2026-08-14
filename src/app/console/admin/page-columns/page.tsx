@@ -142,7 +142,10 @@ const KNOWN_PAGES: Record<string, ColumnRow[]> = {
   'sc-dashboard-cards-summary': [
     { key: 'openWorkorders', defaultLabel: 'Open Workorders', label: 'Open Workorders', visible: true, order: 0 },
     { key: 'overdueWorkorders', defaultLabel: 'Overdue (7d+)', label: 'Overdue (7d+)', visible: true, order: 1 },
-    { key: 'closedThisMonth', defaultLabel: 'Closed This Month', label: 'Closed This Month', visible: true, order: 2 },
+    { key: 'repairCompleted', defaultLabel: 'Repair Completed', label: 'Repair Completed', visible: true, order: 2 },
+    { key: 'partPending', defaultLabel: 'Part Pending', label: 'Part Pending', visible: true, order: 3 },
+    { key: 'closedThisMonth', defaultLabel: 'Closed This Month', label: 'Closed This Month', visible: true, order: 4 },
+    { key: 'cancelledWorkorders', defaultLabel: 'Cancelled', label: 'Cancelled', visible: true, order: 5 },
   ],
   // Sidebar menu items -- rename + reassign to a different EXISTING group
   // (see sidebar.tsx's application of this same "sidebar-nav" pageKey).

@@ -13,6 +13,7 @@ import {
   CalendarRange,
   Calendar,
   CalendarClock,
+  XCircle,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -34,6 +35,9 @@ const DASHBOARD_CARD_ICONS: Record<string, typeof ClipboardList> = {
   openWorkorders: ClipboardList,
   overdueWorkorders: AlertCircle,
   closedThisMonth: CheckCircle2,
+  repairCompleted: CheckCircle2,
+  partPending: AlertCircle,
+  cancelledWorkorders: XCircle,
 }
 
 // Each stat card links into the jobsheets list pre-filtered to what it
@@ -49,6 +53,9 @@ const DASHBOARD_CARD_HREFS: Record<string, string> = {
   openWorkorders: '/console/sc/jobsheets?quick=OPEN',
   overdueWorkorders: '/console/sc/jobsheets',
   closedThisMonth: '/console/sc/jobsheets?quick=CLOSED_THIS_MONTH',
+  repairCompleted: '/console/sc/jobsheets?status=REPAIR_COMPLETED',
+  partPending: '/console/sc/jobsheets?status=PART_PENDING',
+  cancelledWorkorders: '/console/sc/jobsheets?status=CANCELLED',
 }
 
 interface Workorder {
@@ -131,6 +138,14 @@ export default function ScDashboard() {
   // same mechanism as the table column config (console/admin/page-columns),
   // just a different pageKey namespace. Card values are computed here since
   // they depend on live workorder data the config itself doesn't carry.
+  // All-time per-status counts (not month-scoped, unlike closedThisMonth)
+  // -- these three plus Open/Closed let the totals actually be reconciled
+  // against each other (open + closed + cancelled + part-pending should
+  // roughly track total workorders created), per explicit direction.
+  const repairCompletedCount = workorderStatusBreakdown['REPAIR_COMPLETED'] ?? 0
+  const partPendingCount = workorderStatusBreakdown['PART_PENDING'] ?? 0
+  const cancelledCount = workorderStatusBreakdown['CANCELLED'] ?? 0
+
   const dashboardCardValues: Record<string, string> = {
     workordersToday: String(workordersToday),
     workordersWeek: String(workordersThisWeek),
@@ -139,6 +154,9 @@ export default function ScDashboard() {
     openWorkorders: String(openWorkorders),
     overdueWorkorders: String(overdueWorkorders),
     closedThisMonth: String(closedThisMonth),
+    repairCompleted: String(repairCompletedCount),
+    partPending: String(partPendingCount),
+    cancelledWorkorders: String(cancelledCount),
   }
   const periodCards = useColumnConfig('sc-dashboard-cards-period', [
     { key: 'workordersToday', label: 'Workorders Today' },
@@ -149,7 +167,10 @@ export default function ScDashboard() {
   const summaryCards = useColumnConfig('sc-dashboard-cards-summary', [
     { key: 'openWorkorders', label: 'Open Workorders' },
     { key: 'overdueWorkorders', label: 'Overdue (7d+)' },
+    { key: 'repairCompleted', label: 'Repair Completed' },
+    { key: 'partPending', label: 'Part Pending' },
     { key: 'closedThisMonth', label: 'Closed This Month' },
+    { key: 'cancelledWorkorders', label: 'Cancelled' },
   ])
 
   if (loading) {
@@ -211,22 +232,24 @@ export default function ScDashboard() {
         })}
       </div>
 
-      {/* One small stat card per workorder status -- same card style as the
-          Today/Week/Month/Year row above, per explicit direction (replaced
-          the earlier list-with-progress-bar version). */}
-      {Object.keys(workorderStatusBreakdown).length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {Object.entries(workorderStatusBreakdown).map(([status, count]) => (
-            <Card key={status} className="p-6">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-ink-3 text-sm">{status}</span>
-                <div className="w-8 h-8 rounded-control bg-surface-2 flex items-center justify-center">
-                  <ClipboardList className="w-4 h-4 text-ink-2" />
+      {/* Any remaining statuses not already covered by a fixed summary card
+          above (REPAIR_COMPLETED/PART_PENDING/CANCELLED now have their own
+          cards) -- e.g. CREATED/REPAIR_STARTED/REPAIR_IN_PROGRESS. */}
+      {Object.entries(workorderStatusBreakdown).filter(([status]) => !['REPAIR_COMPLETED', 'PART_PENDING', 'CANCELLED'].includes(status)).length > 0 && (
+        <div className="grid-cards-auto mb-6">
+          {Object.entries(workorderStatusBreakdown)
+            .filter(([status]) => !['REPAIR_COMPLETED', 'PART_PENDING', 'CANCELLED'].includes(status))
+            .map(([status, count]) => (
+              <Card key={status} className="p-6" href={`/console/sc/jobsheets?status=${status}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-ink-3 text-sm">{status.replace(/_/g, ' ')}</span>
+                  <div className="w-8 h-8 rounded-control bg-surface-2 flex items-center justify-center">
+                    <ClipboardList className="w-4 h-4 text-ink-2" />
+                  </div>
                 </div>
-              </div>
-              <p className="text-2xl font-semibold text-ink tabular">{count}</p>
-            </Card>
-          ))}
+                <p className="text-2xl font-semibold text-ink tabular">{count}</p>
+              </Card>
+            ))}
         </div>
       )}
 
