@@ -1,65 +1,54 @@
 /**
- * GET /api/public/workorder-status?jobSheetNumber=...  OR  ?phone=...
+ * GET /api/public/workorder-status?jobSheetNumber=...
  *
- * PUBLIC, unauthenticated. Lets a customer check their repair status
- * without logging in, per explicit direction ("build a page where customer
- * or any user can see their workorder status with workorder number or
- * mobile ... and most recent repair only will shown there").
+ * PUBLIC, unauthenticated. Lets a customer check their repair status by
+ * workorder number only -- per explicit direction, phone-number lookup
+ * removed (a phone match returning someone's most-recent-of-many repairs
+ * was a weaker, less precise identifier than the number printed on their
+ * own intake receipt, and the two-mode UI added friction for no benefit).
  *
- * - jobSheetNumber returns that exact job sheet (if any).
- * - phone returns only the SINGLE most recent job sheet for that number
- *   (sorted by createdAt desc) -- deliberately not a full history list, so
- *   this can't be used to enumerate every past repair for a phone number.
- *
- * Response is intentionally minimal -- no address, no pricing, no internal
- * notes -- just enough for a customer to know where their repair stands.
+ * Response includes just enough for a customer to feel informed without
+ * leaking internal data -- no pricing, no internal notes, no other
+ * customers' data -- but now also identifies the service center handling
+ * the repair (name/phone/logo) and the device/issue on file, not just a
+ * bare status code.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
+import Business from "@/models/Business";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const jobSheetNumber = searchParams.get("jobSheetNumber")?.trim();
-    const phone = searchParams.get("phone")?.trim();
 
-    if (!jobSheetNumber && !phone) {
+    if (!jobSheetNumber) {
       return NextResponse.json(
-        { success: false, message: "jobSheetNumber or phone is required" },
+        { success: false, message: "jobSheetNumber is required" },
         { status: 400 }
       );
     }
 
     await connectDB();
 
-    // Phone lookup was a brittle exact-string match against however the
-    // number happened to get typed at intake (spaces, +91 prefix, dashes)
-    // -- a customer typing their number differently than the CCO originally
-    // did would silently get "not found". Normalize to just the last 10
-    // digits on both sides instead (India mobile numbers are 10 digits;
-    // stripping everything else and matching the tail is robust to any
-    // formatting either side used).
-    const query: Record<string, unknown> = { isDeleted: false };
-    if (jobSheetNumber) {
-      query.jobSheetNumber = jobSheetNumber;
-    } else if (phone) {
-      const digits = phone.replace(/\D/g, "").slice(-10);
-      query.phone = digits.length === 10 ? new RegExp(`${digits}$`) : phone;
-    }
-
-    const jobSheet = await CrmJobSheet.findOne(query)
-      .sort({ createdAt: -1 })
-      .select("jobSheetNumber status product deviceModel createdAt completedAt assignedToName scheduledAt")
+    const jobSheet = await CrmJobSheet.findOne({ jobSheetNumber, isDeleted: false })
+      .select(
+        "jobSheetNumber status product deviceModel imeiOrSerialNumber issueDescription createdAt completedAt assignedToName scheduledAt businessId"
+      )
       .lean<any>();
 
     if (!jobSheet) {
       return NextResponse.json(
-        { success: false, message: "No workorder found for that reference" },
+        { success: false, message: "No workorder found for that number. Double-check it against your intake receipt." },
         { status: 404 }
       );
     }
+
+    const business = await Business.findById(jobSheet.businessId)
+      .select("name brandName phone logo city state")
+      .lean<any>();
 
     return NextResponse.json({
       success: true,
@@ -67,10 +56,20 @@ export async function GET(req: NextRequest) {
         jobSheetNumber: jobSheet.jobSheetNumber,
         status: jobSheet.status,
         product: jobSheet.product || jobSheet.deviceModel || "",
+        imei: jobSheet.imeiOrSerialNumber || "",
+        issueDescription: jobSheet.issueDescription || "",
         engineerName: jobSheet.assignedToName || "",
         loggedAt: jobSheet.createdAt,
         scheduledAt: jobSheet.scheduledAt || null,
         completedAt: jobSheet.completedAt || null,
+        serviceCenter: business
+          ? {
+              name: business.brandName || business.name || "",
+              phone: business.phone || "",
+              logo: business.logo || "",
+              location: [business.city, business.state].filter(Boolean).join(", "),
+            }
+          : null,
       },
     });
   } catch (error: unknown) {
