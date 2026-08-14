@@ -152,6 +152,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // Super Admin only.
       { key: "admin-product-feedback", label: "Product Feedback", route: "/console/admin/product-feedback", icon: "MessageSquare" },
       { key: "admin-telegram-users", label: "Telegram Users", route: "/console/admin/telegram-users", icon: "Send" },
+      { key: "admin-telegram-log", label: "Telegram Notifications Log", route: "/console/admin/telegram-notifications-log", icon: "Send" },
     ]},
   ]},
 ];

@@ -24,7 +24,16 @@ interface PlanRow {
   plan: string
   name: string
   moduleKeys: string[]
+  monthlyPriceINR: number
+  seatLimit: string
+  freeTrialDays: number
   isOverridden: boolean
+}
+
+interface PricingDraft {
+  monthlyPriceINR?: number
+  seatLimit?: string
+  freeTrialDays?: number
 }
 
 export default function PlanFeaturesPage() {
@@ -33,6 +42,7 @@ export default function PlanFeaturesPage() {
   )
   const [saving, setSaving] = useState<string | null>(null)
   const [pending, setPending] = useState<Record<string, string[]>>({})
+  const [pricingDrafts, setPricingDrafts] = useState<Record<string, PricingDraft>>({})
 
   const plans: PlanRow[] = data?.success ? data.plans : []
   const catalog: { key: string; label: string }[] = data?.success ? data.catalog : []
@@ -54,17 +64,33 @@ export default function PlanFeaturesPage() {
     setPending((p) => ({ ...p, [key]: Array.from(keys) }))
   }
 
+  function currentPricing(row: PlanRow): Required<PricingDraft> {
+    const draft = pricingDrafts[rowKey(row)]
+    return {
+      monthlyPriceINR: draft?.monthlyPriceINR ?? row.monthlyPriceINR,
+      seatLimit: draft?.seatLimit ?? row.seatLimit,
+      freeTrialDays: draft?.freeTrialDays ?? row.freeTrialDays,
+    }
+  }
+
+  function setPricing(row: PlanRow, patch: PricingDraft) {
+    const key = rowKey(row)
+    setPricingDrafts((d) => ({ ...d, [key]: { ...currentPricing(row), ...d[key], ...patch } }))
+  }
+
   async function save(row: PlanRow) {
     const key = rowKey(row)
     setSaving(key)
     try {
+      const pricing = currentPricing(row)
       await fetch('/api/admin/plan-features', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ mode: row.mode, plan: row.plan, moduleKeys: currentKeys(row) }),
+        body: JSON.stringify({ mode: row.mode, plan: row.plan, moduleKeys: currentKeys(row), ...pricing }),
       })
       setPending((p) => { const n = { ...p }; delete n[key]; return n })
+      setPricingDrafts((p) => { const n = { ...p }; delete n[key]; return n })
       mutate()
     } finally {
       setSaving(null)
@@ -88,7 +114,8 @@ export default function PlanFeaturesPage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {plans.filter((p) => p.mode === mode).map((row) => {
                   const keys = new Set(currentKeys(row))
-                  const dirty = !!pending[rowKey(row)]
+                  const pricing = currentPricing(row)
+                  const dirty = !!pending[rowKey(row)] || !!pricingDrafts[rowKey(row)]
                   return (
                     <Card key={rowKey(row)}>
                       <CardBody>
@@ -100,6 +127,39 @@ export default function PlanFeaturesPage() {
                           <Button size="sm" variant="secondary" onClick={() => save(row)} disabled={!dirty || saving === rowKey(row)} icon={saving === rowKey(row) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}>
                             Save
                           </Button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                          <label className="block">
+                            <span className="text-xs text-ink-3 block mb-0.5">Price / mo (₹)</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={pricing.monthlyPriceINR}
+                              onChange={(e) => setPricing(row, { monthlyPriceINR: Number(e.target.value) })}
+                              onFocus={(e) => e.target.select()}
+                              className="w-full rounded-control border border-border bg-surface px-2 py-1.5 text-sm"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-xs text-ink-3 block mb-0.5">Seat limit</span>
+                            <input
+                              type="text"
+                              value={pricing.seatLimit}
+                              onChange={(e) => setPricing(row, { seatLimit: e.target.value })}
+                              className="w-full rounded-control border border-border bg-surface px-2 py-1.5 text-sm"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-xs text-ink-3 block mb-0.5">Trial days</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={pricing.freeTrialDays}
+                              onChange={(e) => setPricing(row, { freeTrialDays: Number(e.target.value) })}
+                              onFocus={(e) => e.target.select()}
+                              className="w-full rounded-control border border-border bg-surface px-2 py-1.5 text-sm"
+                            />
+                          </label>
                         </div>
                         <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
                           {catalog.map((f) => (

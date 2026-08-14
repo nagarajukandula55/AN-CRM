@@ -19,7 +19,8 @@ import Subscription from "@/models/Subscription";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { getRazorpayClient } from "@/core/subscriptions/razorpayClient";
 import Business from "@/models/Business";
-import { findPlan, priceForPeriod, type PlanKey, type BillingPeriod, type OperatingMode } from "@/core/pricing/plans";
+import { priceForPeriod, type PlanKey, type BillingPeriod, type OperatingMode } from "@/core/pricing/plans";
+import { getEffectivePlan } from "@/core/pricing/planAccess";
 
 export async function POST(req: NextRequest) {
   try {
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "This business has no operating mode set — contact support" }, { status: 400 });
     }
 
-    const planDef = findPlan(mode, plan);
+    const planDef = await getEffectivePlan(mode, plan);
     if (!planDef) {
       return NextResponse.json({ success: false, message: "Unknown plan for this business's operating mode" }, { status: 400 });
     }

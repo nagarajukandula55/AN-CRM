@@ -1,5 +1,6 @@
 import Business from "@/models/Business";
 import TelegramMessageTemplate from "@/models/TelegramMessageTemplate";
+import TelegramLog from "@/models/TelegramLog";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { VENDOR_TELEGRAM_MESSAGE_TYPES } from "./vendorMessageTypes";
 
@@ -37,7 +38,10 @@ export async function sendVendorTelegramMessage(
   const template = await TelegramMessageTemplate.findOne({ key: type }).lean<any>();
   // Super admin's platform-wide kill switch for this alert type -- distinct
   // from a vendor's own Group/Personal destination checkboxes below.
-  if (template?.enabled === false) return { group: false, personal: false };
+  if (template?.enabled === false) {
+    await TelegramLog.create({ businessId, businessName: business.name, type, text, sentToGroup: false, sentToPersonal: false, success: false }).catch(() => {});
+    return { group: false, personal: false };
+  }
   if (template?.template && template.template !== "(disabled)") {
     const merged: Record<string, string> = { businessName: business.name || "", date: new Date().toLocaleDateString("en-IN"), ...tokens };
     text = template.template.replace(/\{\{(\w+)\}\}/g, (_: string, name: string) => merged[name] ?? "");
@@ -56,6 +60,18 @@ export async function sendVendorTelegramMessage(
   }
   if (sendToPersonal && business.telegramPersonalChatId) {
     personalOk = await sendTelegramMessage(text, { chatId: business.telegramPersonalChatId });
+  }
+
+  if (sendToGroup || sendToPersonal) {
+    await TelegramLog.create({
+      businessId,
+      businessName: business.name,
+      type,
+      text,
+      sentToGroup: groupOk,
+      sentToPersonal: personalOk,
+      success: (sendToGroup ? groupOk : true) && (sendToPersonal ? personalOk : true),
+    }).catch(() => {});
   }
 
   return { group: groupOk, personal: personalOk };

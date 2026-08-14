@@ -14,6 +14,15 @@ export interface IPlanFeatureConfig extends Document {
   mode: OperatingMode;
   plan: PlanKey;
   moduleKeys: string[];
+  // Optional pricing/limit overrides -- undefined means "use the static
+  // default from core/pricing/plans.ts", same override-or-fallback pattern
+  // as moduleKeys. Lets Super Admin actually change what a tier costs/
+  // offers at runtime instead of needing a code deploy for every price
+  // change, per explicit direction ("plan issuer and based on plan options
+  // restricter... make it robust").
+  monthlyPriceINR?: number;
+  seatLimit?: string;
+  freeTrialDays?: number;
   updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -24,6 +33,9 @@ const PlanFeatureConfigSchema = new Schema<IPlanFeatureConfig>(
     mode: { type: String, enum: ["BRAND", "SC", "POS"], required: true },
     plan: { type: String, enum: ["BASIC", "PRO", "ULTIMATE"], required: true },
     moduleKeys: { type: [String], default: [] },
+    monthlyPriceINR: { type: Number },
+    seatLimit: { type: String },
+    freeTrialDays: { type: Number },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }

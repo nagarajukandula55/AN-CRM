@@ -10,7 +10,7 @@
  */
 import Subscription from "@/models/Subscription";
 import PlanFeatureConfig from "@/models/PlanFeatureConfig";
-import { findPlan, type OperatingMode, type PlanKey } from "@/core/pricing/plans";
+import { findPlan, type OperatingMode, type PlanKey, type Plan } from "@/core/pricing/plans";
 
 export async function getActivePlanKey(businessId: string): Promise<PlanKey> {
   const latest = await Subscription.findOne({
@@ -36,4 +36,27 @@ export async function getAllowedModuleKeys(mode: OperatingMode, plan: PlanKey): 
 export async function getAllowedModuleKeysForBusiness(businessId: string, mode: OperatingMode): Promise<string[] | null> {
   const plan = await getActivePlanKey(businessId);
   return getAllowedModuleKeys(mode, plan);
+}
+
+/**
+ * The static Plan from plans.ts with any Super-Admin price/seatLimit/
+ * trial override (PlanFeatureConfig) applied on top -- the money-critical
+ * path (order creation, payment verification) must use this instead of
+ * findPlan() directly, or an admin-edited price silently never takes
+ * effect on actual charges.
+ */
+export async function getEffectivePlan(mode: OperatingMode, plan: PlanKey): Promise<Plan | undefined> {
+  const def = findPlan(mode, plan);
+  if (!def) return undefined;
+  const override = await PlanFeatureConfig.findOne({ mode, plan })
+    .select("monthlyPriceINR seatLimit freeTrialDays moduleKeys")
+    .lean<any>();
+  if (!override) return def;
+  return {
+    ...def,
+    monthlyPriceINR: override.monthlyPriceINR ?? def.monthlyPriceINR,
+    seatLimit: override.seatLimit ?? def.seatLimit,
+    freeTrialDays: override.freeTrialDays ?? def.freeTrialDays,
+    moduleKeys: override.moduleKeys ?? def.moduleKeys,
+  };
 }

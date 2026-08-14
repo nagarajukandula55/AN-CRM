@@ -29,15 +29,21 @@ export async function GET() {
 
     await connectDB();
     const overrides = await PlanFeatureConfig.find({}).lean();
-    const overrideMap = new Map(overrides.map((o: any) => [`${o.mode}:${o.plan}`, o.moduleKeys]));
+    const overrideMap = new Map(overrides.map((o: any) => [`${o.mode}:${o.plan}`, o]));
 
-    const plans = ALL_PLANS.map((p) => ({
-      mode: p.mode,
-      plan: p.key,
-      name: p.name,
-      moduleKeys: overrideMap.get(`${p.mode}:${p.key}`) ?? p.moduleKeys,
-      isOverridden: overrideMap.has(`${p.mode}:${p.key}`),
-    }));
+    const plans = ALL_PLANS.map((p) => {
+      const o: any = overrideMap.get(`${p.mode}:${p.key}`);
+      return {
+        mode: p.mode,
+        plan: p.key,
+        name: p.name,
+        moduleKeys: o?.moduleKeys ?? p.moduleKeys,
+        monthlyPriceINR: o?.monthlyPriceINR ?? p.monthlyPriceINR,
+        seatLimit: o?.seatLimit ?? p.seatLimit,
+        freeTrialDays: o?.freeTrialDays ?? p.freeTrialDays ?? 0,
+        isOverridden: !!o,
+      };
+    });
 
     const catalog = [
       ...STATIC_MODULES.map((m: any) => ({ key: m.key, label: m.label })),
@@ -59,15 +65,30 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { mode, plan, moduleKeys } = body as { mode: OperatingMode; plan: PlanKey; moduleKeys: string[] };
+    const { mode, plan, moduleKeys, monthlyPriceINR, seatLimit, freeTrialDays } = body as {
+      mode: OperatingMode;
+      plan: PlanKey;
+      moduleKeys: string[];
+      monthlyPriceINR?: number;
+      seatLimit?: string;
+      freeTrialDays?: number;
+    };
     if (!mode || !plan || !Array.isArray(moduleKeys)) {
       return NextResponse.json({ success: false, message: "mode, plan and moduleKeys[] are required" }, { status: 400 });
     }
 
     await connectDB();
+    const set: Record<string, unknown> = { moduleKeys, updatedBy: session.user?.id };
+    if (monthlyPriceINR !== undefined && monthlyPriceINR !== null && monthlyPriceINR !== ("" as unknown)) {
+      set.monthlyPriceINR = Number(monthlyPriceINR);
+    }
+    if (seatLimit !== undefined) set.seatLimit = seatLimit;
+    if (freeTrialDays !== undefined && freeTrialDays !== null && freeTrialDays !== ("" as unknown)) {
+      set.freeTrialDays = Number(freeTrialDays);
+    }
     await PlanFeatureConfig.findOneAndUpdate(
       { mode, plan },
-      { $set: { moduleKeys, updatedBy: session.user?.id } },
+      { $set: set },
       { upsert: true }
     );
 
