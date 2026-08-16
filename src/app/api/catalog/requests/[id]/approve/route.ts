@@ -9,6 +9,7 @@ import Variant from "@/models/Variant";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { logAction } from "@/lib/audit/logAction";
 import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
+import VendorProfile from "@/models/VendorProfile";
 
 function escapeRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -119,9 +120,14 @@ export async function POST(req: NextRequest, context: any) {
       actor: { id: session.user.id },
     });
 
-    if (request.businessId) {
+    // CatalogChangeRequest has no vendorId of its own -- resolve the
+    // requesting user's own VendorProfile (an Owner/Manager acting for
+    // their vendor) so the alert reaches THEIR chat, not some other
+    // vendor's under the same shared Business.
+    const requestingVendor = await VendorProfile.findOne({ userId: request.requestedBy, isDeleted: { $ne: true } }).select("_id").lean();
+    if (requestingVendor) {
       sendVendorTelegramMessage(
-        String(request.businessId),
+        String(requestingVendor._id),
         "CATALOG_REQUEST",
         `Your catalog request "${request.name}" was approved and is now available.`
       ).catch(() => {});

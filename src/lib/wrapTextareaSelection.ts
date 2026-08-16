@@ -27,3 +27,17 @@ export function wrapTextareaSelection(
 
   return next;
 }
+
+/** Inserts plain text (e.g. an emoji) at the cursor, replacing any current selection. */
+export function insertAtCursor(el: HTMLTextAreaElement, text: string): string {
+  const start = el.selectionStart ?? el.value.length;
+  const end = el.selectionEnd ?? el.value.length;
+  const next = el.value.slice(0, start) + text + el.value.slice(end);
+
+  requestAnimationFrame(() => {
+    el.focus();
+    el.setSelectionRange(start + text.length, start + text.length);
+  });
+
+  return next;
+}

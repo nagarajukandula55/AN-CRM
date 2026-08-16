@@ -16,7 +16,6 @@ export const CRON_JOBS: { key: string; path: string }[] = [
   { key: "ops-report", path: "/api/cron/ops-report" },
   { key: "run-scheduled-reports", path: "/api/cron/run-scheduled-reports" },
   { key: "service-feedback-followup", path: "/api/cron/service-feedback-followup" },
-  { key: "telegram-business-report", path: "/api/cron/telegram-business-report" },
   { key: "expire-agreements", path: "/api/cron/expire-agreements" },
 ];
 

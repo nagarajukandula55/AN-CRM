@@ -16,7 +16,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Subscription from "@/models/Subscription";
+import VendorProfile from "@/models/VendorProfile";
 import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
+
+// A Subscription is still sold at the Business level (the whole platform
+// account, not per-vendor) even though many vendors now share one
+// Business -- so an expiry affects every vendor under it. Fans out to
+// every vendor with a linked chat under that business, since
+// sendVendorTelegramMessage is keyed by vendorId now, not businessId.
+async function notifyVendorsUnderBusiness(businessId: unknown, type: string, text: string) {
+  const vendors = await VendorProfile.find({ businessId, isDeleted: { $ne: true } }).select("_id").lean();
+  await Promise.allSettled(vendors.map((v) => sendVendorTelegramMessage(String(v._id), type, text)));
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -38,8 +49,8 @@ export async function GET(req: NextRequest) {
 
     for (const sub of expiringSoon) {
       const days = Math.ceil((new Date(sub.expiryDate!).getTime() - Date.now()) / 86400000);
-      await sendVendorTelegramMessage(
-        String(sub.businessId),
+      await notifyVendorsUnderBusiness(
+        sub.businessId,
         "SUBSCRIPTION_EXPIRY",
         `Your subscription expires in ${days} day${days === 1 ? "" : "s"} (${new Date(sub.expiryDate!).toLocaleDateString("en-IN")}). Renew from Plan & Billing to avoid service interruption.`
       ).catch(() => {});
@@ -55,8 +66,8 @@ export async function GET(req: NextRequest) {
     );
 
     for (const sub of expiring) {
-      await sendVendorTelegramMessage(
-        String(sub.businessId),
+      await notifyVendorsUnderBusiness(
+        sub.businessId,
         "PAYMENT_DUE",
         `Your subscription has expired. Services are now paused until payment is made -- please renew from Plan & Billing.`
       ).catch(() => {});

@@ -9,18 +9,24 @@
  * the send.
  */
 export const MESSAGE_TOKENS: Record<string, string[]> = {
-  NEW_WORKORDER: ["businessName", "workorderNumber", "customerName", "phone", "date"],
-  WORKORDER_CLOSED: ["businessName", "workorderNumber", "customerName", "invoiceNumber", "amount", "date"],
-  PAYMENT_DUE: ["businessName", "invoiceNumber", "amount", "dueDate"],
-  PAYMENT_RECEIVED: ["businessName", "invoiceNumber", "amount", "date"],
-  SETTLEMENT: ["businessName", "amount", "date"],
-  SUBSCRIPTION_EXPIRY: ["businessName", "planName", "expiryDate"],
-  LOW_STOCK: ["businessName", "itemName", "currentStock", "reorderLevel"],
-  CATALOG_REQUEST: ["businessName", "itemName", "status"],
-  GENERAL_ANNOUNCEMENT: ["businessName", "date"],
+  NEW_WORKORDER: ["businessName", "vendorName", "vendorId", "workorderNumber", "customerName", "phone", "date"],
+  WORKORDER_CLOSED: ["businessName", "vendorName", "vendorId", "workorderNumber", "customerName", "invoiceNumber", "amount", "date"],
+  PAYMENT_DUE: ["businessName", "vendorName", "vendorId", "invoiceNumber", "amount", "dueDate"],
+  PAYMENT_RECEIVED: ["businessName", "vendorName", "vendorId", "invoiceNumber", "amount", "date"],
+  SETTLEMENT: ["businessName", "vendorName", "vendorId", "amount", "date"],
+  SUBSCRIPTION_EXPIRY: ["businessName", "vendorName", "vendorId", "planName", "expiryDate"],
+  LOW_STOCK: ["businessName", "vendorName", "vendorId", "itemName", "currentStock", "reorderLevel"],
+  CATALOG_REQUEST: ["businessName", "vendorName", "vendorId", "itemName", "status"],
+  GENERAL_ANNOUNCEMENT: ["businessName", "vendorName", "vendorId", "date"],
 };
 
-const UNIVERSAL_TOKENS = ["businessName", "date"];
+// Available on EVERY template regardless of type -- merged in automatically
+// by sendVendorTelegramMessage/sendVendorWhatsAppMessage's rendering step,
+// no per-call-site wiring needed. vendorName/vendorId were missing
+// entirely before (per explicit direction, "vendor name is not available
+// in tokens vendor id not there") -- every alert now knows which vendor
+// it's actually for, not just which business.
+const UNIVERSAL_TOKENS = ["businessName", "vendorName", "vendorId", "date"];
 
 export function tokensFor(key: string): string[] {
   return MESSAGE_TOKENS[key] || UNIVERSAL_TOKENS;

@@ -273,8 +273,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     notifyJobSheetStatusChange(jobSheet.businessId.toString(), jobSheet.phone, jobSheet.jobSheetNumber, jobSheet.status);
 
-    sendVendorAlert(
-      jobSheet.businessId.toString(),
+    if (jobSheet.vendorId) sendVendorAlert(
+      jobSheet.vendorId.toString(),
       "WORKORDER_CLOSED",
       `Workorder ${jobSheet.jobSheetNumber} closed and invoiced (${invoice.invoiceNumber}) for ${jobSheet.customerName}.`,
       {

@@ -1,27 +1,31 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/core/db/mongodb";
-import Business from "@/models/Business";
+import VendorProfile from "@/models/VendorProfile";
 import { getVendorTelegramMessageTypes } from "@/core/telegram/vendorMessageTypes";
 import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
+import { sendTelegramMessage } from "@/lib/telegram";
 import { logAiChange } from "@/core/changelog/logAiChange";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 
 /**
- * Reads/writes ONE business's Telegram routing config -- their group chat
+ * Reads/writes ONE vendor's Telegram routing config -- their group chat
  * id, personal chat id, and which of the two each message type goes to
- * (Business.telegramMessageRouting), including sending an actual message
- * to that chat. AN Group staff only (console/admin/vendors/[id]/telegram
- * -- never reachable from a vendor's own console).
+ * (VendorProfile.telegramMessageRouting), including sending an actual
+ * message to that chat. AN Group staff only
+ * (console/admin/vendors/[id]/telegram -- never reachable from a vendor's
+ * own console).
  *
- * SECURITY: this route's own comment used to claim "callers must already
- * be authenticated via middleware" but never actually checked a session
- * or permission anywhere -- any caller, authenticated or not, could read
- * another business's Telegram chat ids/routing, overwrite them, or send
- * an arbitrary message to that business's linked chat just by knowing
- * its businessId. Every handler below now requires a real session with
- * vendors.edit.
+ * `:id` is a VendorProfile._id (the same id console/admin/vendors/[id]
+ * already uses for everything else about that vendor) -- this route used
+ * to (wrongly) treat it as a Business._id and call Business.findById(id),
+ * which always 404'd since a VendorProfile id was never a valid Business
+ * id, silently breaking this entire admin page for every vendor. Fixed
+ * alongside the broader move of Telegram linking from Business to
+ * VendorProfile (see VendorProfile.ts's telegram* field comment).
+ *
+ * SECURITY: every handler requires a real session with vendors.edit.
  */
 async function requireStaffAccess(): Promise<{ ok: true } | { ok: false; res: NextResponse }> {
   const session = await getEnrichedSession();
@@ -41,19 +45,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!auth.ok) return auth.res;
   await connectDB();
   const { id } = await params;
-  const [business, messageTypes] = await Promise.all([
-    Business.findById(id).select("name telegramChatId telegramPersonalChatId telegramMessageRouting").lean<any>(),
+  const [vendor, messageTypes] = await Promise.all([
+    VendorProfile.findById(id).select("companyName telegramChatId telegramPersonalChatId telegramMessageRouting").lean<any>(),
     getVendorTelegramMessageTypes(),
   ]);
-  if (!business) {
-    return NextResponse.json({ success: false, message: "Business not found" }, { status: 404 });
+  if (!vendor) {
+    return NextResponse.json({ success: false, message: "Vendor not found" }, { status: 404 });
   }
   return NextResponse.json({
     success: true,
-    businessName: business.name,
-    telegramChatId: business.telegramChatId || "",
-    telegramPersonalChatId: business.telegramPersonalChatId || "",
-    telegramMessageRouting: business.telegramMessageRouting || {},
+    businessName: vendor.companyName,
+    telegramChatId: vendor.telegramChatId || "",
+    telegramPersonalChatId: vendor.telegramPersonalChatId || "",
+    telegramMessageRouting: vendor.telegramMessageRouting || {},
     messageTypes,
   });
 }
@@ -83,20 +87,20 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     update.telegramMessageRouting = routing;
   }
 
-  const business = await Business.findByIdAndUpdate(id, { $set: update }, { new: true })
+  const vendor = await VendorProfile.findByIdAndUpdate(id, { $set: update }, { new: true })
     .select("telegramChatId telegramPersonalChatId telegramMessageRouting")
     .lean<any>();
-  if (!business) {
-    return NextResponse.json({ success: false, message: "Business not found" }, { status: 404 });
+  if (!vendor) {
+    return NextResponse.json({ success: false, message: "Vendor not found" }, { status: 404 });
   }
   await logAiChange({
-    summary: `Telegram routing updated for business ${id}`,
+    summary: `Telegram routing updated for vendor ${id}`,
     details: `Fields changed: ${Object.keys(update).join(", ") || "(none)"}`,
-    filesChanged: [`Business(${id}).telegramMessageRouting`],
+    filesChanged: [`VendorProfile(${id}).telegramMessageRouting`],
     author: "AN-CRM Admin Console",
     tags: ["telegram", "config"],
   });
-  return NextResponse.json({ success: true, business });
+  return NextResponse.json({ success: true, vendor });
 }
 
 /**
@@ -123,15 +127,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // Personal/Both radio) bypasses the saved routing config for this one
   // send only -- doesn't touch telegramMessageRouting.
   if (body.destination === "GROUP" || body.destination === "PERSONAL" || body.destination === "BOTH") {
-    const business = await Business.findById(id).select("telegramChatId telegramPersonalChatId").lean<any>();
-    if (!business) return NextResponse.json({ success: false, message: "Business not found" }, { status: 404 });
-    const { sendTelegramMessage } = await import("@/lib/telegram");
+    const vendor = await VendorProfile.findById(id).select("telegramChatId telegramPersonalChatId").lean<any>();
+    if (!vendor) return NextResponse.json({ success: false, message: "Vendor not found" }, { status: 404 });
     let group = false, personal = false;
-    if ((body.destination === "GROUP" || body.destination === "BOTH") && business.telegramChatId) {
-      group = await sendTelegramMessage(text, { chatId: business.telegramChatId });
+    if ((body.destination === "GROUP" || body.destination === "BOTH") && vendor.telegramChatId) {
+      group = await sendTelegramMessage(text, { chatId: vendor.telegramChatId });
     }
-    if ((body.destination === "PERSONAL" || body.destination === "BOTH") && business.telegramPersonalChatId) {
-      personal = await sendTelegramMessage(text, { chatId: business.telegramPersonalChatId });
+    if ((body.destination === "PERSONAL" || body.destination === "BOTH") && vendor.telegramPersonalChatId) {
+      personal = await sendTelegramMessage(text, { chatId: vendor.telegramPersonalChatId });
     }
     return NextResponse.json({ success: true, sent: { group, personal } });
   }

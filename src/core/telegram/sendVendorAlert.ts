@@ -11,14 +11,14 @@ import { sendVendorWhatsAppMessage } from "./sendVendorWhatsAppMessage";
  * sender already has.
  */
 export async function sendVendorAlert(
-  businessId: string,
+  vendorObjectId: string,
   type: string,
   text: string,
   tokens?: Record<string, string>,
   whatsappExtraRecipients?: string[]
 ): Promise<void> {
   await Promise.allSettled([
-    sendVendorTelegramMessage(businessId, type, text, tokens),
-    sendVendorWhatsAppMessage(businessId, type, text, tokens, whatsappExtraRecipients),
+    sendVendorTelegramMessage(vendorObjectId, type, text, tokens),
+    sendVendorWhatsAppMessage(vendorObjectId, type, text, tokens, whatsappExtraRecipients),
   ]);
 }

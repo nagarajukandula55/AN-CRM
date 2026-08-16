@@ -66,13 +66,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ inv
     invoice.gatewayPaymentId = razorpayPaymentId;
     await invoice.save();
 
-    if (vendor.businessId) {
-      sendVendorAlert(
-        String(vendor.businessId),
-        "PAYMENT_RECEIVED",
-        `Payment received for invoice ${invoice.invoiceNumber} (₹${invoice.amount}). Subscription extended to ${end.toLocaleDateString("en-IN")}.`
-      ).catch(() => {});
-    }
+    sendVendorAlert(
+      String(vendor._id),
+      "PAYMENT_RECEIVED",
+      `Payment received for invoice ${invoice.invoiceNumber} (₹${invoice.amount}). Subscription extended to ${end.toLocaleDateString("en-IN")}.`
+    ).catch(() => {});
 
     return NextResponse.json({ success: true, invoice, subscription });
   } catch (err: any) {

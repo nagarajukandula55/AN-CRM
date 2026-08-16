@@ -631,6 +631,15 @@ export default function AdminSettingsPage() {
                 <Link href="/console/admin/vendor-subscriptions" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
                   Vendor Subscriptions — plan status, payments, renewals <ChevronRight size={14} className="text-gray-400" />
                 </Link>
+                <Link href="/console/admin/telegram-ids" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
+                  Telegram Chat IDs — bulk view/edit every vendor's linked chats, bot connectivity check <ChevronRight size={14} className="text-gray-400" />
+                </Link>
+                <Link href="/console/admin/telegram-notifications-log" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
+                  Telegram/WhatsApp Notifications Log — every alert sent, success/fail <ChevronRight size={14} className="text-gray-400" />
+                </Link>
+                <Link href="/console/admin/email-templates" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
+                  Email Templates — subject/body per occasion <ChevronRight size={14} className="text-gray-400" />
+                </Link>
               </div>
             </div>
           </div>

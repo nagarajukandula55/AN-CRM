@@ -32,21 +32,27 @@ const WORKORDER_STATUSES = [
   "CANCELLED",
 ] as const;
 
-export async function computePeriodNumbers(businessId: string, isSC: boolean, from: Date, to: Date) {
+export async function computePeriodNumbers(businessId: string, isSC: boolean, from: Date, to: Date, vendorId?: string) {
   const businessObjectId = new mongoose.Types.ObjectId(businessId);
+  // Now that many vendors can share one Business (see VendorProfile's own
+  // telegram* fields comment), a report has to filter by vendorId too --
+  // without it, every vendor's report would mix in every OTHER vendor's
+  // revenue/workorders under the same shared business, which defeats the
+  // entire point of a per-vendor group.
+  const vendorMatch = vendorId ? { vendorId: new mongoose.Types.ObjectId(vendorId) } : {};
   const [revenueAgg, jobSheetCount, statusAgg] = await Promise.all([
     SalesInvoice.aggregate([
-      { $match: { businessId: businessObjectId, isDeleted: { $ne: true }, status: "PAID", createdAt: { $gte: from, $lt: to } } },
+      { $match: { businessId: businessObjectId, ...vendorMatch, isDeleted: { $ne: true }, status: "PAID", createdAt: { $gte: from, $lt: to } } },
       { $group: { _id: null, sum: { $sum: "$grandTotal" }, count: { $sum: 1 } } },
     ]),
-    CrmJobSheet.countDocuments({ businessId: businessObjectId, isDeleted: { $ne: true }, createdAt: { $gte: from, $lt: to } }),
+    CrmJobSheet.countDocuments({ businessId: businessObjectId, ...vendorMatch, isDeleted: { $ne: true }, createdAt: { $gte: from, $lt: to } }),
     // Per-status workorder breakdown for the period -- SC only (see
     // buildReportMessage's own comment on why non-SC never had a
     // workorder concept). Skipped entirely for non-SC to avoid an
     // unnecessary aggregate.
     isSC
       ? CrmJobSheet.aggregate([
-          { $match: { businessId: businessObjectId, isDeleted: { $ne: true }, createdAt: { $gte: from, $lt: to } } },
+          { $match: { businessId: businessObjectId, ...vendorMatch, isDeleted: { $ne: true }, createdAt: { $gte: from, $lt: to } } },
           { $group: { _id: "$status", count: { $sum: 1 } } },
         ])
       : Promise.resolve([]),
@@ -65,13 +71,13 @@ function statusLabel(status: string): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export async function buildReportMessage(businessName: string, frequency: string, isSC: boolean, businessId: string, now: Date) {
+export async function buildReportMessage(businessName: string, frequency: string, isSC: boolean, businessId: string, now: Date, vendorId?: string) {
   const from = periodStart(frequency, now);
   const priorFrom = periodStart(frequency, from);
 
   const [current, prior] = await Promise.all([
-    computePeriodNumbers(businessId, isSC, from, now),
-    computePeriodNumbers(businessId, isSC, priorFrom, from),
+    computePeriodNumbers(businessId, isSC, from, now, vendorId),
+    computePeriodNumbers(businessId, isSC, priorFrom, from, vendorId),
   ]);
 
   const activityLabel = isSC ? "Workorders" : "Calls";
@@ -135,14 +141,14 @@ const TREND_POINTS: Record<string, { count: number; stepDays: number; labelFmt: 
   MONTHLY: { count: 6, stepDays: 30, labelFmt: (d) => d.toLocaleDateString("en-IN", { month: "short", year: "2-digit" }) },
 };
 
-export async function buildTrendChartUrl(businessName: string, frequency: string, activityLabel: string, businessId: string, isSC: boolean, now: Date): Promise<string> {
+export async function buildTrendChartUrl(businessName: string, frequency: string, activityLabel: string, businessId: string, isSC: boolean, now: Date, vendorId?: string): Promise<string> {
   const cfg = TREND_POINTS[frequency] || TREND_POINTS.DAILY;
   const points: { label: string; revenue: number; activity: number }[] = [];
   let periodEnd = new Date(now);
   for (let i = 0; i < cfg.count; i++) {
     const periodStartDate = new Date(periodEnd);
     periodStartDate.setDate(periodStartDate.getDate() - cfg.stepDays);
-    const nums = await computePeriodNumbers(businessId, isSC, periodStartDate, periodEnd);
+    const nums = await computePeriodNumbers(businessId, isSC, periodStartDate, periodEnd, vendorId);
     points.unshift({ label: cfg.labelFmt(periodStartDate), revenue: nums.revenue, activity: nums.activity });
     periodEnd = periodStartDate;
   }

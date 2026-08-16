@@ -1,3 +1,4 @@
+import VendorProfile from "@/models/VendorProfile";
 import Business from "@/models/Business";
 import Integration, { WhatsAppConfig } from "@/models/Integration";
 import TelegramMessageTemplate from "@/models/TelegramMessageTemplate";
@@ -6,45 +7,51 @@ import { templateKeyFor } from "./templateKey";
 
 /**
  * WhatsApp counterpart to sendVendorTelegramMessage.ts -- same event
- * catalog (core/telegram/vendorMessageTypes.ts), same super-admin template
- * system (models/TelegramMessageTemplate.ts, WhatsApp wording stored under
- * a "__WHATSAPP"-suffixed key so it can differ from the Telegram wording
- * for the same alert type), same TelegramLog audit trail.
+ * catalog, same super-admin template system, same TelegramLog audit trail,
+ * keyed by `vendorObjectId` (VendorProfile._id) the same way, so a
+ * WhatsApp send is scoped to the same specific vendor as its Telegram
+ * counterpart.
  *
- * Credentials come from this business's own Integration(provider:
- * 'WHATSAPP') row (Meta WhatsApp Business API phoneNumberId + accessToken
- * + a recipients list) -- there is no shared platform WhatsApp bot the way
- * there is for Telegram, since WhatsApp Business API access is always
- * business-specific. A business with no WhatsApp Integration configured
- * (or not active) yet just gets a silent no-op here, same "never breaks
- * the caller" contract as the Telegram path -- the moment real credentials
- * are added, sends start working with zero code changes.
+ * Credentials still come from the BUSINESS's own Integration(provider:
+ * 'WHATSAPP') row (Meta WhatsApp Business API access is provisioned per
+ * business, not per vendor) -- a business with no WhatsApp Integration
+ * configured yet just gets a silent no-op here, same "never breaks the
+ * caller" contract as the Telegram path.
  *
  * extraRecipients lets a caller reach someone OUTSIDE the business's own
  * configured staff list for this one send -- e.g. the customer's own phone
- * number for a customer-facing repair-status update, distinct from the
- * business's internal WhatsApp recipients.
+ * number for a customer-facing repair-status update.
  */
 export async function sendVendorWhatsAppMessage(
-  businessId: string,
+  vendorObjectId: string,
   type: string,
   text: string,
   tokens?: Record<string, string>,
   extraRecipients?: string[]
 ): Promise<{ sent: boolean; recipients: number }> {
+  const vendor = await VendorProfile.findById(vendorObjectId).select("vendorId companyName businessId").lean<any>();
+  if (!vendor) return { sent: false, recipients: 0 };
+
   const [business, integration] = await Promise.all([
-    Business.findById(businessId).select("name").lean<any>(),
-    Integration.findOne({ businessId, provider: "WHATSAPP", isActive: true }).lean<any>(),
+    vendor.businessId ? Business.findById(vendor.businessId).select("name").lean<any>() : null,
+    vendor.businessId ? Integration.findOne({ businessId: vendor.businessId, provider: "WHATSAPP", isActive: true }).lean<any>() : null,
   ]);
-  if (!business) return { sent: false, recipients: 0 };
 
   const template = await TelegramMessageTemplate.findOne({ key: templateKeyFor(type, "WHATSAPP") }).lean<any>();
+  const logBase = {
+    businessId: vendor.businessId, businessName: business?.name,
+    vendorObjectId, vendorId: vendor.vendorId, vendorName: vendor.companyName,
+    type, channel: "WHATSAPP" as const,
+  };
   if (template?.enabled === false) {
-    await TelegramLog.create({ businessId, businessName: business.name, type, channel: "WHATSAPP", text, success: false }).catch(() => {});
+    await TelegramLog.create({ ...logBase, text, success: false }).catch(() => {});
     return { sent: false, recipients: 0 };
   }
   if (template?.template && template.template !== "(disabled)") {
-    const merged: Record<string, string> = { businessName: business.name || "", date: new Date().toLocaleDateString("en-IN"), ...tokens };
+    const merged: Record<string, string> = {
+      businessName: business?.name || "", vendorName: vendor.companyName || "", vendorId: vendor.vendorId || "",
+      date: new Date().toLocaleDateString("en-IN"), ...tokens,
+    };
     text = template.template.replace(/\{\{(\w+)\}\}/g, (_: string, name: string) => merged[name] ?? "");
   }
 
@@ -65,14 +72,7 @@ export async function sendVendorWhatsAppMessage(
   );
   const sentCount = results.filter((r) => r.status === "fulfilled" && r.value).length;
 
-  await TelegramLog.create({
-    businessId,
-    businessName: business.name,
-    type,
-    channel: "WHATSAPP",
-    text,
-    success: sentCount > 0,
-  }).catch(() => {});
+  await TelegramLog.create({ ...logBase, text, success: sentCount > 0 }).catch(() => {});
 
   return { sent: sentCount > 0, recipients: sentCount };
 }

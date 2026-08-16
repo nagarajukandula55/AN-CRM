@@ -87,6 +87,25 @@ export interface IVendorProfile extends Document {
    */
   parentVendorId?: mongoose.Types.ObjectId;
   /**
+   * Per-vendor Telegram linking -- moved here from Business (see
+   * models/Business.ts's own telegram* fields, still present for legacy
+   * reads but no longer the source of truth) once the platform changed to
+   * a single shared Business with many VendorProfiles under it. Business-
+   * level fields meant every vendor's /link overwrote the SAME document,
+   * so only one vendor's chat could ever be linked platform-wide -- the
+   * exact bug reported ("every vendor should have separate group... check
+   * whether it is getting proper vendor list or business"). Unset on a
+   * sub-vendor (parentVendorId set) falls back to its parent's chat at
+   * send time (see core/telegram/resolveVendorChatConfig.ts) rather than
+   * requiring every sub-vendor to link its own chat separately, unless it
+   * explicitly links its own.
+   */
+  telegramChatId?: string;
+  telegramPersonalChatId?: string;
+  telegramReportFrequency?: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
+  telegramReportLastSentAt?: Date;
+  telegramMessageRouting?: Record<string, { group?: boolean; personal?: boolean }>;
+  /**
    * Placeholder billing/charge fields for sub-vendor creation -- per
    * explicit direction ("for every sub vendor they add we need to charge
    * them so, either they have to allow them to have another vendor or
@@ -259,6 +278,12 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     // exactly what happened in production.
     vendorId:     { type: String, unique: true, sparse: true },
     parentVendorId: { type: Schema.Types.ObjectId, ref: 'VendorProfile', default: null, index: true },
+
+    telegramChatId: { type: String, trim: true, default: "" },
+    telegramPersonalChatId: { type: String, trim: true, default: "" },
+    telegramReportFrequency: { type: String, enum: ["NONE", "DAILY", "WEEKLY", "MONTHLY"], default: "NONE" },
+    telegramReportLastSentAt: { type: Date },
+    telegramMessageRouting: { type: Schema.Types.Mixed, default: {} },
     subVendorBilling: {
       subVendorPlan: { type: String, enum: ["NONE", "ALLOWED", "BLOCKED"], default: "NONE" },
       subVendorCount: { type: Number, default: 0 },

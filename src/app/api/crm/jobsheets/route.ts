@@ -307,8 +307,8 @@ export async function POST(req: NextRequest) {
 
     notifyJobSheetStatusChange(effectiveBizId, jobSheet.phone, jobSheet.jobSheetNumber, jobSheet.status);
 
-    sendVendorAlert(
-      effectiveBizId,
+    if (effectiveVendorId) sendVendorAlert(
+      String(effectiveVendorId),
       "NEW_WORKORDER",
       `New workorder ${jobSheet.jobSheetNumber} created for ${jobSheet.customerName} (${jobSheet.phone}).`,
       {

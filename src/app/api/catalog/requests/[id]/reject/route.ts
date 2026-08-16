@@ -5,6 +5,7 @@ import CatalogChangeRequest from "@/models/CatalogChangeRequest";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { logAction } from "@/lib/audit/logAction";
 import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
+import VendorProfile from "@/models/VendorProfile";
 
 // POST /api/catalog/requests/[id]/reject
 // Same hardcoded session.isSuperAdmin gate as approve/route.ts -- see that
@@ -56,9 +57,10 @@ export async function POST(req: NextRequest, context: any) {
       actor: { id: session.user.id },
     });
 
-    if (request.businessId) {
+    const requestingVendor = await VendorProfile.findOne({ userId: request.requestedBy, isDeleted: { $ne: true } }).select("_id").lean();
+    if (requestingVendor) {
       sendVendorTelegramMessage(
-        String(request.businessId),
+        String(requestingVendor._id),
         "CATALOG_REQUEST",
         `Your catalog request "${request.name}" was rejected${reason ? `: ${reason}` : "."}`
       ).catch(() => {});

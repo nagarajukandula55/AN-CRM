@@ -8,8 +8,15 @@ import mongoose, { Schema, Document, Model } from "mongoose";
  * edited, just listed/filtered in the admin UI.
  */
 export interface ITelegramLog extends Document {
-  businessId: mongoose.Types.ObjectId;
+  businessId?: mongoose.Types.ObjectId;
   businessName?: string;
+  // Which VendorProfile this alert was actually for -- added once
+  // Telegram linking moved from Business to VendorProfile (many vendors
+  // now share one Business), so the log can tell vendors apart even
+  // though they're all under the same businessId.
+  vendorObjectId?: mongoose.Types.ObjectId;
+  vendorId?: string;
+  vendorName?: string;
   type: string;
   channel: "TELEGRAM" | "WHATSAPP";
   text: string;
@@ -21,8 +28,11 @@ export interface ITelegramLog extends Document {
 
 const TelegramLogSchema = new Schema<ITelegramLog>(
   {
-    businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true, index: true },
+    businessId: { type: Schema.Types.ObjectId, ref: "Business", index: true },
     businessName: { type: String },
+    vendorObjectId: { type: Schema.Types.ObjectId, ref: "VendorProfile", index: true },
+    vendorId: { type: String, index: true },
+    vendorName: { type: String },
     type: { type: String, required: true, index: true },
     channel: { type: String, enum: ["TELEGRAM", "WHATSAPP"], default: "TELEGRAM", index: true },
     text: { type: String, required: true },

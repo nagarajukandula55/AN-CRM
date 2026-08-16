@@ -1,16 +1,22 @@
 /**
  * GET/PUT /api/admin/telegram-ids — super-admin-only list-and-edit of
- * every business's Group/Personal Telegram chat ID in one screen, instead
+ * every VENDOR's Group/Personal Telegram chat ID in one screen, instead
  * of having to open each vendor's own console/admin/vendors/[id]/telegram
  * page one at a time. Same underlying fields that page and the bot's
- * /link flow both read/write (Business.telegramChatId /
- * telegramPersonalChatId) -- this is just a faster bulk view/edit surface
- * on top of the same data, per explicit direction ("give me UI in super
- * admin to update or edit telegram IDs").
+ * /link flow both read/write (VendorProfile.telegramChatId /
+ * telegramPersonalChatId).
+ *
+ * BUG FIX (this pass): this used to list BUSINESSES with a vendorId
+ * looked up via a Map keyed by businessId -- now that many vendors share
+ * one Business, that Map silently collapsed to "whichever vendor was
+ * iterated last" for every business with more than one vendor, so a row
+ * shown as e.g. "My Biz Flow — VND0004" was actually a mislabeled shared
+ * Business document, not that specific vendor's own data (the exact bug
+ * reported). Lists VendorProfile rows directly now -- one row per real
+ * vendor, each with its own independent chat fields.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
-import Business from "@/models/Business";
 import VendorProfile from "@/models/VendorProfile";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 
@@ -30,24 +36,21 @@ export async function GET() {
   if (!auth.ok) return auth.res;
 
   await connectDB();
-  const [businesses, vendors] = await Promise.all([
-    Business.find({ isActive: true })
-      .select("name brandName telegramChatId telegramPersonalChatId telegramReportFrequency")
-      .sort({ name: 1 })
-      .lean(),
-    VendorProfile.find({ isDeleted: { $ne: true } }).select("vendorId businessId").lean(),
-  ]);
-  const vendorIdByBusiness = new Map(vendors.map((v: any) => [String(v.businessId), v.vendorId]));
+  const vendors = await VendorProfile.find({ isDeleted: { $ne: true } })
+    .select("vendorId companyName parentVendorId telegramChatId telegramPersonalChatId telegramReportFrequency")
+    .sort({ companyName: 1 })
+    .lean();
 
   return NextResponse.json({
     success: true,
-    businesses: businesses.map((b: any) => ({
-      _id: String(b._id),
-      name: b.brandName || b.name,
-      vendorId: vendorIdByBusiness.get(String(b._id)) || null,
-      telegramChatId: b.telegramChatId || "",
-      telegramPersonalChatId: b.telegramPersonalChatId || "",
-      telegramReportFrequency: b.telegramReportFrequency || "NONE",
+    businesses: vendors.map((v: any) => ({
+      _id: String(v._id),
+      name: v.companyName,
+      vendorId: v.vendorId || null,
+      isSubVendor: !!v.parentVendorId,
+      telegramChatId: v.telegramChatId || "",
+      telegramPersonalChatId: v.telegramPersonalChatId || "",
+      telegramReportFrequency: v.telegramReportFrequency || "NONE",
     })),
   });
 }
@@ -58,16 +61,16 @@ export async function PUT(req: NextRequest) {
 
   await connectDB();
   const body = await req.json().catch(() => ({}));
-  const { businessId, telegramChatId, telegramPersonalChatId } = body as {
-    businessId?: string;
+  const { businessId: vendorObjectId, telegramChatId, telegramPersonalChatId } = body as {
+    businessId?: string; // param name kept for the frontend contract; value is actually a VendorProfile._id now
     telegramChatId?: string;
     telegramPersonalChatId?: string;
   };
-  if (!businessId) {
-    return NextResponse.json({ success: false, message: "businessId is required" }, { status: 400 });
+  if (!vendorObjectId) {
+    return NextResponse.json({ success: false, message: "vendor id is required" }, { status: 400 });
   }
 
-  await Business.findByIdAndUpdate(businessId, {
+  await VendorProfile.findByIdAndUpdate(vendorObjectId, {
     $set: {
       telegramChatId: (telegramChatId || "").trim(),
       telegramPersonalChatId: (telegramPersonalChatId || "").trim(),
