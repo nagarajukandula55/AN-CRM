@@ -1,10 +1,11 @@
 'use client'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import useSWR from 'swr'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { LoadingPanel } from '@/components/ui/Spinner'
+import TextFormatToolbar, { EMAIL_FORMAT_BUTTONS } from '@/components/shared/TextFormatToolbar'
 
 /**
  * Super-Admin-only: every transactional email occasion the app can send
@@ -34,6 +35,7 @@ export default function EmailTemplatesPage() {
   const occasions: Occasion[] = data?.success ? data.occasions : []
 
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
+  const htmlTextareaRef = useRef<HTMLTextAreaElement>(null)
   const [subjectDrafts, setSubjectDrafts] = useState<Record<string, string>>({})
   const [htmlDrafts, setHtmlDrafts] = useState<Record<string, string>>({})
   const [enabledDrafts, setEnabledDrafts] = useState<Record<string, boolean>>({})
@@ -123,7 +125,13 @@ export default function EmailTemplatesPage() {
                     </div>
                     <div>
                       <label className="text-xs text-ink-3 mb-1 block">Body (HTML)</label>
+                      <TextFormatToolbar
+                        buttons={EMAIL_FORMAT_BUTTONS}
+                        textareaRef={htmlTextareaRef}
+                        onChange={(next) => setHtmlDrafts((d) => ({ ...d, [o.key]: next }))}
+                      />
                       <textarea
+                        ref={htmlTextareaRef}
                         rows={8}
                         value={htmlDrafts[o.key] ?? o.html}
                         onChange={(e) => setHtmlDrafts((d) => ({ ...d, [o.key]: e.target.value }))}
@@ -144,6 +152,13 @@ export default function EmailTemplatesPage() {
                           {`{{${tok}}}`}
                         </code>
                       ))}
+                    </div>
+                    <div>
+                      <span className="text-xs text-ink-3 block mb-1">Preview</span>
+                      <div
+                        className="rounded-control border border-dashed border-border bg-surface px-4 py-3 text-sm text-ink"
+                        dangerouslySetInnerHTML={{ __html: (htmlDrafts[o.key] ?? o.html) || '<span class="text-ink-3">(built-in default wording)</span>' }}
+                      />
                     </div>
                     <button
                       type="button"

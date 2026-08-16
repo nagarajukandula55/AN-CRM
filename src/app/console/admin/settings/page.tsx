@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { Building2, Plug, Sparkles, Save, User, ChevronRight, Receipt, Globe2, Plus, Trash2, Send } from 'lucide-react'
 import { DEVICE_CATEGORIES, DEVICE_CATEGORY_LABELS } from '@/core/catalog/deviceCategory'
 import DocumentNumbersPanel from '@/components/admin/DocumentNumbersPanel'
+import TextFormatToolbar, { TELEGRAM_FORMAT_BUTTONS } from '@/components/shared/TextFormatToolbar'
 
 /**
  * Admin Settings hub — src/app/console/settings.
@@ -260,6 +261,7 @@ export default function AdminSettingsPage() {
     isSuperAdmin && view === 'platform' ? `/api/admin/telegram-templates?channel=${templateChannel}` : null
   )
   const [expandedTemplateKey, setExpandedTemplateKey] = useState<string | null>(null)
+  const templateTextareaRef = useRef<HTMLTextAreaElement>(null)
   const [templateDrafts, setTemplateDrafts] = useState<Record<string, string>>({})
   const [enabledDrafts, setEnabledDrafts] = useState<Record<string, boolean>>({})
   const [savingTemplateKey, setSavingTemplateKey] = useState<string | null>(null)
@@ -561,7 +563,13 @@ export default function AdminSettingsPage() {
                             <label className="text-xs text-ink-3 mb-1 block mt-3">
                               Message text (applies to every vendor for this alert type)
                             </label>
+                            <TextFormatToolbar
+                              buttons={TELEGRAM_FORMAT_BUTTONS}
+                              textareaRef={templateTextareaRef}
+                              onChange={(next) => setTemplateDrafts((d) => ({ ...d, [t.key]: next }))}
+                            />
                             <textarea
+                              ref={templateTextareaRef}
                               rows={3}
                               value={templateDrafts[t.key] ?? t.template ?? ''}
                               onChange={(e) => setTemplateDrafts((d) => ({ ...d, [t.key]: e.target.value }))}
@@ -580,6 +588,16 @@ export default function AdminSettingsPage() {
                                   {`{{${tok}}}`}
                                 </code>
                               ))}
+                            </div>
+                            <div className="mt-2">
+                              <span className="text-xs text-ink-3 block mb-1">Preview</span>
+                              <div
+                                className="rounded-control border border-dashed border-border bg-surface px-3 py-2 text-sm text-ink whitespace-pre-wrap"
+                                // Telegram only ever renders this same narrow tag subset
+                                // (b/i/u/s/code/a) -- safe to preview as literal HTML here
+                                // since it's admin-authored text, not user-submitted.
+                                dangerouslySetInnerHTML={{ __html: (templateDrafts[t.key] ?? t.template ?? '') || '<span class="text-ink-3">(built-in default wording)</span>' }}
+                              />
                             </div>
                             <button
                               type="button"
