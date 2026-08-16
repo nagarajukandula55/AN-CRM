@@ -563,6 +563,17 @@ const BusinessSchema = new mongoose.Schema(
       maxlength: 2,
       unique: true,
       sparse: true,
+      // Some existing documents got this saved as an empty string rather
+      // than left unset (a form submitting '' instead of omitting the
+      // field) -- minlength validates ANY string value, including '', so
+      // .save() on that document fails forever afterward no matter what
+      // else is being changed, which is exactly what broke the Telegram
+      // /link flow (it only touches telegramChatId, but Mongoose
+      // validates the whole document on every save()). Normalizing ''
+      // to undefined on assignment stops this from ever being written
+      // again; see scripts/fixEmptyBrandShortcuts.ts for the one-time
+      // cleanup of documents already saved with the bad value.
+      set: (v: string) => (v === "" ? undefined : v),
     },
 
     tenantKey: {
