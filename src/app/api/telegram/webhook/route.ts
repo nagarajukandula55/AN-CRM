@@ -127,6 +127,13 @@ async function sendToChat(chatId: number | string, text: string) {
 }
 
 export async function POST(req: NextRequest) {
+  // Hoisted so the catch-all below can still reply to whichever chat sent
+  // the message, even if the exception happened after we parsed it -- was
+  // previously impossible to reach from inside `catch`, which is exactly
+  // why an exception (e.g. Business.save() failing validation) produced
+  // total silence with zero trace: the confirmation reply that would have
+  // told the user is what threw, and nothing ever logged why.
+  let chatIdForErrorReply: number | string | undefined;
   try {
     const centralApiKey = process.env.CENTRAL_API_KEY;
     if (centralApiKey && req.headers.get("x-api-key") !== centralApiKey) {
@@ -145,6 +152,7 @@ export async function POST(req: NextRequest) {
     if (!chatId || !text) {
       return NextResponse.json({ success: true });
     }
+    chatIdForErrorReply = chatId;
 
     // In a group/supergroup, Telegram appends "@YourBotUsername" to every
     // command (e.g. "/link@MyBizFlowBot ABC123") -- matching the bare
@@ -360,9 +368,17 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch {
-    // Telegram retries on non-2xx -- always ack so a transient parsing
-    // hiccup doesn't cause a retry storm.
+  } catch (err) {
+    console.error("[telegram-webhook] unhandled error:", err);
+    if (chatIdForErrorReply) {
+      await sendToChat(
+        chatIdForErrorReply,
+        "⚠️ Something went wrong processing that -- please try again in a moment. If it keeps failing, contact support."
+      ).catch(() => {});
+    }
+    // Telegram retries on non-2xx -- always ack (200) so a transient
+    // hiccup doesn't cause a retry storm; the error is now at least
+    // logged and the sender told, instead of pure silence either way.
     return NextResponse.json({ success: true });
   }
 }
