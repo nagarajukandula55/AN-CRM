@@ -9,6 +9,7 @@
 import mongoose from "mongoose";
 import SalesInvoice from "@/models/SalesInvoice";
 import CrmJobSheet from "@/models/CrmJobSheet";
+import TelegramMessageTemplate from "@/models/TelegramMessageTemplate";
 
 export function periodStart(frequency: string, now: Date): Date {
   const start = new Date(now);
@@ -71,7 +72,15 @@ function statusLabel(status: string): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export async function buildReportMessage(businessName: string, frequency: string, isSC: boolean, businessId: string, now: Date, vendorId?: string) {
+export async function buildReportMessage(
+  businessName: string,
+  frequency: string,
+  isSC: boolean,
+  businessId: string,
+  now: Date,
+  vendorId?: string,
+  vendorName?: string
+) {
   const from = periodStart(frequency, now);
   const priorFrom = periodStart(frequency, from);
 
@@ -82,6 +91,40 @@ export async function buildReportMessage(businessName: string, frequency: string
 
   const activityLabel = isSC ? "Workorders" : "Calls";
   const changePct = prior.revenue > 0 ? (((current.revenue - prior.revenue) / prior.revenue) * 100).toFixed(1) : "n/a";
+
+  let workorderBreakdown = "";
+  if (isSC) {
+    const rows = WORKORDER_STATUSES
+      .map((s) => ({ status: s, count: current.byStatus[s] || 0 }))
+      .filter((r) => r.count > 0);
+    if (rows.length > 0) {
+      const breakdownLines = ["<b>Workorders by Status</b>", "<pre>"];
+      for (const r of rows) {
+        breakdownLines.push(`${statusLabel(r.status).padEnd(18)} ${String(r.count).padStart(4)}`);
+      }
+      breakdownLines.push("</pre>");
+      workorderBreakdown = breakdownLines.join("\n");
+    }
+  }
+
+  // Super-admin-configurable wording for the report itself (Settings >
+  // Platform > Notification Templates > "Daily/Weekly/Monthly Business
+  // Report") -- per explicit direction ("existing reports formats,
+  // tockens and other formatting things also not available"). Falls back
+  // to the hardcoded table layout below when nothing's saved.
+  const template = await TelegramMessageTemplate.findOne({ key: "BUSINESS_REPORT" }).lean<any>();
+  if (template?.enabled !== false && template?.template && template.template !== "(disabled)") {
+    const tokens: Record<string, string> = {
+      businessName, vendorName: vendorName || "", vendorId: vendorId || "",
+      date: now.toLocaleDateString("en-IN"), frequency,
+      revenue: fmtINR(current.revenue), priorRevenue: fmtINR(prior.revenue),
+      invoices: String(current.invoices), priorInvoices: String(prior.invoices),
+      activityLabel, activity: String(current.activity), priorActivity: String(prior.activity),
+      changePct: `${changePct}%`, workorderBreakdown,
+    };
+    const text = template.template.replace(/\{\{(\w+)\}\}/g, (_: string, name: string) => tokens[name] ?? "");
+    return { text, current, prior };
+  }
 
   const lines = [
     `<b>${businessName} — ${frequency} Report</b>`,
@@ -99,18 +142,7 @@ export async function buildReportMessage(businessName: string, frequency: string
   // day/week is just noise). Per explicit direction ("Richtext format
   // tables of Daily, Weekly and monthly summaries of Workorders with
   // Statuses and Revenue details").
-  if (isSC) {
-    const rows = WORKORDER_STATUSES
-      .map((s) => ({ status: s, count: current.byStatus[s] || 0 }))
-      .filter((r) => r.count > 0);
-    if (rows.length > 0) {
-      lines.push("", "<b>Workorders by Status</b>", "<pre>");
-      for (const r of rows) {
-        lines.push(`${statusLabel(r.status).padEnd(18)} ${String(r.count).padStart(4)}`);
-      }
-      lines.push("</pre>");
-    }
-  }
+  if (workorderBreakdown) lines.push("", workorderBreakdown);
 
   return { text: lines.join("\n"), current, prior };
 }

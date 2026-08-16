@@ -30,6 +30,7 @@ export const VENDOR_TELEGRAM_MESSAGE_TYPES: VendorTelegramMessageType[] = [
   { key: "LOW_STOCK", label: "Low Stock Alert", description: "A material/part has fallen below its reorder threshold.", defaultGroup: true, defaultPersonal: false },
   { key: "CATALOG_REQUEST", label: "Catalog Request Update", description: "A brand/model/solution catalog request was approved or rejected.", defaultGroup: true, defaultPersonal: false },
   { key: "GENERAL_ANNOUNCEMENT", label: "General Announcement", description: "One-off announcement or manual message sent by AN Group staff.", defaultGroup: true, defaultPersonal: false },
+  { key: "BUSINESS_REPORT", label: "Daily/Weekly/Monthly Business Report", description: "The scheduled/on-demand revenue + workorder report itself (/report, /sendreports, /link's first report) -- customize its wording/layout, the computed numbers are available as tokens.", defaultGroup: true, defaultPersonal: true },
 ];
 
 export const VENDOR_TELEGRAM_MESSAGE_TYPE_KEYS = VENDOR_TELEGRAM_MESSAGE_TYPES.map((t) => t.key);

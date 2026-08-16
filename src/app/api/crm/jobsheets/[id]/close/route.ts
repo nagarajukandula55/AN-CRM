@@ -16,6 +16,7 @@ import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
 import SalesInvoice from "@/models/SalesInvoice";
 import Business from "@/models/Business";
+import Brand from "@/models/Brand";
 import BOM from "@/models/BOM";
 import Inventory from "@/models/Inventory";
 import { updateInventoryStock } from "@/services/inventory.service";
@@ -273,17 +274,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     notifyJobSheetStatusChange(jobSheet.businessId.toString(), jobSheet.phone, jobSheet.jobSheetNumber, jobSheet.status);
 
-    if (jobSheet.vendorId) sendVendorAlert(
-      jobSheet.vendorId.toString(),
-      "WORKORDER_CLOSED",
-      `Workorder ${jobSheet.jobSheetNumber} closed and invoiced (${invoice.invoiceNumber}) for ${jobSheet.customerName}.`,
-      {
-        workorderNumber: jobSheet.jobSheetNumber || "",
-        customerName: jobSheet.customerName || "",
-        invoiceNumber: invoice.invoiceNumber || "",
-        amount: String(invoice.grandTotal ?? ""),
-      }
-    ).catch(() => {});
+    if (jobSheet.vendorId) {
+      const closedBrandName = jobSheet.brandId ? (await Brand.findById(jobSheet.brandId).select("name").lean<any>())?.name : jobSheet.pendingBrandName;
+      sendVendorAlert(
+        jobSheet.vendorId.toString(),
+        "WORKORDER_CLOSED",
+        `Workorder ${jobSheet.jobSheetNumber} closed and invoiced (${invoice.invoiceNumber}) for ${jobSheet.customerName}.`,
+        {
+          workorderNumber: jobSheet.jobSheetNumber || "",
+          customerName: jobSheet.customerName || "",
+          phone: jobSheet.phone || "",
+          invoiceNumber: invoice.invoiceNumber || "",
+          amount: String(invoice.grandTotal ?? ""),
+          product: jobSheet.product || "",
+          brand: closedBrandName || "",
+          deviceModel: jobSheet.deviceModel || "",
+          imei: jobSheet.imeiOrSerialNumber || "",
+          issueDescription: jobSheet.issueDescription || "",
+          engineerName: jobSheet.assignedToName || "",
+        }
+      ).catch(() => {});
+    }
 
     // Deduct stock now that the invoice is confirmed created -- every
     // check above already passed, so this only fails on a genuine

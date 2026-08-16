@@ -9,6 +9,7 @@ import { headers } from "next/headers";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
+import Brand from "@/models/Brand";
 import { validateGSTIN } from "@/lib/validation/gst";
 import { generateDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
@@ -307,16 +308,29 @@ export async function POST(req: NextRequest) {
 
     notifyJobSheetStatusChange(effectiveBizId, jobSheet.phone, jobSheet.jobSheetNumber, jobSheet.status);
 
-    if (effectiveVendorId) sendVendorAlert(
-      String(effectiveVendorId),
-      "NEW_WORKORDER",
-      `New workorder ${jobSheet.jobSheetNumber} created for ${jobSheet.customerName} (${jobSheet.phone}).`,
-      {
-        workorderNumber: jobSheet.jobSheetNumber || "",
-        customerName: jobSheet.customerName || "",
-        phone: jobSheet.phone || "",
-      }
-    ).catch(() => {});
+    if (effectiveVendorId) {
+      const brandName = jobSheet.brandId ? (await Brand.findById(jobSheet.brandId).select("name").lean<any>())?.name : jobSheet.pendingBrandName;
+      sendVendorAlert(
+        String(effectiveVendorId),
+        "NEW_WORKORDER",
+        `New workorder ${jobSheet.jobSheetNumber} created for ${jobSheet.customerName} (${jobSheet.phone}).`,
+        {
+          workorderNumber: jobSheet.jobSheetNumber || "",
+          customerName: jobSheet.customerName || "",
+          phone: jobSheet.phone || "",
+          email: jobSheet.email || "",
+          address: jobSheet.address || "",
+          city: jobSheet.city || "",
+          state: jobSheet.state || "",
+          product: jobSheet.product || "",
+          brand: brandName || "",
+          deviceModel: jobSheet.deviceModel || "",
+          imei: jobSheet.imeiOrSerialNumber || "",
+          issueDescription: jobSheet.issueDescription || "",
+          engineerName: jobSheet.assignedToName || "",
+        }
+      ).catch(() => {});
+    }
 
     logAction({
       action: "CREATE",

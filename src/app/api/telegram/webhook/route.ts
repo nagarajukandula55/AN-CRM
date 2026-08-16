@@ -251,7 +251,7 @@ export async function POST(req: NextRequest) {
 
       try {
         const isSC = (business.operatingMode || "SC") === "SC";
-        const { text: reportText } = await buildReportMessage(greetName, vendor.telegramReportFrequency || "DAILY", isSC, String(business._id), new Date(), String(vendor._id));
+        const { text: reportText } = await buildReportMessage(greetName, vendor.telegramReportFrequency || "DAILY", isSC, String(business._id), new Date(), String(vendor._id), greetName);
         await sendToChat(chatId, reportText);
       } catch (err) {
         console.error("[telegram-webhook] /link (vendor id) first-report failed:", err);
@@ -375,7 +375,7 @@ export async function POST(req: NextRequest) {
               continue;
             }
             const frequency = vendor.telegramReportFrequency && vendor.telegramReportFrequency !== "NONE" ? vendor.telegramReportFrequency : "DAILY";
-            const { text: reportText } = await buildReportMessage(displayName, frequency, isSC, String(business._id), now, String(vendor._id));
+            const { text: reportText } = await buildReportMessage(displayName, frequency, isSC, String(business._id), now, String(vendor._id), displayName);
             await sendToChat(chatId, reportText);
             const activityLabel = isSC ? "Workorders" : "Calls";
             const chartUrl = await buildTrendChartUrl(displayName, frequency, activityLabel, String(business._id), isSC, now, String(vendor._id));

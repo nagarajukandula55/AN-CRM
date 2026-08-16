@@ -8,9 +8,16 @@
  * token in a saved template just renders as an empty string, never breaks
  * the send.
  */
+// Every device/job-sheet field a template can reference, on top of the
+// universal set below -- populated at the two call sites that actually
+// have this data (api/crm/jobsheets/route.ts on create,
+// [id]/close/route.ts on close). Per explicit direction ("we are taking
+// brand model IMEI etc bit nothing is available for tokens").
+const JOBSHEET_TOKENS = ["product", "brand", "deviceModel", "imei", "issueDescription", "engineerName", "email", "address", "city", "state"];
+
 export const MESSAGE_TOKENS: Record<string, string[]> = {
-  NEW_WORKORDER: ["businessName", "vendorName", "vendorId", "workorderNumber", "customerName", "phone", "date"],
-  WORKORDER_CLOSED: ["businessName", "vendorName", "vendorId", "workorderNumber", "customerName", "invoiceNumber", "amount", "date"],
+  NEW_WORKORDER: ["businessName", "vendorName", "vendorId", "workorderNumber", "customerName", "phone", "date", ...JOBSHEET_TOKENS],
+  WORKORDER_CLOSED: ["businessName", "vendorName", "vendorId", "workorderNumber", "customerName", "phone", "invoiceNumber", "amount", "date", ...JOBSHEET_TOKENS],
   PAYMENT_DUE: ["businessName", "vendorName", "vendorId", "invoiceNumber", "amount", "dueDate"],
   PAYMENT_RECEIVED: ["businessName", "vendorName", "vendorId", "invoiceNumber", "amount", "date"],
   SETTLEMENT: ["businessName", "vendorName", "vendorId", "amount", "date"],
@@ -18,6 +25,18 @@ export const MESSAGE_TOKENS: Record<string, string[]> = {
   LOW_STOCK: ["businessName", "vendorName", "vendorId", "itemName", "currentStock", "reorderLevel"],
   CATALOG_REQUEST: ["businessName", "vendorName", "vendorId", "itemName", "status"],
   GENERAL_ANNOUNCEMENT: ["businessName", "vendorName", "vendorId", "date"],
+  // The scheduled/on-demand report's own wording -- see
+  // lib/telegramReport.ts's buildReportMessage, which checks for a saved
+  // override under this key before falling back to its own hardcoded
+  // table layout. workorderBreakdown is a pre-formatted <pre> block (SC
+  // only, empty string for non-SC / when nothing to show) since a
+  // per-status table can't be reduced to one flat token.
+  BUSINESS_REPORT: [
+    "businessName", "vendorName", "vendorId", "date", "frequency",
+    "revenue", "priorRevenue", "invoices", "priorInvoices",
+    "activityLabel", "activity", "priorActivity", "changePct",
+    "workorderBreakdown",
+  ],
 };
 
 // Available on EVERY template regardless of type -- merged in automatically

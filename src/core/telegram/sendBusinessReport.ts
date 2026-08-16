@@ -51,7 +51,7 @@ export async function sendVendorBusinessReport(
   const activityLabel = isSC ? "Workorders" : "Calls";
   const now = new Date();
   const reportTitle = vendor.vendorName || business.name;
-  const { text } = await buildReportMessage(reportTitle, frequency, isSC, vendor.businessId, now, vendor.vendorObjectId);
+  const { text } = await buildReportMessage(reportTitle, frequency, isSC, vendor.businessId, now, vendor.vendorObjectId, vendor.vendorName);
   const chartUrl = await buildTrendChartUrl(reportTitle, frequency, activityLabel, vendor.businessId, isSC, now, vendor.vendorObjectId);
 
   for (const destChatId of destinationChatIds) {
