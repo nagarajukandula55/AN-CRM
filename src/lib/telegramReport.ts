@@ -19,6 +19,12 @@ export function periodStart(frequency: string, now: Date): Date {
   return start;
 }
 
+// 1st of `now`'s calendar month at 00:00 -- start of the "month so far"
+// window a Daily report also shows alongside just-today's numbers.
+export function monthToDateStart(now: Date): Date {
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
 export const fmtINR = (n: number) => `Rs ${Math.round(n).toLocaleString("en-IN")}`;
 
 // Every CrmJobSheet.status value, in the order they should list in the
@@ -72,6 +78,23 @@ function statusLabel(status: string): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Shared by the daily block and the "Month So Far" block -- a per-status
+// <pre> table from a byStatus count map, SC only, empty string when there's
+// nothing to show (skips an all-zero table on a quiet day).
+function renderWorkorderBreakdown(byStatus: Record<string, number>, isSC: boolean, heading = "Workorders by Status"): string {
+  if (!isSC) return "";
+  const rows = WORKORDER_STATUSES
+    .map((s) => ({ status: s, count: byStatus[s] || 0 }))
+    .filter((r) => r.count > 0);
+  if (rows.length === 0) return "";
+  const lines = [`<b>${heading}</b>`, "<pre>"];
+  for (const r of rows) {
+    lines.push(`${statusLabel(r.status).padEnd(18)} ${String(r.count).padStart(4)}`);
+  }
+  lines.push("</pre>");
+  return lines.join("\n");
+}
+
 export async function buildReportMessage(
   businessName: string,
   frequency: string,
@@ -83,29 +106,21 @@ export async function buildReportMessage(
 ) {
   const from = periodStart(frequency, now);
   const priorFrom = periodStart(frequency, from);
+  const isDaily = frequency === "DAILY";
 
-  const [current, prior] = await Promise.all([
+  const [current, prior, mtd] = await Promise.all([
     computePeriodNumbers(businessId, isSC, from, now, vendorId),
     computePeriodNumbers(businessId, isSC, priorFrom, from, vendorId),
+    // Month-so-far numbers, only needed for a Daily report -- see this
+    // function's own comment on why Weekly/Monthly skip it.
+    isDaily ? computePeriodNumbers(businessId, isSC, monthToDateStart(now), now, vendorId) : Promise.resolve(null),
   ]);
 
   const activityLabel = isSC ? "Workorders" : "Calls";
   const changePct = prior.revenue > 0 ? (((current.revenue - prior.revenue) / prior.revenue) * 100).toFixed(1) : "n/a";
 
-  let workorderBreakdown = "";
-  if (isSC) {
-    const rows = WORKORDER_STATUSES
-      .map((s) => ({ status: s, count: current.byStatus[s] || 0 }))
-      .filter((r) => r.count > 0);
-    if (rows.length > 0) {
-      const breakdownLines = ["<b>Workorders by Status</b>", "<pre>"];
-      for (const r of rows) {
-        breakdownLines.push(`${statusLabel(r.status).padEnd(18)} ${String(r.count).padStart(4)}`);
-      }
-      breakdownLines.push("</pre>");
-      workorderBreakdown = breakdownLines.join("\n");
-    }
-  }
+  const workorderBreakdown = renderWorkorderBreakdown(current.byStatus, isSC);
+  const mtdWorkorderBreakdown = mtd ? renderWorkorderBreakdown(mtd.byStatus, isSC, "Month So Far — Workorders by Status") : "";
 
   // Super-admin-configurable wording for the report itself (Settings >
   // Platform > Notification Templates > "Daily/Weekly/Monthly Business
@@ -121,6 +136,8 @@ export async function buildReportMessage(
       invoices: String(current.invoices), priorInvoices: String(prior.invoices),
       activityLabel, activity: String(current.activity), priorActivity: String(prior.activity),
       changePct: `${changePct}%`, workorderBreakdown,
+      mtdRevenue: mtd ? fmtINR(mtd.revenue) : "", mtdInvoices: mtd ? String(mtd.invoices) : "",
+      mtdActivity: mtd ? String(mtd.activity) : "", mtdWorkorderBreakdown,
     };
     const text = template.template.replace(/\{\{(\w+)\}\}/g, (_: string, name: string) => tokens[name] ?? "");
     return { text, current, prior };
@@ -143,6 +160,24 @@ export async function buildReportMessage(
   // tables of Daily, Weekly and monthly summaries of Workorders with
   // Statuses and Revenue details").
   if (workorderBreakdown) lines.push("", workorderBreakdown);
+
+  // Daily report also gets a second "Month So Far" block -- same shape as
+  // the daily one, no prior-period comparison (there's no clean "prior
+  // month so far" to compare against a partial month). Per explicit
+  // direction ("first give day data and also month so far summary data").
+  if (mtd) {
+    const monthName = now.toLocaleDateString("en-IN", { month: "long" });
+    lines.push(
+      "",
+      `<b>Month So Far (${monthName})</b>`,
+      "<pre>",
+      `Revenue      ${fmtINR(mtd.revenue)}`,
+      `Invoices     ${mtd.invoices}`,
+      `${activityLabel.padEnd(12)} ${mtd.activity}`,
+      "</pre>"
+    );
+    if (mtdWorkorderBreakdown) lines.push("", mtdWorkorderBreakdown);
+  }
 
   return { text: lines.join("\n"), current, prior };
 }

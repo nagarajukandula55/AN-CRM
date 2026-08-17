@@ -31,11 +31,15 @@ export const MESSAGE_TOKENS: Record<string, string[]> = {
   // table layout. workorderBreakdown is a pre-formatted <pre> block (SC
   // only, empty string for non-SC / when nothing to show) since a
   // per-status table can't be reduced to one flat token.
+  // mtd* tokens are only populated for a DAILY-frequency send (empty string
+  // otherwise) -- see buildReportMessage's own comment on why Weekly/Monthly
+  // don't also get a month-to-date block.
   BUSINESS_REPORT: [
     "businessName", "vendorName", "vendorId", "date", "frequency",
     "revenue", "priorRevenue", "invoices", "priorInvoices",
     "activityLabel", "activity", "priorActivity", "changePct",
     "workorderBreakdown",
+    "mtdRevenue", "mtdInvoices", "mtdActivity", "mtdWorkorderBreakdown",
   ],
 };
 
