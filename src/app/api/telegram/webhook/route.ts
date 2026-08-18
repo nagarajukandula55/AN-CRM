@@ -72,7 +72,7 @@ import { connectDB } from "@/lib/mongodb";
 import Business from "@/models/Business";
 import VendorProfile from "@/models/VendorProfile";
 import { sendTelegramMessage, sendTelegramPhoto } from "@/lib/telegram";
-import { buildReportMessage, buildTrendChartUrl, periodStart, computePeriodNumbers, fmtINR } from "@/lib/telegramReport";
+import { buildReportMessage, buildTrendChartUrl, periodStart, computePeriodNumbers, fmtINR, renderWorkorderBreakdown } from "@/lib/telegramReport";
 import { sendVendorBusinessReport } from "@/core/telegram/sendBusinessReport";
 import { runAllDueCronJobs } from "@/lib/cronRunner";
 import { getAllowedModuleKeys, getActivePlanKey } from "@/core/pricing/planAccess";
@@ -355,7 +355,8 @@ export async function POST(req: NextRequest) {
               computePeriodNumbers(String(business._id), isSC, periodStart("DAILY", from), from, String(vendor._id)),
             ]);
             const activityLabel = isSC ? "Workorders" : "Calls";
-            const msg = [
+            const statusBreakdown = renderWorkorderBreakdown(current.byStatus, activityLabel);
+            const msgLines = [
               `<b>${displayName} — Today</b>`,
               "",
               "<pre>",
@@ -363,8 +364,9 @@ export async function POST(req: NextRequest) {
               `Invoices     ${String(current.invoices).padEnd(14)} (yesterday ${prior.invoices})`,
               `${activityLabel.padEnd(12)} ${String(current.activity).padEnd(14)} (yesterday ${prior.activity})`,
               "</pre>",
-            ].join("\n");
-            await sendToChat(chatId, msg);
+            ];
+            if (statusBreakdown) msgLines.push("", statusBreakdown);
+            await sendToChat(chatId, msgLines.join("\n"));
           } else {
             // /report reuses the same paid "Automatic Telegram Business
             // Report" content the scheduled trigger sends -- must be

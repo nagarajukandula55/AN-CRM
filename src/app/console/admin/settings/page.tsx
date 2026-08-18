@@ -7,6 +7,7 @@ import { Building2, Plug, Sparkles, Save, User, ChevronRight, Receipt, Globe2, P
 import { DEVICE_CATEGORIES, DEVICE_CATEGORY_LABELS } from '@/core/catalog/deviceCategory'
 import DocumentNumbersPanel from '@/components/admin/DocumentNumbersPanel'
 import TextFormatToolbar, { TELEGRAM_FORMAT_BUTTONS } from '@/components/shared/TextFormatToolbar'
+import { EmojiPicker } from '@/components/ui/EmojiPicker'
 
 /**
  * Admin Settings hub — src/app/console/settings.
@@ -92,7 +93,6 @@ export default function AdminSettingsPage() {
     estimateTerms: '',
     invoiceTerms: '',
     enabledDeviceCategories: [] as string[],
-    telegramReportFrequency: 'NONE',
   })
   const [savingOperations, setSavingOperations] = useState(false)
   const [uploadingSignature, setUploadingSignature] = useState(false)
@@ -188,7 +188,6 @@ export default function AdminSettingsPage() {
         estimateTerms: b.estimateTerms || '',
         invoiceTerms: b.invoiceTerms || '',
         enabledDeviceCategories: b.enabledDeviceCategories || [],
-        telegramReportFrequency: b.telegramReportFrequency || 'NONE',
       })
     }
   }, [operationsRes])
@@ -215,12 +214,25 @@ export default function AdminSettingsPage() {
   const [notifGroupChatId, setNotifGroupChatId] = useState('')
   const [notifPersonalChatId, setNotifPersonalChatId] = useState('')
   const [notifRouting, setNotifRouting] = useState<Record<string, { group: boolean; personal: boolean }>>({})
+  // The report's own schedule -- moved here (VendorProfile, via this same
+  // vendor-routing endpoint) from the stale operations.telegramReportFrequency
+  // below, which wrote to Business.telegramReportFrequency, a field nothing
+  // has read since the report moved to VendorProfile (see
+  // resolveVendorChatConfig.ts) -- that control saved successfully but
+  // silently did nothing. telegramReportTime is new: api/cron/
+  // telegram-business-reports checks it instead of just an hours-since-last
+  // -send interval (a bot can't ask Telegram to deliver at a given time
+  // itself, so this is this app's own best-effort "send around HH:mm").
+  const [notifReportFrequency, setNotifReportFrequency] = useState('NONE')
+  const [notifReportTime, setNotifReportTime] = useState('09:00')
   const [savingNotif, setSavingNotif] = useState(false)
   useEffect(() => {
     if (notifRes?.success) {
       setNotifGroupChatId(notifRes.telegramChatId || '')
       setNotifPersonalChatId(notifRes.telegramPersonalChatId || '')
       setNotifRouting(notifRes.telegramMessageRouting || {})
+      setNotifReportFrequency(notifRes.telegramReportFrequency || 'NONE')
+      setNotifReportTime(notifRes.telegramReportTime || '09:00')
     }
   }, [notifRes])
   async function saveNotificationRouting() {
@@ -234,6 +246,8 @@ export default function AdminSettingsPage() {
           telegramChatId: notifGroupChatId,
           telegramPersonalChatId: notifPersonalChatId,
           telegramMessageRouting: notifRouting,
+          telegramReportFrequency: notifReportFrequency,
+          telegramReportTime: notifReportTime,
         }),
       })
       refetchNotif()
@@ -265,20 +279,51 @@ export default function AdminSettingsPage() {
   const [templateDrafts, setTemplateDrafts] = useState<Record<string, string>>({})
   const [enabledDrafts, setEnabledDrafts] = useState<Record<string, boolean>>({})
   const [savingTemplateKey, setSavingTemplateKey] = useState<string | null>(null)
+  // Card-style presentation drafts (icon/layout/footer tone+text) -- on top
+  // of the plain wording above, see models/TelegramMessageTemplate.ts and
+  // core/telegram/renderCard.ts's applyCardStyle.
+  const [styleDrafts, setStyleDrafts] = useState<Record<string, { icon?: string; layout?: string; footerTone?: string; footerText?: string }>>({})
+  function styleFor(t: any) {
+    return {
+      icon: styleDrafts[t.key]?.icon ?? t.icon ?? '',
+      layout: styleDrafts[t.key]?.layout ?? t.layout ?? 'FLAT',
+      footerTone: styleDrafts[t.key]?.footerTone ?? t.footerTone ?? 'NONE',
+      footerText: styleDrafts[t.key]?.footerText ?? t.footerText ?? '',
+    }
+  }
+  function setStyle(key: string, patch: Partial<{ icon: string; layout: string; footerTone: string; footerText: string }>) {
+    setStyleDrafts((d) => ({ ...d, [key]: { ...d[key], ...patch } }))
+  }
   async function saveTemplate(key: string, enabledOverride?: boolean) {
     setSavingTemplateKey(key)
     try {
       const tmpl = templatesRes?.messageTypes?.find((x: any) => x.key === key)
       const enabled = enabledOverride ?? enabledDrafts[key] ?? tmpl?.enabled ?? true
+      const style = styleFor(tmpl || {})
       await fetch('/api/admin/telegram-templates', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, channel: templateChannel, template: templateDrafts[key] ?? tmpl?.template ?? '', enabled }),
+        body: JSON.stringify({ key, channel: templateChannel, template: templateDrafts[key] ?? tmpl?.template ?? '', enabled, ...style }),
       })
       refetchTemplates()
     } finally {
       setSavingTemplateKey(null)
     }
+  }
+  const FOOTER_TONE_OPTIONS = [
+    { value: 'NONE', label: 'No footer' },
+    { value: 'SUCCESS', label: '✅ Success' },
+    { value: 'WARNING', label: '⚠️ Warning' },
+    { value: 'DANGER', label: '❌ Danger' },
+    { value: 'INFO', label: 'ℹ️ Info' },
+  ]
+  function previewHtml(t: any, style: { icon?: string; layout?: string; footerTone?: string; footerText?: string }) {
+    const body = (templateDrafts[t.key] ?? t.template ?? '') || '<span class="text-ink-3">(built-in default wording)</span>'
+    if (style.layout !== 'CARD') return body
+    const toneEmoji: Record<string, string> = { SUCCESS: '✅', WARNING: '⚠️', DANGER: '❌', INFO: 'ℹ️', NONE: '' }
+    const parts = [`<b>${style.icon ? `${style.icon} ` : ''}${t.label}</b>`, '', body]
+    if (style.footerText) parts.push('', `${toneEmoji[style.footerTone || 'NONE'] ? `${toneEmoji[style.footerTone || 'NONE']} ` : ''}${style.footerText}`)
+    return parts.join('\n')
   }
   const integrations: Record<string, any> = (() => {
     if (!integrationsRes?.success) return {}
@@ -500,121 +545,192 @@ export default function AdminSettingsPage() {
               )}
             </div>
 
-            <div className="rounded-card border border-border bg-surface p-6">
-              <h3 className="h-section mb-1">Notification Templates</h3>
-              <p className="text-xs text-ink-3 mb-4">
-                Every automated alert the system can send, in one place -- no vendor context needed. Write the
-                wording once here and it's used for every vendor's alert of that type. WhatsApp only actually
-                sends once a business has its own WhatsApp Business API connected (Integrations, per business);
-                the template/on-off config here is ready either way so nothing needs revisiting once that's added.
-              </p>
-              <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 w-fit mb-4">
-                {(['TELEGRAM', 'WHATSAPP'] as const).map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => { setTemplateChannel(c); setExpandedTemplateKey(null); setTemplateDrafts({}); setEnabledDrafts({}) }}
-                    className={`rounded-lg px-4 py-1.5 text-sm transition-all ${templateChannel === c ? 'bg-gray-900 text-white font-semibold' : 'text-gray-500 hover:text-gray-900'}`}
-                  >
-                    {c === 'TELEGRAM' ? 'Telegram' : 'WhatsApp'}
-                  </button>
-                ))}
-              </div>
-              {!templatesRes ? (
-                <p className="text-sm text-ink-3">Loading…</p>
-              ) : (
-                <div className="divide-y divide-border rounded-control border border-border overflow-hidden">
-                  {(templatesRes?.messageTypes || []).map((t: any) => {
-                    const expanded = expandedTemplateKey === t.key
-                    const isEnabled = enabledDrafts[t.key] ?? t.enabled ?? true
-                    return (
-                      <div key={t.key} className="bg-surface">
-                        <div className="px-4 py-3 flex items-center justify-between gap-4">
-                          <div>
-                            <p className="text-sm font-medium text-ink">{t.label}</p>
-                            <p className="text-xs text-ink-3">{t.description}</p>
-                          </div>
-                          <div className="flex items-center gap-3 flex-shrink-0">
-                            <label className="flex items-center gap-1.5 text-xs text-ink-2">
-                              <input
-                                type="checkbox"
-                                checked={isEnabled}
-                                onChange={(e) => {
-                                  const next = e.target.checked
-                                  setEnabledDrafts((d) => ({ ...d, [t.key]: next }))
-                                  saveTemplate(t.key, next)
-                                }}
-                              /> Enabled
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (!expanded) setTemplateDrafts((d) => ({ ...d, [t.key]: d[t.key] ?? t.template ?? '' }))
-                                setExpandedTemplateKey(expanded ? null : t.key)
-                              }}
-                              className="text-xs font-medium text-accent hover:underline whitespace-nowrap"
+            {(() => {
+              const allTypes = templatesRes?.messageTypes || []
+              const reportTypes = allTypes.filter((t: any) => t.isReport)
+              const notificationTypes = allTypes.filter((t: any) => !t.isReport)
+
+              const renderRow = (t: any) => {
+                const expanded = expandedTemplateKey === t.key
+                const isEnabled = enabledDrafts[t.key] ?? t.enabled ?? true
+                const style = styleFor(t)
+                return (
+                  <div key={t.key} className="bg-surface">
+                    <div className="px-4 py-3 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-medium text-ink">
+                          {style.icon && <span className="mr-1">{style.icon}</span>}{t.label}
+                        </p>
+                        <p className="text-xs text-ink-3">{t.description}</p>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <label className="flex items-center gap-1.5 text-xs text-ink-2">
+                          <input
+                            type="checkbox"
+                            checked={isEnabled}
+                            onChange={(e) => {
+                              const next = e.target.checked
+                              setEnabledDrafts((d) => ({ ...d, [t.key]: next }))
+                              saveTemplate(t.key, next)
+                            }}
+                          /> Enabled
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!expanded) setTemplateDrafts((d) => ({ ...d, [t.key]: d[t.key] ?? t.template ?? '' }))
+                            setExpandedTemplateKey(expanded ? null : t.key)
+                          }}
+                          className="text-xs font-medium text-accent hover:underline whitespace-nowrap"
+                        >
+                          {expanded ? 'Close' : 'Format Message'}
+                        </button>
+                      </div>
+                    </div>
+                    {expanded && (
+                      <div className="px-4 pb-4 bg-surface-2 border-t border-border">
+                        <label className="text-xs text-ink-3 mb-1 block mt-3">
+                          Message text (applies to every vendor for this alert type)
+                        </label>
+                        <TextFormatToolbar
+                          buttons={TELEGRAM_FORMAT_BUTTONS}
+                          textareaRef={templateTextareaRef}
+                          onChange={(next) => setTemplateDrafts((d) => ({ ...d, [t.key]: next }))}
+                        />
+                        <textarea
+                          ref={templateTextareaRef}
+                          rows={3}
+                          value={templateDrafts[t.key] ?? t.template ?? ''}
+                          onChange={(e) => setTemplateDrafts((d) => ({ ...d, [t.key]: e.target.value }))}
+                          placeholder="Leave blank to use the built-in default wording"
+                          className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong font-mono"
+                        />
+                        <div className="flex items-center flex-wrap gap-1.5 mt-2">
+                          <span className="text-xs text-ink-3">Tokens:</span>
+                          {(t.tokens || []).map((tok: string) => (
+                            <code
+                              key={tok}
+                              className="text-xs bg-surface border border-border rounded px-1.5 py-0.5 text-ink-2 cursor-pointer"
+                              onClick={() => setTemplateDrafts((d) => ({ ...d, [t.key]: (d[t.key] ?? t.template ?? '') + `{{${tok}}}` }))}
+                              title="Click to insert"
                             >
-                              {expanded ? 'Close' : 'Format Message'}
-                            </button>
+                              {`{{${tok}}}`}
+                            </code>
+                          ))}
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                          <div>
+                            <label className="text-xs text-ink-3 mb-1 block">Icon</label>
+                            <EmojiPicker value={style.icon} onChange={(emoji) => setStyle(t.key, { icon: emoji })} className="w-full" />
+                          </div>
+                          <div>
+                            <label className="text-xs text-ink-3 mb-1 block">Layout</label>
+                            <select
+                              value={style.layout}
+                              onChange={(e) => setStyle(t.key, { layout: e.target.value })}
+                              className="w-full rounded-control border border-border bg-surface px-2 py-1.5 text-sm outline-none focus:border-border-strong"
+                            >
+                              <option value="FLAT">Flat text</option>
+                              <option value="CARD">Boxed card</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs text-ink-3 mb-1 block">Footer tone</label>
+                            <select
+                              value={style.footerTone}
+                              onChange={(e) => setStyle(t.key, { footerTone: e.target.value })}
+                              className="w-full rounded-control border border-border bg-surface px-2 py-1.5 text-sm outline-none focus:border-border-strong"
+                            >
+                              {FOOTER_TONE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs text-ink-3 mb-1 block">Footer text</label>
+                            <input
+                              type="text"
+                              value={style.footerText}
+                              onChange={(e) => setStyle(t.key, { footerText: e.target.value })}
+                              placeholder="e.g. {{vendorName}} confirmed"
+                              className="w-full rounded-control border border-border bg-surface px-2 py-1.5 text-sm outline-none focus:border-border-strong"
+                            />
                           </div>
                         </div>
-                        {expanded && (
-                          <div className="px-4 pb-4 bg-surface-2 border-t border-border">
-                            <label className="text-xs text-ink-3 mb-1 block mt-3">
-                              Message text (applies to every vendor for this alert type)
-                            </label>
-                            <TextFormatToolbar
-                              buttons={TELEGRAM_FORMAT_BUTTONS}
-                              textareaRef={templateTextareaRef}
-                              onChange={(next) => setTemplateDrafts((d) => ({ ...d, [t.key]: next }))}
-                            />
-                            <textarea
-                              ref={templateTextareaRef}
-                              rows={3}
-                              value={templateDrafts[t.key] ?? t.template ?? ''}
-                              onChange={(e) => setTemplateDrafts((d) => ({ ...d, [t.key]: e.target.value }))}
-                              placeholder="Leave blank to use the built-in default wording"
-                              className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong font-mono"
-                            />
-                            <div className="flex items-center flex-wrap gap-1.5 mt-2">
-                              <span className="text-xs text-ink-3">Tokens:</span>
-                              {(t.tokens || []).map((tok: string) => (
-                                <code
-                                  key={tok}
-                                  className="text-xs bg-surface border border-border rounded px-1.5 py-0.5 text-ink-2 cursor-pointer"
-                                  onClick={() => setTemplateDrafts((d) => ({ ...d, [t.key]: (d[t.key] ?? t.template ?? '') + `{{${tok}}}` }))}
-                                  title="Click to insert"
-                                >
-                                  {`{{${tok}}}`}
-                                </code>
-                              ))}
-                            </div>
-                            <div className="mt-2">
-                              <span className="text-xs text-ink-3 block mb-1">Preview</span>
-                              <div
-                                className="rounded-control border border-dashed border-border bg-surface px-3 py-2 text-sm text-ink whitespace-pre-wrap"
-                                // Telegram only ever renders this same narrow tag subset
-                                // (b/i/u/s/code/a) -- safe to preview as literal HTML here
-                                // since it's admin-authored text, not user-submitted.
-                                dangerouslySetInnerHTML={{ __html: (templateDrafts[t.key] ?? t.template ?? '') || '<span class="text-ink-3">(built-in default wording)</span>' }}
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => saveTemplate(t.key)}
-                              disabled={savingTemplateKey === t.key}
-                              className="mt-3 text-xs font-medium bg-accent text-accent-fg rounded-control px-3 py-1.5 hover:bg-accent-hover disabled:opacity-50"
-                            >
-                              {savingTemplateKey === t.key ? 'Saving…' : 'Save Message'}
-                            </button>
-                          </div>
-                        )}
+
+                        <div className="mt-2">
+                          <span className="text-xs text-ink-3 block mb-1">Preview</span>
+                          <div
+                            className="rounded-control border border-dashed border-border bg-surface px-3 py-2 text-sm text-ink whitespace-pre-wrap"
+                            // Telegram only ever renders this same narrow tag subset
+                            // (b/i/u/s/code/a) -- safe to preview as literal HTML here
+                            // since it's admin-authored text, not user-submitted.
+                            dangerouslySetInnerHTML={{ __html: previewHtml(t, style) }}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => saveTemplate(t.key)}
+                          disabled={savingTemplateKey === t.key}
+                          className="mt-3 text-xs font-medium bg-accent text-accent-fg rounded-control px-3 py-1.5 hover:bg-accent-hover disabled:opacity-50"
+                        >
+                          {savingTemplateKey === t.key ? 'Saving…' : 'Save Message'}
+                        </button>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+                    )}
+                  </div>
+                )
+              }
+
+              return (
+                <>
+                  <div className="rounded-card border border-border bg-surface p-6">
+                    <h3 className="h-section mb-1">Report Templates</h3>
+                    <p className="text-xs text-ink-3 mb-4">
+                      This app's own scheduled/on-demand Daily, Weekly, and Monthly business reports -- each one is
+                      redesignable independently: its own icon, its own boxed-card layout, its own footer. Distinct
+                      from the one-off event alerts below.
+                    </p>
+                    {!templatesRes ? (
+                      <p className="text-sm text-ink-3">Loading…</p>
+                    ) : (
+                      <div className="divide-y divide-border rounded-control border border-border overflow-hidden">
+                        {reportTypes.map(renderRow)}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-card border border-border bg-surface p-6">
+                    <h3 className="h-section mb-1">Notification Templates</h3>
+                    <p className="text-xs text-ink-3 mb-4">
+                      Every automated one-off event alert the system can send, in one place -- no vendor context
+                      needed. Write the wording once here and it's used for every vendor's alert of that type.
+                      WhatsApp only actually sends once a business has its own WhatsApp Business API connected
+                      (Integrations, per business); the template/on-off config here is ready either way so nothing
+                      needs revisiting once that's added.
+                    </p>
+                    <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 w-fit mb-4">
+                      {(['TELEGRAM', 'WHATSAPP'] as const).map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => { setTemplateChannel(c); setExpandedTemplateKey(null); setTemplateDrafts({}); setEnabledDrafts({}); setStyleDrafts({}) }}
+                          className={`rounded-lg px-4 py-1.5 text-sm transition-all ${templateChannel === c ? 'bg-gray-900 text-white font-semibold' : 'text-gray-500 hover:text-gray-900'}`}
+                        >
+                          {c === 'TELEGRAM' ? 'Telegram' : 'WhatsApp'}
+                        </button>
+                      ))}
+                    </div>
+                    {!templatesRes ? (
+                      <p className="text-sm text-ink-3">Loading…</p>
+                    ) : (
+                      <div className="divide-y divide-border rounded-control border border-border overflow-hidden">
+                        {notificationTypes.map(renderRow)}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )
+            })()}
 
             <div className="rounded-2xl border border-gray-200 bg-white p-6">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Other Platform Configuration</h3>
@@ -1049,24 +1165,44 @@ export default function AdminSettingsPage() {
               <div className="mb-6">
                 <label className="text-xs text-ink-3 mb-1 block">Automatic Business Report</label>
                 {hasTelegramReportFeature ? (
-                  <select
-                    value={operations.telegramReportFrequency}
-                    onChange={(e) => setOperations({ ...operations, telegramReportFrequency: e.target.value })}
-                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong"
-                  >
-                    <option value="NONE">Off</option>
-                    <option value="DAILY">Daily</option>
-                    <option value="WEEKLY">Weekly</option>
-                    <option value="MONTHLY">Monthly</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={notifReportFrequency}
+                      onChange={(e) => setNotifReportFrequency(e.target.value)}
+                      className="flex-1 rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong"
+                    >
+                      <option value="NONE">Off</option>
+                      <option value="DAILY">Daily</option>
+                      <option value="WEEKLY">Weekly</option>
+                      <option value="MONTHLY">Monthly</option>
+                    </select>
+                    {notifReportFrequency !== 'NONE' && (
+                      <input
+                        type="time"
+                        value={notifReportTime}
+                        onChange={(e) => setNotifReportTime(e.target.value)}
+                        className="rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={saveNotificationRouting}
+                      disabled={savingNotif}
+                      className="text-xs font-medium bg-accent text-accent-fg rounded-control px-3 py-2 hover:bg-accent-hover disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {savingNotif ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
                 ) : (
                   <div className="rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-ink-3">
                     Not available on your current plan — upgrade from Plan &amp; Billing to unlock automatic Telegram reports.
                   </div>
                 )}
                 <div className="text-xs text-ink-3 mt-1">
-                  Sends a full business summary (revenue, workorders, a trend chart) to the chat(s) above on the
-                  schedule you pick.
+                  Sends a full business summary (revenue, workorders, a trend chart) to the chat(s) above, once per
+                  {notifReportFrequency === 'WEEKLY' ? ' week' : notifReportFrequency === 'MONTHLY' ? ' month' : ' day'}
+                  {notifReportFrequency !== 'NONE' ? ` around ${notifReportTime}` : ''}. Telegram bots can't schedule their
+                  own sends, so this is a best-effort time, accurate to how often the report check itself runs.
                 </div>
               </div>
 

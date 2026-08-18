@@ -16,6 +16,8 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
+import { sendVendorAlert } from "@/core/telegram/sendVendorAlert";
+import Brand from "@/models/Brand";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -64,6 +66,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await jobSheet.save();
 
     notifyJobSheetStatusChange(jobSheet.businessId.toString(), jobSheet.phone, jobSheet.jobSheetNumber, jobSheet.status);
+
+    if ((jobSheet as any).vendorId) {
+      const cancelledBrandName = jobSheet.brandId
+        ? (await Brand.findById(jobSheet.brandId).select("name").lean<any>())?.name
+        : (jobSheet as any).pendingBrandName;
+      sendVendorAlert(
+        (jobSheet as any).vendorId.toString(),
+        "WORKORDER_CANCELLED",
+        `Workorder ${jobSheet.jobSheetNumber} was cancelled for ${jobSheet.customerName}. Reason: ${jobSheet.cancelReason}`,
+        {
+          workorderNumber: jobSheet.jobSheetNumber || "",
+          customerName: jobSheet.customerName || "",
+          phone: jobSheet.phone || "",
+          cancelReason: jobSheet.cancelReason || "",
+          product: (jobSheet as any).product || "",
+          brand: cancelledBrandName || "",
+          deviceModel: (jobSheet as any).deviceModel || "",
+          imei: (jobSheet as any).imeiOrSerialNumber || "",
+          issueDescription: (jobSheet as any).issueDescription || "",
+          engineerName: (jobSheet as any).assignedToName || "",
+          registeredByName: (jobSheet as any).ccoName || "",
+          cashCollectedByName: (jobSheet as any).paymentCollectedByName || "",
+        }
+      ).catch(() => {});
+    }
 
     logAction({
       action: "CANCEL",

@@ -328,6 +328,8 @@ export async function POST(req: NextRequest) {
           imei: jobSheet.imeiOrSerialNumber || "",
           issueDescription: jobSheet.issueDescription || "",
           engineerName: jobSheet.assignedToName || "",
+          registeredByName: (jobSheet as any).ccoName || "",
+          cashCollectedByName: (jobSheet as any).paymentCollectedByName || "",
         }
       ).catch(() => {});
     }

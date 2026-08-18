@@ -104,6 +104,13 @@ export interface IVendorProfile extends Document {
   telegramPersonalChatId?: string;
   telegramReportFrequency?: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
   telegramReportLastSentAt?: Date;
+  // "HH:mm" (24h, IST -- the only timezone this app operates in), the
+  // time-of-day api/cron/telegram-business-reports checks against instead
+  // of just "N hours since last send". A bot can't ask Telegram itself to
+  // deliver at a given time (only a human composing in the Telegram client
+  // can schedule a send) -- this is this app's own approximation, accurate
+  // to however often that cron route actually runs.
+  telegramReportTime?: string;
   telegramMessageRouting?: Record<string, { group?: boolean; personal?: boolean }>;
   /**
    * Placeholder billing/charge fields for sub-vendor creation -- per
@@ -283,6 +290,7 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     telegramPersonalChatId: { type: String, trim: true, default: "" },
     telegramReportFrequency: { type: String, enum: ["NONE", "DAILY", "WEEKLY", "MONTHLY"], default: "NONE" },
     telegramReportLastSentAt: { type: Date },
+    telegramReportTime: { type: String, trim: true, default: "09:00" },
     telegramMessageRouting: { type: Schema.Types.Mixed, default: {} },
     subVendorBilling: {
       subVendorPlan: { type: String, enum: ["NONE", "ALLOWED", "BLOCKED"], default: "NONE" },

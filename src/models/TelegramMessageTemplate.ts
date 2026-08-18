@@ -10,12 +10,25 @@ import mongoose, { Schema, Document, Model } from "mongoose";
  * core/telegram/sendVendorTelegramMessage.ts).
  */
 export type TelegramMessageChannel = "TELEGRAM" | "WHATSAPP";
+export type TelegramMessageLayout = "FLAT" | "CARD";
+export type TelegramMessageFooterTone = "NONE" | "SUCCESS" | "WARNING" | "DANGER" | "INFO";
 
 export interface ITelegramMessageTemplate extends Document {
   key: string;
   channel: TelegramMessageChannel;
   template: string;
   enabled: boolean;
+  // Card-style presentation, on top of the raw `template` wording -- see
+  // core/telegram/renderCard.ts's applyCardStyle(), used by both the
+  // report builder (lib/telegramReport.ts) and the notification sender
+  // (sendVendorTelegramMessage.ts). All optional/no-ops for FLAT layout so
+  // every pre-existing template row keeps behaving exactly as before.
+  icon?: string; // emoji prefix on the title -- Telegram messages are plain
+  // text/HTML, so an emoji is the only "icon" that actually renders inline
+  // (lucide-react icons from the app's icon registry can't be sent as text)
+  layout?: TelegramMessageLayout;
+  footerTone?: TelegramMessageFooterTone;
+  footerText?: string; // supports the same {{token}} placeholders as `template`
   updatedBy?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -40,6 +53,10 @@ const TelegramMessageTemplateSchema = new Schema<ITelegramMessageTemplate>(
     // from a vendor's own Group/Personal routing checkboxes, which only
     // pick a destination, never whether the type fires at all.
     enabled: { type: Boolean, default: true },
+    icon: { type: String, trim: true },
+    layout: { type: String, enum: ["FLAT", "CARD"], default: "FLAT" },
+    footerTone: { type: String, enum: ["NONE", "SUCCESS", "WARNING", "DANGER", "INFO"], default: "NONE" },
+    footerText: { type: String },
     updatedBy: { type: String },
   },
   { timestamps: true }

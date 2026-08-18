@@ -5,6 +5,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { VENDOR_TELEGRAM_MESSAGE_TYPES } from "./vendorMessageTypes";
 import { resolveVendorChatConfig } from "./resolveVendorChatConfig";
 import { templateKeyFor } from "./templateKey";
+import { applyCardStyle } from "./renderCard";
 
 /**
  * Routes an automated alert to a VENDOR's configured Telegram
@@ -55,12 +56,23 @@ export async function sendVendorTelegramMessage(
     }).catch(() => {});
     return { group: false, personal: false };
   }
+  const merged = { ...universalTokens, ...tokens };
+  const renderTokens = (s: string) => s.replace(/\{\{(\w+)\}\}/g, (_: string, name: string) => merged[name] ?? "");
   if (template?.template && template.template !== "(disabled)") {
-    const merged = { ...universalTokens, ...tokens };
-    text = template.template.replace(/\{\{(\w+)\}\}/g, (_: string, name: string) => merged[name] ?? "");
+    text = renderTokens(template.template);
   }
-
+  // Card-style presentation (icon title, toned footer) -- an admin-set
+  // override on top of `text`, independent of whether the wording itself
+  // was customized above (see models/TelegramMessageTemplate.ts and
+  // core/telegram/renderCard.ts's applyCardStyle). No-op for the default
+  // FLAT layout every pre-existing template row still has.
   const def = VENDOR_TELEGRAM_MESSAGE_TYPES.find((t) => t.key === type);
+  if (template?.layout === "CARD") {
+    text = applyCardStyle(text, {
+      icon: template.icon, title: def?.label || type, layout: template.layout,
+      footerTone: template.footerTone, footerText: template.footerText ? renderTokens(template.footerText) : "",
+    });
+  }
   const routing = vendor.telegramMessageRouting[type];
   const sendToGroup = routing?.group ?? def?.defaultGroup ?? true;
   const sendToPersonal = routing?.personal ?? def?.defaultPersonal ?? false;

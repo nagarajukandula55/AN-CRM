@@ -106,3 +106,19 @@ export const DEVICE_CATEGORY_LABELS: Record<DeviceCategory, string> = {
   VR_HEADSET: "VR Headsets",
   E_READER: "E-Readers",
 };
+
+// Categories where CrmJobSheet.imeiOrSerialNumber genuinely IS an IMEI
+// (15-digit, IMEI/GSMA format) rather than a manufacturer serial number of
+// whatever length/format -- only these enforce the 15-digit check before
+// Start Repair / Close (see requireValidImei() below). Everything else
+// just needs the field non-empty, no digit-count rule, since a fridge/AC/
+// laptop serial number is never 15 numeric digits.
+export const IMEI_REQUIRED_CATEGORIES: DeviceCategory[] = ["MOBILE", "FEATURE_PHONE", "TABLET"];
+
+export function categoryRequiresImei(deviceCategory?: string | null): boolean {
+  return !!deviceCategory && (IMEI_REQUIRED_CATEGORIES as string[]).includes(deviceCategory);
+}
+
+export function isValidImei(value?: string | null): boolean {
+  return /^\d{15}$/.test((value || "").trim());
+}

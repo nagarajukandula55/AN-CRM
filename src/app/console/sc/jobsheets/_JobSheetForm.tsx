@@ -580,6 +580,19 @@ export default function SCJobSheetScreen() {
     setShowPartPendingModal(false)
   }
 
+  // Cancel used to fire with a hardcoded "Cancelled by service center"
+  // reason behind a plain confirm() -- api/crm/jobsheets/[id]/cancel has
+  // always required a real cancelReason, this UI just never asked for one.
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelReasonInput, setCancelReasonInput] = useState('')
+
+  async function confirmCancel() {
+    if (!cancelReasonInput.trim()) return
+    await transition('cancel', { cancelReason: cancelReasonInput.trim() })
+    setShowCancelModal(false)
+    setCancelReasonInput('')
+  }
+
   // GST vs Non-GST is no longer a manual choice at complete-time -- it's
   // derived straight from whether the customer's GSTIN is on file (B2B
   // customer, entered at intake), never a popup interrupting the repair
@@ -950,7 +963,7 @@ export default function SCJobSheetScreen() {
               <Button size="sm" onClick={proceedForRepair} disabled={saving}>Proceed for Repair</Button>
             )}
             {isOpen && (
-              <Button variant="secondary" size="sm" onClick={() => { if (confirm('Cancel this job sheet?')) transition('cancel', { cancelReason: 'Cancelled by service center' }) }} disabled={saving} className="text-danger">
+              <Button variant="secondary" size="sm" onClick={() => { setCancelReasonInput(''); setShowCancelModal(true) }} disabled={saving} className="text-danger">
                 Cancel Job Sheet
               </Button>
             )}
@@ -1356,6 +1369,25 @@ export default function SCJobSheetScreen() {
             <div className="flex justify-end gap-2 pt-1">
               <Button variant="secondary" size="sm" onClick={() => setShowPartPendingModal(false)}>Cancel</Button>
               <Button size="sm" onClick={confirmPartPending} disabled={saving} icon={saving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Confirm</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowCancelModal(false)}>
+          <div className="bg-surface border border-border rounded-card shadow-card-lg w-full max-w-sm p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-ink">Cancel Job Sheet</h3>
+              <button onClick={() => setShowCancelModal(false)} className="text-ink-3 hover:text-ink"><X className="w-4 h-4" /></button>
+            </div>
+            <div>
+              <label className={labelCls}>Reason for cancellation *</label>
+              <textarea autoFocus rows={3} value={cancelReasonInput} onChange={e => setCancelReasonInput(e.target.value)} className={inputCls} placeholder="Why is this job sheet being cancelled?" />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="secondary" size="sm" onClick={() => setShowCancelModal(false)}>Back</Button>
+              <Button variant="danger" size="sm" onClick={confirmCancel} disabled={saving || !cancelReasonInput.trim()} icon={saving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Confirm Cancel</Button>
             </div>
           </div>
         </div>

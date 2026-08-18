@@ -28,6 +28,7 @@ import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
 import { sendVendorAlert } from "@/core/telegram/sendVendorAlert";
+import { categoryRequiresImei, isValidImei } from "@/core/catalog/deviceCategory";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -85,6 +86,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!jobSheet.lineItems || jobSheet.lineItems.length === 0) {
       return NextResponse.json(
         { success: false, message: "Cannot close a job sheet with no line items — add at least one before closing." },
+        { status: 400 }
+      );
+    }
+
+    // Same phone-like-only IMEI gate as start-repair -- a job can slip
+    // through to close without ever hitting start-repair (e.g. reopened
+    // from REPAIR_STARTED directly), so this is checked again here rather
+    // than assumed already enforced.
+    if (categoryRequiresImei((jobSheet as any).deviceCategory) && !isValidImei(jobSheet.imeiOrSerialNumber)) {
+      return NextResponse.json(
+        { success: false, message: "Enter a valid 15-digit IMEI for this device before closing the workorder." },
         { status: 400 }
       );
     }
@@ -231,6 +243,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const invoice = await SalesInvoice.create({
       invoiceNumber,
       businessId: jobSheet.businessId,
+      // Never set before -- every per-vendor Telegram report/notification
+      // query (lib/telegramReport.ts's computePeriodNumbers) filters
+      // SalesInvoice by vendorId to scope revenue to just that vendor's own
+      // numbers, so an invoice created here with no vendorId could never
+      // match that filter -- revenue always computed to 0 for a per-vendor
+      // /today, /report, or scheduled business report even on a day with
+      // real closed+paid invoices.
+      vendorId: (jobSheet as any).vendorId || undefined,
       createdBy: new mongoose.Types.ObjectId(userId),
       invoiceType: isB2B ? "B2B" : "B2C",
       sourceOrderId: `CRM_JOBSHEET:${jobSheet._id}`,
@@ -292,6 +312,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           imei: jobSheet.imeiOrSerialNumber || "",
           issueDescription: jobSheet.issueDescription || "",
           engineerName: jobSheet.assignedToName || "",
+          registeredByName: (jobSheet as any).ccoName || "",
+          cashCollectedByName: (jobSheet as any).paymentCollectedByName || "",
         }
       ).catch(() => {});
     }

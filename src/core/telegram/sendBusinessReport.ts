@@ -52,11 +52,17 @@ export async function sendVendorBusinessReport(
   const now = new Date();
   const reportTitle = vendor.vendorName || business.name;
   const { text } = await buildReportMessage(reportTitle, frequency, isSC, vendor.businessId, now, vendor.vendorObjectId, vendor.vendorName);
+  if (!text) {
+    // Super admin disabled this frequency's report template entirely (see
+    // buildReportMessage) -- distinct from "no chat linked" above.
+    return { sent: false, reason: `${frequency.toLowerCase()} report disabled` };
+  }
   const chartUrl = await buildTrendChartUrl(reportTitle, frequency, activityLabel, vendor.businessId, isSC, now, vendor.vendorObjectId);
 
+  const chartCaption = `${frequency === "DAILY" ? "📊" : frequency === "WEEKLY" ? "📈" : "🗓️"} ${reportTitle} — trend`;
   for (const destChatId of destinationChatIds) {
     await sendTelegramMessage(text, { chatId: destChatId, parseMode: "HTML" });
-    await sendTelegramPhoto(chartUrl, { chatId: destChatId });
+    await sendTelegramPhoto(chartUrl, { chatId: destChatId, caption: chartCaption });
   }
 
   await VendorProfile.findByIdAndUpdate(vendorObjectId, { telegramReportLastSentAt: now }).catch(() => {});

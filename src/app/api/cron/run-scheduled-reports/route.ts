@@ -16,7 +16,8 @@ import Business from "@/models/Business";
 import { runReport } from "@/core/reports/runReport";
 import { DATA_SOURCES } from "@/core/reports/dataSources";
 import { sendGenericEmail } from "@/services/email/resend.service";
-import { sendTelegramMessage } from "@/lib/telegram";
+import { sendTelegramMessage, sendTelegramPhoto } from "@/lib/telegram";
+import { applyCardStyle } from "@/core/telegram/renderCard";
 
 function nextRunFor(frequency: string, from: Date): Date {
   const next = new Date(from);
@@ -50,6 +51,30 @@ function rowsToTelegramText(rows: Record<string, unknown>[]): string {
     .slice(0, 15)
     .map((row) => columns.map((c) => `${c}: ${String((row as any)[c] ?? "")}`).join(", "))
     .join("\n");
+}
+
+// Best-effort bar chart from whatever tabular data this report produced --
+// generic report data has no fixed shape (unlike the vendor business
+// report's known revenue/activity fields), so this just finds the first
+// string-ish column to use as a label and the first numeric column to
+// plot, skipping the chart entirely when no numeric column exists. Same
+// QuickChart approach as lib/telegramReport.ts's buildChartUrl.
+function rowsToChartUrl(rows: Record<string, unknown>[], title: string): string | null {
+  if (rows.length === 0) return null;
+  const columns = Object.keys(rows[0]).filter((k) => k !== "_id");
+  const labelCol = columns.find((c) => typeof rows[0][c] === "string");
+  const valueCol = columns.find((c) => typeof rows[0][c] === "number");
+  if (!valueCol) return null;
+  const points = rows.slice(0, 20);
+  const chartConfig = {
+    type: "bar",
+    data: {
+      labels: points.map((r, i) => (labelCol ? String(r[labelCol] ?? `#${i + 1}`) : `#${i + 1}`)),
+      datasets: [{ label: valueCol, data: points.map((r) => Number(r[valueCol]) || 0), backgroundColor: "#5B3DF5" }],
+    },
+    options: { plugins: { title: { display: true, text: title } } },
+  };
+  return `https://quickchart.io/chart?width=600&height=350&c=${encodeURIComponent(JSON.stringify(chartConfig))}`;
 }
 
 export async function GET(req: NextRequest) {
@@ -89,10 +114,18 @@ export async function GET(req: NextRequest) {
           const business = await Business.findById(report.businessId).select("telegramChatId").lean();
           const chatId = (business as any)?.telegramChatId;
           if (chatId) {
-            await sendTelegramMessage(
-              `<b>${report.name}</b>\n${DATA_SOURCES[report.dataSource]?.label} — ${result.rows.length} rows (${report.schedule.frequency.toLowerCase()})\n${rowsToTelegramText(result.rows)}`,
-              { chatId, parseMode: "HTML" }
-            );
+            const body = `<pre>${rowsToTelegramText(result.rows)}</pre>`;
+            const text = applyCardStyle(body, {
+              icon: "📋",
+              title: report.name,
+              layout: "CARD",
+              footerTone: "INFO",
+              footerText: `${DATA_SOURCES[report.dataSource]?.label} — ${result.rows.length} rows (${report.schedule.frequency.toLowerCase()})`,
+            });
+            await sendTelegramMessage(text, { chatId, parseMode: "HTML" });
+
+            const chartUrl = rowsToChartUrl(result.rows, report.name);
+            if (chartUrl) await sendTelegramPhoto(chartUrl, { chatId, caption: `📊 ${report.name}` });
           }
         }
 

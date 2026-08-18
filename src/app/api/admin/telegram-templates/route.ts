@@ -49,6 +49,10 @@ export async function GET(req: NextRequest) {
         ...t,
         template: saved?.template && saved.template !== "(disabled)" ? saved.template : "",
         enabled: saved ? saved.enabled !== false : true,
+        icon: saved?.icon || "",
+        layout: saved?.layout || "FLAT",
+        footerTone: saved?.footerTone || "NONE",
+        footerText: saved?.footerText || "",
         tokens: tokensFor(t.key),
       };
     }),
@@ -65,24 +69,33 @@ export async function PUT(req: NextRequest) {
   const channel = (String(body.channel || "TELEGRAM").toUpperCase() === "WHATSAPP" ? "WHATSAPP" : "TELEGRAM") as MessageChannel;
   const template = typeof body.template === "string" ? body.template : "";
   const enabled = body.enabled !== false;
+  const icon = typeof body.icon === "string" ? body.icon.trim() : "";
+  const layout = body.layout === "CARD" ? "CARD" : "FLAT";
+  const footerTone = ["SUCCESS", "WARNING", "DANGER", "INFO"].includes(body.footerTone) ? body.footerTone : "NONE";
+  const footerText = typeof body.footerText === "string" ? body.footerText : "";
   if (!type) {
     return NextResponse.json({ success: false, message: "key is required" }, { status: 400 });
   }
   const key = templateKeyFor(type, channel);
+  // Card-style presentation (icon/layout/footer) is worth keeping even
+  // when the wording itself is blank -- e.g. "just add an icon, keep the
+  // built-in default wording" -- so only clear the row entirely when
+  // NOTHING has been customized.
+  const hasCardStyle = !!icon || layout === "CARD" || footerTone !== "NONE" || !!footerText.trim();
 
-  if (!template.trim() && enabled) {
-    // Blank template + still enabled = "go back to this type's hardcoded
-    // fallback text" -- delete the override rather than storing an empty
-    // string that would send blank messages.
+  if (!template.trim() && enabled && !hasCardStyle) {
+    // Nothing customized and still enabled = "go back to this type's
+    // hardcoded fallback" -- delete the override rather than storing an
+    // empty row.
     await TelegramMessageTemplate.deleteOne({ key });
     return NextResponse.json({ success: true, cleared: true });
   }
 
   // A disabled type persists its row (even with a blank template) so the
-  // kill switch survives -- only an explicit re-enable + blank text clears it.
+  // kill switch survives -- only an explicit re-enable + blank text/style clears it.
   await TelegramMessageTemplate.findOneAndUpdate(
     { key },
-    { key, channel, template: template || "(disabled)", enabled, updatedBy: auth.userId },
+    { key, channel, template: template || "(disabled)", enabled, icon, layout, footerTone, footerText, updatedBy: auth.userId },
     { upsert: true, new: true }
   );
   return NextResponse.json({ success: true });

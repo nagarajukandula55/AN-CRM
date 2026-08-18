@@ -10,6 +10,7 @@ import mongoose from "mongoose";
 import SalesInvoice from "@/models/SalesInvoice";
 import CrmJobSheet from "@/models/CrmJobSheet";
 import TelegramMessageTemplate from "@/models/TelegramMessageTemplate";
+import { renderTelegramCard, applyCardStyle, FOOTER_TONE_EMOJI } from "@/core/telegram/renderCard";
 
 export function periodStart(frequency: string, now: Date): Date {
   const start = new Date(now);
@@ -53,16 +54,15 @@ export async function computePeriodNumbers(businessId: string, isSC: boolean, fr
       { $group: { _id: null, sum: { $sum: "$grandTotal" }, count: { $sum: 1 } } },
     ]),
     CrmJobSheet.countDocuments({ businessId: businessObjectId, ...vendorMatch, isDeleted: { $ne: true }, createdAt: { $gte: from, $lt: to } }),
-    // Per-status workorder breakdown for the period -- SC only (see
-    // buildReportMessage's own comment on why non-SC never had a
-    // workorder concept). Skipped entirely for non-SC to avoid an
-    // unnecessary aggregate.
-    isSC
-      ? CrmJobSheet.aggregate([
-          { $match: { businessId: businessObjectId, ...vendorMatch, isDeleted: { $ne: true }, createdAt: { $gte: from, $lt: to } } },
-          { $group: { _id: "$status", count: { $sum: 1 } } },
-        ])
-      : Promise.resolve([]),
+    // Per-status breakdown for the period -- CrmJobSheet.status is the
+    // same lifecycle for BOTH a Workorder (SC) and a Call (BRAND/POS,
+    // where "activity" is labeled Calls instead but is still counted off
+    // the same model/status field) -- used to be SC-only, which meant a
+    // non-SC vendor's /today never showed any status breakdown at all.
+    CrmJobSheet.aggregate([
+      { $match: { businessId: businessObjectId, ...vendorMatch, isDeleted: { $ne: true }, createdAt: { $gte: from, $lt: to } } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
   ]);
   const byStatus: Record<string, number> = {};
   for (const row of statusAgg as any[]) byStatus[row._id] = row.count;
@@ -78,22 +78,34 @@ function statusLabel(status: string): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// Shared by the daily block and the "Month So Far" block -- a per-status
-// <pre> table from a byStatus count map, SC only, empty string when there's
-// nothing to show (skips an all-zero table on a quiet day).
-function renderWorkorderBreakdown(byStatus: Record<string, number>, isSC: boolean, heading = "Workorders by Status"): string {
-  if (!isSC) return "";
+// Shared by the daily block, the "Month So Far" block, and /today (see
+// api/telegram/webhook/route.ts) -- a per-status <pre> table from a
+// byStatus count map, empty string when there's nothing to show (skips an
+// all-zero table on a quiet day). Used to be SC-only; heading now defaults
+// per activity label so a non-SC vendor sees "Calls by Status" instead of
+// either "Workorders by Status" or nothing at all.
+export function renderWorkorderBreakdown(byStatus: Record<string, number>, activityLabel: string, heading?: string): string {
   const rows = WORKORDER_STATUSES
     .map((s) => ({ status: s, count: byStatus[s] || 0 }))
     .filter((r) => r.count > 0);
   if (rows.length === 0) return "";
-  const lines = [`<b>${heading}</b>`, "<pre>"];
+  const lines = [`<b>${heading || `${activityLabel} by Status`}</b>`, "<pre>"];
   for (const r of rows) {
     lines.push(`${statusLabel(r.status).padEnd(18)} ${String(r.count).padStart(4)}`);
   }
   lines.push("</pre>");
   return lines.join("\n");
 }
+
+// Default look per frequency -- distinct icon/title/footer wording so
+// Daily/Weekly/Monthly don't just look like the same card with a different
+// word swapped in, even before a super admin customizes anything (Settings
+// > Platform > Report Templates still overrides all of this per key).
+const FREQUENCY_META: Record<string, { emoji: string; label: string; tableTitle: string; compareVerb: string }> = {
+  DAILY: { emoji: "📊", label: "Daily Report", tableTitle: "Today", compareVerb: "vs yesterday" },
+  WEEKLY: { emoji: "📈", label: "Weekly Report", tableTitle: "This Week", compareVerb: "vs last week" },
+  MONTHLY: { emoji: "🗓️", label: "Monthly Report", tableTitle: "This Month", compareVerb: "vs last month" },
+};
 
 export async function buildReportMessage(
   businessName: string,
@@ -119,47 +131,69 @@ export async function buildReportMessage(
   const activityLabel = isSC ? "Workorders" : "Calls";
   const changePct = prior.revenue > 0 ? (((current.revenue - prior.revenue) / prior.revenue) * 100).toFixed(1) : "n/a";
 
-  const workorderBreakdown = renderWorkorderBreakdown(current.byStatus, isSC);
-  const mtdWorkorderBreakdown = mtd ? renderWorkorderBreakdown(mtd.byStatus, isSC, "Month So Far — Workorders by Status") : "";
+  const workorderBreakdown = renderWorkorderBreakdown(current.byStatus, activityLabel);
+  const mtdWorkorderBreakdown = mtd ? renderWorkorderBreakdown(mtd.byStatus, activityLabel, `Month So Far — ${activityLabel} by Status`) : "";
 
-  // Super-admin-configurable wording for the report itself (Settings >
-  // Platform > Notification Templates > "Daily/Weekly/Monthly Business
-  // Report") -- per explicit direction ("existing reports formats,
-  // tockens and other formatting things also not available"). Falls back
-  // to the hardcoded table layout below when nothing's saved.
-  const template = await TelegramMessageTemplate.findOne({ key: "BUSINESS_REPORT" }).lean<any>();
-  if (template?.enabled !== false && template?.template && template.template !== "(disabled)") {
-    const tokens: Record<string, string> = {
-      businessName, vendorName: vendorName || "", vendorId: vendorId || "",
-      date: now.toLocaleDateString("en-IN"), frequency,
-      revenue: fmtINR(current.revenue), priorRevenue: fmtINR(prior.revenue),
-      invoices: String(current.invoices), priorInvoices: String(prior.invoices),
-      activityLabel, activity: String(current.activity), priorActivity: String(prior.activity),
-      changePct: `${changePct}%`, workorderBreakdown,
-      mtdRevenue: mtd ? fmtINR(mtd.revenue) : "", mtdInvoices: mtd ? String(mtd.invoices) : "",
-      mtdActivity: mtd ? String(mtd.activity) : "", mtdWorkorderBreakdown,
-    };
-    const text = template.template.replace(/\{\{(\w+)\}\}/g, (_: string, name: string) => tokens[name] ?? "");
+  // Super-admin-configurable wording + look for THIS frequency's report
+  // (Settings > Platform > Report Templates > Daily/Weekly/Monthly) --
+  // split from one shared BUSINESS_REPORT key so each frequency can look
+  // completely different (own icon, own footer tone/text, own wording),
+  // per explicit direction to redesign reports "one by one". Disabled ->
+  // no report for this frequency at all (empty text, caller skips the send).
+  const reportKey = `${frequency}_REPORT`;
+  const template = await TelegramMessageTemplate.findOne({ key: reportKey }).lean<any>();
+  if (template?.enabled === false) {
+    return { text: "", current, prior };
+  }
+
+  const tokens: Record<string, string> = {
+    businessName, vendorName: vendorName || "", vendorId: vendorId || "",
+    date: now.toLocaleDateString("en-IN"), frequency,
+    revenue: fmtINR(current.revenue), priorRevenue: fmtINR(prior.revenue),
+    invoices: String(current.invoices), priorInvoices: String(prior.invoices),
+    activityLabel, activity: String(current.activity), priorActivity: String(prior.activity),
+    changePct: `${changePct}%`, workorderBreakdown,
+    mtdRevenue: mtd ? fmtINR(mtd.revenue) : "", mtdInvoices: mtd ? String(mtd.invoices) : "",
+    mtdActivity: mtd ? String(mtd.activity) : "", mtdWorkorderBreakdown,
+  };
+  const renderTokens = (s: string) => s.replace(/\{\{(\w+)\}\}/g, (_: string, name: string) => tokens[name] ?? "");
+
+  const meta = FREQUENCY_META[frequency] || FREQUENCY_META.DAILY;
+
+  if (template?.template && template.template !== "(disabled)") {
+    const text = applyCardStyle(renderTokens(template.template), {
+      icon: template.icon || meta.emoji, title: `${businessName} — ${meta.label}`, layout: template.layout,
+      footerTone: template.footerTone, footerText: template.footerText ? renderTokens(template.footerText) : "",
+    });
     return { text, current, prior };
   }
 
-  const lines = [
-    `<b>${businessName} — ${frequency} Report</b>`,
-    "",
-    "<pre>",
-    `Revenue      ${fmtINR(current.revenue).padEnd(14)} (prior ${fmtINR(prior.revenue)})`,
-    `Invoices     ${String(current.invoices).padEnd(14)} (prior ${prior.invoices})`,
-    `${activityLabel.padEnd(12)} ${String(current.activity).padEnd(14)} (prior ${prior.activity})`,
-    `Change       ${changePct}%`,
-    "</pre>",
-  ];
+  // Boxed-card look (emoji title, padded label/value table, confirmation
+  // footer) -- see core/telegram/renderCard.ts. icon/footer are overridable
+  // from the saved template even when its wording itself is left blank
+  // (i.e. "keep the built-in layout, just change the icon/footer").
+  const changeUp = changePct !== "n/a" && Number(changePct) >= 0;
+  let text = renderTelegramCard({
+    emoji: template?.icon || meta.emoji,
+    title: `${businessName} — ${meta.label}`,
+    tableTitle: meta.tableTitle,
+    rows: [
+      { label: "Revenue", value: `${fmtINR(current.revenue)}  (prior ${fmtINR(prior.revenue)})` },
+      { label: "Invoices", value: `${current.invoices}  (prior ${prior.invoices})` },
+      { label: activityLabel, value: `${current.activity}  (prior ${prior.activity})` },
+      { label: "Change", value: `${changePct}%` },
+    ],
+    footer: template?.footerText
+      ? `${FOOTER_TONE_EMOJI[template.footerTone || "NONE"] ? `${FOOTER_TONE_EMOJI[template.footerTone || "NONE"]} ` : ""}${renderTokens(template.footerText)}`
+      : `${changeUp ? "✅" : "⚠️"} Revenue ${changeUp ? "up" : "down"} ${meta.compareVerb}`,
+  });
 
   // Per-status workorder table -- SC only, and only when there's at
   // least one workorder in the period (an all-zero table for a quiet
   // day/week is just noise). Per explicit direction ("Richtext format
   // tables of Daily, Weekly and monthly summaries of Workorders with
   // Statuses and Revenue details").
-  if (workorderBreakdown) lines.push("", workorderBreakdown);
+  if (workorderBreakdown) text += `\n\n${workorderBreakdown}`;
 
   // Daily report also gets a second "Month So Far" block -- same shape as
   // the daily one, no prior-period comparison (there's no clean "prior
@@ -167,19 +201,19 @@ export async function buildReportMessage(
   // direction ("first give day data and also month so far summary data").
   if (mtd) {
     const monthName = now.toLocaleDateString("en-IN", { month: "long" });
-    lines.push(
-      "",
-      `<b>Month So Far (${monthName})</b>`,
-      "<pre>",
-      `Revenue      ${fmtINR(mtd.revenue)}`,
-      `Invoices     ${mtd.invoices}`,
-      `${activityLabel.padEnd(12)} ${mtd.activity}`,
-      "</pre>"
-    );
-    if (mtdWorkorderBreakdown) lines.push("", mtdWorkorderBreakdown);
+    text += `\n\n${renderTelegramCard({
+      emoji: "🗓️",
+      title: `Month So Far (${monthName})`,
+      rows: [
+        { label: "Revenue", value: fmtINR(mtd.revenue) },
+        { label: "Invoices", value: String(mtd.invoices) },
+        { label: activityLabel, value: String(mtd.activity) },
+      ],
+    })}`;
+    if (mtdWorkorderBreakdown) text += `\n\n${mtdWorkorderBreakdown}`;
   }
 
-  return { text: lines.join("\n"), current, prior };
+  return { text, current, prior };
 }
 
 export function buildChartUrl(businessName: string, frequency: string, activityLabel: string, prior: { revenue: number; activity: number }, current: { revenue: number; activity: number }) {

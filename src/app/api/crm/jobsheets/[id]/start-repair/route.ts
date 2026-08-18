@@ -14,6 +14,7 @@ import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { requireAssignedEngineer } from "@/core/access/crmJobsheetAccess";
 import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
+import { categoryRequiresImei, isValidImei } from "@/core/catalog/deviceCategory";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -49,6 +50,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json(
         { success: false, message: `Cannot start repair while status is ${jobSheet.status}.` },
         { status: 409 }
+      );
+    }
+    // Creation allows a blank/invalid IMEI (per explicit direction, intake
+    // shouldn't be blocked on it) -- but a phone-like device can't move
+    // into active repair without a real 15-digit IMEI on file, since that's
+    // what identifies the actual handset being worked on.
+    if (categoryRequiresImei(jobSheet.deviceCategory) && !isValidImei(jobSheet.imeiOrSerialNumber)) {
+      return NextResponse.json(
+        { success: false, message: "Enter a valid 15-digit IMEI for this device before starting repair." },
+        { status: 400 }
       );
     }
 
