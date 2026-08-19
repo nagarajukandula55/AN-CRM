@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import SalesInvoice from "@/models/SalesInvoice";
 import VendorBillingInvoice from "@/models/VendorBillingInvoice";
+import VendorProfile from "@/models/VendorProfile";
 import { getBusinessBySourceId } from "@/lib/centralApiRead";
 import { connectDB } from "@/lib/mongodb";
 import { getDefaultTemplate } from "@/core/invoiceTemplates/service";
@@ -97,6 +98,18 @@ export async function GET(
       ? await getBusinessBySourceId(String(invoice.businessId))
       : null;
 
+    // Multi-vendor businesses share ONE Business record (see VendorProfile's
+    // own comment on why telegram* fields moved off Business) -- printing
+    // just the Business's own name/address/GSTIN on every invoice meant
+    // every vendor under that business showed the SAME identity in the
+    // top-left header, never their own shop's details. Prefer the
+    // job-sheet's own vendor (invoice.vendorId, see close/route.ts) when
+    // set, falling back to Business for anything the vendor hasn't filled
+    // in (VendorProfile has no separate logo field, for instance).
+    const vendor = (invoice as any).vendorId
+      ? await VendorProfile.findById((invoice as any).vendorId).select("companyName phone address gstNumber").lean<any>()
+      : null;
+
     // Also pull this business's saved invoice-template branding (logo,
     // tagline) if one exists — see core/invoiceTemplates/service.ts. Falls
     // back to no logo / no override tagline if nothing's been configured.
@@ -113,7 +126,7 @@ export async function GET(
     const paymentQrUrl = upiId && invoice.showPaymentQr !== false
       ? await generateUpiQrDataUrl({
           vpa: upiId,
-          payeeName: (business as any)?.legalName || (business as any)?.name || "Business",
+          payeeName: vendor?.companyName || (business as any)?.legalName || (business as any)?.name || "Business",
           amount: invoice.grandTotal || 0,
           invoiceNumber: invoice.invoiceNumber,
         }).catch(() => undefined)
@@ -150,6 +163,7 @@ export async function GET(
 
       company: {
         name:
+          vendor?.companyName ||
           (business as any)?.name ||
           (business as any)?.legalName ||
           process.env.COMPANY_NAME ||
@@ -161,6 +175,7 @@ export async function GET(
           "",
 
         address1:
+          vendor?.address?.street ||
           (business as any)?.address ||
           process.env.COMPANY_ADDRESS1 ||
           "",
@@ -169,25 +184,31 @@ export async function GET(
           process.env.COMPANY_ADDRESS2 || "",
 
         city:
+          vendor?.address?.city ||
           (business as any)?.city ||
           process.env.COMPANY_CITY ||
           "",
 
         state:
+          vendor?.address?.state ||
           (business as any)?.state ||
           process.env.COMPANY_STATE ||
           "",
 
         gstin:
+          vendor?.gstNumber ||
           (business as any)?.compliance?.gstNumber ||
           process.env.COMPANY_GSTIN ||
           "",
 
         phone:
+          vendor?.phone ||
           (business as any)?.phone ||
           process.env.COMPANY_PHONE ||
           "",
 
+        // No per-vendor logo field on VendorProfile -- every vendor under a
+        // shared Business still prints that Business's own logo/branding.
         logoUrl:
           savedTemplate?.branding?.logoUrl ||
           (business as any)?.logo ||
@@ -205,8 +226,13 @@ export async function GET(
       // own comment), for a customer who'd rather bank-transfer than
       // scan a UPI QR. Only sent through when an account number is
       // actually set, so a business that hasn't configured this doesn't
-      // print an empty "Bank Details" block.
-      bankDetails: (business as any)?.bankAccountNumber && invoice.showBankDetails !== false
+      // print an empty "Bank Details" block. Mutually exclusive with the
+      // QR above -- never print both payment options on one invoice, per
+      // explicit direction. QR wins when both are enabled (matches the
+      // schema default of both flags true for every invoice that predates
+      // this per-invoice choice, including every CRM-jobsheet invoice,
+      // which never set these fields at all).
+      bankDetails: !paymentQrUrl && (business as any)?.bankAccountNumber && invoice.showBankDetails !== false
         ? {
             accountName: (business as any)?.bankAccountName || "",
             accountNumber: (business as any)?.bankAccountNumber || "",

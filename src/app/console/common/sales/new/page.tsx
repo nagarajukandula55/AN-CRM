@@ -488,7 +488,13 @@ export default function NewSalesInvoicePage() {
                   configured={!!biz?.upiId}
                   preview={biz?.upiId}
                   enabled={showPaymentQr}
-                  onToggle={() => setShowPaymentQr(v => !v)}
+                  // QR and Bank Details are mutually exclusive on the printed
+                  // invoice -- per explicit direction, a customer should only
+                  // ever see ONE payment option, not both at once. Turning
+                  // this on always turns Bank Details off (and vice versa
+                  // below); the view route also enforces this server-side
+                  // for invoices that predate this rule.
+                  onToggle={() => setShowPaymentQr(v => { const next = !v; if (next) setShowBankDetails(false); return next })}
                   onSettings={() => openFooterModal('qr')}
                 />
                 <InvoiceFooterTile
@@ -497,7 +503,7 @@ export default function NewSalesInvoicePage() {
                   configured={!!biz?.bankAccountNumber}
                   preview={biz?.bankAccountNumber ? `${biz.bankAccountName || ''} · ${biz.bankAccountNumber}`.trim() : undefined}
                   enabled={showBankDetails}
-                  onToggle={() => setShowBankDetails(v => !v)}
+                  onToggle={() => setShowBankDetails(v => { const next = !v; if (next) setShowPaymentQr(false); return next })}
                   onSettings={() => openFooterModal('bank')}
                 />
                 <InvoiceFooterTile
