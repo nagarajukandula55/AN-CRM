@@ -41,6 +41,7 @@ function PrintPageInner() {
       businessId: String(job.businessId),
       documentType: docType,
       ...(job.warehouseId ? { warehouseId: String(job.warehouseId) } : {}),
+      ...(job.vendorId ? { vendorId: String(job.vendorId) } : {}),
     })
     fetch(`/api/document-templates/resolve?${qs.toString()}`)
       .then(r => r.json())

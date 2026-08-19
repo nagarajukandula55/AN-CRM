@@ -104,6 +104,7 @@ export function RichInvoiceLayout({
           <div className="ric-box">
             <div className="ric-sectionTitle">PAYMENT</div>
             <div>Status: {safe(data.status)}</div>
+            {data.paymentMethod && <div>Mode: {safe(data.paymentMethod)}</div>}
           </div>
         )}
       </div>

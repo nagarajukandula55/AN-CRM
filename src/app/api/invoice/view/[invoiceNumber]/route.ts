@@ -304,8 +304,15 @@ export async function GET(
       },
 
       payment: {
+        // order is always null for a CRM-originated invoice (see the
+        // LegacyOrderStub comment above), which meant this always fell
+        // straight through to the hardcoded "ONLINE" fallback regardless
+        // of how the customer actually paid (cash/UPI/card at handover --
+        // see api/crm/jobsheets/[id]/handover/route.ts). invoice.paymentMethod
+        // is the real, invoice-level field for that.
         method:
           order?.payment?.method ||
+          (invoice as any).paymentMethod ||
           "ONLINE",
 
         status:

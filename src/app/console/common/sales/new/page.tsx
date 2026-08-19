@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/Card'
 import { StateSelect, CitySelect, PincodeInput } from '@/components/shared/LocationSelect'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 import { GST_SLABS } from '@/core/gst/gstSlabs'
+import { DEFAULT_SPARE_PART_HSN } from '@/core/gst/defaultHsn'
 import { openPrintPopup } from '@/lib/openPrintPopup'
 
 /**
@@ -93,7 +94,7 @@ export default function NewSalesInvoicePage() {
   const [dueDate, setDueDate] = useState('')
   const [discount, setDiscount] = useState(0)
   const [items, setItems] = useState<LineItem[]>([
-    { description: '', hsnCode: '', qty: 1, unit: 'Nos', price: 0, taxPct: 18 },
+    { description: '', hsnCode: DEFAULT_SPARE_PART_HSN, qty: 1, unit: 'Nos', price: 0, taxPct: 18 },
   ])
 
   const { businessId } = useActiveBusinessId()
@@ -229,7 +230,7 @@ export default function NewSalesInvoicePage() {
   }
 
   function addItem() {
-    setItems(p => [...p, { description: '', hsnCode: '', qty: 1, unit: 'Nos', price: 0, taxPct: invoiceType === 'GST' ? 18 : 0 }])
+    setItems(p => [...p, { description: '', hsnCode: DEFAULT_SPARE_PART_HSN, qty: 1, unit: 'Nos', price: 0, taxPct: invoiceType === 'GST' ? 18 : 0 }])
   }
   function removeItem(i: number) {
     setItems(p => p.filter((_, idx) => idx !== i))

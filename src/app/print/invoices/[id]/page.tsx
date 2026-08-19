@@ -16,6 +16,15 @@
  * already existed) and render it as print-ready HTML. The user's browser
  * "Print > Save as PDF" is the actual download mechanism — reliable on any
  * host, no server-side PDF renderer or filesystem dependency required.
+ *
+ * Lives under /print (not /console) on purpose, same as the workorder/
+ * service-record print pages -- console/layout.tsx wraps every /console
+ * route in the app shell's sidebar, which has no print:hidden treatment of
+ * its own, so this used to print with the sidebar still showing (reported:
+ * "invoice page is not proper it is giving side bar also which is making
+ * print not viable"). Moved from console/common/documents/crm-invoices/[id]
+ * to this sidebar-free route instead of trying to patch print CSS around a
+ * layout this page doesn't control.
  */
 
 import useSWR from 'swr'
@@ -29,6 +38,7 @@ interface InvoiceRaw {
   invoiceNumber: string
   businessId?: string
   warehouseId?: string
+  vendorId?: string
   [key: string]: any
 }
 
@@ -50,6 +60,7 @@ export default function CrmInvoiceViewPage() {
         businessId: String(invoice.businessId),
         documentType: 'INVOICE',
         ...(invoice.warehouseId ? { warehouseId: String(invoice.warehouseId) } : {}),
+        ...(invoice.vendorId ? { vendorId: String(invoice.vendorId) } : {}),
       }).toString()
     : null
   const { data: templateRes, error: templateErr, isLoading: templateLoading } = useSWR(
@@ -114,7 +125,7 @@ export default function CrmInvoiceViewPage() {
             {[...chain.b2b, ...chain.b2c].filter((inv: any) => inv._id !== invoice._id).map((inv: any) => (
               <a
                 key={inv._id}
-                href={`/console/crm/invoices/${inv._id}`}
+                href={`/print/invoices/${inv._id}`}
                 className="rounded-lg bg-white border border-amber-200 px-2 py-1 font-mono hover:border-amber-400"
               >
                 {inv.invoiceType}: {inv.invoiceNumber}

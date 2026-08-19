@@ -36,17 +36,33 @@ function termsForDocType(business: any, documentType?: string): string | undefin
   return (specific?.trim() || business?.termsAndConditions) || undefined;
 }
 
-export function businessToCompany(business: any, warehouse: any, documentType?: string) {
-  const name = warehouse?.warehouseName || business?.name || business?.brandName || "";
-  const address = warehouse
-    ? [warehouse.address, warehouse.city, warehouse.state, warehouse.pincode].filter(Boolean).join(", ")
-    : [business?.address, business?.city, business?.state].filter(Boolean).join(", ");
-  const phone = warehouse?.mobile || undefined;
+/**
+ * `vendor` (a VendorProfile) takes precedence over both `business` and
+ * `warehouse` for name/address/phone/GSTIN when given -- a multi-vendor
+ * business shares ONE Business record (see VendorProfile's own comment on
+ * why telegram* fields moved off Business for the same reason), so every
+ * printed document -- workorder, estimate, service record, invoice --
+ * used to show that one shared Business identity on every vendor's
+ * documents instead of the issuing vendor's own. Falls back to
+ * warehouse/business exactly as before when there's no vendor (or a field
+ * the vendor hasn't filled in, e.g. VendorProfile has no logo of its own).
+ */
+export function businessToCompany(business: any, warehouse: any, documentType?: string, vendor?: any) {
+  const name = vendor?.companyName || warehouse?.warehouseName || business?.name || business?.brandName || "";
+  const vendorAddress = vendor?.address
+    ? [vendor.address.street, vendor.address.city, vendor.address.state, vendor.address.pincode].filter(Boolean).join(", ")
+    : undefined;
+  const address = vendorAddress
+    ? vendorAddress
+    : warehouse
+      ? [warehouse.address, warehouse.city, warehouse.state, warehouse.pincode].filter(Boolean).join(", ")
+      : [business?.address, business?.city, business?.state].filter(Boolean).join(", ");
+  const phone = vendor?.phone || warehouse?.mobile || undefined;
   return {
     name,
     address,
     phone,
-    gstin: business?.gstNumber || undefined,
+    gstin: vendor?.gstNumber || business?.gstNumber || undefined,
     logoUrl: resolveCompanyLogo(business, warehouse),
     termsAndConditions: termsForDocType(business, documentType),
     signatureUrl: business?.documentSignatureUrl || undefined,
@@ -460,6 +476,7 @@ export function salesInvoiceToRenderData(
     docNumber: invoice.invoiceNumber,
     date: fmtDate(invoice.issueDate || invoice.createdAt),
     status: invoice.status,
+    paymentMethod: invoice.paymentMethod,
     company,
     party: {
       name: invoice.customer?.name || "",

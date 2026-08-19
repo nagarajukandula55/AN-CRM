@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import mongoose from "mongoose";
 import { notify } from "@/lib/notify";
+import { round2 } from "@/core/gst/money";
 import { generateDocumentNumber } from "@/core/numbering/numberingService";
 // Was a locally-declared inline "GST-compliant" SalesInvoice schema —
 // its GST-specific fields (supplyType, placeOfSupply, per-item hsnCode/
@@ -191,8 +192,8 @@ export async function POST(req: NextRequest) {
       // invoice) happened to start at 18% before the user ever touched
       // the GST/Non-GST toggle, and that value was never cleared.
       const rawTaxRate = isNonGst ? 0 : (item.taxRate || item.taxPct || 0)
-      const lineAmt   = (item.quantity || item.qty || 1) * (item.unitPrice || item.price || 0)
-      const totalGST  = lineAmt * (rawTaxRate / 100)
+      const lineAmt   = round2((item.quantity || item.qty || 1) * (item.unitPrice || item.price || 0))
+      const totalGST  = round2(lineAmt * (rawTaxRate / 100))
 
       let cgstRate = 0, cgstAmount = 0, sgstRate = 0, sgstAmount = 0
       let igstRate = 0, igstAmount = 0
@@ -204,8 +205,8 @@ export async function POST(req: NextRequest) {
       } else {
         cgstRate   = rawTaxRate / 2
         sgstRate   = cgstRate
-        cgstAmount = totalGST / 2
-        sgstAmount = totalGST / 2
+        cgstAmount = round2(totalGST / 2)
+        sgstAmount = round2(totalGST / 2)
         cgstTotal += cgstAmount
         sgstTotal += sgstAmount
       }
@@ -223,12 +224,16 @@ export async function POST(req: NextRequest) {
         cgstRate, cgstAmount,
         sgstRate, sgstAmount,
         igstRate, igstAmount,
-        total: lineAmt + totalGST,
+        total: round2(lineAmt + totalGST),
       }
     })
 
-    const taxTotal   = cgstTotal + sgstTotal + igstTotal
-    const grandTotal = subtotal + taxTotal - discountAmount
+    subtotal = round2(subtotal)
+    cgstTotal = round2(cgstTotal)
+    sgstTotal = round2(sgstTotal)
+    igstTotal = round2(igstTotal)
+    const taxTotal   = round2(cgstTotal + sgstTotal + igstTotal)
+    const grandTotal = round2(subtotal + taxTotal - discountAmount)
 
     const invoiceNumber = await nextInvoiceNumber(effectiveBizId || userId, effectiveBizId || undefined, isNonGst)
 

@@ -56,6 +56,7 @@ export default function ServiceRecordPage() {
       businessId: String(jobSheet.businessId),
       documentType: 'SERVICE_RECORD',
       ...(jobSheet.warehouseId ? { warehouseId: String(jobSheet.warehouseId) } : {}),
+      ...(jobSheet.vendorId ? { vendorId: String(jobSheet.vendorId) } : {}),
     })
     fetch(`/api/document-templates/resolve?${qs.toString()}`)
       .then((r) => r.json())

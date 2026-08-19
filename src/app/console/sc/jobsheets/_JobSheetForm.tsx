@@ -937,7 +937,7 @@ export default function SCJobSheetScreen() {
               <>
                 <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/print/jobsheets/${job._id}/service-record`)} icon={<FileText className="w-4 h-4" />}>Service Order</Button>
                 {job.invoiceId && (
-                  <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/console/common/documents/crm-invoices/${job.invoiceId}`)} icon={<FileText className="w-4 h-4" />}>Invoice</Button>
+                  <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/print/invoices/${job.invoiceId}`)} icon={<FileText className="w-4 h-4" />}>Invoice</Button>
                 )}
               </>
             )}

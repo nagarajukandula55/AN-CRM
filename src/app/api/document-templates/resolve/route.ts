@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Warehouse from "@/models/Warehouse";
 import Business from "@/models/Business";
+import VendorProfile from "@/models/VendorProfile";
 import { getBusinessBySourceId } from "@/lib/centralApiRead";
 import { getTemplateForBusiness } from "@/core/documentTemplates/resolve";
 import { businessToCompany } from "@/core/documentTemplates/adapters";
@@ -47,6 +48,12 @@ export async function GET(req: NextRequest) {
     );
     const documentType = searchParams.get("documentType") as DocumentTemplateType | null;
     const warehouseId = searchParams.get("warehouseId");
+    // Which vendor actually issued this specific document -- see
+    // businessToCompany's own comment on why this now overrides the
+    // shared Business identity when set. Optional: callers that don't
+    // have a vendorId (e.g. a purely business-level document) keep
+    // getting the Business identity exactly as before.
+    const vendorId = searchParams.get("vendorId");
 
     if (!businessId || !documentType) {
       return NextResponse.json(
@@ -55,11 +62,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const [template, business, localBusiness, warehouse] = await Promise.all([
+    const [template, business, localBusiness, warehouse, vendor] = await Promise.all([
       getTemplateForBusiness(businessId, documentType),
       getBusinessBySourceId(businessId), // reads from central-api — see src/lib/centralApiRead.ts
       Business.findById(businessId).select(LOCAL_ONLY_FIELDS).lean(),
       warehouseId ? Warehouse.findById(warehouseId).lean() : Promise.resolve(null),
+      vendorId ? VendorProfile.findById(vendorId).select("companyName phone address gstNumber").lean() : Promise.resolve(null),
     ]);
 
     const mergedBusiness = { ...(business || {}), ...(localBusiness || {}) };
@@ -67,7 +75,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       template,
-      company: businessToCompany(mergedBusiness, warehouse, documentType),
+      company: businessToCompany(mergedBusiness, warehouse, documentType, vendor),
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal Server Error";

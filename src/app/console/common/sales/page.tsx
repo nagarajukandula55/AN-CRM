@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { validateGSTIN } from '@/lib/validation/gst'
 import {
   Loader2, ArrowLeft, Plus, X, Search, Eye, Trash2,
-  FileText, ShoppingCart, IndianRupee, Clock, Printer, Wrench, Download,
+  FileText, IndianRupee, Clock, Printer, Wrench, Download,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -74,15 +74,6 @@ interface Invoice {
   paymentMethod?: string
 }
 
-interface Order {
-  _id: string
-  orderNumber: string
-  customerName: string
-  totalAmount: number
-  status: string
-  createdAt: string
-}
-
 interface LineItem {
   description: string
   hsnCode: string
@@ -148,7 +139,6 @@ function calcNonGSTItems(items: LineItem[]) {
 
 export default function SalesPage() {
   const router = useRouter()
-  const [tab, setTab]             = useState<'invoices' | 'orders'>('invoices')
   const [statusFilter, setStatus] = useState('ALL')
   const [search, setSearch]       = useState('')
   const [showForm, setShowForm]   = useState(false)
@@ -198,15 +188,11 @@ export default function SalesPage() {
   const { data: invData, isLoading: invLoading, error: invErr, mutate: refetchInvoices } = useSWR('/api/sales/invoices')
   const invoices: Invoice[] = invData ? (Array.isArray(invData) ? invData : (invData.invoices ?? [])) : []
 
-  const { data: ordData, isLoading: ordLoading, mutate: refetchOrders } = useSWR('/api/sales/orders')
-  const orders: Order[] = ordData ? (Array.isArray(ordData) ? ordData : (ordData.orders ?? [])) : []
-
-  const loading = invLoading || ordLoading
+  const loading = invLoading
   const error = invErr ? 'Failed to load data' : null
 
   function fetchData() {
     refetchInvoices()
-    refetchOrders()
   }
 
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null)
@@ -373,17 +359,11 @@ export default function SalesPage() {
     .filter(c => c.visible && EXPORT_VALUE_GETTERS[c.key])
     .map(c => ({ header: c.label, value: EXPORT_VALUE_GETTERS[c.key] }))
 
-  const filteredOrders = orders.filter(ord =>
-    !search ||
-    ord.orderNumber?.toLowerCase().includes(search.toLowerCase()) ||
-    ord.customerName?.toLowerCase().includes(search.toLowerCase())
-  )
-
   const paidTotal    = invoices.filter(i => i.status === 'PAID').reduce((s, i) => s + getAmount(i), 0)
   const pendingTotal = invoices.filter(i => ['SENT','OVERDUE'].includes(i.status)).reduce((s, i) => s + getAmount(i), 0)
   const draftCount   = invoices.filter(i => i.status === 'DRAFT').length
 
-  if (loading && invoices.length === 0 && orders.length === 0) return <LoadingPanel label="Loading sales data…" />
+  if (loading && invoices.length === 0) return <LoadingPanel label="Loading sales data…" />
 
   return (
     <div className="min-h-screen bg-bg p-6">
@@ -391,7 +371,7 @@ export default function SalesPage() {
 
         <PageHeader
           title="Sales"
-          description="Invoices, orders & GST records"
+          description="Invoices & GST records"
           actions={
             <>
               <Button variant="secondary" size="sm" onClick={() => router.push('/console')} icon={<ArrowLeft size={15} />}>Back</Button>
@@ -412,10 +392,9 @@ export default function SalesPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
-            { icon: IndianRupee, label: 'Revenue Collected', value: fmt(paidTotal), onClick: () => { setTab('invoices'); setStatus(statusFilter === 'PAID' ? 'ALL' : 'PAID') }, active: tab === 'invoices' && statusFilter === 'PAID' },
+            { icon: IndianRupee, label: 'Revenue Collected', value: fmt(paidTotal), onClick: () => setStatus(statusFilter === 'PAID' ? 'ALL' : 'PAID'), active: statusFilter === 'PAID' },
             { icon: Clock,       label: 'Pending Payments',  value: fmt(pendingTotal), onClick: null, active: false },
-            { icon: FileText,    label: 'Total Invoices',    value: String(invoices.length), onClick: () => setTab('invoices'), active: tab === 'invoices' && statusFilter === 'ALL' },
-            { icon: ShoppingCart,label: 'Total Orders',      value: String(orders.length), onClick: () => setTab('orders'), active: tab === 'orders' },
+            { icon: FileText,    label: 'Total Invoices',    value: String(invoices.length), onClick: () => setStatus('ALL'), active: statusFilter === 'ALL' },
           ].map(({ icon: Icon, label, value, onClick, active }) => (
             <Card key={label} className={`p-5 ${onClick ? 'cursor-pointer' : 'cursor-default'} ${active ? 'border-accent ring-2 ring-accent-soft' : 'hover:border-border-strong'}`}>
               <button type="button" disabled={!onClick} onClick={onClick ?? undefined} className="text-left w-full">
@@ -431,18 +410,6 @@ export default function SalesPage() {
           ))}
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 mb-5 border-b border-border">
-          {(['invoices', 'orders'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-2.5 text-sm font-medium capitalize transition border-b-2 -mb-px ${
-                tab === t ? 'border-accent text-ink' : 'border-transparent text-ink-3 hover:text-ink-2'
-              }`}>
-              {t} {t === 'invoices' ? `(${invoices.length})` : `(${orders.length})`}
-            </button>
-          ))}
-        </div>
-
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -450,45 +417,40 @@ export default function SalesPage() {
             <Input type="text" placeholder="Search by number or customer..."
               value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
-          {tab === 'invoices' && (
-            <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={() => downloadCsv('sales-invoices', exportColumns, filteredInvoices)}>
-              Export CSV {filteredInvoices.length !== invoices.length ? `(${filteredInvoices.length} filtered)` : ''}
-            </Button>
+          <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={() => downloadCsv('sales-invoices', exportColumns, filteredInvoices)}>
+            Export CSV {filteredInvoices.length !== invoices.length ? `(${filteredInvoices.length} filtered)` : ''}
+          </Button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div className="flex gap-1">
+            {STATUSES.map(s => (
+              <Button key={s} variant={statusFilter === s ? 'primary' : 'secondary'} size="sm" onClick={() => setStatus(s)}>{s}</Button>
+            ))}
+          </div>
+          <div className="w-px h-5 bg-border" />
+          <div className="flex gap-1">
+            {(['ALL', 'B2B', 'B2C', 'STANDARD'] as const).map(c => (
+              <Button key={c} variant={categoryFilter === c ? 'primary' : 'secondary'} size="sm" onClick={() => setCategoryFilter(c)}>
+                {c === 'STANDARD' ? 'Other' : c}
+              </Button>
+            ))}
+          </div>
+          {paymentMethods.length > 0 && (
+            <>
+              <div className="w-px h-5 bg-border" />
+              <div className="flex gap-1 flex-wrap">
+                <Button variant={paymentFilter === 'ALL' ? 'primary' : 'secondary'} size="sm" onClick={() => setPaymentFilter('ALL')}>All Payments</Button>
+                {paymentMethods.map(pm => (
+                  <Button key={pm} variant={paymentFilter === pm ? 'primary' : 'secondary'} size="sm" onClick={() => setPaymentFilter(pm)}>{pm}</Button>
+                ))}
+              </div>
+            </>
           )}
         </div>
 
-        {tab === 'invoices' && (
-          <div className="flex flex-wrap items-center gap-3 mb-4">
-            <div className="flex gap-1">
-              {STATUSES.map(s => (
-                <Button key={s} variant={statusFilter === s ? 'primary' : 'secondary'} size="sm" onClick={() => setStatus(s)}>{s}</Button>
-              ))}
-            </div>
-            <div className="w-px h-5 bg-border" />
-            <div className="flex gap-1">
-              {(['ALL', 'B2B', 'B2C', 'STANDARD'] as const).map(c => (
-                <Button key={c} variant={categoryFilter === c ? 'primary' : 'secondary'} size="sm" onClick={() => setCategoryFilter(c)}>
-                  {c === 'STANDARD' ? 'Other' : c}
-                </Button>
-              ))}
-            </div>
-            {paymentMethods.length > 0 && (
-              <>
-                <div className="w-px h-5 bg-border" />
-                <div className="flex gap-1 flex-wrap">
-                  <Button variant={paymentFilter === 'ALL' ? 'primary' : 'secondary'} size="sm" onClick={() => setPaymentFilter('ALL')}>All Payments</Button>
-                  {paymentMethods.map(pm => (
-                    <Button key={pm} variant={paymentFilter === pm ? 'primary' : 'secondary'} size="sm" onClick={() => setPaymentFilter(pm)}>{pm}</Button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
         {/* Invoices Table */}
-        {tab === 'invoices' && (
-          <Card className="overflow-hidden overflow-x-auto">
+        <Card className="overflow-hidden overflow-x-auto">
             <table className="w-full text-sm min-w-[720px]">
               <thead>
                 <tr className="border-b border-border">
@@ -557,39 +519,6 @@ export default function SalesPage() {
               </tbody>
             </table>
           </Card>
-        )}
-
-        {/* Orders Table */}
-        {tab === 'orders' && (
-          <Card className="overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Order #</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Customer</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Date</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Amount</th>
-                  <th className="text-center px-5 py-3 text-xs font-semibold text-ink-3 uppercase">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredOrders.length === 0 ? (
-                  <tr><td colSpan={5}><EmptyState kind="empty" title="No orders found" /></td></tr>
-                ) : filteredOrders.map(ord => (
-                  <tr key={ord._id} className="hover:bg-surface-2 transition-colors">
-                    <td className="px-5 py-3 font-medium text-ink">{ord.orderNumber}</td>
-                    <td className="px-5 py-3 text-ink-2">{ord.customerName}</td>
-                    <td className="px-5 py-3 text-ink-3">{fmtDate(ord.createdAt)}</td>
-                    <td className="px-5 py-3 text-right font-medium tabular text-ink">{fmt(ord.totalAmount)}</td>
-                    <td className="px-5 py-3 text-center">
-                      <Badge tone={STATUS_TONE[ord.status] ?? 'neutral'}>{ord.status}</Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
-        )}
       </div>
 
       {/* ── Create / Edit Modal: New Invoice ── */}

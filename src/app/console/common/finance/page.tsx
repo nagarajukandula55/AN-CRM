@@ -37,6 +37,7 @@ interface Invoice {
   status: string
   createdAt: string
   dueDate?: string
+  paymentMethod?: string
 }
 
 interface Payment {
@@ -70,6 +71,7 @@ export default function FinancePage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'ALL' | 'PAID' | 'UNPAID'>('ALL')
+  const [paymentFilter, setPaymentFilter] = useState('ALL')
 
   useEffect(() => {
     async function fetchAll() {
@@ -138,9 +140,12 @@ export default function FinancePage() {
   const b2bCount = invoices.filter((i) => i.invoiceType === 'B2B').length
   const b2cCount = invoices.length - b2bCount
 
+  const paymentMethods = Array.from(new Set(invoices.map((i) => i.paymentMethod).filter(Boolean))) as string[]
+
   const filteredInvoices = invoices.filter((i) => {
-    if (filter === 'PAID') return i.status === 'PAID'
-    if (filter === 'UNPAID') return i.status !== 'PAID'
+    if (filter === 'PAID' && i.status !== 'PAID') return false
+    if (filter === 'UNPAID' && i.status === 'PAID') return false
+    if (paymentFilter !== 'ALL' && i.paymentMethod !== paymentFilter) return false
     return true
   })
 
@@ -232,12 +237,25 @@ export default function FinancePage() {
         </div>
 
         {/* Invoice Filter */}
-        <div className="flex gap-1 mb-5">
-          {(['ALL', 'PAID', 'UNPAID'] as const).map((f) => (
-            <Button key={f} variant={filter === f ? 'primary' : 'secondary'} size="sm" onClick={() => setFilter(f)}>
-              {f}
-            </Button>
-          ))}
+        <div className="flex flex-wrap items-center gap-3 mb-5">
+          <div className="flex gap-1">
+            {(['ALL', 'PAID', 'UNPAID'] as const).map((f) => (
+              <Button key={f} variant={filter === f ? 'primary' : 'secondary'} size="sm" onClick={() => setFilter(f)}>
+                {f}
+              </Button>
+            ))}
+          </div>
+          {paymentMethods.length > 0 && (
+            <>
+              <div className="w-px h-5 bg-border" />
+              <div className="flex gap-1 flex-wrap">
+                <Button variant={paymentFilter === 'ALL' ? 'primary' : 'secondary'} size="sm" onClick={() => setPaymentFilter('ALL')}>All Payments</Button>
+                {paymentMethods.map((pm) => (
+                  <Button key={pm} variant={paymentFilter === pm ? 'primary' : 'secondary'} size="sm" onClick={() => setPaymentFilter(pm)}>{pm}</Button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Invoice Table */}

@@ -29,6 +29,12 @@ export interface DocumentRenderData {
   docNumber: string;
   date: string;
   status?: string;
+  /** How payment was actually collected (CASH/UPI/CARD/BANK_TRANSFER/OTHER,
+   * SalesInvoice.paymentMethod) -- distinct from `status` (paid/sent/etc),
+   * shown alongside it in the invoice's PAYMENT box. Undefined before
+   * payment is collected (e.g. still SENT), or for a document type that
+   * doesn't carry one at all (workorder, estimate). */
+  paymentMethod?: string;
   company: {
     name: string;
     address?: string;

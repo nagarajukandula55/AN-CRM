@@ -29,6 +29,7 @@ import { buildPermissionCode } from "@/core/access/actions";
 import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
 import { sendVendorAlert } from "@/core/telegram/sendVendorAlert";
 import { categoryRequiresImei, isValidImei } from "@/core/catalog/deviceCategory";
+import { round2 } from "@/core/gst/money";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -170,8 +171,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const invoiceItems = jobSheet.lineItems.map((item: any) => {
       const effectiveTaxRate = !taxApplyEnabled ? 0 : (item.taxRate || 0);
-      const lineAmt = (item.quantity || 1) * (item.unitPrice || 0);
-      const totalGST = lineAmt * (effectiveTaxRate / 100);
+      const lineAmt = round2((item.quantity || 1) * (item.unitPrice || 0));
+      const totalGST = round2(lineAmt * (effectiveTaxRate / 100));
 
       let cgstRate = 0, cgstAmount = 0, sgstRate = 0, sgstAmount = 0;
       let igstRate = 0, igstAmount = 0;
@@ -183,8 +184,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       } else {
         cgstRate = effectiveTaxRate / 2;
         sgstRate = cgstRate;
-        cgstAmount = totalGST / 2;
-        sgstAmount = totalGST / 2;
+        cgstAmount = round2(totalGST / 2);
+        sgstAmount = round2(totalGST / 2);
         cgstTotal += cgstAmount;
         sgstTotal += sgstAmount;
       }
@@ -201,7 +202,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         cgstRate, cgstAmount,
         sgstRate, sgstAmount,
         igstRate, igstAmount,
-        total: lineAmt + totalGST,
+        total: round2(lineAmt + totalGST),
       };
     });
 
@@ -227,8 +228,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       subtotal += serviceCharge;
     }
 
-    const taxTotal = cgstTotal + sgstTotal + igstTotal;
-    const grandTotal = subtotal + taxTotal - (discountAmount || 0);
+    subtotal = round2(subtotal);
+    cgstTotal = round2(cgstTotal);
+    sgstTotal = round2(sgstTotal);
+    igstTotal = round2(igstTotal);
+    const taxTotal = round2(cgstTotal + sgstTotal + igstTotal);
+    const grandTotal = round2(subtotal + taxTotal - (discountAmount || 0));
 
     // Exactly two series now, decided purely by isB2B (customer GSTIN on
     // file): the "INV" series (numbering type "INVOICE") for a real B2B

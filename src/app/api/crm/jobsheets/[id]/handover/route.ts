@@ -86,8 +86,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // is actually collected right here, so this is the one place that
     // can correctly mark the invoice paid.
     if (jobSheet.invoiceId) {
+      // SalesInvoice's own field is `paymentMethod`, not `paymentMode` --
+      // this used to $set a field name that doesn't exist on the schema,
+      // which Mongoose's default strict mode silently drops from an
+      // update. The invoice always got marked PAID, but the actual
+      // payment mode never made it onto the invoice (reported: "in
+      // invoice also payment mode is not there only payment status
+      // available") -- it only ever landed on the job sheet itself.
       await SalesInvoice.findByIdAndUpdate(jobSheet.invoiceId, {
-        $set: { status: "PAID", paidAt: new Date(), paidAmount: Number(paymentCollected), paymentMode },
+        $set: { status: "PAID", paidAt: new Date(), paidAmount: Number(paymentCollected), paymentMethod: paymentMode },
       });
     }
 
