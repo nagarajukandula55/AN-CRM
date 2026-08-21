@@ -225,6 +225,13 @@ const PUBLIC_PREFIXES = [
   // Telegram calls this webhook directly (no session) whenever a user
   // messages our bot -- see api/telegram/webhook's own comment.
   "/api/telegram/webhook",
+  // Razorpay calls this directly (no session) on payment/order events --
+  // authenticated by its own RAZORPAY_WEBHOOK_SECRET HMAC signature check
+  // inside the route, same pattern as the Telegram webhook above. Safety
+  // net for api/subscriptions/verify: activates a PENDING_PAYMENT
+  // subscription server-side even if the customer's browser never
+  // completes that client-side call after a successful payment.
+  "/api/webhooks/razorpay",
   "/_next",
   "/public",
 ];

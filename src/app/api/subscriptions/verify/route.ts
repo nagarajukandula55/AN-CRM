@@ -16,15 +16,11 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import Subscription from "@/models/Subscription";
-import SubscriptionInvoice from "@/models/SubscriptionInvoice";
-import CommunicationQuota from "@/models/CommunicationQuota";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { logAction } from "@/lib/audit/logAction";
-import { generateDocumentNumber } from "@/core/numbering/numberingService";
-import { BILLING_PERIODS, findPlan } from "@/core/pricing/plans";
+import { activateSubscription } from "@/core/subscriptions/activateSubscription";
 
 export async function POST(req: NextRequest) {
   try {
@@ -63,77 +59,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Invalid payment signature" }, { status: 400 });
     }
 
-    const period = BILLING_PERIODS.find((p) => p.key === subscription.billingPeriod) || BILLING_PERIODS[0];
-    const now = new Date();
-    const expiryDate = new Date(now);
-    expiryDate.setMonth(expiryDate.getMonth() + period.months);
-
-    subscription.status = "ACTIVE";
-    subscription.razorpayPaymentId = razorpay_payment_id;
-    subscription.razorpaySignature = razorpay_signature;
-    subscription.startDate = now;
-    subscription.expiryDate = expiryDate;
-    await subscription.save();
-
-    // Raise the invoice for this payment. Prices are treated as GST-
-    // inclusive (standard SaaS practice) — 18% is backed out of the amount
-    // charged rather than added on top, so amount === grandTotal.
-    const taxTotal = Math.round(subscription.amount - subscription.amount / 1.18);
-    const { value: invoiceNumber } = await generateDocumentNumber(
-      subscription.businessId.toString(),
-      "SUBSCRIPTION_INVOICE"
-    );
-    const invoice = await SubscriptionInvoice.create({
-      invoiceNumber,
-      businessId: subscription.businessId,
-      subscriptionId: subscription._id,
-      subVendorOf: subscription.subVendorOf || undefined,
-      subBusinessOf: subscription.subBusinessOf || undefined,
-      mode: subscription.mode,
-      plan: subscription.plan,
-      billingPeriod: subscription.billingPeriod,
-      amount: subscription.amount - taxTotal,
-      taxTotal,
-      grandTotal: subscription.amount,
-      periodStart: now,
-      periodEnd: expiryDate,
-      razorpayPaymentId: razorpay_payment_id,
-    });
-
-    // Ultimate-tier plans bundle Email/WhatsApp quota — activate/top-up on
-    // successful payment for the business's own primary plan (not a sub-
-    // vendor addon charge, which isn't a plan tier at all).
-    if (!subscription.subVendorOf && !subscription.subBusinessOf) {
-      const planDef = findPlan(subscription.mode, subscription.plan);
-      if (planDef?.commsQuota) {
-        await CommunicationQuota.findOneAndUpdate(
-          { businessId: subscription.businessId },
-          {
-            $set: {
-              emailEnabled: true,
-              whatsappEnabled: true,
-              emailQuota: planDef.commsQuota.emailPerMonth,
-              whatsappQuota: planDef.commsQuota.whatsappPerMonth,
-              periodStart: now,
-              emailUsed: 0,
-              whatsappUsed: 0,
-            },
-          },
-          { upsert: true }
-        );
-      }
+    const result = await activateSubscription(subscriptionId, razorpay_payment_id, razorpay_signature);
+    if ("alreadyActive" in result) {
+      // The Razorpay webhook (api/webhooks/razorpay) already claimed this
+      // activation -- not an error, just nothing left for this call to do.
+      return NextResponse.json({ success: true, duplicate: true, subscription: result.subscription });
+    }
+    if ("notFound" in result) {
+      return NextResponse.json({ success: false, message: "Subscription not found" }, { status: 404 });
     }
 
     logAction({
       action: "VERIFY",
       entity: "Subscription",
       entityId: subscription._id.toString(),
-      after: { plan: subscription.plan, billingPeriod: subscription.billingPeriod, expiryDate, invoiceNumber },
+      after: { plan: subscription.plan, billingPeriod: subscription.billingPeriod, expiryDate: result.expiryDate, invoiceNumber: result.invoice.invoiceNumber },
       req,
       actor: { id: session.user.id, businessId: subscription.businessId.toString() },
     });
 
-    return NextResponse.json({ success: true, subscription, invoice });
+    return NextResponse.json({ success: true, subscription: result.subscription, invoice: result.invoice });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ success: false, message }, { status: 500 });
