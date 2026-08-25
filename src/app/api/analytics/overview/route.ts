@@ -57,6 +57,13 @@ export async function GET(req: NextRequest) {
     const businessObjectId = businessId && mongoose.Types.ObjectId.isValid(businessId) ? new mongoose.Types.ObjectId(businessId) : null;
     const invoiceMatch: Record<string, any> = { isDeleted: { $ne: true } };
     if (businessObjectId) invoiceMatch.businessId = businessObjectId;
+    // SECURITY: scope.vendorId was resolved above (and already applied to
+    // jobsheetMatch below) but never applied here -- every vendor sharing
+    // a business saw the WHOLE business's revenue/thisMonth/bySource/
+    // statusBreakdown/monthlyTrend numbers, not just their own.
+    if (scope?.vendorId && mongoose.Types.ObjectId.isValid(scope.vendorId)) {
+      invoiceMatch.vendorId = new mongoose.Types.ObjectId(scope.vendorId);
+    }
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -102,8 +109,14 @@ export async function GET(req: NextRequest) {
 
     const jobsheetMatch: Record<string, any> = { isDeleted: { $ne: true } };
     if (businessId) jobsheetMatch.businessId = businessId;
-    if (scope?.vendorId) {
-      jobsheetMatch.vendorId = scope.vendorId;
+    // Cast to ObjectId (not left as the raw string scope.vendorId) -- the
+    // monthlyActivity aggregate below spreads jobsheetMatch straight into
+    // an aggregate() $match, which (like invoiceMatch above) bypasses
+    // Mongoose's normal query-casting, so an uncast string here would
+    // silently never match the real ObjectId field and leak every
+    // vendor's monthly workorder trend to every other vendor.
+    if (scope?.vendorId && mongoose.Types.ObjectId.isValid(scope.vendorId)) {
+      jobsheetMatch.vendorId = new mongoose.Types.ObjectId(scope.vendorId);
     }
 
     // Calls (CrmCall) were removed from the product -- every business is

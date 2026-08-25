@@ -49,6 +49,31 @@ const SIDEBAR_COLLAPSED_KEY = "an_sidebar_collapsed";
 // resolves -- so a stale/wrong cache can never persist beyond one refresh,
 // but a normal refresh no longer visibly collapses to empty first.
 const SIDEBAR_CACHE_KEY = "an_sidebar_cache_v1";
+// Separate, tiny cache for the vendor-identity fields (companyName/code) --
+// kept apart from the main snapshot above so its read/write doesn't need to
+// touch that object's shape or its two existing write call sites. Without
+// this, ownVendorCompanyName/ownVendorCode always started null on every
+// single page load (even for a returning vendor whose OTHER sidebar state
+// was cache-restored instantly) and only filled in after the separate
+// /api/vendor/type-context round trip resolved -- during that whole window
+// isVendorIdentity was false, so the header/switcher fell back to showing
+// the Business's own name instead of the vendor's.
+const VENDOR_IDENTITY_CACHE_KEY = "an_sidebar_vendor_identity_v1";
+
+function readVendorIdentityCache(): { companyName: string | null; code: string | null } | null {
+  try {
+    const raw = sessionStorage.getItem(VENDOR_IDENTITY_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeVendorIdentityCache(companyName: string | null, code: string | null) {
+  try {
+    sessionStorage.setItem(VENDOR_IDENTITY_CACHE_KEY, JSON.stringify({ companyName, code }));
+  } catch { /* sessionStorage unavailable -- cache is a pure optimization */ }
+}
 
 function readSidebarCache(): { user: UserInfo; businesses: Business[]; activeBiz: Business | null; modules: any[] } | null {
   try {
@@ -182,6 +207,11 @@ export default function Sidebar() {
       setModules(cached.modules);
       setModulesLoaded(true);
     }
+    const cachedIdentity = readVendorIdentityCache();
+    if (cachedIdentity) {
+      setOwnVendorCompanyName(cachedIdentity.companyName);
+      setOwnVendorCode(cachedIdentity.code);
+    }
   }, []);
 
   useEffect(() => { loadUser(); }, []);
@@ -191,7 +221,15 @@ export default function Sidebar() {
   // (who have no vendor identity of their own) and for anyone with zero
   // sub-vendors (the fetch returns an empty list, no extra UI shown).
   useEffect(() => {
-    if (!user || user.isSuperAdmin || user.isPlatformStaff) return;
+    if (!user) return;
+    if (user.isSuperAdmin || user.isPlatformStaff) {
+      // Guards against a stale vendor-identity cache (e.g. a super admin
+      // signing in on the same browser tab a vendor previously used)
+      // ever being misapplied to an admin/staff session.
+      setOwnVendorCompanyName(null);
+      setOwnVendorCode(null);
+      return;
+    }
     let cancelled = false;
     fetch('/api/vendor/type-context')
       .then((r) => r.json())
@@ -201,6 +239,7 @@ export default function Sidebar() {
         setActiveVendorId(d.vendorId);
         setOwnVendorCompanyName(d.companyName || null);
         setOwnVendorCode(d.vendorCode || null);
+        writeVendorIdentityCache(d.companyName || null, d.vendorCode || null);
         return fetch(`/api/vendors/${d.vendorId}/sub-vendors`)
           .then((r) => (r.ok ? r.json() : null))
           .then((sd) => {

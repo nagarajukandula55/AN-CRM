@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import QRCode from "qrcode";
 import { getLayout } from "@/core/invoiceTemplates/registry";
 import type { InvoiceRenderData } from "@/core/invoiceTemplates/types";
 
@@ -31,7 +30,6 @@ export default function InvoicePage() {
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [qr, setQr] = useState("");
   const isB2B = data?.type === "B2B";
   // No company name AND no tax on this document -- a plain Bill, not a
   // Tax Invoice. See api/invoice/view/[invoiceNumber]/route.ts's
@@ -50,18 +48,6 @@ export default function InvoicePage() {
       })
       .catch(() => setLoading(false));
   }, [invoiceNumber]);  
-
-    useEffect(() => {
-      if (!invoiceNumber) return;
-    
-      const verifyUrl =
-        `${window.location.origin}/invoice/verify/${invoiceNumber}`;
-    
-      QRCode.toDataURL(verifyUrl)
-        .then((url) => setQr(url))
-        .catch(console.error);
-    
-    }, [invoiceNumber]);
 
   if (loading) {
     return <div style={{ padding: 20 }}>Loading invoice...</div>;
@@ -178,9 +164,12 @@ export default function InvoicePage() {
 
 </div>
 
-{/* BILL TO / SHIP TO / PAYMENT */}
+{/* BILL TO / PAYMENT -- SHIP TO removed: this is a services (repair
+    workorder / retail sale) invoice, not e-commerce with a separate
+    delivery address, so a shipping-address box never had anything real
+    to show and just repeated the customer's own billing address. */}
 
-<div className="grid3">
+<div className="grid2">
 
   <div className="box">
 
@@ -217,28 +206,12 @@ export default function InvoicePage() {
 
   <div className="box">
 
-    <div className="sectionTitle">SHIP TO</div>
-
-    <div>{safe(data?.shipping?.name || data?.customer?.name)}</div>
-    <div>{safe(data?.shipping?.phone || data?.customer?.phone)}</div>
-    <div>{safe(data?.shipping?.address || data?.customer?.address)}</div>
-    
-    <div>City: {safe(data?.shipping?.city || data?.customer?.city)}</div>
-    <div>State: {safe(data?.shipping?.state || data?.customer?.state)}</div>
-    
-    <div>PIN: {safe(data?.shipping?.pincode || data?.customer?.pincode)}</div>
-
-  </div>
-
-  <div className="box">
-
     <div className="sectionTitle">
       PAYMENT
     </div>
 
-    <div><b>Method:</b> {safe(data?.payment?.method)}</div>
-    <div><b>Status:</b> {safe(data?.payment?.status)}</div>
-    <div>Transaction: {safe(data?.payment?.transactionId || data?.payment?.utr || data?.payment?.razorpayPaymentId || data?.payment?.paymentId)}</div>
+    <div><b>Payment Mode:</b> {safe(data?.payment?.method)}</div>
+    <div><b>Transaction:</b> {safe(data?.payment?.transactionId || data?.payment?.utr || data?.payment?.razorpayPaymentId || data?.payment?.paymentId)}</div>
   </div>
 
 </div>
@@ -338,41 +311,18 @@ export default function InvoicePage() {
   </div>
 )}
 
-{/* QR + GST SUMMARY */}
+{/* GST SUMMARY / TOTALS -- Place of Supply / State Code / Supply Type /
+    Reverse Charge removed: those are inter-state-B2B-specific GST
+    disclosures (relevant when goods cross state lines between GST-
+    registered businesses), not applicable to a walk-in/local repair
+    service B2C invoice, and were showing "N/A" / "B2C" / "No" on every
+    single invoice with no real information conveyed. The authenticity-
+    verification QR (linking to /invoice/verify) was also removed here --
+    only the UPI PAYMENT QR further below remains, and only when this
+    business has a UPI VPA configured (see templateConfig.paymentQrUrl,
+    generated server-side in api/invoice/view/[invoiceNumber]/route.ts). */}
 
 <div className="summaryRow">
-
-<div style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>
-
-  <div style={{ width: "40%" }}>
-    <img
-      src={qr}
-      alt="QR"
-      style={{ width: 120, height: 120 }}
-    />
-  </div>
-
-  <div style={{ width: "60%", fontSize: 12 }}>
-
-    <div>
-      <b>Place of Supply:</b> {safe(data?.placeOfSupply)}
-    </div>
-
-    <div>
-      <b>State Code:</b> {safe(data?.stateCode)}
-    </div>
-
-    <div>
-      <b>Supply Type:</b> {isB2B ? "B2B" : "B2C"}
-    </div>
-
-    <div>
-      <b>Reverse Charge:</b> No
-    </div>
-
-  </div>
-
-</div>
 
   <div className="summary">
 
@@ -462,19 +412,10 @@ export default function InvoicePage() {
 
 </div>
 
-{/* FOOTER */}
-
-<div className="footer">
-
-  Thank you for your business with {safe(data?.company?.name)}
-
-  <br />
-
-  {isPlainBill ? "This is a computer generated bill." : "This is a computer generated GST invoice."}
-
-</div>
-
-{/* DECLARATION */}
+{/* DECLARATION -- shown above the "thank you" footer note, per explicit
+    direction: a legal/disclaimer statement reads as more of a formal
+    closing note than the "thank you" pleasantry, so it belongs right
+    before the document ends, not sandwiched above it. */}
 
 <div className="declaration">
 
@@ -489,6 +430,18 @@ export default function InvoicePage() {
     require a physical signature.
 
   </p>
+
+</div>
+
+{/* FOOTER */}
+
+<div className="footer">
+
+  Thank you for your business with {safe(data?.company?.name)}
+
+  <br />
+
+  {isPlainBill ? "This is a computer generated bill." : "This is a computer generated GST invoice."}
 
 </div>
       
@@ -540,9 +493,9 @@ const styles = `
   font-size:12px;
 }
 
-.grid3 {
+.grid2 {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-top: 8px;
   padding-bottom:8px;
@@ -609,15 +562,6 @@ const styles = `
 .table td {
   font-size: 10px;
   padding: 5px;
-}
-
-.summary {
-  width:60%;
-  background:#f8fafc;
-  border:1px solid #e5e7eb;
-  border-radius:12px;
-  padding:20px;
-  line-height:2;
 }
 
 .grand {
@@ -711,15 +655,8 @@ const styles = `
 
 .summaryRow{
   display:flex;
-  justify-content:space-between;
-  gap:20px;
+  justify-content:flex-end;
   margin-top:20px;
-}
-
-.qrSection{
-  width:40%;
-  border:1px solid #000;
-  padding:15px;
 }
 
 .hsnSummary{
@@ -730,7 +667,8 @@ const styles = `
 }
 
 .summary{
-  width:60%;
+  width:320px;
+  max-width:100%;
   border:1px solid #000;
   border-radius:10px;
   padding:15px;

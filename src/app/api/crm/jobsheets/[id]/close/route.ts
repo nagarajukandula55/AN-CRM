@@ -20,7 +20,7 @@ import Brand from "@/models/Brand";
 import BOM from "@/models/BOM";
 import Inventory from "@/models/Inventory";
 import { updateInventoryStock } from "@/services/inventory.service";
-import { generateDocumentNumber } from "@/core/numbering/numberingService";
+import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { notify } from "@/lib/notify";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
@@ -240,9 +240,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // GST customer, the "BILL" series (numbering type "NON_GST_INVOICE")
     // for everyone else -- per explicit direction, replacing the previous
     // three-way B2B_INVOICE/INVOICE/NON_GST_INVOICE split.
-    const { value: invoiceNumber } = await generateDocumentNumber(
-      jobSheet.businessId.toString(),
-      isB2B ? "INVOICE" : "NON_GST_INVOICE"
+    //
+    // Scoped to this job sheet's own vendor (when it has one) rather than
+    // the shared businessId -- a business hosting multiple vendors used to
+    // give every vendor the SAME running invoice counter, so vendor B's
+    // invoice numbers jumped around based on vendor A's activity and
+    // revealed how many invoices the other vendor had issued. Falls back
+    // to the businessId-scoped counter for a jobsheet with no vendor
+    // (single-tenant business, no marketplace vendors). Same scoped-key
+    // pattern already used for vendor product codes/employee codes/BOM
+    // codes (see generateScopedDocumentNumber's other call sites) --
+    // format/prefix config still comes from the business, only the
+    // COUNTER's scope differs.
+    const invoiceScopeKey = (jobSheet as any).vendorId
+      ? String((jobSheet as any).vendorId)
+      : jobSheet.businessId.toString();
+    const { value: invoiceNumber } = await generateScopedDocumentNumber(
+      invoiceScopeKey,
+      isB2B ? "INVOICE" : "NON_GST_INVOICE",
+      jobSheet.businessId.toString()
     );
 
     const invoice = await SalesInvoice.create({

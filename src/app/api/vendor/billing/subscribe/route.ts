@@ -6,7 +6,7 @@ import VendorSubscription from "@/models/VendorSubscription";
 import VendorBillingInvoice from "@/models/VendorBillingInvoice";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
 import { extendPeriod } from "@/core/billing/billing.service";
-import { generateDocumentNumber } from "@/core/numbering/numberingService";
+import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
 import { createRazorpayOrder } from "@/core/billing/paymentGateway";
 
 /**
@@ -102,7 +102,15 @@ export async function POST(req: NextRequest) {
     // still extends from the existing currentPeriodEnd if it's in the
     // future, same rule extendPeriod always applies.
     const { start, end } = extendPeriod(subscription.currentPeriodEnd, plan.validityDays);
-    const { value: invoiceNumber } = await generateDocumentNumber(String(vendor.businessId), "VENDOR_BILLING_INVOICE");
+    // Scoped to this vendor's own counter, not the shared business one --
+    // see the matching comment in api/crm/jobsheets/[id]/close/route.ts
+    // for why (every vendor under one business used to share one counter,
+    // revealing each other's invoice volume).
+    const { value: invoiceNumber } = await generateScopedDocumentNumber(
+      String(vendor._id),
+      "VENDOR_BILLING_INVOICE",
+      String(vendor.businessId)
+    );
 
     const invoice = await VendorBillingInvoice.create({
       vendorId: vendor._id,

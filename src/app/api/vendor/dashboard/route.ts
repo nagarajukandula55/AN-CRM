@@ -35,7 +35,12 @@ export async function GET() {
     // (CRM job-sheet closure or POS quick-sale) is already a SalesInvoice,
     // so "orders" on this vendor dashboard are just this vendor's own
     // invoices, not a second collection.
-    const orderFilter = { businessId: vendor.businessId }
+    //
+    // SECURITY: was scoped by businessId only -- on a business hosting
+    // multiple vendors, every vendor's headline stats (totalOrders,
+    // pendingOrders, totalRevenue) and "recent orders" list showed every
+    // OTHER vendor's sales too, not just this vendor's own.
+    const orderFilter = { businessId: vendor.businessId, vendorId: vendor._id }
     const invoiceFilter = { vendorId: vendor._id, invoiceType: 'B2B' }
 
     const [allOrders, recentOrders, pendingInvoices] = await Promise.all([

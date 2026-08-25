@@ -5,7 +5,7 @@ import VendorSubscription from "@/models/VendorSubscription";
 import VendorBillingInvoice from "@/models/VendorBillingInvoice";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { totalAmount, extendPeriod } from "@/core/billing/billing.service";
-import { generateDocumentNumber } from "@/core/numbering/numberingService";
+import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
 
 // POST /api/admin/vendor-billing/:vendorId/invoice — generate a new invoice
 // for this vendor's currently-configured plan. periodStart/periodEnd on the
@@ -34,7 +34,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ ve
     const { start, end } = extendPeriod(subscription.currentPeriodEnd, subscription.validityDays);
     const businessId = String((vendor as any).businessId);
 
-    const { value: invoiceNumber } = await generateDocumentNumber(businessId, "VENDOR_BILLING_INVOICE");
+    // Scoped to this vendor's own counter, not the shared business one --
+    // see the matching comment in api/vendor/billing/subscribe/route.ts.
+    const { value: invoiceNumber } = await generateScopedDocumentNumber(vendorId, "VENDOR_BILLING_INVOICE", businessId);
 
     const invoice = await VendorBillingInvoice.create({
       vendorId,

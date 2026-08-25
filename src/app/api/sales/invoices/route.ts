@@ -19,7 +19,7 @@ import SalesInvoice from "@/models/SalesInvoice";
 import { logAction } from "@/lib/audit/logAction";
 import { captureCustomer } from "@/services/customer.service";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedBusinessId, resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 /* ── Invoice number generator ─────────────────────────────────────── */
 /**
@@ -87,17 +87,29 @@ export async function GET(req: NextRequest) {
     // SECURITY: an unset x-active-business-id header (stale JWT) used to
     // fall through to trusting a raw ?businessId= from the client with no
     // ownership check -- see lib/auth/resolveAuthorizedBusinessId.ts.
+    //
+    // SECURITY: this route used to scope only by businessId, which -- on a
+    // marketplace business hosting multiple vendors (the common case, see
+    // resolveAuthorizedVendorScope's own comment) -- returned EVERY
+    // vendor's invoices to EVERY other vendor sharing that business. Now
+    // additionally scopes by vendorId when the caller resolves to one
+    // (business-level staff/super-admin still see all vendors' invoices,
+    // same as before).
     const session = await getEnrichedSession()
-    const bizId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       userId,
       requestedBizId,
       !!session?.isSuperAdmin,
       session?.business?.businessId || null
     )
+    const bizId = scope?.businessId || null
 
     const filter: any = {}
     if (bizId && mongoose.Types.ObjectId.isValid(bizId)) {
       filter.businessId = new mongoose.Types.ObjectId(bizId)
+      if (scope?.vendorId && mongoose.Types.ObjectId.isValid(scope.vendorId)) {
+        filter.vendorId = new mongoose.Types.ObjectId(scope.vendorId)
+      }
     } else {
       filter.createdBy = new mongoose.Types.ObjectId(userId)
     }
