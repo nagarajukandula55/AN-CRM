@@ -71,11 +71,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Business from "@/models/Business";
 import VendorProfile from "@/models/VendorProfile";
+import VendorChatMessage from "@/models/VendorChatMessage";
 import { sendTelegramMessage, sendTelegramPhoto } from "@/lib/telegram";
 import { buildReportMessage, buildTrendChartUrl, periodStart, computePeriodNumbers, fmtINR, renderWorkorderBreakdown } from "@/lib/telegramReport";
 import { sendVendorBusinessReport } from "@/core/telegram/sendBusinessReport";
 import { runAllDueCronJobs } from "@/lib/cronRunner";
 import { getAllowedModuleKeys, getActivePlanKey } from "@/core/pricing/planAccess";
+import { notifyUser } from "@/services/notification.service";
 
 // SECURITY/BILLING: "Automatic Telegram Business Report" is a paid,
 // plan-gated feature (see core/pricing/plans.ts's "telegram-reports"
@@ -433,6 +435,42 @@ export async function POST(req: NextRequest) {
         }
       }
       return NextResponse.json({ success: true });
+    }
+
+    // Inbuilt vendor chat -- a plain-text reply (not a command, not a
+    // linking code/Vendor ID, already ruled out above) arriving in a
+    // PRIVATE chat gets stored as an inbound message on that vendor's
+    // support chat (see api/vendor/chat), so a reply the vendor's own
+    // Telegram app receives from a human on the other end shows up inside
+    // the portal's chat panel too. Personal-chat-only, deliberately --
+    // see VendorChatMessage's own comment for why a group chat (which CAN
+    // legitimately be linked to more than one vendor) isn't a safe
+    // isolation boundary for this, but a personal chat always is.
+    const isGroupChat = message.chat.type === "group" || message.chat.type === "supergroup";
+    if (!isGroupChat && !text.trim().startsWith("/")) {
+      const chatVendor = await VendorProfile.findOne({
+        telegramPersonalChatId: String(chatId),
+        isDeleted: { $ne: true },
+      }).select("_id businessId userId");
+      if (chatVendor) {
+        await VendorChatMessage.create({
+          vendorId: chatVendor._id,
+          businessId: chatVendor.businessId,
+          direction: "inbound",
+          text: text.trim(),
+          telegramMessageId: message.message_id ? String(message.message_id) : "",
+        });
+        if (chatVendor.userId) {
+          notifyUser({
+            userId: String(chatVendor.userId),
+            businessId: String(chatVendor.businessId),
+            title: "New message",
+            message: text.trim().slice(0, 140),
+            type: "info",
+            link: "/vendor/telegram",
+          }).catch(() => {});
+        }
+      }
     }
 
     return NextResponse.json({ success: true });

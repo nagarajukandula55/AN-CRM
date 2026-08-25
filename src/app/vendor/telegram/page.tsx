@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input, Textarea } from '@/components/ui/Input'
 import { LoadingPanel } from '@/components/ui/Spinner'
 import { TutorialLink } from '@/components/shared/TutorialLink'
+import { VendorTelegramChat } from '@/components/vendor/VendorTelegramChat'
 
 interface MessageType {
   key: string
@@ -212,7 +213,7 @@ export default function VendorTelegramPage() {
           ) : (
             <div className="flex flex-col sm:flex-row items-start gap-5">
               {linkQr && (
-                <div className="flex-shrink-0 p-2 bg-white rounded-control border border-border">
+                <div className="flex-shrink-0 p-2 bg-surface rounded-control border border-border">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={linkQr} alt="Scan to connect Telegram" width={160} height={160} />
                 </div>
@@ -237,6 +238,10 @@ export default function VendorTelegramPage() {
           )}
         </CardBody>
       </Card>
+
+      <div className="mb-6">
+        <VendorTelegramChat />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card>

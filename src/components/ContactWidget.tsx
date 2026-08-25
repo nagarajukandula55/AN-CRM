@@ -33,7 +33,11 @@ export default function ContactWidget() {
   const waLink = whatsAppNumber
     ? `https://wa.me/${whatsAppNumber.replace(/[^\d]/g, "")}?text=${encodeURIComponent("Hi, I need help with my account.")}`
     : null;
-  const tgLink = telegramUsername ? `https://t.me/${telegramUsername.replace(/^@/, "")}` : null;
+  // Telegram opens the INBUILT chat (/vendor/telegram) rather than the
+  // external app -- see components/vendor/VendorTelegramChat.tsx. Only
+  // shown once support Telegram is configured, same as WhatsApp, even
+  // though the destination itself is in-app rather than a t.me link.
+  const hasTelegram = !!telegramUsername;
 
   return (
     <div style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", zIndex: 50 }}>
@@ -49,12 +53,12 @@ export default function ContactWidget() {
                 <MessageCircle size={16} className="text-success" /> Chat on WhatsApp
               </a>
             )}
-            {tgLink && (
-              <a href={tgLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 px-3 py-2 rounded-control text-sm text-ink-2 hover:bg-surface-2 transition-colors">
+            {hasTelegram && (
+              <Link href="/vendor/telegram" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2 rounded-control text-sm text-ink-2 hover:bg-surface-2 transition-colors">
                 <Send size={16} className="text-accent" /> Chat on Telegram
-              </a>
+              </Link>
             )}
-            {!waLink && !tgLink && (
+            {!waLink && !hasTelegram && (
               <p className="px-3 py-2 text-xs text-ink-3">Contact options aren't set up yet.</p>
             )}
             <Link href="/vendor/help" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2 rounded-control text-sm text-ink-2 hover:bg-surface-2 transition-colors">
