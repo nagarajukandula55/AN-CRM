@@ -6,7 +6,7 @@ import BusinessMember from "@/models/BusinessMember";
 import UserRole from "@/models/UserRole";
 import Role from "@/models/Role";
 import { getOrCreateANGroupBusinessId } from "@/core/access/anGroupBusiness.service";
-import { resolveOwnerOrManagerVendor } from "@/core/access/vendorAccess.service";
+import { resolveOwnerOrManagerVendor, MINIMAL_FLOOR_ROLE_CODES } from "@/core/access/vendorAccess.service";
 
 export async function GET(req: Request) {
   try {
@@ -74,9 +74,25 @@ export async function GET(req: Request) {
     // member with real platform-wide access still only saw the handful of
     // businesses they happened to have an explicit BusinessMember row for,
     // and had no "AN Group" / cross-business option in the switcher at all.
-    const platformRoleCount = userRoleDocs.length
-      ? await Role.countDocuments({ _id: { $in: userRoleDocs.map((r) => r.roleId) }, businessId: null, vendorId: null })
-      : 0;
+    // Must exclude the universal floor role every registered account gets
+    // (CUSTOMER_SHOPNATIVE/CUSTOMER_ANGROUP -- see api/auth/register's
+    // floor-role provisioning) and require real permissions on the role,
+    // same as buildAuthSession.ts's own (correct) isPlatformStaff
+    // computation -- without both of those, EVERY account (including a
+    // marketplace vendor Owner, whose own BusinessMember row also has no
+    // businessId/vendorId set on the floor role either) counted as
+    // platform staff, which put the platform-wide "AN-CRM (Platform)"
+    // switcher entry and ALL businesses in front of every vendor, and
+    // silently defeated the console/admin access guard's isPlatformStaff
+    // allowance too. Reported live.
+    const platformRoles = userRoleDocs.length
+      ? await Role.find({ _id: { $in: userRoleDocs.map((r) => r.roleId) }, businessId: null, vendorId: null })
+          .select("code permissions")
+          .lean()
+      : [];
+    const platformRoleCount = platformRoles.filter(
+      (r: any) => !MINIMAL_FLOOR_ROLE_CODES.includes(r.code) && (r.permissions?.length || 0) > 0
+    ).length;
     const isPlatformStaff = isSuperAdmin || platformRoleCount > 0;
 
     let businesses: any[] = [];

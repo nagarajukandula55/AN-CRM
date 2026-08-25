@@ -24,6 +24,41 @@ export async function GET(req: Request, context: any) {
       );
     }
 
+    // Previously had NO auth check at all -- any request (not even
+    // logged in) with a valid business id got back the full Business
+    // document, including support-contact numbers, GSTIN, bank details.
+    // Same vendorId-exclusion rule as PATCH below -- see that block's own
+    // comment for why a marketplace vendor's BusinessMember row must
+    // never count as "access to this business" here.
+    const session = await getEnrichedSession();
+    if (!session?.user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+    if (!session.isSuperAdmin) {
+      const membership = await BusinessMember.findOne({
+        userId: session.user.id,
+        businessId: id,
+        status: "ACTIVE",
+        // memberType: "VENDOR" (not vendorId) is what actually marks a
+        // vendor OWNER's row -- provisionVendorLogin deliberately leaves
+        // vendorId UNSET on an Owner's own BusinessMember row (that's the
+        // existing convention distinguishing an Owner from vendor STAFF,
+        // whose rows DO get vendorId set when granted access). Filtering
+        // on vendorId alone let every vendor OWNER straight through this
+        // check -- confirmed live, the exact account that reached
+        // /console/admin/settings was a vendor Owner. Excluding both
+        // covers Owner (memberType) and staff (vendorId) correctly.
+        vendorId: null,
+        memberType: { $ne: "VENDOR" },
+      }).lean();
+      if (!membership) {
+        return NextResponse.json(
+          { success: false, message: "You do not have access to this business" },
+          { status: 403 }
+        );
+      }
+    }
+
     // Reads from this app's own MongoDB, not central-api. PATCH below
     // writes to local Mongo and only best-effort dual-writes to
     // central-api afterward (see lib/centralApiSync.ts's top comment:
@@ -193,12 +228,33 @@ export async function PATCH(req: Request, context: any) {
     // still be scoped to only the business(es) they're actually a member
     // of — same convention as auth/switch-business/route.ts. Without this,
     // any user with edit rights on their own business could PATCH any
-    // other business by guessing/enumerating ids.
+    // other business by guessing/enumerating ids. vendorId: null excludes
+    // a marketplace VENDOR's own BusinessMember row -- every self-signed-
+    // up vendor is a real, active member of the ONE shared platform
+    // Business (see api/vendors/self-signup/route.ts), so without this
+    // exclusion any vendor whose role happens to include generic
+    // businesses.edit (their own default Owner/Manager role does, for
+    // legitimate vendor-settings purposes) could read/write the
+    // PLATFORM's own Business record -- name, support-contact numbers,
+    // GSTIN, bank details -- reported live (a vendor account reached
+    // /console/admin/settings and both saw and could Save this data).
+    // A genuine platform-staff BusinessMember always has vendorId unset.
     if (!session.isSuperAdmin) {
       const membership = await BusinessMember.findOne({
         userId: session.user.id,
         businessId: id,
         status: "ACTIVE",
+        // memberType: "VENDOR" (not vendorId) is what actually marks a
+        // vendor OWNER's row -- provisionVendorLogin deliberately leaves
+        // vendorId UNSET on an Owner's own BusinessMember row (that's the
+        // existing convention distinguishing an Owner from vendor STAFF,
+        // whose rows DO get vendorId set when granted access). Filtering
+        // on vendorId alone let every vendor OWNER straight through this
+        // check -- confirmed live, the exact account that reached
+        // /console/admin/settings was a vendor Owner. Excluding both
+        // covers Owner (memberType) and staff (vendorId) correctly.
+        vendorId: null,
+        memberType: { $ne: "VENDOR" },
       }).lean();
       if (!membership) {
         return NextResponse.json(

@@ -488,7 +488,7 @@ export const MEMBER_TYPE_IMPLIED_MODULES: Record<string, string[]> = {
 // -- see api/auth/login/route.ts's original comment. Duplicated here (not
 // imported from there) since that file is a route handler, not a module
 // other code should import from.
-const MINIMAL_FLOOR_ROLE_CODES = ["CUSTOMER_SHOPNATIVE", "CUSTOMER_ANGROUP"];
+export const MINIMAL_FLOOR_ROLE_CODES = ["CUSTOMER_SHOPNATIVE", "CUSTOMER_ANGROUP"];
 
 /**
  * The ONE place that decides where a logged-in user should land --

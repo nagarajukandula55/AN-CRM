@@ -253,15 +253,16 @@ export default function JobSheetDetailPage() {
   // Fixed Service Charge editing is restricted to Owner/Manager, per
   // explicit direction -- everyone else sees it read-only.
 
-  // Serialized-inventory stock check on part add -- only meaningful when
-  // the active business has Business.inventorySerialized = true (see
-  // models/Business.ts). Fetched once the job sheet's businessId is known.
-  const { data: businessRes } = useSWR(job?.businessId ? `/api/businesses/${job.businessId}` : null)
-  const inventorySerialized = Boolean(businessRes?.business?.inventorySerialized)
-  // Fallback rate for "Add Labour Charge" when this vendor has no
-  // LABOUR-type BOM entry of its own -- set by Owner/Manager at
-  // Vendor > Profile > Business Settings.
-  const defaultLabourCharge = Number(businessRes?.business?.defaultLabourCharge) || 0
+  // Serialized-inventory stock check on part add -- and the "Add Labour
+  // Charge" fallback rate -- are per-VENDOR settings (see VendorProfile's
+  // own comment on why these moved off the shared platform Business:
+  // every self-signed-up vendor shares one Business, so reading them
+  // there meant one vendor's saved settings applied to every vendor).
+  // api/vendor/settings/route.ts is already scoped to the calling
+  // vendor, so no businessId param needed here at all.
+  const { data: vendorSettingsRes } = useSWR('/api/vendor/settings')
+  const inventorySerialized = Boolean(vendorSettingsRes?.inventorySerialized)
+  const defaultLabourCharge = Number(vendorSettingsRes?.defaultLabourCharge) || 0
 
   // Brand Job No. popup -- fires the first time a BOM part is added to
   // this job sheet while brandJobNo is still empty, per explicit direction
