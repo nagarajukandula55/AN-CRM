@@ -13,6 +13,7 @@ import {
 import { Spinner } from "@/components/ui/Spinner";
 import { StateSelect, CitySelect, PincodeInput } from "@/components/shared/LocationSelect";
 import { validateGSTINAgainstState } from "@/lib/validation/gst";
+import { PLANS_BY_MODE, isLaunchPricingActive, currentMonthlyRate, type PlanKey } from "@/core/pricing/plans";
 import Logo from "@/components/marketing/Logo";
 import {
   neonButtonPrimary,
@@ -140,6 +141,14 @@ function PartnerSignupPageInner() {
   const [pincode, setPincode] = useState("");
   const [notes, setNotes] = useState("");
   const [gstWarning, setGstWarning] = useState<string | null>(null);
+  // Which plan the vendor picks BEFORE signing up, per explicit direction
+  // ("while signing up itself it should ask plan type... let user select
+  // required plan... enable that plan and features only even in trial") --
+  // the 7-day trial itself is now scoped to whichever plan is picked here
+  // (see activateVendorWithTrial's VendorSubscription provisioning), not a
+  // blanket "everything unlocked" trial regardless of plan.
+  const [planKey, setPlanKey] = useState<PlanKey>("BASIC");
+  const plans = PLANS_BY_MODE.SC;
 
   function validateStep1(): string | null {
     if (!fullName.trim() || !email.trim() || !password) {
@@ -238,6 +247,7 @@ function PartnerSignupPageInner() {
             panNumber: panNumber.trim() ? panNumber.trim().toUpperCase() : undefined,
             category: category || undefined,
             appliedAs,
+            planKey,
             address:
               street || city || addrState || pincode
                 ? {
@@ -346,7 +356,7 @@ function PartnerSignupPageInner() {
                   <span className="font-semibold text-ink">
                     ✅ Your Service Center application was approved instantly
                   </span>{" "}
-                  — your 7-day trial has already started. Log in with your Vendor ID above whenever you&apos;re ready.
+                  — your 7-day <strong>{plans.find((p) => p.key === planKey)?.name}</strong> trial has already started. Log in with your Vendor ID above whenever you&apos;re ready.
                 </p>
               ) : (
                 <p>
@@ -496,6 +506,54 @@ function PartnerSignupPageInner() {
 
               {step === 2 && (
                 <div className="space-y-4">
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-3">
+                      Choose your plan<span className="text-pink-500">*</span>
+                    </p>
+                    <p className="mb-3 text-[11px] text-ink-3">
+                      Your 7-day trial gives you exactly this plan's features — nothing more, nothing less. You can change plans anytime after.
+                    </p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      {plans.map((p) => {
+                        const price = currentMonthlyRate(p);
+                        const selected = planKey === p.key;
+                        return (
+                          <button
+                            key={p.key}
+                            type="button"
+                            onClick={() => setPlanKey(p.key)}
+                            className={`rounded-card border p-3 text-left transition-all ${
+                              selected
+                                ? "border-transparent bg-gradient-to-br from-violet-600 to-cyan-500 text-white shadow-[0_4px_16px_-4px_rgba(139,92,246,0.5)]"
+                                : "border-violet-100 bg-surface hover:border-violet-300"
+                            }`}
+                          >
+                            <div className="flex items-baseline justify-between">
+                              <span className="text-sm font-semibold">{p.name}</span>
+                              {p.highlight && (
+                                <span className={`text-[9px] font-bold uppercase tracking-wide ${selected ? "text-white/80" : "text-violet-500"}`}>
+                                  Popular
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-1 text-lg font-bold">
+                              ₹{price.toLocaleString("en-IN")}
+                              <span className={`text-[10px] font-normal ${selected ? "text-white/80" : "text-ink-3"}`}>/mo + GST</span>
+                            </div>
+                            <ul className={`mt-2 space-y-1 text-[10px] leading-snug ${selected ? "text-white/90" : "text-ink-3"}`}>
+                              {p.features.slice(0, 3).map((f) => (
+                                <li key={f}>• {f}</li>
+                              ))}
+                            </ul>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {isLaunchPricingActive() && (
+                      <p className="mt-2 text-[10px] font-medium text-success">Launch pricing — limited time.</p>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Field label="Company Name" required>
                       <input

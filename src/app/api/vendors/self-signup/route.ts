@@ -14,6 +14,10 @@ import { logAction } from "@/lib/audit/logAction";
 import { sendAdminSystemAlert } from "@/core/telegram/sendAdminSystemAlert";
 import { notifyAdmins } from "@/core/telegram/notifyAdmins";
 import { sendWelcomeEmail } from "@/services/email/resend.service";
+import VendorSubscription from "@/models/VendorSubscription";
+import { findPlan, type PlanKey } from "@/core/pricing/plans";
+
+const VALID_PLAN_KEYS: PlanKey[] = ["BASIC", "PRO", "ULTIMATE"];
 
 const TRIAL_DAYS = 7;
 
@@ -46,7 +50,8 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const body = await req.json();
-    const { name, companyName, email, phone, password, appliedAs } = body;
+    const { name, companyName, email, phone, password, appliedAs, planKey } = body;
+    const requestedPlanKey: PlanKey = VALID_PLAN_KEYS.includes(planKey) ? planKey : "BASIC";
 
     if (!name?.trim() || !companyName?.trim() || !email?.trim() || !password) {
       return NextResponse.json(
@@ -141,6 +146,24 @@ export async function POST(req: NextRequest) {
     // no-op) -- it only finalizes username=vendorId and the role/access
     // plumbing, same as every other activation path in this app.
     await provisionVendorLogin(vendor, String(user._id));
+
+    // Scopes the trial itself to the chosen plan's modules (rate 0, no
+    // invoice/payment) instead of leaving getVendorAvailableModules()
+    // with no VendorSubscription at all -- that permissively grants FULL
+    // unrestricted access with no plan ever having been chosen. Mirrors
+    // activateVendorWithTrial's identical provisioning for the
+    // apply-route instant-trial path -- see that function's own comment.
+    const plan = findPlan("SC", requestedPlanKey) || findPlan("SC", "BASIC")!;
+    await VendorSubscription.create({
+      vendorId: vendor._id,
+      businessId: resolvedBusinessId,
+      modules: plan.vendorModuleKeys.map((key) => ({ key, rate: 0 })),
+      validityDays: TRIAL_DAYS,
+      currentPeriodStart: now,
+      currentPeriodEnd: trialEndsAt,
+      planKey: plan.key,
+      planName: plan.name,
+    });
 
     logAction({
       action: "CREATE",

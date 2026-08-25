@@ -12,6 +12,9 @@ import { sendGenericEmail } from "@/services/email/resend.service";
 import { renderEmailShell, emailInfoBox } from "@/services/email/emailShell";
 import { getVendorOnboardingConfig, getPlatformBusinessId } from "@/lib/centralApiRead";
 import { sendTelegramMessage } from "@/lib/telegram";
+import type { PlanKey } from "@/core/pricing/plans";
+
+const VALID_PLAN_KEYS: PlanKey[] = ["BASIC", "PRO", "ULTIMATE"];
 
 /**
  * POST /api/vendors/apply — PUBLIC vendor signup request.
@@ -57,6 +60,7 @@ export async function POST(req: NextRequest) {
       bankDetails,
       documents,
       notes,
+      planKey,
     } = body;
 
     if (!companyName || !contactPerson || !email || !phone) {
@@ -294,7 +298,8 @@ export async function POST(req: NextRequest) {
     }
     if (skipApproval) {
       try {
-        const result = await activateVendorWithTrial(vendor as any, String(resolvedBusinessId), { skipAgreement: true });
+        const requestedPlanKey: PlanKey | undefined = VALID_PLAN_KEYS.includes(planKey) ? planKey : undefined;
+        const result = await activateVendorWithTrial(vendor as any, String(resolvedBusinessId), { skipAgreement: true, planKey: requestedPlanKey });
         trialActivated = result.ok;
         if (!result.ok) {
           console.error("Instant vendor trial activation failed:", result.error);

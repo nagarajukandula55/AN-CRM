@@ -9,6 +9,8 @@ import VendorStaffSlot, { VENDOR_DESIGNATIONS } from "@/models/VendorStaffSlot";
 import Role from "@/models/Role";
 import UserRole from "@/models/UserRole";
 import Subscription from "@/models/Subscription";
+import VendorSubscription from "@/models/VendorSubscription";
+import { findPlan, type PlanKey } from "@/core/pricing/plans";
 import { createDefaultVendorRoles } from "@/core/access/vendorDefaultRoles.service";
 import { generateUniqueUserId } from "@/lib/auth/generateUserId";
 import { logAction } from "@/lib/audit/logAction";
@@ -246,7 +248,7 @@ export async function activateVendorAfterAgreement(
 export async function activateVendorWithTrial(
   vendor: IVendorProfile,
   businessId: string,
-  opts?: { skipAgreement?: boolean }
+  opts?: { skipAgreement?: boolean; planKey?: PlanKey }
 ): Promise<
   | { ok: true; vendor: IVendorProfile; tempPassword: string | null }
   | { ok: false; error: string }
@@ -349,11 +351,18 @@ By signing below, both parties agree to the terms above.`;
 
     const now = new Date();
     const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    // SC is the only mode this platform supports now (Brand/POS removed,
+    // confirmed zero production usage before deletion) -- vendor.appliedAs
+    // is always "SC" in practice, but the "BRAND" fallback literal this
+    // used to have is no longer a valid Subscription.mode value at all
+    // (that schema's enum was narrowed to ["SC"] in the same cleanup),
+    // so it would throw a Mongoose validation error if it were ever hit.
+    const planKey: PlanKey = opts?.planKey || "BASIC";
     await (Subscription as any).create({
       businessId,
       subVendorOf: vendor._id,
-      mode: vendor.appliedAs || "BRAND",
-      plan: "BASIC",
+      mode: "SC",
+      plan: planKey,
       billingPeriod: "MONTHLY",
       status: "TRIAL",
       amount: 0,
@@ -363,7 +372,32 @@ By signing below, both parties agree to the terms above.`;
       createdBy: vendor.userId,
     });
 
-    sendTelegramMessage(`✅ <b>Vendor activated on 7-day trial</b>\n${vendor.companyName} (${vendor.appliedAs || "BRAND"}) — ${vendor.email}`).catch(() => {});
+    // THE actual module-access gate (core/access/vendorAccess.service.ts's
+    // getVendorAvailableModules) reads VendorSubscription.modules, not the
+    // legacy Subscription record above -- an instant-trial vendor with no
+    // VendorSubscription at all fell through that function's permissive
+    // "no VendorSubscription = no extra restriction" fallback and got
+    // FULL, unrestricted portal access during their trial regardless of
+    // which plan (or no plan) they picked -- reported live ("irrespective
+    // of plan everyhting is showing up"). Provisioning one here, scoped to
+    // the vendor's actual chosen plan, at zero cost (rate 0, no invoice,
+    // no payment) so the trial itself is scoped to what they picked, not
+    // a blanket "everything unlocked" 7 days. currentPeriodEnd = trialEnd
+    // (not further out) so nothing here silently extends access past the
+    // real trial window checkTrialAccess.ts already enforces.
+    const plan = findPlan("SC", planKey) || findPlan("SC", "BASIC")!;
+    await VendorSubscription.create({
+      vendorId: vendor._id,
+      businessId,
+      modules: plan.vendorModuleKeys.map((key) => ({ key, rate: 0 })),
+      validityDays: 7,
+      currentPeriodStart: now,
+      currentPeriodEnd: trialEnd,
+      planKey: plan.key,
+      planName: plan.name,
+    });
+
+    sendTelegramMessage(`✅ <b>Vendor activated on 7-day trial</b>\n${vendor.companyName} (SC, ${plan.name} plan) — ${vendor.email}`).catch(() => {});
     return { ok: true, vendor, tempPassword };
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Unknown error";
