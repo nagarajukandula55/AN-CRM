@@ -749,7 +749,7 @@ const BusinessSchema = new mongoose.Schema(
     // and driven by api/cron/telegram-business-report.
     telegramReportFrequency: {
       type: String,
-      enum: ["NONE", "DAILY", "WEEKLY", "MONTHLY"],
+      enum: ["NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"],
       default: "NONE",
     },
     telegramReportLastSentAt: {

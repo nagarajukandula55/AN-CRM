@@ -15,7 +15,7 @@ import mongoose, { Schema, Model, Document, Types } from "mongoose";
 
 export type ReportDataSource = "CRM_JOBSHEETS" | "SALES_INVOICES" | "VENDORS" | "CUSTOMERS";
 export type ChartType = "TABLE" | "BAR" | "LINE" | "PIE";
-export type ScheduleFrequency = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
+export type ScheduleFrequency = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 
 export interface IReportFilter {
   field: string;
@@ -65,7 +65,7 @@ const ReportDefinitionSchema = new Schema<IReportDefinition>(
     groupByField: { type: String },
     chartType: { type: String, enum: ["TABLE", "BAR", "LINE", "PIE"], default: "TABLE" },
     schedule: {
-      frequency: { type: String, enum: ["NONE", "DAILY", "WEEKLY", "MONTHLY"], default: "NONE" },
+      frequency: { type: String, enum: ["NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"], default: "NONE" },
       recipientEmails: { type: [String], default: [] },
       sendToTelegram: { type: Boolean, default: false },
       lastRunAt: { type: Date },

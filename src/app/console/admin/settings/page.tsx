@@ -1383,6 +1383,7 @@ export default function AdminSettingsPage() {
                       <option value="DAILY">Daily</option>
                       <option value="WEEKLY">Weekly</option>
                       <option value="MONTHLY">Monthly</option>
+                      <option value="YEARLY">Yearly</option>
                     </select>
                     {notifReportFrequency !== 'NONE' && (
                       <input
@@ -1408,7 +1409,7 @@ export default function AdminSettingsPage() {
                 )}
                 <div className="text-xs text-ink-3 mt-1">
                   Sends a full business summary (revenue, workorders, a trend chart) to the chat(s) above, once per
-                  {notifReportFrequency === 'WEEKLY' ? ' week' : notifReportFrequency === 'MONTHLY' ? ' month' : ' day'}
+                  {notifReportFrequency === 'WEEKLY' ? ' week' : notifReportFrequency === 'MONTHLY' ? ' month' : notifReportFrequency === 'YEARLY' ? ' year' : ' day'}
                   {notifReportFrequency !== 'NONE' ? ` around ${notifReportTime}` : ''}. Telegram bots can't schedule their
                   own sends, so this is a best-effort time, accurate to how often the report check itself runs.
                 </div>

@@ -29,6 +29,7 @@ const MIN_INTERVAL_HOURS: Record<string, number> = {
   DAILY: 20,
   WEEKLY: 24 * 6,
   MONTHLY: 24 * 26,
+  YEARLY: 24 * 350,
 };
 
 function istNow(now: Date): Date {
@@ -61,7 +62,7 @@ export async function GET(req: NextRequest) {
 
     const now = new Date();
     const vendors = await VendorProfile.find({
-      telegramReportFrequency: { $in: ["DAILY", "WEEKLY", "MONTHLY"] },
+      telegramReportFrequency: { $in: ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"] },
       isDeleted: { $ne: true },
     })
       .select("_id telegramReportFrequency telegramReportLastSentAt telegramReportTime")

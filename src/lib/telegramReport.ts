@@ -16,6 +16,7 @@ export function periodStart(frequency: string, now: Date): Date {
   const start = new Date(now);
   if (frequency === "DAILY") start.setDate(start.getDate() - 1);
   else if (frequency === "WEEKLY") start.setDate(start.getDate() - 7);
+  else if (frequency === "YEARLY") start.setFullYear(start.getFullYear() - 1);
   else start.setMonth(start.getMonth() - 1);
   return start;
 }
@@ -105,6 +106,7 @@ const FREQUENCY_META: Record<string, { emoji: string; label: string; tableTitle:
   DAILY: { emoji: "📊", label: "Daily Report", tableTitle: "Today", compareVerb: "vs yesterday" },
   WEEKLY: { emoji: "📈", label: "Weekly Report", tableTitle: "This Week", compareVerb: "vs last week" },
   MONTHLY: { emoji: "🗓️", label: "Monthly Report", tableTitle: "This Month", compareVerb: "vs last month" },
+  YEARLY: { emoji: "📅", label: "Yearly Report", tableTitle: "This Year", compareVerb: "vs last year" },
 };
 
 export async function buildReportMessage(
@@ -240,6 +242,7 @@ const TREND_POINTS: Record<string, { count: number; stepDays: number; labelFmt: 
   DAILY: { count: 7, stepDays: 1, labelFmt: (d) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) },
   WEEKLY: { count: 6, stepDays: 7, labelFmt: (d) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) },
   MONTHLY: { count: 6, stepDays: 30, labelFmt: (d) => d.toLocaleDateString("en-IN", { month: "short", year: "2-digit" }) },
+  YEARLY: { count: 5, stepDays: 365, labelFmt: (d) => d.toLocaleDateString("en-IN", { year: "numeric" }) },
 };
 
 export async function buildTrendChartUrl(businessName: string, frequency: string, activityLabel: string, businessId: string, isSC: boolean, now: Date, vendorId?: string): Promise<string> {
@@ -264,7 +267,7 @@ export async function buildTrendChartUrl(businessName: string, frequency: string
       ],
     },
     options: {
-      plugins: { title: { display: true, text: `${businessName} — last ${cfg.count} ${frequency === "DAILY" ? "days" : frequency === "WEEKLY" ? "weeks" : "months"}` } },
+      plugins: { title: { display: true, text: `${businessName} — last ${cfg.count} ${frequency === "DAILY" ? "days" : frequency === "WEEKLY" ? "weeks" : frequency === "YEARLY" ? "years" : "months"}` } },
       scales: {
         y: { type: "linear", position: "left", title: { display: true, text: "Revenue (Rs)" } },
         y1: { type: "linear", position: "right", title: { display: true, text: activityLabel }, grid: { drawOnChartArea: false } },

@@ -65,7 +65,7 @@ export async function PUT(req: NextRequest) {
 
   if (typeof body.telegramChatId === "string") vendor.telegramChatId = body.telegramChatId.trim();
   if (typeof body.telegramPersonalChatId === "string") vendor.telegramPersonalChatId = body.telegramPersonalChatId.trim();
-  if (["NONE", "DAILY", "WEEKLY", "MONTHLY"].includes(body.telegramReportFrequency)) {
+  if (["NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"].includes(body.telegramReportFrequency)) {
     // Server-side enforcement of the "telegram-reports" plan feature --
     // same check api/businesses/[id]/route.ts already does for the (dead)
     // Business-level field, now actually load-bearing here.

@@ -59,7 +59,7 @@ export async function sendVendorBusinessReport(
   }
   const chartUrl = await buildTrendChartUrl(reportTitle, frequency, activityLabel, vendor.businessId, isSC, now, vendor.vendorObjectId);
 
-  const chartCaption = `${frequency === "DAILY" ? "📊" : frequency === "WEEKLY" ? "📈" : "🗓️"} ${reportTitle} — trend`;
+  const chartCaption = `${frequency === "DAILY" ? "📊" : frequency === "WEEKLY" ? "📈" : frequency === "YEARLY" ? "📅" : "🗓️"} ${reportTitle} — trend`;
   for (const destChatId of destinationChatIds) {
     await sendTelegramMessage(text, { chatId: destChatId, parseMode: "HTML" });
     await sendTelegramPhoto(chartUrl, { chatId: destChatId, caption: chartCaption });

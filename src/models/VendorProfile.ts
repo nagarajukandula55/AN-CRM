@@ -120,7 +120,7 @@ export interface IVendorProfile extends Document {
   // from THIS date (not the payment date) so trial time is absorbed into
   // the first billing cycle rather than stacking as extra free time.
   trialEndsAt?: Date | null;
-  telegramReportFrequency?: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
+  telegramReportFrequency?: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
   telegramReportLastSentAt?: Date;
   // "HH:mm" (24h, IST -- the only timezone this app operates in), the
   // time-of-day api/cron/telegram-business-reports checks against instead
@@ -309,7 +309,7 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     telegramLinkCode: { type: String, default: null },
     telegramLinkCodeExpiresAt: { type: Date, default: null },
     trialEndsAt: { type: Date, default: null },
-    telegramReportFrequency: { type: String, enum: ["NONE", "DAILY", "WEEKLY", "MONTHLY"], default: "NONE" },
+    telegramReportFrequency: { type: String, enum: ["NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"], default: "NONE" },
     telegramReportLastSentAt: { type: Date },
     telegramReportTime: { type: String, trim: true, default: "09:00" },
     telegramMessageRouting: { type: Schema.Types.Mixed, default: {} },

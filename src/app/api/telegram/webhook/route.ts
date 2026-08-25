@@ -13,8 +13,11 @@
  * set, for a business running without central-api at all.
  *
  * See lib/telegram.ts for the bot token this shares, ANOPS_TELEGRAM_BOT_TOKEN
- * -- one bot serves every vendor, each vendor just links their own chat by
- * sending their Vendor ID.
+ * -- one bot serves every vendor, each vendor links their own chat via a
+ * one-time code generated from their Profile page (QR code or deep link
+ * for a personal chat, paste the code as a plain message for a group --
+ * see api/vendor/telegram-link-code and the LINK_CODE_RE block below).
+ * Typing a Vendor ID to link was removed -- see that block's own comment.
  *
  * VENDOR-SCOPED, NOT BUSINESS-SCOPED: the platform is now single-Business/
  * multi-vendor (every vendor's VendorProfile shares one Business), so all
@@ -25,10 +28,16 @@
  * multiple different Vendor IDs in the admin list).
  *
  * Commands:
- *   /start, /tgid  — replies with the chat id the message came from.
+ *   /start, /tgid  — replies with the chat id the message came from (or,
+ *                    with a linking code as the argument, completes that
+ *                    chat's link -- see LINK_CODE_RE below).
  *   /help          — lists every command.
+ *   /profile       — this vendor's own account summary (company, status,
+ *                    plan) for every vendor linked to this chat.
  *   /today         — on-demand snapshot (today vs. yesterday) for every
  *                    vendor whose Telegram Chat/Group ID matches this chat.
+ *   /daily /weekly /monthly /yearly — on-demand full report of that SPECIFIC type,
+ *                    regardless of the vendor's own saved default schedule.
  *   /report        — on-demand full report for every vendor linked to this
  *                    chat, using each one's own configured frequency.
  *   /runjobs       — (admin only) manually runs every due scheduled job.
@@ -72,6 +81,7 @@ import { connectDB } from "@/lib/mongodb";
 import Business from "@/models/Business";
 import VendorProfile from "@/models/VendorProfile";
 import VendorChatMessage from "@/models/VendorChatMessage";
+import VendorSubscription from "@/models/VendorSubscription";
 import { sendTelegramMessage, sendTelegramPhoto } from "@/lib/telegram";
 import { buildReportMessage, buildTrendChartUrl, periodStart, computePeriodNumbers, fmtINR, renderWorkorderBreakdown } from "@/lib/telegramReport";
 import { sendVendorBusinessReport } from "@/core/telegram/sendBusinessReport";
@@ -102,18 +112,19 @@ function isAdminChat(chatId: number | string): boolean {
 const HELP_TEXT = [
   "<b>AN CRM Bot — Commands</b>",
   "",
-  "/link VND0001 — link this chat using your own Vendor ID (Profile page, or Settings &gt; Integrations) -- send it from your team GROUP to set the group chat, and separately from your OWN personal chat to set your personal chat. You can also just send <code>VND0001</code> alone, any time, with no /link needed -- or send /link with nothing after it and I'll ask you for it.",
+  "Not linked yet? Generate a QR code/link from your Profile page (Telegram Alerts) and scan it -- that links this chat instantly and securely. Typing a Vendor ID here is no longer supported.",
   "/tgid — show this chat's Telegram ID",
+  "/profile — your vendor account summary (company, status, plan)",
   "/today — quick revenue &amp; activity snapshot, today vs. yesterday",
-  "/report — full period report for every vendor linked to this chat",
+  "/daily — full daily report, on demand",
+  "/weekly — full weekly report, on demand",
+  "/monthly — full monthly report, on demand",
+  "/yearly — full yearly report, on demand",
+  "/report — full report using your saved default schedule",
   "/runjobs — (admin only) manually run every due scheduled job now",
   "/sendreports — (admin only) send every linked vendor their own business report right now",
   "/help — this list",
 ].join("\n");
-
-// A Vendor ID (VendorProfile.vendorId, see core/numbering/types.ts's
-// VENDOR: "VND" prefix) looks like "VND0001".
-const VENDOR_ID_RE = /^VND\d+$/i;
 
 // Natural-language admin trigger, e.g. "send all reports" or "send
 // reports to My Biz Flow" / "send reports to VND0004" -- group 2 (if
@@ -248,17 +259,11 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
-    // Two ways in: `/link VND0001` in one message, OR just `/link` (with no
-    // argument) which replies asking for the Vendor ID -- the very next
-    // plain-text message from this same chat that looks like a Vendor ID
-    // (VND\d+, matched below regardless of any /link command) completes
-    // the link.
-    // Newer, preferred path: a one-time code generated from the vendor's
-    // own Profile page (QR code / deep link, or typed/pasted manually into
-    // a group) -- see api/vendor/telegram-link-code and this file's top
-    // comment for why this replaced typing the real Vendor ID as the
-    // primary flow (that path is kept below for backward compatibility,
-    // e.g. an old QR/bookmark still floating around).
+    // ONLY supported linking path: a one-time code generated from the
+    // vendor's own Profile page (QR code / deep link, or typed/pasted
+    // manually into a group) -- see api/vendor/telegram-link-code. The
+    // old typed-Vendor-ID path was removed entirely, see the comment
+    // further below for why.
     if (command === "/start" || LINK_CODE_RE.test(text.trim())) {
       const arg = (command === "/start" ? text.trim().split(/\s+/)[1] : text.trim())?.trim().toUpperCase();
       if (arg && LINK_CODE_RE.test(arg)) {
@@ -287,31 +292,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (command === "/link" || VENDOR_ID_RE.test(text.trim())) {
-      const arg = (command === "/link" ? text.trim().split(/\s+/)[1] : text.trim())?.trim().toUpperCase();
-      if (!arg || !VENDOR_ID_RE.test(arg)) {
-        await sendToChat(chatId, "Send your own Vendor ID to link this chat -- e.g. <code>VND0001</code> (found on your Profile page, or Settings &gt; Integrations). You can send it alone or as <code>/link VND0001</code>. Easier: generate a one-tap QR code from your Profile page instead.");
-        return NextResponse.json({ success: true });
-      }
-
-      // Send the SAME Vendor ID from two different chats to configure both
-      // destinations independently -- send it from your team GROUP once
-      // (sets telegramChatId), then again from your own personal DM with
-      // the bot (sets telegramPersonalChatId).
-      const vendor = await VendorProfile.findOne({ vendorId: arg, isDeleted: { $ne: true } });
-      if (!vendor) {
-        await sendToChat(chatId, `No vendor found for <code>${arg}</code>. Double-check the Vendor ID on your Profile page and try again.`);
-        return NextResponse.json({ success: true });
-      }
-      await finishLinking(chatId, message, vendor, `Vendor ID ${arg}`);
-      return NextResponse.json({ success: true });
-    }
+    // The bare-Vendor-ID / "/link VND0001" linking path was removed per
+    // explicit direction and for a real security reason: a Vendor ID is
+    // visible all over the app (not a secret), so anyone who knew/guessed
+    // one could link their own chat to receive another vendor's reports.
+    // The one-time-code system (LINK_CODE_RE block above, generated from
+    // the vendor's own Profile page as a QR/deep link) is the only
+    // supported way to link a chat now, for both personal (deep link) and
+    // group (paste the code as a plain message) chats.
 
     if (/^\/(tgid|start)\b/i.test(command)) {
       const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
       const reply = isGroup
-        ? `This group's Telegram ID is:\n<code>${chatId}</code>\n\nEasiest setup: send <code>/link VND0001</code> here (your own Vendor ID) and this group is linked immediately — no copy-pasting needed.\n\nSend /help to see everything this bot can do.`
-        : `Your Telegram ID is:\n<code>${chatId}</code>\n\nEasiest setup: send <code>/link VND0001</code> here (your own Vendor ID) and this chat is linked immediately — no copy-pasting needed.\n\nSend /help to see everything this bot can do.`;
+        ? `This group's Telegram ID is:\n<code>${chatId}</code>\n\nTo link it, generate a code from your Profile page (Telegram Alerts) and send that code here as a plain message.`
+        : `Your Telegram ID is:\n<code>${chatId}</code>\n\nTo link it, generate a QR code/link from your Profile page (Telegram Alerts) and scan/tap it -- links instantly.`;
       await sendToChat(chatId, reply);
       return NextResponse.json({ success: true });
     }
@@ -369,7 +363,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (command === "/today" || command === "/report") {
+    // /report used to always use each vendor's own SAVED default schedule
+    // regardless of what was actually asked for -- /daily, /weekly,
+    // /monthly now let anyone request a SPECIFIC report type on demand,
+    // per explicit direction ("different commands required and if they
+    // send accordingly reports should be triggered"). /report still
+    // exists too, as a shorthand for "give me my usual one".
+    const EXPLICIT_FREQUENCY: Record<string, string> = { "/daily": "DAILY", "/weekly": "WEEKLY", "/monthly": "MONTHLY", "/yearly": "YEARLY" };
+    if (command === "/today" || command === "/report" || command in EXPLICIT_FREQUENCY) {
       // Matches either the group chat id OR the personal chat id -- a
       // vendor asking from their own personal DM (Settings supports
       // configuring separately) should still get "not linked" only if
@@ -382,7 +383,7 @@ export async function POST(req: NextRequest) {
       if (vendors.length === 0) {
         await sendToChat(
           chatId,
-          "No vendor is linked to this chat yet. Send <code>/link VND0001</code> (your own Vendor ID) here first."
+          "No vendor is linked to this chat yet. Generate a code from your Profile page (Telegram Alerts) and send it here first."
         );
         return NextResponse.json({ success: true });
       }
@@ -415,15 +416,17 @@ export async function POST(req: NextRequest) {
             if (statusBreakdown) msgLines.push("", statusBreakdown);
             await sendToChat(chatId, msgLines.join("\n"));
           } else {
-            // /report reuses the same paid "Automatic Telegram Business
-            // Report" content the scheduled trigger sends -- must be
-            // gated by the same plan check, not just /today's free
-            // snapshot.
+            // /report and /daily|/weekly|/monthly all reuse the same paid
+            // "Automatic Telegram Business Report" content the scheduled
+            // trigger sends -- must be gated by the same plan check, not
+            // just /today's free snapshot.
             if (!(await hasTelegramReportsPlan(business))) {
-              await sendToChat(chatId, `<b>${displayName}</b>: full reports aren't included in your current plan. Upgrade from Plan &amp; Billing to use /report -- /today's quick snapshot is still free.`);
+              await sendToChat(chatId, `<b>${displayName}</b>: full reports aren't included in your current plan. Upgrade from Plan &amp; Billing to use ${command} -- /today's quick snapshot is still free.`);
               continue;
             }
-            const frequency = vendor.telegramReportFrequency && vendor.telegramReportFrequency !== "NONE" ? vendor.telegramReportFrequency : "DAILY";
+            const frequency =
+              EXPLICIT_FREQUENCY[command] ||
+              (vendor.telegramReportFrequency && vendor.telegramReportFrequency !== "NONE" ? vendor.telegramReportFrequency : "DAILY");
             const { text: reportText } = await buildReportMessage(displayName, frequency, isSC, String(business._id), now, String(vendor._id), displayName);
             await sendToChat(chatId, reportText);
             const activityLabel = isSC ? "Workorders" : "Calls";
@@ -433,6 +436,47 @@ export async function POST(req: NextRequest) {
         } catch (err) {
           console.error(`[telegram-webhook] ${command} failed for vendor ${vendor._id}:`, err);
         }
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    // /profile -- vendor's own account summary, on demand. Per explicit
+    // direction ("give option to check vendor's own profile as well with
+    // command"). Same chat-to-vendor(s) resolution as /today|/report.
+    if (command === "/profile") {
+      const vendors = await VendorProfile.find({
+        $or: [{ telegramChatId: String(chatId) }, { telegramPersonalChatId: String(chatId) }],
+        isDeleted: { $ne: true },
+      }).select("vendorId companyName contactPerson email phone status isApproved businessId");
+
+      if (vendors.length === 0) {
+        await sendToChat(
+          chatId,
+          "No vendor is linked to this chat yet. Generate a code from your Profile page (Telegram Alerts) and send it here first."
+        );
+        return NextResponse.json({ success: true });
+      }
+
+      for (const vendor of vendors) {
+        const sub = vendor.businessId
+          ? await VendorSubscription.findOne({ vendorId: vendor._id }).select("planName currentPeriodEnd").lean<any>()
+          : null;
+        const planLine = sub?.planName
+          ? `${sub.planName} — valid until ${new Date(sub.currentPeriodEnd).toLocaleDateString("en-IN")}`
+          : "No active plan";
+        const lines = [
+          `<b>${vendor.companyName || "Vendor"}</b>`,
+          "",
+          "<pre>",
+          `Vendor ID    ${vendor.vendorId || "—"}`,
+          `Contact      ${vendor.contactPerson || "—"}`,
+          `Email        ${vendor.email || "—"}`,
+          `Phone        ${vendor.phone || "—"}`,
+          `Status       ${vendor.status || "—"}${vendor.isApproved ? "" : " (pending approval)"}`,
+          `Plan         ${planLine}`,
+          "</pre>",
+        ];
+        await sendToChat(chatId, lines.join("\n"));
       }
       return NextResponse.json({ success: true });
     }
