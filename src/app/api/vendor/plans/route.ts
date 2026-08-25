@@ -38,7 +38,6 @@ export async function GET(_req: NextRequest) {
           monthlyPriceINR: effective.monthlyPriceINR,
           seatLimit: effective.seatLimit,
           features: effective.features,
-          moduleKeys: effective.moduleKeys,
           highlight: effective.highlight || false,
         };
       })

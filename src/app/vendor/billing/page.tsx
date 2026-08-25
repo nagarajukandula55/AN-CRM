@@ -32,7 +32,7 @@ interface BillingPlanOption {
   key: string;
   name: string;
   tagline: string;
-  moduleKeys: string[];
+  features: string[];
   monthlyPriceINR: number;
   seatLimit: string;
   highlight?: boolean;
@@ -179,13 +179,11 @@ export default function VendorBillingPage() {
                     <span className="text-lg font-semibold tabular text-ink">₹{plan.monthlyPriceINR.toLocaleString("en-IN")}</span>
                     <span className="text-xs text-ink-3">/ month</span>
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    {plan.moduleKeys.map((k) => (
-                      <span key={k} className="text-xs bg-surface-2 text-ink-2 rounded-full px-2 py-0.5">
-                        {MODULE_LABELS[k] || k}
-                      </span>
+                  <ul className="text-xs text-ink-2 space-y-0.5 list-disc list-inside">
+                    {plan.features.map((f) => (
+                      <li key={f}>{f}</li>
                     ))}
-                  </div>
+                  </ul>
                   <Button
                     size="sm"
                     className="w-full"

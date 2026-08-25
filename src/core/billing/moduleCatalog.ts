@@ -15,6 +15,8 @@ export const MODULE_LABELS: Record<string, string> = {
   logistics: "Logistics", finance: "Finance", gst: "GST", crm: "CRM",
   crm_jobsheets: "CRM Job Sheets", fault_codes: "Fault Codes", solutions: "Solutions",
   banners: "Banners", blog: "Blog", staff: "Staff", brands: "Brands", device_models: "Device Models",
+  customers: "Customers", settings: "Settings", businesses: "Business Profile",
+  reports: "Reports", analytics: "Analytics", integrations: "Integrations",
 };
 
 export const MODULE_KEYS = Object.keys(MODULE_LABELS);

@@ -68,17 +68,21 @@ export async function POST(req: NextRequest) {
     const plan = await getEffectivePlan(mode, planKey);
     if (!plan) return NextResponse.json({ success: false, message: "Plan not found or no longer available" }, { status: 404 });
 
-    // Split the plan's flat monthly price evenly across its module keys so
-    // each module keeps a real rate for invoice line items (GST is computed
-    // per-line in vendorBillingView.ts) while modules[].key stays the real
-    // module list vendorAccess.service.ts reads for actual feature access
-    // -- collapsing to one synthetic line would silently break access
-    // gating. Remainder from integer-paise rounding goes on the last
-    // module so the rates always sum to exactly the plan's price.
+    // Split the plan's flat monthly price evenly across its VENDOR-PORTAL
+    // module keys (plan.vendorModuleKeys -- NOT plan.moduleKeys, which is a
+    // different vocabulary that gates the console sidebar, not the vendor
+    // portal -- see Plan.vendorModuleKeys's own comment in plans.ts) so
+    // each module keeps a real rate for invoice line items (GST is
+    // computed per-line in vendorBillingView.ts) while modules[].key stays
+    // the real module list vendorAccess.service.ts's getVendorAvailableModules()
+    // actually reads to gate the vendor's own nav -- collapsing to one
+    // synthetic line, or using the wrong vocabulary, would silently break
+    // access gating. Remainder from integer-paise rounding goes on the
+    // last module so the rates always sum to exactly the plan's price.
     const price = plan.monthlyPriceINR;
-    const n = plan.moduleKeys.length;
+    const n = plan.vendorModuleKeys.length;
     const base = Math.floor((price / n) * 100) / 100;
-    const modules = plan.moduleKeys.map((key, i) => ({
+    const modules = plan.vendorModuleKeys.map((key, i) => ({
       key,
       rate: i === n - 1 ? Math.round((price - base * (n - 1)) * 100) / 100 : base,
     }));

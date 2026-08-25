@@ -58,6 +58,23 @@ export interface Plan {
    * core/pricing/planAccess.ts.
    */
   moduleKeys: string[];
+  /**
+   * DIFFERENT vocabulary from moduleKeys above -- these are real
+   * VENDOR_MODULE_KEYS entries (core/access/vendorAccess.service.ts),
+   * the permission-module keys that actually gate the VENDOR PORTAL's own
+   * nav (src/app/vendor/layout.tsx's navItems, via
+   * getVendorAvailableModules() intersecting against
+   * VendorSubscription.modules). moduleKeys above gates the CONSOLE
+   * sidebar + a few synthetic feature flags (api/ui/sidebar/route.ts) --
+   * a vendor's own portal never reads that list at all. Used by
+   * api/vendor/billing/subscribe/route.ts to populate
+   * VendorSubscription.modules on self-serve purchase; using moduleKeys
+   * there instead (as this file's own history did) meant a self-serve
+   * vendor's portal nav collapsed to almost nothing on subscribing --
+   * `paidFor.has(m.key)` never matched since the two vocabularies barely
+   * overlap. See that route's own comment.
+   */
+  vendorModuleKeys: string[];
 }
 
 export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
@@ -78,18 +95,25 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Basic reports + invoice ZIP export for GST filing",
         "Email support",
       ],
-      // report-builder/analytics/reports are all already-existing
-      // features every business has always had -- kept on Basic too so
-      // plan-gating (introduced after these were already in general use)
-      // never retroactively takes something away. Only genuinely NEW
-      // features (sub-accounts, telegram-reports) are actual tier
-      // differentiators for now.
+      // analytics/reports are already-existing features every business has
+      // always had -- kept on Basic too so plan-gating (introduced after
+      // these were already in general use) never retroactively takes
+      // something away. Report Builder, however, is a genuine Pro+
+      // differentiator (per explicit direction) since its main value --
+      // slicing by fault/symptom code -- needs the Pro+ fault/symptom
+      // library to be worth anything anyway.
       moduleKeys: [
         "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
-        "stock-adjustments", "reports", "report-builder", "analytics",
+        "stock-adjustments", "reports", "analytics",
         "admin-settings", "admin-plan", "send-feedback",
         "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
       ],
+      // Core operational vendor-portal nav (Materials/Warehouses/
+      // Workorders/Stock Transfers/Invoices/Statement) -- see this file's
+      // Plan.vendorModuleKeys comment. Never a tier differentiator; every
+      // tier gets full operational access, same as moduleKeys above kept
+      // already-in-use features on Basic.
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics"],
     },
     {
       key: "PRO",
@@ -112,6 +136,12 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
         "report-builder", "analytics",
       ],
+      // Adds fault_codes/solutions on top of Basic's operational set --
+      // the vendor-portal-visible half of Pro's "fault/symptom/solution
+      // library" feature (the console-side half is gated by moduleKeys'
+      // "report-builder" above, since the library is only useful paired
+      // with the report builder that can slice by it).
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions"],
     },
     {
       key: "ULTIMATE",
@@ -133,6 +163,12 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
         "report-builder", "analytics", "sub-accounts", "telegram-reports",
       ],
+      // Same operational set as Pro -- Ultimate's real differentiators
+      // (sub-vendor hierarchy, Telegram automated reports) live on the
+      // CONSOLE side (moduleKeys' "sub-accounts"/"telegram-reports"
+      // above), not as vendor-portal nav items, so there's nothing more
+      // to unlock here.
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions"],
       commsQuota: { emailPerMonth: 2000, whatsappPerMonth: 1000 },
     },
   ],
@@ -162,6 +198,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "admin-settings", "admin-plan", "admin-intg", "send-feedback",
         "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
       ],
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "finance", "customers", "settings", "integrations", "businesses", "reports", "analytics"],
     },
     {
       key: "PRO",
@@ -185,6 +222,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
         "report-builder", "analytics",
       ],
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "finance", "customers", "settings", "integrations", "businesses", "reports", "analytics", "fault_codes", "solutions"],
     },
     {
       key: "ULTIMATE",
@@ -208,6 +246,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
         "report-builder", "analytics", "sub-accounts", "telegram-reports", "admin-modules",
       ],
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "finance", "customers", "settings", "integrations", "businesses", "reports", "analytics", "fault_codes", "solutions"],
       commsQuota: { emailPerMonth: 10000, whatsappPerMonth: 5000 },
     },
   ],
@@ -228,6 +267,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Email support",
       ],
       moduleKeys: ["sales", "customers", "material-catalog", "reports", "report-builder", "analytics", "admin-settings", "admin-plan", "send-feedback"],
+      vendorModuleKeys: ["sales", "materials", "customers", "settings", "businesses", "reports", "analytics"],
     },
     {
       key: "PRO",
@@ -245,6 +285,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Priority support",
       ],
       moduleKeys: ["sales", "customers", "material-catalog", "reports", "admin-settings", "admin-plan", "send-feedback", "report-builder", "analytics"],
+      vendorModuleKeys: ["sales", "materials", "customers", "settings", "businesses", "reports", "analytics"],
     },
     {
       key: "ULTIMATE",
@@ -261,6 +302,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Dedicated onboarding + SLA support, API access",
       ],
       moduleKeys: ["sales", "customers", "material-catalog", "reports", "admin-settings", "admin-plan", "send-feedback", "report-builder", "analytics", "sub-accounts", "telegram-reports"],
+      vendorModuleKeys: ["sales", "materials", "customers", "settings", "businesses", "reports", "analytics"],
       commsQuota: { emailPerMonth: 5000, whatsappPerMonth: 2500 },
     },
   ],
