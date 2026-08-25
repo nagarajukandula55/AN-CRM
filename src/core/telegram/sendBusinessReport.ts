@@ -34,7 +34,7 @@ export async function sendVendorBusinessReport(
   const business = await Business.findById(vendor.businessId).select("name operatingMode").lean<any>();
   if (!business) return { sent: false, reason: "business not found" };
 
-  const mode = (business.operatingMode || "SC") as "BRAND" | "SC" | "POS";
+  const mode = (business.operatingMode || "SC") as "SC";
   const plan = await getActivePlanKey(vendor.businessId);
   const allowed = await getAllowedModuleKeys(mode, plan);
   if (allowed && !allowed.includes("telegram-reports")) {

@@ -1,29 +1,20 @@
 /**
- * AN-CRM pricing plans -- per-operating-mode (Brand/SC/POS each get their
- * own Basic/Pro/Ultimate ladder, per explicit direction: "for SC - Basic,
- * Pro & Ultimate and then for Brand ... and for POS ... because for those
- * businesses what we are providing is matters"). Placeholder numbers
- * ("for pricing for now you mention accordingly ... later we will
- * change"), but the FEATURE SETS per tier are real and differ by mode
- * because the underlying product differs by mode (SC = single-screen
- * workorder shop, Brand = multi-role call-center + appointments, POS =
- * billing counter). Communication quota (Email/WhatsApp push, see
- * models/CommunicationQuota.ts) is bundled specifically into each mode's
- * ULTIMATE tier, per explicit direction ("value added services like
- * Emails, Whatsapp messages push ... we can use in ultimate packs").
+ * AN-CRM pricing plans -- SC (Service Center) is the only operating mode
+ * this app supports; BRAND and POS were removed after confirming live
+ * (zero Business or VendorProfile documents in production ever used
+ * either) -- see git history for the original per-mode ladders if a
+ * second vertical is ever added back.
  *
- * Single source of truth for /pricing and /console/plan -- when real pricing
- * is decided, only this file needs to change.
+ * Single source of truth for /pricing and /console/plan -- when real
+ * pricing changes, only this file needs to change.
  */
 
-export type OperatingMode = "BRAND" | "SC" | "POS";
+export type OperatingMode = "SC";
 export type PlanKey = "BASIC" | "PRO" | "ULTIMATE";
 export type BillingPeriod = "MONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "YEARLY" | "TWO_YEARLY";
 
 export const OPERATING_MODES: { key: OperatingMode; label: string; blurb: string }[] = [
   { key: "SC", label: "Service Center", blurb: "Single-login, single-screen workorder shop." },
-  { key: "BRAND", label: "Brand", blurb: "Multi-role call center, appointments, service network." },
-  { key: "POS", label: "POS", blurb: "Transactional billing counter — small store to enterprise." },
 ];
 
 export const BILLING_PERIODS: { key: BillingPeriod; label: string; months: number; discountPct: number }[] = [
@@ -204,150 +195,10 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       commsQuota: { whatsappPerMonth: 1000 },
     },
   ],
-  BRAND: [
-    {
-      key: "BASIC",
-      mode: "BRAND",
-      name: "Basic",
-      tagline: "A small Brand team starting with call intake and job sheets.",
-      monthlyPriceINR: 1499,
-      launchPriceINR: 1499,
-      freeTrialDays: 7,
-      seatLimit: "Up to 5 users",
-      features: [
-        "CCO/Manager/Engineer role dashboards",
-        "Call intake → job sheet → closure flow",
-        "GST & non-GST billing",
-        "Shared Material/BOM catalog (linked to Brand fault/symptom/solution library)",
-        "Basic reports + invoice ZIP export for GST filing",
-        "Email support",
-      ],
-      // See SC Basic's identical comment -- report-builder/analytics kept
-      // here too so plan-gating never retroactively removes an
-      // already-in-use feature.
-      moduleKeys: [
-        "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
-        "reports", "report-builder", "analytics",
-        "admin-settings", "admin-plan", "admin-intg", "send-feedback",
-        "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
-      ],
-      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "finance", "customers", "settings", "integrations", "businesses", "reports", "analytics"],
-    },
-    {
-      key: "PRO",
-      mode: "BRAND",
-      name: "Pro",
-      tagline: "A growing Brand network with appointments and multiple centers.",
-      monthlyPriceINR: 4999,
-      launchPriceINR: 4999,
-      seatLimit: "Up to 25 users",
-      highlight: true,
-      features: [
-        "Everything in Basic",
-        "Call center + appointment booking",
-        "Brands/Modes/Series/Variants synced from ANgroup catalog",
-        "Custom report builder (saved reports, charts)",
-        "UPI payment QR on invoices",
-        "Priority support",
-      ],
-      moduleKeys: [
-        "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
-        "reports", "admin-settings", "admin-plan", "admin-intg", "send-feedback",
-        "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
-        "report-builder", "analytics",
-      ],
-      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "finance", "customers", "settings", "integrations", "businesses", "reports", "analytics", "fault_codes", "solutions"],
-    },
-    {
-      key: "ULTIMATE",
-      mode: "BRAND",
-      name: "Ultimate",
-      tagline: "Multi-branch Brand operations with sub-vendors and automation.",
-      monthlyPriceINR: 11999,
-      launchPriceINR: 11999,
-      seatLimit: "Unlimited users",
-      features: [
-        "Everything in Pro",
-        "Sub-vendor hierarchy & management",
-        "WhatsApp customer notifications (quota below)",
-        "Scheduled report delivery by email",
-        "Multi-currency (when enabled)",
-        "AI-IVR call routing (add-on)",
-        "Dedicated onboarding + SLA support, API access",
-      ],
-      moduleKeys: [
-        "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
-        "reports", "admin-settings", "admin-plan", "admin-intg", "send-feedback",
-        "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
-        "report-builder", "analytics", "sub-accounts", "telegram-reports", "admin-modules",
-      ],
-      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "finance", "customers", "settings", "integrations", "businesses", "reports", "analytics", "fault_codes", "solutions"],
-      commsQuota: { whatsappPerMonth: 5000 },
-    },
-  ],
-  POS: [
-    {
-      key: "BASIC",
-      mode: "POS",
-      name: "Basic",
-      tagline: "A single counter that needs fast GST billing.",
-      monthlyPriceINR: 699,
-      launchPriceINR: 699,
-      freeTrialDays: 7,
-      seatLimit: "1 till",
-      features: [
-        "Quick-sale POS billing screen",
-        "GST & non-GST invoicing, B2B/B2C split",
-        "UPI payment QR on invoices",
-        "Basic reports + invoice ZIP export for GST filing",
-        "Email support",
-      ],
-      moduleKeys: ["sales", "customers", "material-catalog", "reports", "report-builder", "analytics", "admin-settings", "admin-plan", "send-feedback"],
-      vendorModuleKeys: ["sales", "materials", "customers", "settings", "businesses", "reports", "analytics"],
-    },
-    {
-      key: "PRO",
-      mode: "POS",
-      name: "Pro",
-      tagline: "A store with more than one till or a sales team to track.",
-      monthlyPriceINR: 1999,
-      launchPriceINR: 1999,
-      seatLimit: "Up to 10 tills",
-      highlight: true,
-      features: [
-        "Everything in Basic",
-        "Multi-till support with named Sales Executives",
-        "Custom report builder (saved reports, charts)",
-        "Shared Material catalog",
-        "Priority support",
-      ],
-      moduleKeys: ["sales", "customers", "material-catalog", "reports", "admin-settings", "admin-plan", "send-feedback", "report-builder", "analytics"],
-      vendorModuleKeys: ["sales", "materials", "customers", "settings", "businesses", "reports", "analytics"],
-    },
-    {
-      key: "ULTIMATE",
-      mode: "POS",
-      name: "Ultimate",
-      tagline: "Enterprise retail chains billing at scale.",
-      monthlyPriceINR: 6999,
-      launchPriceINR: 6999,
-      seatLimit: "Unlimited tills",
-      features: [
-        "Everything in Pro",
-        "Sub-vendor / multi-store hierarchy",
-        "WhatsApp receipt & offer notifications (quota below)",
-        "Scheduled report delivery by email",
-        "Dedicated onboarding + SLA support, API access",
-      ],
-      moduleKeys: ["sales", "customers", "material-catalog", "reports", "admin-settings", "admin-plan", "send-feedback", "report-builder", "analytics", "sub-accounts", "telegram-reports"],
-      vendorModuleKeys: ["sales", "materials", "customers", "settings", "businesses", "reports", "analytics"],
-      commsQuota: { whatsappPerMonth: 2500 },
-    },
-  ],
 };
 
-/** Flat list of every plan across every mode — used where the specific mode isn't known yet (e.g. an existing Subscription record predating mode-specific plans). */
-export const ALL_PLANS: Plan[] = [...PLANS_BY_MODE.SC, ...PLANS_BY_MODE.BRAND, ...PLANS_BY_MODE.POS];
+/** Flat list of every plan -- kept as its own export since a few callers predate SC being the only mode and still iterate "every plan" generically. */
+export const ALL_PLANS: Plan[] = [...PLANS_BY_MODE.SC];
 
 export function findPlan(mode: OperatingMode, key: PlanKey): Plan | undefined {
   return PLANS_BY_MODE[mode]?.find((p) => p.key === key);

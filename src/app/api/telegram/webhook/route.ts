@@ -95,7 +95,7 @@ import { notifyUser } from "@/services/notification.service";
 // already does, so a Basic/Pro vendor can't get the paid feature for free
 // just by messaging the bot.
 async function hasTelegramReportsPlan(business: { _id: unknown; operatingMode?: string }): Promise<boolean> {
-  const mode = (business.operatingMode || "SC") as "BRAND" | "SC" | "POS";
+  const mode = (business.operatingMode || "SC") as "SC";
   const plan = await getActivePlanKey(String(business._id));
   const allowed = await getAllowedModuleKeys(mode, plan);
   return !allowed || allowed.includes("telegram-reports");

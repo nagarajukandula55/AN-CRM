@@ -40,17 +40,13 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'info' | 'neutral' | '
   REJECTED: 'danger',
 }
 
-// Vendor type -- Brand (multi-role call center + appointments), SC
-// (single-login work-order shop), POS (billing counter) -- the same three
-// operating modes as pricing/plans.ts, set on VendorProfile.appliedAs.
-// Never shown on this page before, even though every vendor already has
-// this field: the page had no Type column and no hierarchy display at all.
+// Vendor type -- SC (single-login work-order shop) is the only operating
+// mode this app supports now (Brand/POS removed, confirmed zero
+// production usage). Set on VendorProfile.appliedAs.
 const TYPE_TONE: Record<string, 'success' | 'warning' | 'info' | 'neutral'> = {
-  BRAND: 'info',
   SC: 'warning',
-  POS: 'neutral',
 }
-const TYPE_LABEL: Record<string, string> = { BRAND: 'Brand', SC: 'Service Center', POS: 'POS' }
+const TYPE_LABEL: Record<string, string> = { SC: 'Service Center' }
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -449,7 +445,7 @@ export default function VendorsPage() {
 
         <PageHeader
           title="Vendors"
-          description="Every vendor is a paying tenant of a type — Brand, Service Center, or POS — that can create sub-vendors under itself for an added charge per plan."
+          description="Every vendor is a paying tenant that can create sub-vendors under itself for an added charge per plan."
           actions={
             <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setShowForm(true); setActiveTab('Basic Info') }}>
               Onboard Vendor

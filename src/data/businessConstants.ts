@@ -103,20 +103,19 @@ export const INDUSTRY_LABELS: Record<Industry, string> = {
 };
 
 /**
- * Which of the three CRM operating surfaces this business runs as. Drives
- * nav/module visibility and which flow (multi-role queue vs single-screen
- * work order vs POS till) a logged-in user lands in — see PROGRESS.md for
- * the full Brand/SC/POS spec. Distinct from `type`/`industry` above (legal
- * structure / sector); this is "how does this business operate."
+ * Which CRM operating surface a business runs as. Used to be a choice of
+ * three (Brand/SC/POS); BRAND and POS were removed -- zero Business or
+ * VendorProfile documents ever used them in production, confirmed live
+ * before deletion -- so this is SC-only now. Distinct from `type`/
+ * `industry` above (legal structure / sector); this is "how does this
+ * business operate."
  */
-export const OPERATING_MODES = ["BRAND", "SC", "POS"] as const;
+export const OPERATING_MODES = ["SC"] as const;
 
 export type OperatingMode = (typeof OPERATING_MODES)[number];
 
 export const OPERATING_MODE_LABELS: Record<OperatingMode, string> = {
-  BRAND: "Brand (multi-role, call center + appointments)",
   SC: "Service Center (single login, work-order flow)",
-  POS: "Sales / POS (transactional storefront billing)",
 };
 
 export const OPERATING_MODE_OPTIONS = OPERATING_MODES.map((value) => ({

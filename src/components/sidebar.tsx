@@ -92,7 +92,7 @@ function writeSidebarCache(snapshot: { user: UserInfo | null; businesses: Busine
   } catch { /* sessionStorage unavailable -- cache is a pure optimization */ }
 }
 
-interface Business { _id: string; name: string; brandName?: string; businessCode?: string; isPlatform?: boolean; operatingMode?: "BRAND" | "SC" | "POS" | "" }
+interface Business { _id: string; name: string; brandName?: string; businessCode?: string; isPlatform?: boolean; operatingMode?: "SC" | "" }
 interface UserInfo {
   id: string; name: string; email: string; role: string;
   isSuperAdmin: boolean; activeBusinessId: string | null;
@@ -793,11 +793,8 @@ export default function Sidebar() {
             // sense for POS. No operatingMode set on the business yet (""
             // or undefined) shows everything, so nothing regresses for
             // businesses that predate this field.
-            // item.modes is now always just ["SC"] (Brand/POS vendor types
-            // were removed) -- widened to string[] here since
-            // activeBiz.operatingMode's own type still carries the legacy
-            // "BRAND"/"POS" values for backward compat with any
-            // pre-existing business record still holding one.
+            // item.modes is now always just ["SC"] (Brand/POS were removed
+            // entirely -- confirmed zero production usage before deletion).
             const modeAllows = (item: NavItem) =>
               !item.modes || !activeBiz?.operatingMode || (item.modes as string[]).includes(activeBiz.operatingMode);
             const hasVisible = allItems.some((item) => isVisible(item.key) && modeAllows(item));

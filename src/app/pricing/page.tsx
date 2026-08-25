@@ -5,14 +5,12 @@ import { Check, ArrowRight, Sparkles } from 'lucide-react'
 import { PLANS_BY_MODE, BILLING_PERIODS, priceForPeriod, isLaunchPricingActive, type BillingPeriod } from '@/core/pricing/plans'
 
 /**
- * Public pricing page -- Basic/Pro/Ultimate ladder for Service Center
- * (the only vendor type this app supports; Brand/POS were removed) x
- * Monthly/Quarterly/Half-Yearly/Yearly, 7-day free trial on Basic.
- * Placeholder numbers per explicit direction; see core/pricing/plans.ts
- * for the single source of truth these render from -- PLANS_BY_MODE
- * still carries the (now-unused) BRAND/POS ladders too, kept only so a
- * pre-existing legacy business on one of those plans doesn't hit an
- * undefined lookup.
+ * Public pricing page -- Basic/Pro/Ultimate ladder for Service Center,
+ * the only operating mode this app supports (Brand/POS fully removed,
+ * confirmed zero production usage before deletion) x Monthly/Quarterly/
+ * Half-Yearly/Yearly/2-Year. Launch pricing auto-switches to standard at
+ * LAUNCH_PRICING_CUTOVER -- see core/pricing/plans.ts, the single source
+ * of truth these render from.
  */
 
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`
