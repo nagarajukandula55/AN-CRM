@@ -9,13 +9,7 @@ import { extendPeriod } from "@/core/billing/billing.service";
 import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
 import { createRazorpayOrder } from "@/core/billing/paymentGateway";
 import { getEffectivePlan } from "@/core/pricing/planAccess";
-import type { OperatingMode, PlanKey } from "@/core/pricing/plans";
-
-// Self-serve validity is fixed at one calendar-month cycle for now (see
-// BILLING_PERIODS.MONTHLY in core/pricing/plans.ts) -- period-length
-// picking (quarterly/half-yearly/yearly discounts) is a pricing-UI concern
-// for later, not a data-model one.
-const SELF_SERVE_VALIDITY_DAYS = 30;
+import { BILLING_PERIODS, priceForPeriod, type BillingPeriod, type OperatingMode, type PlanKey } from "@/core/pricing/plans";
 
 /**
  * POST /api/vendor/billing/subscribe — self-serve entry point: vendor picks
@@ -31,7 +25,11 @@ const SELF_SERVE_VALIDITY_DAYS = 30;
  * duplicate any of that verification logic, it only prepares the
  * subscription+invoice+order for confirm to act on.
  *
- * Body: { planKey: "BASIC" | "PRO" | "ULTIMATE" }
+ * Body: { planKey: "BASIC" | "PRO" | "ULTIMATE", period?: BillingPeriod }
+ * period defaults to MONTHLY. Longer periods (QUARTERLY/HALF_YEARLY/
+ * YEARLY/TWO_YEARLY) apply BILLING_PERIODS' discount on top of whichever
+ * base rate (launch or standard) is currently active -- see
+ * core/pricing/plans.ts's priceForPeriod/currentMonthlyRate.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -43,6 +41,11 @@ export async function POST(req: NextRequest) {
     const planKey = body.planKey as PlanKey;
     if (!planKey || !["BASIC", "PRO", "ULTIMATE"].includes(planKey)) {
       return NextResponse.json({ success: false, message: "A valid planKey is required" }, { status: 400 });
+    }
+    const periodKey = (body.period as BillingPeriod) || "MONTHLY";
+    const periodDef = BILLING_PERIODS.find((p) => p.key === periodKey);
+    if (!periodDef) {
+      return NextResponse.json({ success: false, message: "Invalid billing period" }, { status: 400 });
     }
 
     await connectDB();
@@ -68,7 +71,12 @@ export async function POST(req: NextRequest) {
     const plan = await getEffectivePlan(mode, planKey);
     if (!plan) return NextResponse.json({ success: false, message: "Plan not found or no longer available" }, { status: 404 });
 
-    // Split the plan's flat monthly price evenly across its VENDOR-PORTAL
+    // Real ₹ total for the picked period, at whichever base rate (launch
+    // or standard) is currently active -- see priceForPeriod's own comment.
+    const { total: price } = priceForPeriod(plan, periodKey);
+    const validityDays = periodDef.months * 30;
+
+    // Split the period's flat price evenly across the plan's VENDOR-PORTAL
     // module keys (plan.vendorModuleKeys -- NOT plan.moduleKeys, which is a
     // different vocabulary that gates the console sidebar, not the vendor
     // portal -- see Plan.vendorModuleKeys's own comment in plans.ts) so
@@ -78,8 +86,7 @@ export async function POST(req: NextRequest) {
     // actually reads to gate the vendor's own nav -- collapsing to one
     // synthetic line, or using the wrong vocabulary, would silently break
     // access gating. Remainder from integer-paise rounding goes on the
-    // last module so the rates always sum to exactly the plan's price.
-    const price = plan.monthlyPriceINR;
+    // last module so the rates always sum to exactly the period's price.
     const n = plan.vendorModuleKeys.length;
     const base = Math.floor((price / n) * 100) / 100;
     const modules = plan.vendorModuleKeys.map((key, i) => ({
@@ -105,7 +112,7 @@ export async function POST(req: NextRequest) {
         vendorId: vendor._id,
         businessId: vendor.businessId,
         modules: [],
-        validityDays: SELF_SERVE_VALIDITY_DAYS,
+        validityDays: validityDays,
       });
     }
 
@@ -120,7 +127,7 @@ export async function POST(req: NextRequest) {
 
     // early-renewal still extends from the existing currentPeriodEnd if
     // it's in the future, same rule extendPeriod always applies.
-    const { start, end } = extendPeriod(subscription.currentPeriodEnd, SELF_SERVE_VALIDITY_DAYS);
+    const { start, end } = extendPeriod(subscription.currentPeriodEnd, validityDays);
     // Scoped to this vendor's own counter, not the shared business one --
     // see the matching comment in api/crm/jobsheets/[id]/close/route.ts
     // for why (every vendor under one business used to share one counter,
@@ -138,7 +145,7 @@ export async function POST(req: NextRequest) {
       invoiceNumber,
       modules,
       amount: price,
-      validityDays: SELF_SERVE_VALIDITY_DAYS,
+      validityDays: validityDays,
       planKey: plan.key,
       planName: plan.name,
       periodStart: start,

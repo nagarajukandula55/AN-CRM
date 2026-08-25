@@ -15,6 +15,15 @@ import { sendAdminSystemAlert } from "@/core/telegram/sendAdminSystemAlert";
 
 const TRIAL_DAYS = 7;
 
+// ONE-TIME pre-launch goodwill window (see VendorProfile.earlyAccessAnchor's
+// own comment): anyone signing up before this cutoff gets both their trial
+// AND their first paid period counted from EARLY_ACCESS_ANCHOR instead of
+// their real signup instant, so testing before the official go-live date
+// costs them none of their real free days. Server-clock-only cutoff, never
+// derived from client input -- not a recurring mechanism, just this window.
+const EARLY_ACCESS_CUTOFF = new Date("2026-09-01T00:00:00+05:30");
+const EARLY_ACCESS_ANCHOR = new Date("2026-09-01T00:00:00+05:30");
+
 /**
  * POST /api/vendors/self-signup — PUBLIC, ONE-STEP vendor signup.
  *
@@ -103,7 +112,9 @@ export async function POST(req: NextRequest) {
     const { value: vendorId } = await generateGlobalDocumentNumber("VENDOR", resolvedBusinessId);
 
     const now = new Date();
-    const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+    const earlyAccessAnchor = now.getTime() < EARLY_ACCESS_CUTOFF.getTime() ? EARLY_ACCESS_ANCHOR : null;
+    const trialCountFrom = earlyAccessAnchor || now;
+    const trialEndsAt = new Date(trialCountFrom.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
 
     const vendor = await VendorProfile.create({
       userId: user._id,
@@ -118,6 +129,7 @@ export async function POST(req: NextRequest) {
       isApproved: true,
       finalApprovedAt: now,
       trialEndsAt,
+      earlyAccessAnchor,
     });
 
     // Real login provisioning -- BusinessMember row, default vendor roles,

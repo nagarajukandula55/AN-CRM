@@ -28,12 +28,22 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
+interface PeriodPrice {
+  key: string;
+  label: string;
+  months: number;
+  discountPct: number;
+  total: number;
+  perMonth: number;
+}
+
 interface BillingPlanOption {
   key: string;
   name: string;
   tagline: string;
   features: string[];
   monthlyPriceINR: number;
+  periods: PeriodPrice[];
   seatLimit: string;
   highlight?: boolean;
 }
@@ -51,6 +61,7 @@ export default function VendorBillingPage() {
   const [payingId, setPayingId] = useState<string | null>(null);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
+  const [period, setPeriod] = useState("MONTHLY");
 
   const { data: billingRes, isLoading: loading, mutate: reloadBilling } = useSWR("/api/vendor/billing");
   const subscription = billingRes?.success ? billingRes.subscription : null;
@@ -60,6 +71,8 @@ export default function VendorBillingPage() {
   const showPlanPicker = status === "NOT_SET" || status === "EXPIRED";
   const { data: plansRes } = useSWR(showPlanPicker ? "/api/vendor/plans" : null);
   const plans: BillingPlanOption[] = plansRes?.success ? plansRes.plans || [] : [];
+  const launchPricingActive: boolean = plansRes?.success ? !!plansRes.launchPricingActive : false;
+  const periodOptions: PeriodPrice[] = plans[0]?.periods || [];
 
   async function payInvoice(invoiceId: string) {
     setPayingId(invoiceId);
@@ -87,7 +100,7 @@ export default function VendorBillingPage() {
       const res = await fetch("/api/vendor/billing/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planKey }),
+        body: JSON.stringify({ planKey, period }),
       });
       const orderData = await res.json();
       if (!orderData.success) throw new Error(orderData.message || "Failed to start payment");
@@ -163,39 +176,65 @@ export default function VendorBillingPage() {
 
       {showPlanPicker && (
         <Card className="p-4 space-y-3">
-          <h2 className="h-section">{status === "EXPIRED" ? "Renew Your Plan" : "Choose a Plan"}</h2>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h2 className="h-section">{status === "EXPIRED" ? "Renew Your Plan" : "Choose a Plan"}</h2>
+            {launchPricingActive && <Badge tone="success">Launch pricing — limited time</Badge>}
+          </div>
           {planError && <p className="text-sm text-danger bg-danger-soft rounded-control p-2">{planError}</p>}
           {plans.length === 0 ? (
             <p className="text-sm text-ink-3">No plans are available to self-serve right now — contact AN Group.</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {plans.map((plan) => (
-                <div key={plan.key} className={`border rounded-card p-3 space-y-2 ${plan.highlight ? 'border-accent' : 'border-border'}`}>
-                  <div>
-                    <p className="font-medium text-ink">{plan.name}</p>
-                    {plan.tagline && <p className="text-xs text-ink-3">{plan.tagline}</p>}
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-semibold tabular text-ink">₹{plan.monthlyPriceINR.toLocaleString("en-IN")}</span>
-                    <span className="text-xs text-ink-3">/ month</span>
-                  </div>
-                  <ul className="text-xs text-ink-2 space-y-0.5 list-disc list-inside">
-                    {plan.features.map((f) => (
-                      <li key={f}>{f}</li>
-                    ))}
-                  </ul>
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    onClick={() => subscribeToPlan(plan.key)}
-                    disabled={subscribingId === plan.key}
-                    loading={subscribingId === plan.key}
-                  >
-                    Subscribe & Pay
-                  </Button>
+            <>
+              {periodOptions.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {periodOptions.map((p) => (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => setPeriod(p.key)}
+                      className={`text-xs font-medium rounded-control px-2.5 py-1.5 border transition-colors ${
+                        period === p.key ? 'bg-accent text-accent-fg border-accent' : 'bg-surface text-ink-2 border-border hover:bg-surface-2'
+                      }`}
+                    >
+                      {p.label}{p.discountPct > 0 ? ` (save ${p.discountPct}%)` : ""}
+                    </button>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {plans.map((plan) => {
+                  const chosen = plan.periods.find((p) => p.key === period) || plan.periods[0];
+                  return (
+                    <div key={plan.key} className={`border rounded-card p-3 space-y-2 ${plan.highlight ? 'border-accent' : 'border-border'}`}>
+                      <div>
+                        <p className="font-medium text-ink">{plan.name}</p>
+                        {plan.tagline && <p className="text-xs text-ink-3">{plan.tagline}</p>}
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-lg font-semibold tabular text-ink">₹{(chosen?.total ?? plan.monthlyPriceINR).toLocaleString("en-IN")}</span>
+                        <span className="text-xs text-ink-3">
+                          {chosen && chosen.months > 1 ? `for ${chosen.label.toLowerCase()} (₹${chosen.perMonth.toLocaleString("en-IN")}/mo)` : "/ month"}
+                        </span>
+                      </div>
+                      <ul className="text-xs text-ink-2 space-y-0.5 list-disc list-inside">
+                        {plan.features.map((f) => (
+                          <li key={f}>{f}</li>
+                        ))}
+                      </ul>
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={() => subscribeToPlan(plan.key)}
+                        disabled={subscribingId === plan.key}
+                        loading={subscribingId === plan.key}
+                      >
+                        Subscribe & Pay
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </Card>
       )}

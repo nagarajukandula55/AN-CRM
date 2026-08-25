@@ -120,6 +120,15 @@ export interface IVendorProfile extends Document {
   // from THIS date (not the payment date) so trial time is absorbed into
   // the first billing cycle rather than stacking as extra free time.
   trialEndsAt?: Date | null;
+  // ONE-TIME pre-launch goodwill window: a vendor who signed up before
+  // EARLY_ACCESS_CUTOFF (see api/vendors/self-signup/route.ts) has both
+  // their trial AND their first paid period counted from
+  // EARLY_ACCESS_ANCHOR instead of their real signup date -- so testing
+  // the app before the official go-live date doesn't burn any of their
+  // real free days. Set ONLY at signup time from the server clock (never
+  // client input), and only ever null for every signup after the cutoff
+  // -- this is not a recurring mechanism, just this one launch window.
+  earlyAccessAnchor?: Date | null;
   telegramReportFrequency?: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
   telegramReportLastSentAt?: Date;
   // "HH:mm" (24h, IST -- the only timezone this app operates in), the
@@ -309,6 +318,7 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     telegramLinkCode: { type: String, default: null },
     telegramLinkCodeExpiresAt: { type: Date, default: null },
     trialEndsAt: { type: Date, default: null },
+    earlyAccessAnchor: { type: Date, default: null },
     telegramReportFrequency: { type: String, enum: ["NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"], default: "NONE" },
     telegramReportLastSentAt: { type: Date },
     telegramReportTime: { type: String, trim: true, default: "09:00" },

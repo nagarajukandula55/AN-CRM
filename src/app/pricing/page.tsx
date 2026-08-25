@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Check, ArrowRight, Sparkles } from 'lucide-react'
-import { PLANS_BY_MODE, BILLING_PERIODS, priceForPeriod, type BillingPeriod } from '@/core/pricing/plans'
+import { PLANS_BY_MODE, BILLING_PERIODS, priceForPeriod, isLaunchPricingActive, type BillingPeriod } from '@/core/pricing/plans'
 
 /**
  * Public pricing page -- Basic/Pro/Ultimate ladder for Service Center
@@ -42,6 +42,11 @@ export default function PricingPage() {
           <p className="text-ink-2 mt-4 max-w-xl mx-auto">
             Single-login, single-screen workorder shop — pick a billing period below.
           </p>
+          {isLaunchPricingActive() && (
+            <div className="inline-flex items-center gap-1.5 mt-4 rounded-control bg-success-soft text-success text-xs font-medium px-3 py-1.5">
+              <Sparkles className="h-3.5 w-3.5" /> Launch pricing — limited time, prices will rise soon
+            </div>
+          )}
         </div>
 
         {/* Billing period toggle */}

@@ -3,11 +3,14 @@ import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import VendorBillingInvoice from "@/models/VendorBillingInvoice";
 import VendorSubscription from "@/models/VendorSubscription";
+import Business from "@/models/Business";
+import CommunicationQuota from "@/models/CommunicationQuota";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
 import { verifyRazorpaySignature } from "@/core/billing/paymentGateway";
 import { extendPeriod } from "@/core/billing/billing.service";
 import { sendVendorAlert } from "@/core/telegram/sendVendorAlert";
 import { notifyUser } from "@/services/notification.service";
+import { findPlan, type OperatingMode } from "@/core/pricing/plans";
 
 // POST /api/vendor/billing/invoices/:invoiceId/confirm
 // Body: { razorpayOrderId, razorpayPaymentId, razorpaySignature } -- the
@@ -101,7 +104,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ inv
       // elapsed doesn't end up with an already-expired subscription the
       // moment they pay -- that edge case falls back to the normal
       // extend-from-now behavior.
-      const signupBasedEnd = new Date(vendor.createdAt.getTime() + validityDays * 24 * 60 * 60 * 1000);
+      // earlyAccessAnchor overrides createdAt for the one-time pre-launch
+      // signup window (see VendorProfile.earlyAccessAnchor's own comment)
+      // -- a vendor who signed up before go-live counts their first paid
+      // period from the anchor date, not their real (earlier) signup date.
+      const signupBase = vendor.earlyAccessAnchor || vendor.createdAt;
+      const signupBasedEnd = new Date(signupBase.getTime() + validityDays * 24 * 60 * 60 * 1000);
       if (signupBasedEnd.getTime() > Date.now()) {
         start = new Date();
         end = signupBasedEnd;
@@ -114,6 +122,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ inv
     subscription.currentPeriodStart = start;
     subscription.currentPeriodEnd = end;
     await subscription.save();
+
+    // Ultimate-tier plans bundle a WhatsApp customer-notification quota --
+    // grant/top-up on this confirmed payment, same as the older
+    // business-Subscription flow in activateSubscription.ts, which this
+    // self-serve vendor flow doesn't otherwise share code with. Email is
+    // deliberately excluded here (out of scope, per direction).
+    if (claimed.planKey) {
+      const business = await Business.findById(vendor.businessId).select("operatingMode").lean();
+      const mode = ((business as any)?.operatingMode || "SC") as OperatingMode;
+      const planDef = findPlan(mode, claimed.planKey as any);
+      if (planDef?.commsQuota) {
+        await CommunicationQuota.findOneAndUpdate(
+          { businessId: vendor.businessId },
+          {
+            $set: {
+              whatsappEnabled: true,
+              whatsappQuota: planDef.commsQuota.whatsappPerMonth,
+              periodStart: new Date(),
+              whatsappUsed: 0,
+            },
+          },
+          { upsert: true }
+        ).catch(() => {});
+      }
+    }
 
     sendVendorAlert(
       String(vendor._id),

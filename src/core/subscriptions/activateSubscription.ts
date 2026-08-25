@@ -93,9 +93,11 @@ export async function activateSubscription(
     razorpayPaymentId,
   });
 
-  // Ultimate-tier plans bundle Email/WhatsApp quota -- activate/top-up on
+  // Ultimate-tier plans bundle WhatsApp quota -- activate/top-up on
   // successful payment for the business's own primary plan (not a sub-
-  // vendor addon charge, which isn't a plan tier at all).
+  // vendor addon charge, which isn't a plan tier at all). Email is
+  // explicitly out of scope for this quota (per direction) -- emailEnabled
+  // stays off; only whatsappEnabled/whatsappQuota get set.
   if (!subscription.subVendorOf && !subscription.subBusinessOf) {
     const planDef = findPlan(subscription.mode, subscription.plan);
     if (planDef?.commsQuota) {
@@ -103,12 +105,9 @@ export async function activateSubscription(
         { businessId: subscription.businessId },
         {
           $set: {
-            emailEnabled: true,
             whatsappEnabled: true,
-            emailQuota: planDef.commsQuota.emailPerMonth,
             whatsappQuota: planDef.commsQuota.whatsappPerMonth,
             periodStart: now,
-            emailUsed: 0,
             whatsappUsed: 0,
           },
         },

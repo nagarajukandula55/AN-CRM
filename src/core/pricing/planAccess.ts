@@ -54,7 +54,14 @@ export async function getEffectivePlan(mode: OperatingMode, plan: PlanKey): Prom
   if (!override) return def;
   return {
     ...def,
+    // A Super Admin manually setting a price here is a deliberate override
+    // of BOTH the launch and the standard rate -- it always wins, bypassing
+    // the automatic launch->standard hike entirely (that auto-hike exists
+    // to avoid needing an admin action; an admin who acted anyway clearly
+    // wants their own number to stick, not to be silently reverted at the
+    // next cutover).
     monthlyPriceINR: override.monthlyPriceINR ?? def.monthlyPriceINR,
+    launchPriceINR: override.monthlyPriceINR ?? def.launchPriceINR,
     seatLimit: override.seatLimit ?? def.seatLimit,
     freeTrialDays: override.freeTrialDays ?? def.freeTrialDays,
     moduleKeys: override.moduleKeys ?? def.moduleKeys,

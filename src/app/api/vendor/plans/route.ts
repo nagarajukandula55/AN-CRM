@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import Business from "@/models/Business";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
-import { PLANS_BY_MODE, type OperatingMode } from "@/core/pricing/plans";
+import { PLANS_BY_MODE, BILLING_PERIODS, currentMonthlyRate, priceForPeriod, isLaunchPricingActive, type OperatingMode } from "@/core/pricing/plans";
 import { getEffectivePlan } from "@/core/pricing/planAccess";
 
 // GET /api/vendor/plans — the BASIC/PRO/ULTIMATE catalog for THIS vendor's
@@ -35,7 +35,12 @@ export async function GET(_req: NextRequest) {
           key: effective.key,
           name: effective.name,
           tagline: effective.tagline,
-          monthlyPriceINR: effective.monthlyPriceINR,
+          // The rate actually charged right now (launch or standard,
+          // whichever is active) at MONTHLY billing -- see
+          // currentMonthlyRate's own comment. periods[] below covers
+          // every other billing-period option and its discounted total.
+          monthlyPriceINR: currentMonthlyRate(effective),
+          periods: BILLING_PERIODS.map((p) => ({ key: p.key, label: p.label, months: p.months, ...priceForPeriod(effective, p.key) })),
           seatLimit: effective.seatLimit,
           features: effective.features,
           highlight: effective.highlight || false,
@@ -43,7 +48,7 @@ export async function GET(_req: NextRequest) {
       })
     );
 
-    return NextResponse.json({ success: true, plans });
+    return NextResponse.json({ success: true, plans, launchPricingActive: isLaunchPricingActive() });
   } catch (err: any) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
