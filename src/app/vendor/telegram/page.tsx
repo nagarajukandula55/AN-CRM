@@ -16,6 +16,7 @@ import { Card, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Textarea } from '@/components/ui/Input'
 import { LoadingPanel } from '@/components/ui/Spinner'
+import { TutorialLink } from '@/components/shared/TutorialLink'
 
 interface MessageType {
   key: string
@@ -191,12 +192,15 @@ export default function VendorTelegramPage() {
 
       <Card className="mb-6">
         <CardBody className="space-y-4">
-          <div>
-            <h2 className="h-section flex items-center gap-2"><QrCode className="w-4 h-4" /> Connect Telegram</h2>
-            <p className="text-xs text-ink-3 mt-1">
-              Generate a code, then either scan the QR with your phone (opens the bot and links your <b>personal chat</b> instantly),
-              or add the bot to your team group and send it the code there to link the <b>group chat</b>. Each code works once and expires in 15 minutes.
-            </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="h-section flex items-center gap-2"><QrCode className="w-4 h-4" /> Connect Telegram</h2>
+              <p className="text-xs text-ink-3 mt-1">
+                Generate a code, then either scan the QR with your phone (opens the bot and links your <b>personal chat</b> instantly),
+                or add the bot to your team group and send it the code there to link the <b>group chat</b>. Each code works once and expires in 15 minutes.
+              </p>
+            </div>
+            <TutorialLink videoKey="telegram-setup" />
           </div>
 
           {linkError && <p className="text-sm text-danger">{linkError}</p>}

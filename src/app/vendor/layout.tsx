@@ -20,7 +20,6 @@ import {
   Building2,
   Wallet,
   Warehouse,
-  Users,
   Boxes,
   Phone,
   ClipboardList,
@@ -32,6 +31,7 @@ import {
   HandCoins,
   Store,
   Send,
+  LifeBuoy,
 } from 'lucide-react'
 // Note: `Phone` icon import removed along with the Appointments nav entry below.
 
@@ -61,7 +61,6 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   { href: '/vendor/crm/jobsheets', label: 'Workorders', icon: ClipboardList, modules: ['crm_jobsheets', 'crm'] },
   { href: '/vendor/service-bom', label: 'Service Center BOM', icon: Wrench, modules: ['crm_jobsheets', 'crm'] },
   { href: '/vendor/stock-transfers', label: 'Stock Transfers', icon: ArrowLeftRight, modules: ['stock_transfers'] },
-  { href: '/vendor/staff', label: 'Staff', icon: Users, modules: ['staff'], managerOnly: true },
   { href: '/vendor/invoices', label: 'Invoices & Payments', icon: FileText, modules: ['finance'] },
   { href: '/vendor/credits', label: 'Credit Accounts', icon: HandCoins, modules: ['finance'] },
   { href: '/vendor/payouts', label: 'Payout Settings', icon: Wallet, modules: ['finance'], managerOnly: true },
@@ -74,6 +73,7 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   { href: '/vendor/telegram', label: 'Telegram Alerts', icon: Send, modules: null },
   { href: '/vendor/profile', label: 'My Profile / Settings', icon: User, modules: null },
   { href: '/vendor/statement', label: 'Financial Statement', icon: BarChart3, modules: ['finance'] },
+  { href: '/vendor/help', label: 'Help & Tutorials', icon: LifeBuoy, modules: null },
 ]
 
 export default async function VendorLayout({
