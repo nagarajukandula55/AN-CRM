@@ -29,7 +29,7 @@ function generateOtp(): string {
  * since the two flows mean different things by "activated" (one requires a
  * fully-signed agreement first, the other doesn't).
  */
-async function provisionVendorLogin(
+export async function provisionVendorLogin(
   vendor: IVendorProfile,
   actorId: string
 ): Promise<{ tempPassword: string | null }> {

@@ -88,7 +88,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ inv
     if (claimed.planId) subscription.planId = claimed.planId;
     if (claimed.planName) subscription.planName = claimed.planName;
 
-    const { start, end } = extendPeriod(subscription.currentPeriodEnd, validityDays);
+    let start: Date, end: Date;
+    if (!subscription.currentPeriodEnd) {
+      // FIRST payment ever for this vendor -- per explicit direction, the
+      // paid period is calculated from their original signup date (every
+      // vendor gets a free trial from self-signup, see
+      // VendorProfile.trialEndsAt), not from today's payment date, so
+      // trial days are absorbed into the first billing cycle instead of
+      // stacking as extra free time on top of it. Floored at "now" so a
+      // vendor who pays well after signup + validityDays has already
+      // elapsed doesn't end up with an already-expired subscription the
+      // moment they pay -- that edge case falls back to the normal
+      // extend-from-now behavior.
+      const signupBasedEnd = new Date(vendor.createdAt.getTime() + validityDays * 24 * 60 * 60 * 1000);
+      if (signupBasedEnd.getTime() > Date.now()) {
+        start = new Date();
+        end = signupBasedEnd;
+      } else {
+        ({ start, end } = extendPeriod(subscription.currentPeriodEnd, validityDays));
+      }
+    } else {
+      ({ start, end } = extendPeriod(subscription.currentPeriodEnd, validityDays));
+    }
     subscription.currentPeriodStart = start;
     subscription.currentPeriodEnd = end;
     await subscription.save();

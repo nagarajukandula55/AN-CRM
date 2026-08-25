@@ -112,6 +112,14 @@ export interface IVendorProfile extends Document {
   // link instead of typing anything.
   telegramLinkCode?: string;
   telegramLinkCodeExpiresAt?: Date | null;
+  // 7-day free-access window from self-signup (see api/vendors/self-signup
+  // -- every new vendor auto-approves and gets this immediately, no admin
+  // review). See lib/vendor/checkTrialAccess.ts for how this gates portal
+  // access once it lapses, and api/vendor/billing/invoices/[invoiceId]/
+  // confirm/route.ts for how a vendor's FIRST paid period is calculated
+  // from THIS date (not the payment date) so trial time is absorbed into
+  // the first billing cycle rather than stacking as extra free time.
+  trialEndsAt?: Date | null;
   telegramReportFrequency?: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
   telegramReportLastSentAt?: Date;
   // "HH:mm" (24h, IST -- the only timezone this app operates in), the
@@ -300,6 +308,7 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     telegramPersonalChatId: { type: String, trim: true, default: "" },
     telegramLinkCode: { type: String, default: null },
     telegramLinkCodeExpiresAt: { type: Date, default: null },
+    trialEndsAt: { type: Date, default: null },
     telegramReportFrequency: { type: String, enum: ["NONE", "DAILY", "WEEKLY", "MONTHLY"], default: "NONE" },
     telegramReportLastSentAt: { type: Date },
     telegramReportTime: { type: String, trim: true, default: "09:00" },
