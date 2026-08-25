@@ -117,6 +117,12 @@ export default function VendorProfilePage() {
   // B2B invoices (company name present) always carry tax regardless.
   const [applyTaxOnB2CBilling, setApplyTaxOnB2CBilling] = useState(true)
   const [termsAndConditions, setTermsAndConditions] = useState('')
+  // Per-document-type T&C -- fixes "Should be separate per page type not
+  // same for all" (was one unified field shown on every document type).
+  const [workorderTerms, setWorkorderTerms] = useState('')
+  const [serviceOrderTerms, setServiceOrderTerms] = useState('')
+  const [estimateTerms, setEstimateTerms] = useState('')
+  const [invoiceTerms, setInvoiceTerms] = useState('')
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsMessage, setSettingsMessage] = useState('')
   // Default Labour Charge -- fallback rate for the workorder page's "Add
@@ -176,6 +182,10 @@ export default function VendorProfilePage() {
       setInventorySerialized(Boolean(settingsData.inventorySerialized))
       setApplyTaxOnB2CBilling(settingsData.applyTaxOnB2CBilling !== false)
       setTermsAndConditions(settingsData.termsAndConditions || '')
+      setWorkorderTerms(settingsData.workorderTerms || '')
+      setServiceOrderTerms(settingsData.serviceOrderTerms || '')
+      setEstimateTerms(settingsData.estimateTerms || '')
+      setInvoiceTerms(settingsData.invoiceTerms || '')
       setDefaultLabourCharge(String(settingsData.defaultLabourCharge ?? 0))
       setCustomerLogoUrl(settingsData.customerLogoUrl || '')
       setDocumentSignatureUrl(settingsData.documentSignatureUrl || '')
@@ -329,9 +339,10 @@ export default function VendorProfilePage() {
     }
   }
 
-  // Terms & Conditions -- shown on this business's workorder, estimate and
-  // invoice pages/prints. Saved separately (own button) from the
-  // inventory toggle above since it's a text field, not a flip-and-save.
+  // Per-document-type Terms & Conditions -- workorderTerms is the general
+  // fallback (used when a specific document type has none of its own
+  // set); serviceOrderTerms/estimateTerms/invoiceTerms each print only on
+  // their own document type. Saved together, own button, same as before.
   async function saveTerms() {
     setSavingSettings(true)
     setSettingsMessage('')
@@ -339,7 +350,7 @@ export default function VendorProfilePage() {
       const res = await fetch('/api/vendor/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ termsAndConditions }),
+        body: JSON.stringify({ termsAndConditions, workorderTerms, serviceOrderTerms, estimateTerms, invoiceTerms }),
       })
       const d = await res.json()
       setSettingsMessage(d.success ? 'Saved.' : d.error || 'Failed to save.')
@@ -908,18 +919,61 @@ export default function VendorProfilePage() {
             </div>
           </div>
 
-          <div className="mt-5 pt-5 border-t border-border">
-            <label className="block text-sm font-medium text-ink mb-1">Terms &amp; Conditions</label>
-            <p className="text-xs text-ink-3 mb-2">
-              Shown on this business's workorder, estimate and invoice pages/prints.
-            </p>
-            <Textarea
-              value={termsAndConditions}
-              onChange={(e) => setTermsAndConditions(e.target.value)}
-              rows={5}
-              placeholder="e.g. Payment due within 7 days of invoice. Warranty does not cover physical/liquid damage..."
-            />
-            <Button onClick={saveTerms} disabled={savingSettings} className="mt-2">
+          <div className="mt-5 pt-5 border-t border-border space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-ink mb-1">Terms &amp; Conditions</label>
+              <p className="text-xs text-ink-3 mb-2">
+                Each document type below can have its own terms. Leave a specific one blank to fall back to this general one.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-ink-2 mb-1">General (fallback)</label>
+              <Textarea
+                value={termsAndConditions}
+                onChange={(e) => setTermsAndConditions(e.target.value)}
+                rows={3}
+                placeholder="e.g. Payment due within 7 days of invoice. Warranty does not cover physical/liquid damage..."
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-2 mb-1">Workorder</label>
+              <Textarea
+                value={workorderTerms}
+                onChange={(e) => setWorkorderTerms(e.target.value)}
+                rows={3}
+                placeholder="Shown on the printed Workorder only -- leave blank to use the general terms above."
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-2 mb-1">Service Record</label>
+              <Textarea
+                value={serviceOrderTerms}
+                onChange={(e) => setServiceOrderTerms(e.target.value)}
+                rows={3}
+                placeholder="Shown on the printed Service Record only -- leave blank to use the general terms above."
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-2 mb-1">Estimate</label>
+              <Textarea
+                value={estimateTerms}
+                onChange={(e) => setEstimateTerms(e.target.value)}
+                rows={3}
+                placeholder="Shown on the printed Estimate only -- leave blank to use the general terms above."
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-2 mb-1">Invoice</label>
+              <Textarea
+                value={invoiceTerms}
+                onChange={(e) => setInvoiceTerms(e.target.value)}
+                rows={3}
+                placeholder="Shown on the printed Invoice only -- leave blank to use the general terms above."
+              />
+            </div>
+
+            <Button onClick={saveTerms} disabled={savingSettings}>
               {savingSettings ? 'Saving…' : 'Save Terms & Conditions'}
             </Button>
           </div>

@@ -254,6 +254,17 @@ export interface IVendorProfile extends Document {
   // their own copy; see api/vendor/settings/route.ts.
   inventorySerialized?: boolean;
   defaultLabourCharge?: number;
+  // Per-document-type T&C, same shape as Business's own workorderTerms/
+  // serviceOrderTerms/estimateTerms/invoiceTerms (see
+  // core/documentTemplates/adapters.ts's termsForDocType) -- termsAndConditions
+  // above is the fallback when a specific one is blank. Was previously a
+  // single unified field shown as one blanket "Terms & Conditions" on
+  // every document type; reported live ("Should be separate per page
+  // type not same for all").
+  workorderTerms?: string;
+  serviceOrderTerms?: string;
+  estimateTerms?: string;
+  invoiceTerms?: string;
   customerLogoUrl?: string;
   documentSignatureUrl?: string;
   applyTaxOnB2CBilling?: boolean;
@@ -409,6 +420,10 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     customerLogoUrl: { type: String, default: '' },
     documentSignatureUrl: { type: String, default: '' },
     applyTaxOnB2CBilling: { type: Boolean, default: true },
+    workorderTerms: { type: String, default: '' },
+    serviceOrderTerms: { type: String, default: '' },
+    estimateTerms: { type: String, default: '' },
+    invoiceTerms: { type: String, default: '' },
     upiId: { type: String, default: '' },
     rating:       { type: Number, min: 0, max: 5, default: 0 },
     status: {

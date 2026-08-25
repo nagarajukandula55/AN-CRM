@@ -67,10 +67,27 @@ export async function GET(req: NextRequest) {
       getBusinessBySourceId(businessId), // reads from central-api — see src/lib/centralApiRead.ts
       Business.findById(businessId).select(LOCAL_ONLY_FIELDS).lean(),
       warehouseId ? Warehouse.findById(warehouseId).lean() : Promise.resolve(null),
-      vendorId ? VendorProfile.findById(vendorId).select("companyName phone address gstNumber").lean() : Promise.resolve(null),
+      vendorId
+        ? VendorProfile.findById(vendorId).select("companyName phone address gstNumber " + LOCAL_ONLY_FIELDS).lean()
+        : Promise.resolve(null),
     ]);
 
-    const mergedBusiness = { ...(business || {}), ...(localBusiness || {}) };
+    // A vendor's OWN per-document-type T&C (and signature) override the
+    // shared Business's -- every self-signed-up vendor points at the same
+    // platform Business (see api/vendors/self-signup/route.ts), so
+    // without this a vendor's saved Terms & Conditions would never
+    // actually show on their own printed documents (or worse, another
+    // vendor's saved terms would). Only overlays fields the vendor
+    // actually has a non-empty value for, so a vendor who hasn't set
+    // their own terms yet still falls back to the shared Business's.
+    const vendorTermsOverride = vendor
+      ? Object.fromEntries(
+          LOCAL_ONLY_FIELDS.split(" ")
+            .filter((f) => (vendor as any)[f]?.trim())
+            .map((f) => [f, (vendor as any)[f]])
+        )
+      : {};
+    const mergedBusiness = { ...(business || {}), ...(localBusiness || {}), ...vendorTermsOverride };
 
     return NextResponse.json({
       success: true,

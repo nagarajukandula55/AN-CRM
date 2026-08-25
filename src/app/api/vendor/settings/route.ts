@@ -4,8 +4,13 @@
  * without needing Super Admin:
  *  - inventorySerialized -- whether workorder part selection checks real
  *    Inventory stock or just pulls from the Service Center BOM price list.
- *  - termsAndConditions -- free text shown on this vendor's workorder,
- *    estimate and invoice pages/prints.
+ *  - termsAndConditions -- fallback free text shown on any document type
+ *    that has no MORE SPECIFIC terms of its own set below.
+ *  - workorderTerms / serviceOrderTerms / estimateTerms / invoiceTerms --
+ *    per-document-type T&C, same shape as Business's own identically-named
+ *    fields (see core/documentTemplates/adapters.ts's termsForDocType).
+ *    Was previously one unified field shown on every document type;
+ *    reported live ("Should be separate per page type not same for all").
  *  - defaultLabourCharge -- fallback rate for the workorder page's
  *    "Add Labour Charge" line when no LABOUR-type BOM entry is configured.
  *  - customerLogoUrl -- shown on the Intake Receipt/Workorder print in
@@ -46,6 +51,10 @@ export async function GET() {
       success: true,
       inventorySerialized: Boolean(v.inventorySerialized),
       termsAndConditions: v.termsAndConditions || "",
+      workorderTerms: v.workorderTerms || "",
+      serviceOrderTerms: v.serviceOrderTerms || "",
+      estimateTerms: v.estimateTerms || "",
+      invoiceTerms: v.invoiceTerms || "",
       defaultLabourCharge: Number(v.defaultLabourCharge) || 0,
       customerLogoUrl: v.customerLogoUrl || "",
       documentSignatureUrl: v.documentSignatureUrl || "",
@@ -72,6 +81,10 @@ export async function PATCH(req: NextRequest) {
     const update: Record<string, unknown> = {};
     if (typeof body.inventorySerialized === "boolean") update.inventorySerialized = body.inventorySerialized;
     if (typeof body.termsAndConditions === "string") update.termsAndConditions = body.termsAndConditions;
+    if (typeof body.workorderTerms === "string") update.workorderTerms = body.workorderTerms;
+    if (typeof body.serviceOrderTerms === "string") update.serviceOrderTerms = body.serviceOrderTerms;
+    if (typeof body.estimateTerms === "string") update.estimateTerms = body.estimateTerms;
+    if (typeof body.invoiceTerms === "string") update.invoiceTerms = body.invoiceTerms;
     if (typeof body.defaultLabourCharge === "number" && body.defaultLabourCharge >= 0) update.defaultLabourCharge = body.defaultLabourCharge;
     if (typeof body.customerLogoUrl === "string") update.customerLogoUrl = body.customerLogoUrl;
     if (typeof body.documentSignatureUrl === "string") update.documentSignatureUrl = body.documentSignatureUrl;
