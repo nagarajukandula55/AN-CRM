@@ -12,6 +12,7 @@ import { getPlatformBusinessId } from "@/lib/centralApiRead";
 import { notifySuperAdmins } from "@/services/notification.service";
 import { logAction } from "@/lib/audit/logAction";
 import { sendAdminSystemAlert } from "@/core/telegram/sendAdminSystemAlert";
+import { notifyAdmins } from "@/core/telegram/notifyAdmins";
 
 const TRIAL_DAYS = 7;
 
@@ -158,6 +159,10 @@ export async function POST(req: NextRequest) {
     sendAdminSystemAlert(
       "NEW_VENDOR_SIGNUP",
       `New vendor signup: ${companyName.trim()} (${vendorId}), ${normalizedEmail} -- auto-activated, ${TRIAL_DAYS}-day trial started.`
+    ).catch(() => {});
+
+    notifyAdmins(
+      `🆕 <b>New vendor signup</b>\n${companyName.trim()} (${vendorId})\n${normalizedEmail}\nAuto-activated, ${TRIAL_DAYS}-day trial started.`
     ).catch(() => {});
 
     return NextResponse.json(

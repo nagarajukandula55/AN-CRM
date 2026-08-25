@@ -9,6 +9,7 @@ import { resolveVendorContext } from "@/lib/auth/vendorContext";
 import { verifyRazorpaySignature } from "@/core/billing/paymentGateway";
 import { extendPeriod } from "@/core/billing/billing.service";
 import { sendVendorAlert } from "@/core/telegram/sendVendorAlert";
+import { notifyAdmins } from "@/core/telegram/notifyAdmins";
 import { notifyUser } from "@/services/notification.service";
 import { sendInvoiceEmail } from "@/services/email/resend.service";
 import { findPlan, type OperatingMode } from "@/core/pricing/plans";
@@ -153,6 +154,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ inv
       String(vendor._id),
       "PAYMENT_RECEIVED",
       `Payment received for invoice ${claimed.invoiceNumber} (₹${claimed.amount}). Subscription extended to ${end.toLocaleDateString("en-IN")}.`
+    ).catch(() => {});
+
+    notifyAdmins(
+      `💰 <b>Payment received</b>\n${vendor.companyName || vendor.contactPerson} (${vendor.vendorId})\nInvoice ${claimed.invoiceNumber} · ₹${claimed.amount} · ${claimed.planName || "plan"}\nActive until ${end.toLocaleDateString("en-IN")}.`
     ).catch(() => {});
 
     // Emails the vendor their own GST invoice (buildInvoiceEmailTemplate,

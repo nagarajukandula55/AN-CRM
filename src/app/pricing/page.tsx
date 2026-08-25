@@ -94,11 +94,11 @@ export default function PricingPage() {
                 <div className="mt-5">
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-semibold tabular">{fmt(price.perMonth)}</span>
-                    <span className="text-ink-3 text-sm">/month</span>
+                    <span className="text-ink-3 text-sm">/month + GST</span>
                   </div>
                   {periodLabel.months > 1 && (
                     <p className="text-xs text-ink-3 mt-1">
-                      {fmt(price.total)} billed every {periodLabel.months} months
+                      {fmt(price.total)} + GST billed every {periodLabel.months} months
                     </p>
                   )}
                   {plan.freeTrialDays && (
@@ -133,7 +133,7 @@ export default function PricingPage() {
         </div>
 
         <p className="text-center text-xs text-ink-3 mt-10">
-          Prices shown are indicative and may change. GST as applicable. By
+          Prices shown are exclusive of GST — 18% GST is added at checkout. By
           subscribing you agree to our{' '}
           <Link href="/terms" className="underline hover:text-ink">Terms of Service</Link> and{' '}
           <Link href="/refund-policy" className="underline hover:text-ink">Refund &amp; Cancellation Policy</Link>.

@@ -213,9 +213,10 @@ export default function VendorBillingPage() {
                       <div className="flex items-baseline gap-1">
                         <span className="text-lg font-semibold tabular text-ink">₹{(chosen?.total ?? plan.monthlyPriceINR).toLocaleString("en-IN")}</span>
                         <span className="text-xs text-ink-3">
-                          {chosen && chosen.months > 1 ? `for ${chosen.label.toLowerCase()} (₹${chosen.perMonth.toLocaleString("en-IN")}/mo)` : "/ month"}
+                          {chosen && chosen.months > 1 ? `for ${chosen.label.toLowerCase()} (₹${chosen.perMonth.toLocaleString("en-IN")}/mo)` : "/ month"} + GST
                         </span>
                       </div>
+                      <p className="text-xs text-ink-3">18% GST added at checkout — you'll pay ₹{Math.round((chosen?.total ?? plan.monthlyPriceINR) * 1.18).toLocaleString("en-IN")}</p>
                       <ul className="text-xs text-ink-2 space-y-0.5 list-disc list-inside">
                         {plan.features.map((f) => (
                           <li key={f}>{f}</li>

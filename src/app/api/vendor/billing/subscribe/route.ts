@@ -10,6 +10,7 @@ import { generateScopedDocumentNumber } from "@/core/numbering/numberingService"
 import { createRazorpayOrder } from "@/core/billing/paymentGateway";
 import { getEffectivePlan } from "@/core/pricing/planAccess";
 import { BILLING_PERIODS, priceForPeriod, type BillingPeriod, type OperatingMode, type PlanKey } from "@/core/pricing/plans";
+import { GST_RATE } from "@/app/api/invoice/view/[invoiceNumber]/vendorBillingView";
 
 /**
  * POST /api/vendor/billing/subscribe — self-serve entry point: vendor picks
@@ -71,22 +72,28 @@ export async function POST(req: NextRequest) {
     const plan = await getEffectivePlan(mode, planKey);
     if (!plan) return NextResponse.json({ success: false, message: "Plan not found or no longer available" }, { status: 404 });
 
-    // Real ₹ total for the picked period, at whichever base rate (launch
-    // or standard) is currently active -- see priceForPeriod's own comment.
-    const { total: price } = priceForPeriod(plan, periodKey);
+    // The pricing page / plan picker show the GST-EXCLUSIVE base rate --
+    // whichever of launch/standard is currently active, see
+    // priceForPeriod's own comment. What actually gets CHARGED (and what
+    // invoice.amount stores) is base + GST_RATE% on top, matching
+    // vendorBillingView.ts's own comment on why invoice.amount must be
+    // the GST-INCLUSIVE grand total: it's exactly what createRazorpayOrder
+    // charges, with nothing added after the fact.
+    const { total: basePrice } = priceForPeriod(plan, periodKey);
+    const price = Math.round(basePrice * (1 + GST_RATE / 100) * 100) / 100;
     const validityDays = periodDef.months * 30;
 
-    // Split the period's flat price evenly across the plan's VENDOR-PORTAL
+    // Split the GST-inclusive total evenly across the plan's VENDOR-PORTAL
     // module keys (plan.vendorModuleKeys -- NOT plan.moduleKeys, which is a
     // different vocabulary that gates the console sidebar, not the vendor
     // portal -- see Plan.vendorModuleKeys's own comment in plans.ts) so
-    // each module keeps a real rate for invoice line items (GST is
-    // computed per-line in vendorBillingView.ts) while modules[].key stays
-    // the real module list vendorAccess.service.ts's getVendorAvailableModules()
-    // actually reads to gate the vendor's own nav -- collapsing to one
-    // synthetic line, or using the wrong vocabulary, would silently break
-    // access gating. Remainder from integer-paise rounding goes on the
-    // last module so the rates always sum to exactly the period's price.
+    // sum(modules[].rate) always equals invoice.amount exactly (an
+    // invariant a couple of other call sites rely on), while modules[].key
+    // stays the real module list vendorAccess.service.ts's
+    // getVendorAvailableModules() actually reads to gate the vendor's own
+    // nav -- collapsing to one synthetic line, or using the wrong
+    // vocabulary, would silently break access gating. Remainder from
+    // integer-paise rounding goes on the last module.
     const n = plan.vendorModuleKeys.length;
     const base = Math.floor((price / n) * 100) / 100;
     const modules = plan.vendorModuleKeys.map((key, i) => ({
