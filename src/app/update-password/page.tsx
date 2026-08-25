@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
 
 /**
  * Forced password-change gate. Reached either by direct login redirect
@@ -48,24 +49,24 @@ export default function UpdatePasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-bg flex items-center justify-center p-4">
       <div className="relative w-full max-w-md">
-        <div className="rounded-3xl border border-gray-200 bg-white shadow-sm p-8 md:p-10">
+        <div className="rounded-card border border-border bg-surface shadow-card p-8 md:p-10">
           <div className="mb-8">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1">
-              <ShieldCheck className="h-3.5 w-3.5 text-amber-600" />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-600">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-warning/20 bg-warning-soft px-3 py-1">
+              <ShieldCheck className="h-3.5 w-3.5 text-warning" />
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warning">
                 Action Required
               </span>
             </div>
-            <h1 className="mt-4 text-3xl font-semibold text-gray-900 tracking-tight">Update your password</h1>
-            <p className="mt-2 text-sm text-gray-500">
+            <h1 className="mt-4 text-3xl font-semibold text-ink tracking-tight">Update your password</h1>
+            <p className="mt-2 text-sm text-ink-3">
               Your password was reset by an administrator. Set a new one to continue.
             </p>
           </div>
 
           {error && (
-            <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="mb-5 rounded-control border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">
               {error}
             </div>
           )}
@@ -77,7 +78,7 @@ export default function UpdatePasswordPage() {
               { label: 'Confirm New Password', key: 'confirm' as const },
             ].map(({ label, key }) => (
               <div key={key}>
-                <label className="text-xs text-gray-500 mb-1 block">{label}</label>
+                <label className="text-xs text-ink-3 mb-1 block">{label}</label>
                 <div className="relative">
                   <input
                     type={showPw ? 'text' : 'password'}
@@ -85,12 +86,12 @@ export default function UpdatePasswordPage() {
                     onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                     required
                     minLength={6}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 pr-10 text-sm text-gray-900 outline-none focus:border-gray-400"
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2.5 pr-10 text-sm text-ink outline-none focus:border-border-strong"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPw(!showPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3"
                   >
                     {showPw ? <EyeOff size={13} /> : <Eye size={13} />}
                   </button>
@@ -101,9 +102,9 @@ export default function UpdatePasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-gray-900 text-white text-sm font-medium py-2.5 hover:bg-gray-800 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full rounded-control bg-accent text-accent-fg text-sm font-medium py-2.5 hover:bg-accent-hover transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {loading ? <Spinner size={16} /> : null}
               {loading ? 'Updating…' : 'Update Password'}
             </button>
           </form>

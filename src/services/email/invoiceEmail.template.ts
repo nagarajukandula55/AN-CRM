@@ -1,32 +1,23 @@
+import { renderEmailShell, emailButton, emailInfoBox } from "./emailShell";
+
 export function buildInvoiceEmailTemplate({
   customerName,
   invoiceNumber,
   pdfUrl,
-  amount,
+  grandTotal,
 }: any) {
-  return `
-    <div style="font-family: Arial; padding: 20px;">
-      <h2>Invoice Generated</h2>
-
-      <p>Hi <b>${customerName}</b>,</p>
-
-      <p>Your invoice <b>${invoiceNumber}</b> has been generated successfully.</p>
-
-      <p><b>Total Amount:</b> ₹${amount}</p>
-
-      <a href="${pdfUrl}" style="
-        display:inline-block;
-        padding:10px 15px;
-        background:#000;
-        color:#fff;
-        text-decoration:none;
-        border-radius:6px;
-        margin-top:10px;
-      ">
-        Download Invoice
-      </a>
-
-      <p style="margin-top:20px;">Thank you for shopping with us 🙌</p>
-    </div>
-  `;
+  return renderEmailShell({
+    heading: "Your invoice is ready",
+    previewText: `Invoice ${invoiceNumber} — ₹${grandTotal}`,
+    bodyHtml: `
+      <p>Hi ${customerName},</p>
+      <p>Your invoice has been generated successfully.</p>
+      ${emailInfoBox([
+        { label: "Invoice number", value: invoiceNumber },
+        { label: "Total amount", value: `₹${grandTotal}` },
+      ])}
+      ${pdfUrl ? `<div style="text-align:center;margin:24px 0;">${emailButton("Download invoice", pdfUrl)}</div>` : ""}
+      <p style="font-size:13px;color:#8B8F94;">Thank you for your business.</p>
+    `,
+  });
 }

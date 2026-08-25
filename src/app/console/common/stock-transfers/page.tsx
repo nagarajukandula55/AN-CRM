@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import useSWR from "swr";
@@ -21,6 +21,7 @@ import {
   Printer,
 } from "lucide-react";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import { Spinner } from "@/components/ui/Spinner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,25 +83,25 @@ function statusBadge(status: TransferStatus) {
   switch (status) {
     case "DRAFT":
       return (
-        <span className="text-xs font-medium px-2 py-0.5 rounded-full text-gray-500 bg-white">
+        <span className="text-xs font-medium px-2 py-0.5 rounded-full text-ink-3 bg-surface">
           Draft
         </span>
       );
     case "IN_TRANSIT":
       return (
-        <span className="text-xs font-medium px-2 py-0.5 rounded-full text-amber-400 bg-amber-500/10">
+        <span className="text-xs font-medium px-2 py-0.5 rounded-full text-warning bg-warning-soft">
           In Transit
         </span>
       );
     case "COMPLETED":
       return (
-        <span className="text-xs font-medium px-2 py-0.5 rounded-full text-emerald-400 bg-emerald-500/10">
+        <span className="text-xs font-medium px-2 py-0.5 rounded-full text-success bg-success-soft">
           Completed
         </span>
       );
     case "CANCELLED":
       return (
-        <span className="text-xs font-medium px-2 py-0.5 rounded-full text-red-400 bg-red-500/10">
+        <span className="text-xs font-medium px-2 py-0.5 rounded-full text-danger bg-danger-soft">
           Cancelled
         </span>
       );
@@ -342,15 +343,15 @@ export default function StockTransfersPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Stock Transfers</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-xl font-semibold text-ink">Stock Transfers</h1>
+          <p className="text-sm text-ink-3 mt-0.5">
             Move inventory between warehouses and track transfer status
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={fetchTransfers}
-            className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400 flex items-center gap-1.5"
+            className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong flex items-center gap-1.5"
           >
             <RefreshCw size={12} />
             Refresh
@@ -360,7 +361,7 @@ export default function StockTransfersPage() {
               resetForm();
               setShowNewModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800"
+            className="flex items-center gap-2 px-4 py-2.5 bg-accent text-accent-fg rounded-card text-sm font-medium hover:bg-accent-hover"
           >
             <Plus size={16} />
             New Transfer
@@ -373,54 +374,54 @@ export default function StockTransfersPage() {
         <button
           type="button"
           onClick={() => { setStatusFilter(""); setPage(1); }}
-          className={`text-left rounded-xl border bg-white p-4 transition-colors ${
-            statusFilter === "" ? "border-gray-900 ring-2 ring-gray-900" : "border-gray-200 hover:border-gray-400"
+          className={`text-left rounded-card border bg-surface p-4 transition-colors ${
+            statusFilter === "" ? "border-accent ring-2 ring-accent-soft" : "border-border hover:border-border-strong"
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
-            <Package size={14} className="text-gray-500" />
-            <span className="text-xs text-gray-500">Total Transfers</span>
+            <Package size={14} className="text-ink-3" />
+            <span className="text-xs text-ink-3">Total Transfers</span>
           </div>
-          <p className="text-2xl font-semibold text-gray-900">{total}</p>
+          <p className="text-2xl font-semibold text-ink">{total}</p>
         </button>
         <button
           type="button"
           onClick={() => { setStatusFilter((v) => (v === "DRAFT" ? "" : "DRAFT")); setPage(1); }}
-          className={`text-left rounded-xl border bg-white p-4 transition-colors ${
-            statusFilter === "DRAFT" ? "border-gray-900 ring-2 ring-gray-900" : "border-gray-200 hover:border-gray-400"
+          className={`text-left rounded-card border bg-surface p-4 transition-colors ${
+            statusFilter === "DRAFT" ? "border-accent ring-2 ring-accent-soft" : "border-border hover:border-border-strong"
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
-            <Clock size={14} className="text-gray-500" />
-            <span className="text-xs text-gray-500">Draft / Pending</span>
+            <Clock size={14} className="text-ink-3" />
+            <span className="text-xs text-ink-3">Draft / Pending</span>
           </div>
-          <p className="text-2xl font-semibold text-gray-600">{draftCount}</p>
+          <p className="text-2xl font-semibold text-ink-2">{draftCount}</p>
         </button>
         <button
           type="button"
           onClick={() => { setStatusFilter((v) => (v === "IN_TRANSIT" ? "" : "IN_TRANSIT")); setPage(1); }}
-          className={`text-left rounded-xl border bg-white p-4 transition-colors ${
-            statusFilter === "IN_TRANSIT" ? "border-gray-900 ring-2 ring-gray-900" : "border-gray-200 hover:border-gray-400"
+          className={`text-left rounded-card border bg-surface p-4 transition-colors ${
+            statusFilter === "IN_TRANSIT" ? "border-accent ring-2 ring-accent-soft" : "border-border hover:border-border-strong"
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
-            <Truck size={14} className="text-amber-500" />
-            <span className="text-xs text-gray-500">In Transit</span>
+            <Truck size={14} className="text-warning" />
+            <span className="text-xs text-ink-3">In Transit</span>
           </div>
-          <p className="text-2xl font-semibold text-amber-400">{inTransitCount}</p>
+          <p className="text-2xl font-semibold text-warning">{inTransitCount}</p>
         </button>
         <button
           type="button"
           onClick={() => { setStatusFilter((v) => (v === "COMPLETED" ? "" : "COMPLETED")); setPage(1); }}
-          className={`text-left rounded-xl border bg-white p-4 transition-colors ${
-            statusFilter === "COMPLETED" ? "border-gray-900 ring-2 ring-gray-900" : "border-gray-200 hover:border-gray-400"
+          className={`text-left rounded-card border bg-surface p-4 transition-colors ${
+            statusFilter === "COMPLETED" ? "border-accent ring-2 ring-accent-soft" : "border-border hover:border-border-strong"
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
-            <CheckCircle size={14} className="text-emerald-500" />
-            <span className="text-xs text-gray-500">Completed</span>
+            <CheckCircle size={14} className="text-success" />
+            <span className="text-xs text-ink-3">Completed</span>
           </div>
-          <p className="text-2xl font-semibold text-emerald-400">{completedCount}</p>
+          <p className="text-2xl font-semibold text-success">{completedCount}</p>
         </button>
       </div>
 
@@ -429,14 +430,14 @@ export default function StockTransfersPage() {
         <div className="relative flex-1 min-w-[200px]">
           <Search
             size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3"
           />
           <input
             type="text"
             placeholder="Search by transfer #, warehouse..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+            className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong"
           />
         </div>
         <select
@@ -445,7 +446,7 @@ export default function StockTransfersPage() {
             setStatusFilter(e.target.value as "" | TransferStatus);
             setPage(1);
           }}
-          className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none"
+          className="px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink-2 focus:outline-none"
         >
           <option value="">All Statuses</option>
           <option value="DRAFT">Draft</option>
@@ -460,7 +461,7 @@ export default function StockTransfersPage() {
               setStatusFilter("");
               setPage(1);
             }}
-            className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400"
+            className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong"
           >
             Clear
           </button>
@@ -468,49 +469,49 @@ export default function StockTransfersPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-gray-200 overflow-hidden">
+      <div className="rounded-card border border-border overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200 bg-white">
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">
+            <tr className="border-b border-border bg-surface">
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">
                 Transfer #
               </th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">
                 From
               </th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">
                 To
               </th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">
                 Items
               </th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">
                 Status
               </th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">
                 Created
               </th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-border">
             {loading ? (
               <tr>
                 <td colSpan={7}>
-                  <div className="p-12 text-center text-gray-500">Loading…</div>
+                  <div className="p-12 text-center text-ink-3">Loading…</div>
                 </td>
               </tr>
             ) : error ? (
               <tr>
                 <td colSpan={7}>
                   <div className="p-12 text-center">
-                    <AlertCircle size={32} className="mx-auto mb-3 text-red-400" />
-                    <p className="text-red-400 text-sm">{error}</p>
+                    <AlertCircle size={32} className="mx-auto mb-3 text-danger" />
+                    <p className="text-danger text-sm">{error}</p>
                     <button
                       onClick={fetchTransfers}
-                      className="mt-3 px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900"
+                      className="mt-3 px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink"
                     >
                       Retry
                     </button>
@@ -521,11 +522,11 @@ export default function StockTransfersPage() {
               <tr>
                 <td colSpan={7}>
                   <div className="p-12 text-center">
-                    <Truck size={36} className="mx-auto mb-3 text-gray-700" />
-                    <p className="text-gray-500 text-sm mb-1">
+                    <Truck size={36} className="mx-auto mb-3 text-ink-2" />
+                    <p className="text-ink-3 text-sm mb-1">
                       No stock transfers found
                     </p>
-                    <p className="text-gray-600 text-xs mb-4">
+                    <p className="text-ink-2 text-xs mb-4">
                       Create a transfer to move inventory between warehouses
                     </p>
                     <button
@@ -533,7 +534,7 @@ export default function StockTransfersPage() {
                         resetForm();
                         setShowNewModal(true);
                       }}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-accent text-accent-fg rounded-card text-sm font-medium hover:bg-accent-hover"
                     >
                       <Plus size={14} />
                       New Transfer
@@ -545,35 +546,35 @@ export default function StockTransfersPage() {
               filtered.map((transfer) => (
                 <tr
                   key={transfer._id}
-                  className="hover:bg-gray-50 transition-colors"
+                  className="hover:bg-surface-2 transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <span className="text-sm text-gray-900 font-mono">
+                    <span className="text-sm text-ink font-mono">
                       {transfer.transferNumber}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-ink-2">
                       {transfer.fromWarehouse}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      <ArrowRight size={12} className="text-gray-600 shrink-0" />
-                      <span className="text-sm text-gray-600">
+                      <ArrowRight size={12} className="text-ink-2 shrink-0" />
+                      <span className="text-sm text-ink-2">
                         {transfer.toWarehouse}
                       </span>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-ink-3">
                       {transfer.items.length}{" "}
                       {transfer.items.length === 1 ? "item" : "items"}
                     </span>
                   </td>
                   <td className="px-4 py-3">{statusBadge(transfer.status)}</td>
                   <td className="px-4 py-3">
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-ink-3">
                       {formatDate(transfer.createdAt)}
                     </span>
                   </td>
@@ -581,7 +582,7 @@ export default function StockTransfersPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setViewTransfer(transfer)}
-                        className="px-2.5 py-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:text-gray-900 hover:border-gray-400 flex items-center gap-1"
+                        className="px-2.5 py-1.5 text-xs text-ink-3 border border-border rounded-control hover:text-ink hover:border-border-strong flex items-center gap-1"
                       >
                         <Eye size={11} />
                         View
@@ -589,7 +590,7 @@ export default function StockTransfersPage() {
                       <Link
                         href={`/console/common/stock-transfers/${transfer._id}/print`}
                         target="_blank"
-                        className="px-2.5 py-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:text-gray-900 hover:border-gray-400 flex items-center gap-1"
+                        className="px-2.5 py-1.5 text-xs text-ink-3 border border-border rounded-control hover:text-ink hover:border-border-strong flex items-center gap-1"
                       >
                         <Printer size={11} />
                         Print
@@ -600,10 +601,10 @@ export default function StockTransfersPage() {
                           onClick={() =>
                             updateStatus(transfer._id, "IN_TRANSIT")
                           }
-                          className="px-2.5 py-1.5 text-xs text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-500/10 disabled:opacity-50"
+                          className="px-2.5 py-1.5 text-xs text-warning border border-warning/20 rounded-control hover:bg-warning-soft disabled:opacity-50"
                         >
                           {updatingId === transfer._id ? (
-                            <RefreshCw size={11} className="animate-spin" />
+                            <Spinner size={11} />
                           ) : (
                             "Dispatch"
                           )}
@@ -615,10 +616,10 @@ export default function StockTransfersPage() {
                           onClick={() =>
                             updateStatus(transfer._id, "COMPLETED")
                           }
-                          className="px-2.5 py-1.5 text-xs text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/10 disabled:opacity-50"
+                          className="px-2.5 py-1.5 text-xs text-success border border-success/20 rounded-control hover:bg-success-soft disabled:opacity-50"
                         >
                           {updatingId === transfer._id ? (
-                            <RefreshCw size={11} className="animate-spin" />
+                            <Spinner size={11} />
                           ) : (
                             "Complete"
                           )}
@@ -631,7 +632,7 @@ export default function StockTransfersPage() {
                           onClick={() =>
                             updateStatus(transfer._id, "CANCELLED")
                           }
-                          className="px-2.5 py-1.5 text-xs text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 disabled:opacity-50"
+                          className="px-2.5 py-1.5 text-xs text-danger border border-danger/20 rounded-control hover:bg-danger-soft disabled:opacity-50"
                         >
                           Cancel
                         </button>
@@ -648,24 +649,24 @@ export default function StockTransfersPage() {
       {/* Pagination */}
       {!loading && !error && total > 0 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-ink-3">
             Showing {filtered.length} of {total} transfers
           </p>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+              className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
             >
               <ChevronLeft size={12} /> Prev
             </button>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-ink-3">
               Page {page} of {totalPages}
             </span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+              className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
             >
               Next <ChevronRight size={12} />
             </button>
@@ -676,14 +677,14 @@ export default function StockTransfersPage() {
       {/* ── New Transfer Modal ──────────────────────────────────────────────── */}
       {showNewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-2xl bg-white border border-gray-200 rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-2xl bg-surface border border-border rounded-card overflow-hidden flex flex-col max-h-[90vh]">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center shrink-0">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center shrink-0">
               <div>
-                <h2 className="text-sm font-semibold text-gray-900">
+                <h2 className="text-sm font-semibold text-ink">
                   New Stock Transfer
                 </h2>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-ink-3 mt-0.5">
                   Create a transfer order to move stock between warehouses
                 </p>
               </div>
@@ -692,7 +693,7 @@ export default function StockTransfersPage() {
                   setShowNewModal(false);
                   resetForm();
                 }}
-                className="text-gray-500 hover:text-gray-900 transition-colors"
+                className="text-ink-3 hover:text-ink transition-colors"
               >
                 <X size={18} />
               </button>
@@ -705,25 +706,25 @@ export default function StockTransfersPage() {
             >
               <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
                 {formError && (
-                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-control bg-danger-soft border border-danger/20">
                     <AlertCircle
                       size={14}
-                      className="text-red-400 mt-0.5 shrink-0"
+                      className="text-danger mt-0.5 shrink-0"
                     />
-                    <p className="text-xs text-red-400">{formError}</p>
+                    <p className="text-xs text-danger">{formError}</p>
                   </div>
                 )}
 
                 {/* Warehouses row */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-gray-500 block mb-1">
-                      From Warehouse <span className="text-red-400">*</span>
+                    <label className="text-xs text-ink-3 block mb-1">
+                      From Warehouse <span className="text-danger">*</span>
                     </label>
                     <select
                       value={fromWarehouse}
                       onChange={(e) => setFromWarehouse(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-gray-400"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink-2 focus:outline-none focus:border-border-strong"
                       required
                     >
                       <option value="">Select warehouse</option>
@@ -735,13 +736,13 @@ export default function StockTransfersPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 block mb-1">
-                      To Warehouse <span className="text-red-400">*</span>
+                    <label className="text-xs text-ink-3 block mb-1">
+                      To Warehouse <span className="text-danger">*</span>
                     </label>
                     <select
                       value={toWarehouse}
                       onChange={(e) => setToWarehouse(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-gray-400"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink-2 focus:outline-none focus:border-border-strong"
                       required
                     >
                       <option value="">Select warehouse</option>
@@ -761,13 +762,13 @@ export default function StockTransfersPage() {
                 {/* Items section */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs text-gray-500">
-                      Items <span className="text-red-400">*</span>
+                    <label className="text-xs text-ink-3">
+                      Items <span className="text-danger">*</span>
                     </label>
                     <button
                       type="button"
                       onClick={addItemRow}
-                      className="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1"
+                      className="text-xs text-ink-3 hover:text-ink flex items-center gap-1"
                     >
                       <Plus size={11} /> Add Row
                     </button>
@@ -777,15 +778,15 @@ export default function StockTransfersPage() {
                     {formItems.map((row, idx) => (
                       <div
                         key={idx}
-                        className="rounded-lg border border-gray-200 bg-white p-3 space-y-2"
+                        className="rounded-control border border-border bg-surface p-3 space-y-2"
                       >
                         {/* Item selector */}
                         {row.itemId ? (
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-gray-900">{row.itemName}</p>
+                              <p className="text-sm text-ink">{row.itemName}</p>
                               {row.sku && (
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-ink-3">
                                   SKU: {row.sku}
                                 </p>
                               )}
@@ -793,7 +794,7 @@ export default function StockTransfersPage() {
                             <button
                               type="button"
                               onClick={() => clearItemRow(idx)}
-                              className="text-gray-600 hover:text-gray-600"
+                              className="text-ink-2 hover:text-ink-2"
                             >
                               <X size={13} />
                             </button>
@@ -802,7 +803,7 @@ export default function StockTransfersPage() {
                           <div className="relative">
                             <Search
                               size={12}
-                              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+                              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3"
                             />
                             <input
                               type="text"
@@ -815,10 +816,10 @@ export default function StockTransfersPage() {
                                   )
                                 )
                               }
-                              className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+                              className="w-full pl-8 pr-3 py-1.5 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong"
                             />
                             {itemSearches[idx] && (
-                              <div className="absolute z-10 w-full mt-1 max-h-36 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
+                              <div className="absolute z-10 w-full mt-1 max-h-36 overflow-y-auto rounded-control border border-border bg-surface shadow-xl">
                                 {inventoryItems
                                   .filter(
                                     (it) =>
@@ -839,13 +840,13 @@ export default function StockTransfersPage() {
                                       type="button"
                                       key={it._id}
                                       onClick={() => selectItemForRow(idx, it)}
-                                      className="w-full text-left px-3 py-1.5 hover:bg-gray-50 transition-colors"
+                                      className="w-full text-left px-3 py-1.5 hover:bg-surface-2 transition-colors"
                                     >
-                                      <p className="text-xs text-gray-900">
+                                      <p className="text-xs text-ink">
                                         {it.name}
                                       </p>
                                       {it.sku && (
-                                        <p className="text-xs text-gray-600">
+                                        <p className="text-xs text-ink-2">
                                           {it.sku}
                                         </p>
                                       )}
@@ -864,7 +865,7 @@ export default function StockTransfersPage() {
                                         itemSearches[idx].toLowerCase()
                                       )
                                 ).length === 0 && (
-                                  <p className="px-3 py-2 text-xs text-gray-500">
+                                  <p className="px-3 py-2 text-xs text-ink-3">
                                     No items found
                                   </p>
                                 )}
@@ -876,7 +877,7 @@ export default function StockTransfersPage() {
                         {/* Quantity + unit row */}
                         <div className="flex items-center gap-2">
                           <div className="flex-1">
-                            <label className="text-xs text-gray-600 block mb-0.5">
+                            <label className="text-xs text-ink-2 block mb-0.5">
                               Quantity
                             </label>
                             <input
@@ -889,11 +890,11 @@ export default function StockTransfersPage() {
                               }
                               onFocus={(e) => e.target.select()}
                               placeholder="Quantity"
-                              className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+                              className="w-full px-3 py-1.5 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong"
                             />
                           </div>
                           <div className="w-24">
-                            <label className="text-xs text-gray-600 block mb-0.5">
+                            <label className="text-xs text-ink-2 block mb-0.5">
                               Unit
                             </label>
                             <input
@@ -909,14 +910,14 @@ export default function StockTransfersPage() {
                                 )
                               }
                               placeholder="Unit"
-                              className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+                              className="w-full px-3 py-1.5 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong"
                             />
                           </div>
                           {formItems.length > 1 && (
                             <button
                               type="button"
                               onClick={() => removeItemRow(idx)}
-                              className="mt-4 text-red-400 hover:text-red-300 shrink-0"
+                              className="mt-4 text-danger hover:opacity-80 shrink-0"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -929,7 +930,7 @@ export default function StockTransfersPage() {
                   <button
                     type="button"
                     onClick={addItemRow}
-                    className="mt-2 w-full py-2 border border-dashed border-gray-200 rounded-lg text-xs text-gray-600 hover:text-gray-500 hover:border-gray-400 transition-colors flex items-center justify-center gap-1.5"
+                    className="mt-2 w-full py-2 border border-dashed border-border rounded-control text-xs text-ink-2 hover:text-ink-3 hover:border-border-strong transition-colors flex items-center justify-center gap-1.5"
                   >
                     <Plus size={12} /> Add Another Item
                   </button>
@@ -937,7 +938,7 @@ export default function StockTransfersPage() {
 
                 {/* Notes */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">
+                  <label className="text-xs text-ink-3 block mb-1">
                     Notes (optional)
                   </label>
                   <textarea
@@ -945,31 +946,31 @@ export default function StockTransfersPage() {
                     placeholder="Any additional notes about this transfer..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 resize-none"
+                    className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong resize-none"
                   />
                 </div>
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 shrink-0">
+              <div className="px-6 py-4 border-t border-border flex justify-end gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
                     setShowNewModal(false);
                     resetForm();
                   }}
-                  className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400"
+                  className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-accent text-accent-fg rounded-card text-sm font-medium hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <>
-                      <RefreshCw size={14} className="animate-spin" />
+                      <Spinner size={14} />
                       Creating…
                     </>
                   ) : (
@@ -988,23 +989,23 @@ export default function StockTransfersPage() {
       {/* ── View Transfer Modal ─────────────────────────────────────────────── */}
       {viewTransfer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-lg bg-white border border-gray-200 rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-lg bg-surface border border-border rounded-card overflow-hidden flex flex-col max-h-[90vh]">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center shrink-0">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center shrink-0">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-gray-900 font-mono">
+                  <h2 className="text-sm font-semibold text-ink font-mono">
                     {viewTransfer.transferNumber}
                   </h2>
                   {statusBadge(viewTransfer.status)}
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-ink-3 mt-0.5">
                   Transfer details and items
                 </p>
               </div>
               <button
                 onClick={() => setViewTransfer(null)}
-                className="text-gray-500 hover:text-gray-900 transition-colors"
+                className="text-ink-3 hover:text-ink transition-colors"
               >
                 <X size={18} />
               </button>
@@ -1013,17 +1014,17 @@ export default function StockTransfersPage() {
             {/* Body */}
             <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
               {/* Route */}
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-white border border-gray-200">
+              <div className="flex items-center gap-3 p-3 rounded-control bg-surface border border-border">
                 <div className="flex-1 text-center">
-                  <p className="text-xs text-gray-500 mb-0.5">From</p>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-xs text-ink-3 mb-0.5">From</p>
+                  <p className="text-sm font-medium text-ink">
                     {viewTransfer.fromWarehouse}
                   </p>
                 </div>
-                <ArrowRight size={16} className="text-gray-600 shrink-0" />
+                <ArrowRight size={16} className="text-ink-2 shrink-0" />
                 <div className="flex-1 text-center">
-                  <p className="text-xs text-gray-500 mb-0.5">To</p>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-xs text-ink-3 mb-0.5">To</p>
+                  <p className="text-sm font-medium text-ink">
                     {viewTransfer.toWarehouse}
                   </p>
                 </div>
@@ -1032,23 +1033,23 @@ export default function StockTransfersPage() {
               {/* Dates */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Created</p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-xs text-ink-3 mb-0.5">Created</p>
+                  <p className="text-sm text-ink-2">
                     {formatDate(viewTransfer.createdAt)}
                   </p>
                 </div>
                 {viewTransfer.transferredAt && (
                   <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Dispatched</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs text-ink-3 mb-0.5">Dispatched</p>
+                    <p className="text-sm text-ink-2">
                       {formatDate(viewTransfer.transferredAt)}
                     </p>
                   </div>
                 )}
                 {viewTransfer.completedAt && (
                   <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Completed</p>
-                    <p className="text-sm text-emerald-400">
+                    <p className="text-xs text-ink-3 mb-0.5">Completed</p>
+                    <p className="text-sm text-success">
                       {formatDate(viewTransfer.completedAt)}
                     </p>
                   </div>
@@ -1057,37 +1058,37 @@ export default function StockTransfersPage() {
 
               {/* Items table */}
               <div>
-                <p className="text-xs text-gray-500 mb-2">
+                <p className="text-xs text-ink-3 mb-2">
                   Items ({viewTransfer.items.length})
                 </p>
-                <div className="rounded-lg border border-gray-200 overflow-hidden">
+                <div className="rounded-control border border-border overflow-hidden">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-gray-200 bg-white">
-                        <th className="px-3 py-2 text-left text-xs text-gray-500 font-medium">
+                      <tr className="border-b border-border bg-surface">
+                        <th className="px-3 py-2 text-left text-xs text-ink-3 font-medium">
                           Item
                         </th>
-                        <th className="px-3 py-2 text-right text-xs text-gray-500 font-medium">
+                        <th className="px-3 py-2 text-right text-xs text-ink-3 font-medium">
                           Qty
                         </th>
-                        <th className="px-3 py-2 text-right text-xs text-gray-500 font-medium">
+                        <th className="px-3 py-2 text-right text-xs text-ink-3 font-medium">
                           Unit
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-border">
                       {viewTransfer.items.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
+                        <tr key={idx} className="hover:bg-surface-2">
                           <td className="px-3 py-2.5">
-                            <p className="text-sm text-gray-900">{item.itemName}</p>
+                            <p className="text-sm text-ink">{item.itemName}</p>
                             {item.sku && (
-                              <p className="text-xs text-gray-600">{item.sku}</p>
+                              <p className="text-xs text-ink-2">{item.sku}</p>
                             )}
                           </td>
-                          <td className="px-3 py-2.5 text-right text-sm text-gray-600">
+                          <td className="px-3 py-2.5 text-right text-sm text-ink-2">
                             {item.quantity}
                           </td>
-                          <td className="px-3 py-2.5 text-right text-xs text-gray-500">
+                          <td className="px-3 py-2.5 text-right text-xs text-ink-3">
                             {item.unit}
                           </td>
                         </tr>
@@ -1100,8 +1101,8 @@ export default function StockTransfersPage() {
               {/* Notes */}
               {viewTransfer.notes && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Notes</p>
-                  <p className="text-sm text-gray-500 bg-white rounded-lg border border-gray-200 px-3 py-2">
+                  <p className="text-xs text-ink-3 mb-1">Notes</p>
+                  <p className="text-sm text-ink-3 bg-surface rounded-control border border-border px-3 py-2">
                     {viewTransfer.notes}
                   </p>
                 </div>
@@ -1109,7 +1110,7 @@ export default function StockTransfersPage() {
             </div>
 
             {/* Footer with status actions */}
-            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between gap-3 shrink-0">
+            <div className="px-6 py-4 border-t border-border flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2">
                 {viewTransfer.status === "DRAFT" && (
                   <>
@@ -1118,10 +1119,10 @@ export default function StockTransfersPage() {
                       onClick={() =>
                         updateStatus(viewTransfer._id, "IN_TRANSIT")
                       }
-                      className="px-3 py-2 text-xs text-amber-400 border border-amber-500/20 rounded-xl hover:bg-amber-500/10 disabled:opacity-50 flex items-center gap-1.5"
+                      className="px-3 py-2 text-xs text-warning border border-warning/20 rounded-card hover:bg-warning-soft disabled:opacity-50 flex items-center gap-1.5"
                     >
                       {updatingId === viewTransfer._id ? (
-                        <RefreshCw size={12} className="animate-spin" />
+                        <Spinner size={12} />
                       ) : (
                         <Truck size={12} />
                       )}
@@ -1132,7 +1133,7 @@ export default function StockTransfersPage() {
                       onClick={() =>
                         updateStatus(viewTransfer._id, "CANCELLED")
                       }
-                      className="px-3 py-2 text-xs text-red-400 border border-red-500/20 rounded-xl hover:bg-red-500/10 disabled:opacity-50"
+                      className="px-3 py-2 text-xs text-danger border border-danger/20 rounded-card hover:bg-danger-soft disabled:opacity-50"
                     >
                       Cancel Transfer
                     </button>
@@ -1145,10 +1146,10 @@ export default function StockTransfersPage() {
                       onClick={() =>
                         updateStatus(viewTransfer._id, "COMPLETED")
                       }
-                      className="px-3 py-2 text-xs text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500/10 disabled:opacity-50 flex items-center gap-1.5"
+                      className="px-3 py-2 text-xs text-success border border-success/20 rounded-card hover:bg-success-soft disabled:opacity-50 flex items-center gap-1.5"
                     >
                       {updatingId === viewTransfer._id ? (
-                        <RefreshCw size={12} className="animate-spin" />
+                        <Spinner size={12} />
                       ) : (
                         <CheckCircle size={12} />
                       )}
@@ -1159,7 +1160,7 @@ export default function StockTransfersPage() {
                       onClick={() =>
                         updateStatus(viewTransfer._id, "CANCELLED")
                       }
-                      className="px-3 py-2 text-xs text-red-400 border border-red-500/20 rounded-xl hover:bg-red-500/10 disabled:opacity-50"
+                      className="px-3 py-2 text-xs text-danger border border-danger/20 rounded-card hover:bg-danger-soft disabled:opacity-50"
                     >
                       Cancel Transfer
                     </button>
@@ -1168,7 +1169,7 @@ export default function StockTransfersPage() {
               </div>
               <button
                 onClick={() => setViewTransfer(null)}
-                className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400"
+                className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong"
               >
                 Close
               </button>

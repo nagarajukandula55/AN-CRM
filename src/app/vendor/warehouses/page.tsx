@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * Vendor-facing warehouse management — part of the vendor hierarchy layer
@@ -185,7 +185,7 @@ export default function VendorWarehousesPage() {
             <div className="w-full max-w-lg bg-surface rounded-card border border-border shadow-card-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between">
                 <h2 className="h-section">{editingId ? "Edit Warehouse" : "Add Warehouse"}</h2>
-                <button onClick={() => setShowForm(false)} className="p-1 rounded-lg hover:bg-surface-2">
+                <button onClick={() => setShowForm(false)} className="p-1 rounded-control hover:bg-surface-2">
                   <X size={16} className="text-ink-3" />
                 </button>
               </div>

@@ -15,6 +15,14 @@ export interface IVendorBillingInvoice extends Document {
   invoiceNumber: string;
   modules: { key: string; rate: number }[];
   amount: number;
+  // Snapshotted at invoice-creation time -- confirm/route.ts applies THESE
+  // (not whatever the live VendorSubscription doc happens to hold) onto
+  // the subscription only once payment is actually confirmed, so a vendor
+  // can never get module access by merely creating an invoice and
+  // abandoning checkout. See api/vendor/billing/subscribe/route.ts.
+  validityDays: number;
+  planId: mongoose.Types.ObjectId | null;
+  planName: string | null;
   periodStart: Date;
   periodEnd: Date;
   status: "PENDING" | "PAID" | "CANCELLED";
@@ -34,6 +42,9 @@ const VendorBillingInvoiceSchema = new Schema<IVendorBillingInvoice>(
     invoiceNumber: { type: String, required: true, unique: true },
     modules: [{ key: String, rate: Number, _id: false }],
     amount: { type: Number, required: true, min: 0 },
+    validityDays: { type: Number, default: 30 },
+    planId: { type: Schema.Types.ObjectId, ref: "VendorPlan", default: null },
+    planName: { type: String, default: null },
     periodStart: { type: Date, required: true },
     periodEnd: { type: Date, required: true },
     status: { type: String, enum: ["PENDING", "PAID", "CANCELLED"], default: "PENDING" },

@@ -29,6 +29,15 @@ export async function GET() {
       vendorId: vendorContext?.vendor?._id ? String(vendorContext.vendor._id) : null,
       vendorRole: vendorContext?.role || null,
       isSuperAdmin: !!session.isSuperAdmin,
+      // The vendor's own identity -- companyName + the human-readable
+      // vendorId code (e.g. "VND0001", distinct from the Mongo _id above).
+      // Added so sidebar chrome can show the LOGGED-IN VENDOR'S own name/
+      // code instead of the platform Business's name (e.g. "My Biz Flow")
+      // -- a vendor is a sub-entity of that Business, not the Business
+      // itself, and seeing the platform's own name/branding in their own
+      // portal header was confusing/wrong.
+      companyName: (vendorContext?.vendor as any)?.companyName || null,
+      vendorCode: (vendorContext?.vendor as any)?.vendorId || null,
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";

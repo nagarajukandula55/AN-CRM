@@ -143,6 +143,10 @@ export default function Sidebar() {
   const [ownVendorId, setOwnVendorId]   = useState<string | null>(null);
   const [subVendors, setSubVendors]     = useState<SubVendor[]>([]);
   const [activeVendorId, setActiveVendorId] = useState<string | null>(null);
+  // The logged-in vendor's OWN identity -- shown in the header/switcher
+  // instead of the platform Business's name (see vendorWordmark below).
+  const [ownVendorCompanyName, setOwnVendorCompanyName] = useState<string | null>(null);
+  const [ownVendorCode, setOwnVendorCode] = useState<string | null>(null);
   // Tracks which subgroups are open — default all open
   const [openSubgroups, setOpenSubgroups] = useState<Record<string, boolean>>(() => {
     const allOpen: Record<string, boolean> = {};
@@ -195,6 +199,8 @@ export default function Sidebar() {
         if (cancelled || !d?.vendorId) return;
         setOwnVendorId(d.vendorId);
         setActiveVendorId(d.vendorId);
+        setOwnVendorCompanyName(d.companyName || null);
+        setOwnVendorCode(d.vendorCode || null);
         return fetch(`/api/vendors/${d.vendorId}/sub-vendors`)
           .then((r) => (r.ok ? r.json() : null))
           .then((sd) => {
@@ -442,8 +448,17 @@ export default function Sidebar() {
     (key === "admin-feedback" && user?.isSuperAdmin) ||
     (key === "masters-crm-options" && user?.isSuperAdmin);
 
-  const vendorWordmark =
-    !user?.isSuperAdmin && !user?.isPlatformStaff && activeBiz && !activeBiz.isPlatform
+  // A vendor's own identity (companyName), not the platform Business's own
+  // name/brandName (e.g. "My Biz Flow") -- a vendor is a sub-entity of
+  // that Business, not the Business itself, so the portal header/switcher
+  // should show WHO they are, not the platform they operate under. Falls
+  // back to the old Business-name logic only while ownVendorCompanyName
+  // hasn't resolved yet (brief window right after login) or for a
+  // business-staff account with no vendor identity at all.
+  const isVendorIdentity = !user?.isSuperAdmin && !user?.isPlatformStaff && !!ownVendorCompanyName;
+  const vendorWordmark = isVendorIdentity
+    ? ownVendorCompanyName!
+    : !user?.isSuperAdmin && !user?.isPlatformStaff && activeBiz && !activeBiz.isPlatform
       ? (activeBiz.brandName || activeBiz.name)
       : "My Biz Flow";
 
@@ -544,8 +559,12 @@ export default function Sidebar() {
                 <h2 className="text-base font-bold tracking-tight text-ink leading-tight truncate">{vendorWordmark}</h2>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse shrink-0" />
-                  <p className="text-[10px] text-ink-3 truncate">
-                    {user?.isSuperAdmin ? <span className="text-accent font-medium">Super Admin</span> : (user?.role || "Operational")}
+                  <p className="text-[10px] text-ink-3 truncate font-mono">
+                    {user?.isSuperAdmin
+                      ? <span className="text-accent font-medium font-sans">Super Admin</span>
+                      : isVendorIdentity && ownVendorCode
+                        ? ownVendorCode
+                        : (user?.role || "Operational")}
                   </p>
                 </div>
               </div>
@@ -553,13 +572,28 @@ export default function Sidebar() {
           )}
         </div>
 
-        {/* Business Switcher */}
-        {businesses.length > 0 && (
+        {/* Business Switcher -- suppressed for a vendor identity below
+            (isVendorIdentity): a vendor has exactly one business
+            membership (the platform tenant they operate under), so
+            "switching businesses" isn't a meaningful action for them and
+            showing that tenant's own name/brandName here (e.g. "My Biz
+            Flow") reads as if THAT were the vendor's identity, which it
+            isn't. Their own company name is shown in the header above
+            instead. Still rendered when they have real sub-vendors to
+            switch between (a genuinely vendor-relevant action), just
+            without the business-list entries. */}
+        {/* For a vendor identity this switcher exists ONLY to move between
+            the vendor's own account and its sub-vendors -- with none to
+            switch to, the button would otherwise open onto an empty panel
+            (businesses list suppressed above, "Add SC Account" excluded
+            above too). Non-vendor (staff/admin) keeps the original
+            businesses.length gate, unchanged. */}
+        {(isVendorIdentity ? subVendors.length > 0 : businesses.length > 0) && (
           <div className="px-3 pt-3 pb-1 relative" ref={dropdownRef}>
             <button
               onClick={() => setBizDropdown(!bizDropdown)}
               disabled={switching}
-              title={activeBiz ? (activeBiz.isPlatform ? "AN-CRM (Platform)" : (activeBiz.brandName || activeBiz.name)) : "Select Business"}
+              title={isVendorIdentity ? (ownVendorCompanyName || undefined) : (activeBiz ? (activeBiz.isPlatform ? "AN-CRM (Platform)" : (activeBiz.brandName || activeBiz.name)) : "Select Business")}
               className={`flex w-full items-center rounded-control border border-border bg-surface-2 py-2 text-left transition hover:bg-surface-3 disabled:opacity-60 ${
                 isCollapsed ? "justify-center px-0" : "justify-between px-3"
               }`}
@@ -568,7 +602,9 @@ export default function Sidebar() {
                 <Building2 size={12} className="shrink-0 text-ink-3" />
                 {!isCollapsed && (
                   <span className="truncate text-xs font-medium text-ink-2">
-                    {activeBiz ? (activeBiz.isPlatform ? "AN-CRM (Platform)" : (activeBiz.brandName || activeBiz.name)) : "Select Business"}
+                    {isVendorIdentity
+                      ? (ownVendorCompanyName || "My Vendor Account")
+                      : (activeBiz ? (activeBiz.isPlatform ? "AN-CRM (Platform)" : (activeBiz.brandName || activeBiz.name)) : "Select Business")}
                   </span>
                 )}
               </div>
@@ -592,7 +628,7 @@ export default function Sidebar() {
                     app. Visible to every Super Admin / AN Group
                     platform-staff account since api/auth/me's isPlatformStaff
                     branch always includes it. */}
-                {[...businesses].sort((a, b) => (b.isPlatform ? 1 : 0) - (a.isPlatform ? 1 : 0)).map((biz) => {
+                {!isVendorIdentity && [...businesses].sort((a, b) => (b.isPlatform ? 1 : 0) - (a.isPlatform ? 1 : 0)).map((biz) => {
                   const isActive = biz.isPlatform ? !user?.activeBusinessId : biz._id === user?.activeBusinessId;
                   return (
                     <button
@@ -650,8 +686,14 @@ export default function Sidebar() {
                     the CURRENTLY ACTIVE business is itself SC (matches the
                     dropdown's own scope), per explicit direction ("drop
                     down of SC name which is currently there to match active
-                    business ther only give option to add sub vendor"). */}
-                {activeBiz?.operatingMode === "SC" && (
+                    business ther only give option to add sub vendor").
+                    Excluded for a vendor identity -- adding a BUSINESS
+                    sub-account is a business-staff action, not a vendor/
+                    sub-vendor one; this dropdown is vendor/sub-vendor-only
+                    once isVendorIdentity is true, per explicit direction
+                    ("that switcher only should be used for vendors and sub
+                    vendors only not more than that"). */}
+                {!isVendorIdentity && activeBiz?.operatingMode === "SC" && (
                   <button
                     onClick={() => { setBizDropdown(false); router.push("/console/sc/sub-accounts"); }}
                     className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-surface-2 border-t border-border text-accent"

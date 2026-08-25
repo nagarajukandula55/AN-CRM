@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -218,13 +218,13 @@ export default function NewAgreementPage() {
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => step > 1 ? setStep(step - 1) : router.push('/agreements')}
-            className="p-2 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-card bg-surface/5 border border-white/10 text-ink-3 hover:text-white hover:bg-surface/10 transition-colors"
           >
             ←
           </button>
           <div>
             <h1 className="text-2xl font-bold text-white">New Agreement</h1>
-            <p className="text-gray-400 text-sm">Indian law compliant electronic agreement</p>
+            <p className="text-ink-3 text-sm">Indian law compliant electronic agreement</p>
           </div>
         </div>
 
@@ -234,19 +234,19 @@ export default function NewAgreementPage() {
             <div key={s} className="flex items-center">
               <div
                 className={`flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold transition-colors ${
-                  step >= s ? 'bg-blue-600 text-white' : 'bg-white/10 text-gray-500'
+                  step >= s ? 'bg-info text-white' : 'bg-surface/10 text-ink-3'
                 }`}
               >
                 {s}
               </div>
               {s < 3 && (
-                <div className={`h-0.5 w-20 transition-colors ${step > s ? 'bg-blue-600' : 'bg-white/10'}`} />
+                <div className={`h-0.5 w-20 transition-colors ${step > s ? 'bg-info' : 'bg-surface/10'}`} />
               )}
             </div>
           ))}
           <div className="ml-4 flex gap-8 text-sm">
             {['Choose Template', 'Fill Details', 'Preview & Save'].map((label, i) => (
-              <span key={i} className={step === i + 1 ? 'text-blue-400 font-medium' : 'text-gray-600'}>
+              <span key={i} className={step === i + 1 ? 'text-info font-medium' : 'text-ink-2'}>
                 {label}
               </span>
             ))}
@@ -259,7 +259,7 @@ export default function NewAgreementPage() {
             <h2 className="text-xl font-semibold text-white mb-4">Choose Agreement Template</h2>
             {loading ? (
               <div className="flex items-center justify-center py-20">
-                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-info border-t-transparent rounded-full animate-spin" />
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -267,17 +267,17 @@ export default function NewAgreementPage() {
                   <button
                     key={template._id}
                     onClick={() => handleSelectTemplate(template)}
-                    className={`p-6 rounded-2xl border text-left transition-all ${
+                    className={`p-6 rounded-card border text-left transition-all ${
                       selectedTemplate?.type === template.type
-                        ? 'border-blue-500 bg-blue-500/10'
-                        : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20'
+                        ? 'border-info bg-info/10'
+                        : 'border-white/10 bg-surface/5 hover:bg-surface/10 hover:border-white/20'
                     }`}
                   >
                     <div className="text-4xl mb-3">{TEMPLATE_ICONS[template.type] || '📄'}</div>
                     <h3 className="text-white font-semibold mb-1">{template.name}</h3>
-                    <p className="text-gray-400 text-xs leading-relaxed">{template.description}</p>
+                    <p className="text-ink-3 text-xs leading-relaxed">{template.description}</p>
                     {selectedTemplate?.type === template.type && (
-                      <div className="mt-3 text-blue-400 text-xs font-medium">✓ Selected</div>
+                      <div className="mt-3 text-info text-xs font-medium">✓ Selected</div>
                     )}
                   </button>
                 ))}
@@ -287,7 +287,7 @@ export default function NewAgreementPage() {
               <button
                 onClick={handleNextStep}
                 disabled={!selectedTemplate}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-colors"
+                className="px-6 py-2.5 bg-info hover:bg-info disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-card font-medium transition-colors"
               >
                 Next: Fill Details →
               </button>
@@ -299,70 +299,70 @@ export default function NewAgreementPage() {
         {step === 2 && selectedTemplate && (
           <div className="space-y-8">
             {/* Agreement Title */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+            <div className="bg-surface/5 border border-white/10 rounded-card p-6">
               <h2 className="text-lg font-semibold text-white mb-4">Agreement Details</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm text-gray-400 mb-1.5">Agreement Title *</label>
+                  <label className="block text-sm text-ink-3 mb-1.5">Agreement Title *</label>
                   <input
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder={`${selectedTemplate.name} - ${new Date().getFullYear()}`}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50"
+                    className="w-full bg-surface/5 border border-white/10 rounded-card px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-info/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1.5">Governing Law</label>
+                  <label className="block text-sm text-ink-3 mb-1.5">Governing Law</label>
                   <input
                     type="text"
                     value={governingLaw}
                     onChange={(e) => setGoverningLaw(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500/50"
+                    className="w-full bg-surface/5 border border-white/10 rounded-card px-4 py-2.5 text-white focus:outline-none focus:border-info/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1.5">Jurisdiction (City)</label>
+                  <label className="block text-sm text-ink-3 mb-1.5">Jurisdiction (City)</label>
                   <input
                     type="text"
                     value={jurisdiction}
                     onChange={(e) => setJurisdiction(e.target.value)}
                     placeholder="e.g. Mumbai"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50"
+                    className="w-full bg-surface/5 border border-white/10 rounded-card px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-info/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1.5">Expiry Date (optional)</label>
+                  <label className="block text-sm text-ink-3 mb-1.5">Expiry Date (optional)</label>
                   <input
                     type="date"
                     value={expiresAt}
                     onChange={(e) => setExpiresAt(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500/50"
+                    className="w-full bg-surface/5 border border-white/10 rounded-card px-4 py-2.5 text-white focus:outline-none focus:border-info/50"
                   />
                 </div>
               </div>
             </div>
 
             {/* Parties */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+            <div className="bg-surface/5 border border-white/10 rounded-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-white">Parties</h2>
                 <button
                   onClick={handleAddParty}
-                  className="px-3 py-1.5 text-sm bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-600/30 transition-colors"
+                  className="px-3 py-1.5 text-sm bg-info/20 text-info border border-info/30 rounded-control hover:bg-info/30 transition-colors"
                 >
                   + Add Party
                 </button>
               </div>
               <div className="space-y-4">
                 {parties.map((party, index) => (
-                  <div key={index} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                  <div key={index} className="bg-surface/5 border border-white/10 rounded-card p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-gray-400">Party {index + 1}</span>
+                      <span className="text-sm font-medium text-ink-3">Party {index + 1}</span>
                       {parties.length > 2 && (
                         <button
                           onClick={() => handleRemoveParty(index)}
-                          className="text-red-400 hover:text-red-300 text-sm"
+                          className="text-danger hover:text-danger text-sm"
                         >
                           Remove
                         </button>
@@ -370,29 +370,29 @@ export default function NewAgreementPage() {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Full Name *</label>
+                        <label className="block text-xs text-ink-3 mb-1">Full Name *</label>
                         <input
                           type="text"
                           value={party.name}
                           onChange={(e) => handlePartyChange(index, 'name', e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50"
+                          className="w-full bg-surface/5 border border-white/10 rounded-control px-3 py-2 text-white text-sm focus:outline-none focus:border-info/50"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Email *</label>
+                        <label className="block text-xs text-ink-3 mb-1">Email *</label>
                         <input
                           type="email"
                           value={party.email}
                           onChange={(e) => handlePartyChange(index, 'email', e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50"
+                          className="w-full bg-surface/5 border border-white/10 rounded-control px-3 py-2 text-white text-sm focus:outline-none focus:border-info/50"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Role *</label>
+                        <label className="block text-xs text-ink-3 mb-1">Role *</label>
                         <select
                           value={party.role}
                           onChange={(e) => handlePartyChange(index, 'role', e.target.value)}
-                          className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50"
+                          className="w-full bg-ink border border-white/10 rounded-control px-3 py-2 text-white text-sm focus:outline-none focus:border-info/50"
                         >
                           {ROLE_OPTIONS.map((r) => (
                             <option key={r} value={r}>{r}</option>
@@ -400,32 +400,32 @@ export default function NewAgreementPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Phone</label>
+                        <label className="block text-xs text-ink-3 mb-1">Phone</label>
                         <input
                           type="tel"
                           value={party.phone}
                           onChange={(e) => handlePartyChange(index, 'phone', e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50"
+                          className="w-full bg-surface/5 border border-white/10 rounded-control px-3 py-2 text-white text-sm focus:outline-none focus:border-info/50"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">PAN (optional)</label>
+                        <label className="block text-xs text-ink-3 mb-1">PAN (optional)</label>
                         <input
                           type="text"
                           value={party.panNumber}
                           onChange={(e) => handlePartyChange(index, 'panNumber', e.target.value.toUpperCase())}
                           maxLength={10}
                           placeholder="ABCDE1234F"
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50"
+                          className="w-full bg-surface/5 border border-white/10 rounded-control px-3 py-2 text-white text-sm focus:outline-none focus:border-info/50"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Address</label>
+                        <label className="block text-xs text-ink-3 mb-1">Address</label>
                         <input
                           type="text"
                           value={party.address}
                           onChange={(e) => handlePartyChange(index, 'address', e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50"
+                          className="w-full bg-surface/5 border border-white/10 rounded-control px-3 py-2 text-white text-sm focus:outline-none focus:border-info/50"
                         />
                       </div>
                     </div>
@@ -436,31 +436,31 @@ export default function NewAgreementPage() {
 
             {/* Template Variables */}
             {selectedTemplate.type === 'CUSTOM' ? (
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+              <div className="bg-surface/5 border border-white/10 rounded-card p-6">
                 <h2 className="text-lg font-semibold text-white mb-4">Agreement Content</h2>
                 <textarea
                   value={customContent}
                   onChange={(e) => setCustomContent(e.target.value)}
                   placeholder="Write your agreement content here. You can use HTML for formatting..."
                   rows={20}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 font-mono text-sm resize-y"
+                  className="w-full bg-surface/5 border border-white/10 rounded-card px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-info/50 font-mono text-sm resize-y"
                 />
               </div>
             ) : selectedTemplate.variables.length > 0 ? (
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+              <div className="bg-surface/5 border border-white/10 rounded-card p-6">
                 <h2 className="text-lg font-semibold text-white mb-4">Template Variables</h2>
-                <p className="text-gray-500 text-sm mb-4">Fill in the values to populate the agreement template.</p>
+                <p className="text-ink-3 text-sm mb-4">Fill in the values to populate the agreement template.</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {selectedTemplate.variables.map((v) => (
                     <div key={v.key}>
-                      <label className="block text-sm text-gray-400 mb-1.5">
-                        {v.label} {v.required && <span className="text-red-400">*</span>}
+                      <label className="block text-sm text-ink-3 mb-1.5">
+                        {v.label} {v.required && <span className="text-danger">*</span>}
                       </label>
                       {v.type === 'select' ? (
                         <select
                           value={variables[v.key] || ''}
                           onChange={(e) => handleVariableChange(v.key, e.target.value)}
-                          className="w-full bg-gray-800 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500/50"
+                          className="w-full bg-ink border border-white/10 rounded-card px-4 py-2.5 text-white focus:outline-none focus:border-info/50"
                         >
                           <option value="">Select...</option>
                           {v.options?.map((opt) => (
@@ -472,7 +472,7 @@ export default function NewAgreementPage() {
                           type={v.type === 'date' ? 'date' : v.type === 'number' ? 'number' : 'text'}
                           value={variables[v.key] || ''}
                           onChange={(e) => handleVariableChange(v.key, e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500/50"
+                          className="w-full bg-surface/5 border border-white/10 rounded-card px-4 py-2.5 text-white focus:outline-none focus:border-info/50"
                         />
                       )}
                     </div>
@@ -484,13 +484,13 @@ export default function NewAgreementPage() {
             <div className="flex justify-between">
               <button
                 onClick={() => setStep(1)}
-                className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-gray-400 rounded-xl transition-colors"
+                className="px-5 py-2.5 bg-surface/5 hover:bg-surface/10 text-ink-3 rounded-card transition-colors"
               >
                 ← Back
               </button>
               <button
                 onClick={handleNextStep}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-colors"
+                className="px-6 py-2.5 bg-info hover:bg-info text-white rounded-card font-medium transition-colors"
               >
                 Preview →
               </button>
@@ -501,29 +501,29 @@ export default function NewAgreementPage() {
         {/* Step 3: Preview */}
         {step === 3 && selectedTemplate && (
           <div className="space-y-6">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+            <div className="bg-surface/5 border border-white/10 rounded-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-white">{title}</h2>
-                <span className="px-3 py-1 bg-gray-500/20 text-gray-300 border border-gray-500/30 rounded-lg text-sm">
+                <span className="px-3 py-1 bg-surface-3/20 text-ink-3 border border-border-strong/30 rounded-control text-sm">
                   DRAFT
                 </span>
               </div>
 
               {/* Agreement Content */}
               <div
-                className="prose prose-invert max-w-none bg-white/3 border border-white/10 rounded-xl p-6 text-sm text-gray-200 leading-relaxed"
+                className="prose prose-invert max-w-none bg-surface/3 border border-white/10 rounded-card p-6 text-sm text-ink-3 leading-relaxed"
                 style={{ minHeight: '400px' }}
-                dangerouslySetInnerHTML={{ __html: getRenderedContent() || '<p class="text-gray-500">No content. Please go back and fill in the template variables.</p>' }}
+                dangerouslySetInnerHTML={{ __html: getRenderedContent() || '<p class="text-ink-3">No content. Please go back and fill in the template variables.</p>' }}
               />
 
               {/* Indian Law Clauses */}
               {selectedTemplate.indianLawClauses && selectedTemplate.indianLawClauses.length > 0 && (
-                <div className="mt-6 p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
-                  <h3 className="text-blue-400 font-medium mb-3 text-sm">Indian Law Compliance Clauses</h3>
+                <div className="mt-6 p-4 bg-info/5 border border-info/20 rounded-card">
+                  <h3 className="text-info font-medium mb-3 text-sm">Indian Law Compliance Clauses</h3>
                   <ul className="space-y-2">
                     {selectedTemplate.indianLawClauses.map((clause, i) => (
-                      <li key={i} className="text-gray-400 text-xs flex gap-2">
-                        <span className="text-blue-500 mt-0.5">•</span>
+                      <li key={i} className="text-ink-3 text-xs flex gap-2">
+                        <span className="text-info mt-0.5">•</span>
                         {clause}
                       </li>
                     ))}
@@ -532,7 +532,7 @@ export default function NewAgreementPage() {
               )}
 
               {/* Legal Footer */}
-              <div className="mt-6 p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-xl text-xs text-yellow-400/80">
+              <div className="mt-6 p-4 bg-warning/5 border border-warning/20 rounded-card text-xs text-warning/80">
                 <strong>Governing Law:</strong> {governingLaw} &nbsp;|&nbsp;
                 <strong>Jurisdiction:</strong> {jurisdiction || 'As specified in agreement'} &nbsp;|&nbsp;
                 <strong>Stamp Duty Notice:</strong> This agreement may be subject to stamp duty as per the Indian Stamp Act, 1899.
@@ -543,17 +543,17 @@ export default function NewAgreementPage() {
                 <h3 className="text-white font-medium mb-3">Signing Parties</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {parties.map((party, i) => (
-                    <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-3">
+                    <div key={i} className="bg-surface/5 border border-white/10 rounded-card p-3">
                       <p className="text-white font-medium text-sm">{party.name}</p>
-                      <p className="text-gray-400 text-xs">{party.email}</p>
-                      <p className="text-gray-500 text-xs">{party.role}</p>
+                      <p className="text-ink-3 text-xs">{party.email}</p>
+                      <p className="text-ink-3 text-xs">{party.role}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* IT Act Notice */}
-              <div className="mt-4 p-3 bg-white/5 border border-white/10 rounded-xl text-xs text-gray-500">
+              <div className="mt-4 p-3 bg-surface/5 border border-white/10 rounded-card text-xs text-ink-3">
                 Electronic signatures on this agreement are legally valid under Section 5 of the Information Technology Act, 2000, and the Indian Evidence Act, 1872.
               </div>
             </div>
@@ -561,7 +561,7 @@ export default function NewAgreementPage() {
             <div className="flex justify-between">
               <button
                 onClick={() => setStep(2)}
-                className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-gray-400 rounded-xl transition-colors"
+                className="px-5 py-2.5 bg-surface/5 hover:bg-surface/10 text-ink-3 rounded-card transition-colors"
               >
                 ← Back
               </button>
@@ -569,14 +569,14 @@ export default function NewAgreementPage() {
                 <button
                   onClick={() => handleSave(false)}
                   disabled={saving}
-                  className="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white rounded-xl font-medium transition-colors"
+                  className="px-5 py-2.5 bg-surface-3 hover:bg-surface-3 disabled:opacity-50 text-white rounded-card font-medium transition-colors"
                 >
                   {saving ? 'Saving...' : 'Save as Draft'}
                 </button>
                 <button
                   onClick={() => handleSave(true)}
                   disabled={saving}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl font-medium transition-colors"
+                  className="px-6 py-2.5 bg-info hover:bg-info disabled:opacity-50 text-white rounded-card font-medium transition-colors"
                 >
                   {saving ? 'Saving...' : 'Save & Send for Signing'}
                 </button>

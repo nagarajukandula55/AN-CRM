@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import useSWR from "swr";
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useActiveBusinessId } from "@/hooks/useActiveBusinessId";
+import { Spinner } from "@/components/ui/Spinner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,18 +74,18 @@ function typeLabel(type: AdjustmentType) {
 function typeBadge(type: AdjustmentType) {
   if (type === "ADD")
     return (
-      <span className="text-xs font-medium px-2 py-0.5 rounded-full text-emerald-400 bg-emerald-500/10">
+      <span className="text-xs font-medium px-2 py-0.5 rounded-full text-success bg-success-soft">
         IN
       </span>
     );
   if (type === "REMOVE")
     return (
-      <span className="text-xs font-medium px-2 py-0.5 rounded-full text-red-400 bg-red-500/10">
+      <span className="text-xs font-medium px-2 py-0.5 rounded-full text-danger bg-danger-soft">
         OUT
       </span>
     );
   return (
-    <span className="text-xs font-medium px-2 py-0.5 rounded-full text-blue-400 bg-blue-500/10">
+    <span className="text-xs font-medium px-2 py-0.5 rounded-full text-info bg-info-soft">
       ADJUSTMENT
     </span>
   );
@@ -93,18 +94,18 @@ function typeBadge(type: AdjustmentType) {
 function statusBadge(status?: StatusType) {
   if (!status || status === "APPROVED")
     return (
-      <span className="text-xs font-medium px-2 py-0.5 rounded-full text-emerald-400 bg-emerald-500/10">
+      <span className="text-xs font-medium px-2 py-0.5 rounded-full text-success bg-success-soft">
         Approved
       </span>
     );
   if (status === "PENDING")
     return (
-      <span className="text-xs font-medium px-2 py-0.5 rounded-full text-amber-400 bg-amber-500/10">
+      <span className="text-xs font-medium px-2 py-0.5 rounded-full text-warning bg-warning-soft">
         Pending
       </span>
     );
   return (
-    <span className="text-xs font-medium px-2 py-0.5 rounded-full text-red-400 bg-red-500/10">
+    <span className="text-xs font-medium px-2 py-0.5 rounded-full text-danger bg-danger-soft">
       Rejected
     </span>
   );
@@ -269,22 +270,22 @@ export default function StockAdjustmentsPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Stock Adjustments</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-xl font-semibold text-ink">Stock Adjustments</h1>
+          <p className="text-sm text-ink-3 mt-0.5">
             Track and manage all inventory quantity adjustments
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Link
             href="/console/common/stock-adjustments/new"
-            className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400 flex items-center gap-1.5"
+            className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong flex items-center gap-1.5"
           >
             <ExternalLink size={12} />
             Full Form
           </Link>
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800"
+            className="flex items-center gap-2 px-4 py-2.5 bg-accent text-accent-fg rounded-card text-sm font-medium hover:bg-accent-hover"
           >
             <Plus size={16} />
             New Adjustment
@@ -294,45 +295,45 @@ export default function StockAdjustmentsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="rounded-card border border-border bg-surface p-4">
           <div className="flex items-center gap-2 mb-2">
-            <ClipboardList size={14} className="text-gray-500" />
-            <span className="text-xs text-gray-500">Today&apos;s Adjustments</span>
+            <ClipboardList size={14} className="text-ink-3" />
+            <span className="text-xs text-ink-3">Today&apos;s Adjustments</span>
           </div>
-          <p className="text-2xl font-semibold text-gray-900">{todayAdj.length}</p>
+          <p className="text-2xl font-semibold text-ink">{todayAdj.length}</p>
         </div>
         <button
           type="button"
           onClick={() => setTypeFilter((v) => (v === "ADD" ? "" : "ADD"))}
-          className={`text-left rounded-xl border bg-white p-4 transition-colors ${
-            typeFilter === "ADD" ? "border-gray-900 ring-2 ring-gray-900" : "border-gray-200 hover:border-gray-400"
+          className={`text-left rounded-card border bg-surface p-4 transition-colors ${
+            typeFilter === "ADD" ? "border-accent ring-2 ring-accent-soft" : "border-border hover:border-border-strong"
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
-            <PackagePlus size={14} className="text-emerald-500" />
-            <span className="text-xs text-gray-500">Total Added</span>
+            <PackagePlus size={14} className="text-success" />
+            <span className="text-xs text-ink-3">Total Added</span>
           </div>
-          <p className="text-2xl font-semibold text-emerald-400">+{totalAdded}</p>
+          <p className="text-2xl font-semibold text-success">+{totalAdded}</p>
         </button>
         <button
           type="button"
           onClick={() => setTypeFilter((v) => (v === "REMOVE" ? "" : "REMOVE"))}
-          className={`text-left rounded-xl border bg-white p-4 transition-colors ${
-            typeFilter === "REMOVE" ? "border-gray-900 ring-2 ring-gray-900" : "border-gray-200 hover:border-gray-400"
+          className={`text-left rounded-card border bg-surface p-4 transition-colors ${
+            typeFilter === "REMOVE" ? "border-accent ring-2 ring-accent-soft" : "border-border hover:border-border-strong"
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
-            <PackageMinus size={14} className="text-red-500" />
-            <span className="text-xs text-gray-500">Total Removed</span>
+            <PackageMinus size={14} className="text-danger" />
+            <span className="text-xs text-ink-3">Total Removed</span>
           </div>
-          <p className="text-2xl font-semibold text-red-400">-{totalRemoved}</p>
+          <p className="text-2xl font-semibold text-danger">-{totalRemoved}</p>
         </button>
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="rounded-card border border-border bg-surface p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Package size={14} className="text-amber-500" />
-            <span className="text-xs text-gray-500">Pending Approvals</span>
+            <Package size={14} className="text-warning" />
+            <span className="text-xs text-ink-3">Pending Approvals</span>
           </div>
-          <p className="text-2xl font-semibold text-amber-400">{pendingCount}</p>
+          <p className="text-2xl font-semibold text-warning">{pendingCount}</p>
         </div>
       </div>
 
@@ -341,21 +342,21 @@ export default function StockAdjustmentsPage() {
         <div className="relative flex-1 min-w-[200px]">
           <Search
             size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3"
           />
           <input
             type="text"
             placeholder="Search item name or reason..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+            className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong"
           />
         </div>
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as "" | AdjustmentType)}
           title="Filter by adjustment type"
-          className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none"
+          className="px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink-2 focus:outline-none"
         >
           <option value="">All Types</option>
           <option value="ADD">IN (Add)</option>
@@ -368,15 +369,15 @@ export default function StockAdjustmentsPage() {
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
             title="Filter from date"
-            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-gray-400"
+            className="px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink-2 focus:outline-none focus:border-border-strong"
           />
-          <span className="text-gray-600 text-xs">to</span>
+          <span className="text-ink-2 text-xs">to</span>
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
             title="Filter to date"
-            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-gray-400"
+            className="px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink-2 focus:outline-none focus:border-border-strong"
           />
         </div>
         <button
@@ -386,13 +387,13 @@ export default function StockAdjustmentsPage() {
             setDateTo("");
             setTypeFilter("");
           }}
-          className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400"
+          className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong"
         >
           Clear
         </button>
         <button
           onClick={fetchAdjustments}
-          className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400 flex items-center gap-1.5"
+          className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong flex items-center gap-1.5"
         >
           <RefreshCw size={12} />
           Refresh
@@ -400,38 +401,38 @@ export default function StockAdjustmentsPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-gray-200 overflow-hidden">
+      <div className="rounded-card border border-border overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200 bg-white">
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Date</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Item</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Type</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Qty</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Before → After</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Reason</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Warehouse</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Adjusted By</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Status</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 font-medium">Print</th>
+            <tr className="border-b border-border bg-surface">
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">Date</th>
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">Item</th>
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">Type</th>
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">Qty</th>
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">Before → After</th>
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">Reason</th>
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">Warehouse</th>
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">Adjusted By</th>
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">Status</th>
+              <th className="px-4 py-3 text-left text-xs text-ink-3 font-medium">Print</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-border">
             {loading ? (
               <tr>
                 <td colSpan={10}>
-                  <div className="p-12 text-center text-gray-500">Loading…</div>
+                  <div className="p-12 text-center text-ink-3">Loading…</div>
                 </td>
               </tr>
             ) : error ? (
               <tr>
                 <td colSpan={10}>
                   <div className="p-12 text-center">
-                    <AlertCircle size={32} className="mx-auto mb-3 text-red-400" />
-                    <p className="text-red-400 text-sm">{error}</p>
+                    <AlertCircle size={32} className="mx-auto mb-3 text-danger" />
+                    <p className="text-danger text-sm">{error}</p>
                     <button
                       onClick={fetchAdjustments}
-                      className="mt-3 px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900"
+                      className="mt-3 px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink"
                     >
                       Retry
                     </button>
@@ -442,11 +443,11 @@ export default function StockAdjustmentsPage() {
               <tr>
                 <td colSpan={10}>
                   <div className="p-12 text-center">
-                    <Package size={32} className="mx-auto mb-3 text-gray-700" />
-                    <p className="text-gray-500 text-sm">No adjustments found</p>
+                    <Package size={32} className="mx-auto mb-3 text-ink-2" />
+                    <p className="text-ink-3 text-sm">No adjustments found</p>
                     <button
                       onClick={() => setShowModal(true)}
-                      className="mt-4 flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 mx-auto"
+                      className="mt-4 flex items-center gap-2 px-4 py-2.5 bg-accent text-accent-fg rounded-card text-sm font-medium hover:bg-accent-hover mx-auto"
                     >
                       <Plus size={14} />
                       New Adjustment
@@ -458,16 +459,16 @@ export default function StockAdjustmentsPage() {
               filtered.map((adj) => (
                 <tr
                   key={adj._id}
-                  className="hover:bg-gray-50 transition-colors"
+                  className="hover:bg-surface-2 transition-colors"
                 >
-                  <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                  <td className="px-4 py-3 text-xs text-ink-3 whitespace-nowrap">
                     {formatDate(adj.createdAt)}
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-sm text-gray-900">{itemName(adj)}</span>
+                    <span className="text-sm text-ink">{itemName(adj)}</span>
                     {typeof adj.inventoryItemId === "object" &&
                       adj.inventoryItemId?.sku && (
-                        <span className="text-xs text-gray-600 block">
+                        <span className="text-xs text-ink-2 block">
                           {adj.inventoryItemId.sku}
                         </span>
                       )}
@@ -477,30 +478,30 @@ export default function StockAdjustmentsPage() {
                     <span
                       className={
                         adj.adjustmentType === "ADD"
-                          ? "text-emerald-400 font-medium text-sm"
+                          ? "text-success font-medium text-sm"
                           : adj.adjustmentType === "REMOVE"
-                          ? "text-red-400 font-medium text-sm"
-                          : "text-blue-400 font-medium text-sm"
+                          ? "text-danger font-medium text-sm"
+                          : "text-info font-medium text-sm"
                       }
                     >
                       {adj.adjustmentType === "ADD" ? "+" : adj.adjustmentType === "REMOVE" ? "-" : ""}
                       {adj.quantityAdjusted}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
-                    <span className="text-gray-500">{adj.previousQuantity}</span>
-                    <span className="text-gray-600 mx-1">→</span>
-                    <span className="text-gray-500">{adj.newQuantity}</span>
+                  <td className="px-4 py-3 text-xs text-ink-3">
+                    <span className="text-ink-3">{adj.previousQuantity}</span>
+                    <span className="text-ink-2 mx-1">→</span>
+                    <span className="text-ink-3">{adj.newQuantity}</span>
                   </td>
                   <td className="px-4 py-3 max-w-[160px]">
-                    <span className="text-xs text-gray-500 truncate block">
+                    <span className="text-xs text-ink-3 truncate block">
                       {adj.reason || adj.notes || "—"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
+                  <td className="px-4 py-3 text-xs text-ink-3">
                     {(adj as StockAdjustment & { warehouse?: string }).warehouse || "—"}
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500 font-mono">
+                  <td className="px-4 py-3 text-xs text-ink-3 font-mono">
                     {adj.adjustedBy?.slice(-8) || "—"}
                   </td>
                   <td className="px-4 py-3">{statusBadge(adj.status)}</td>
@@ -508,7 +509,7 @@ export default function StockAdjustmentsPage() {
                     <Link
                       href={`/console/common/stock-adjustments/${adj._id}/print`}
                       target="_blank"
-                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-control text-ink-3 hover:text-ink-2 hover:bg-surface-2"
                       title="Print"
                     >
                       <ExternalLink size={14} />
@@ -524,24 +525,24 @@ export default function StockAdjustmentsPage() {
       {/* Pagination */}
       {!loading && !error && total > 0 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-ink-3">
             Showing {filtered.length} of {total} adjustments
           </p>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+              className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
             >
               <ChevronLeft size={12} /> Prev
             </button>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-ink-3">
               Page {page} of {totalPages}
             </span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+              className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
             >
               Next <ChevronRight size={12} />
             </button>
@@ -552,12 +553,12 @@ export default function StockAdjustmentsPage() {
       {/* New Adjustment Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-lg bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <div className="w-full max-w-lg bg-surface border border-border rounded-card overflow-hidden">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center">
               <div>
-                <h2 className="text-sm font-semibold text-gray-900">New Stock Adjustment</h2>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <h2 className="text-sm font-semibold text-ink">New Stock Adjustment</h2>
+                <p className="text-xs text-ink-3 mt-0.5">
                   Add, remove, or correct inventory quantity
                 </p>
               </div>
@@ -566,7 +567,7 @@ export default function StockAdjustmentsPage() {
                   setShowModal(false);
                   setFormError(null);
                 }}
-                className="text-gray-500 hover:text-gray-900 transition-colors"
+                className="text-ink-3 hover:text-ink transition-colors"
               >
                 <X size={18} />
               </button>
@@ -576,22 +577,22 @@ export default function StockAdjustmentsPage() {
             <form onSubmit={handleSubmit}>
               <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
                 {formError && (
-                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
-                    <AlertCircle size={14} className="text-red-400 mt-0.5 shrink-0" />
-                    <p className="text-xs text-red-400">{formError}</p>
+                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-control bg-danger-soft border border-danger/20">
+                    <AlertCircle size={14} className="text-danger mt-0.5 shrink-0" />
+                    <p className="text-xs text-danger">{formError}</p>
                   </div>
                 )}
 
                 {/* Item Search */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">
-                    Inventory Item <span className="text-red-400">*</span>
+                  <label className="text-xs text-ink-3 block mb-1">
+                    Inventory Item <span className="text-danger">*</span>
                   </label>
                   {selectedItem ? (
-                    <div className="flex items-center justify-between px-3 py-2.5 bg-white border border-gray-300 rounded-lg">
+                    <div className="flex items-center justify-between px-3 py-2.5 bg-surface border border-border rounded-control">
                       <div>
-                        <p className="text-sm text-gray-900">{selectedItem.name}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-sm text-ink">{selectedItem.name}</p>
+                        <p className="text-xs text-ink-3">
                           {selectedItem.sku && `SKU: ${selectedItem.sku} · `}
                           Current stock: {selectedItem.quantity ?? 0}
                         </p>
@@ -602,7 +603,7 @@ export default function StockAdjustmentsPage() {
                           setForm((f) => ({ ...f, inventoryItemId: "" }));
                           setItemSearch("");
                         }}
-                        className="text-gray-500 hover:text-gray-900"
+                        className="text-ink-3 hover:text-ink"
                       >
                         <X size={14} />
                       </button>
@@ -612,20 +613,20 @@ export default function StockAdjustmentsPage() {
                       <div className="relative">
                         <Search
                           size={14}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3"
                         />
                         <input
                           type="text"
                           placeholder="Search by name or SKU..."
                           value={itemSearch}
                           onChange={(e) => setItemSearch(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+                          className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong"
                         />
                       </div>
                       {itemSearch && (
-                        <div className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-white">
+                        <div className="mt-1 max-h-40 overflow-y-auto rounded-control border border-border bg-surface">
                           {filteredItems.length === 0 ? (
-                            <p className="px-3 py-2 text-xs text-gray-500">
+                            <p className="px-3 py-2 text-xs text-ink-3">
                               No items found
                             </p>
                           ) : (
@@ -640,10 +641,10 @@ export default function StockAdjustmentsPage() {
                                   }));
                                   setItemSearch("");
                                 }}
-                                className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors"
+                                className="w-full text-left px-3 py-2 hover:bg-surface-2 transition-colors"
                               >
-                                <p className="text-sm text-gray-900">{it.name}</p>
-                                <p className="text-xs text-gray-500">
+                                <p className="text-sm text-ink">{it.name}</p>
+                                <p className="text-xs text-ink-3">
                                   {it.sku && `${it.sku} · `}Stock:{" "}
                                   {it.quantity ?? 0}
                                 </p>
@@ -658,8 +659,8 @@ export default function StockAdjustmentsPage() {
 
                 {/* Type */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">
-                    Adjustment Type <span className="text-red-400">*</span>
+                  <label className="text-xs text-ink-3 block mb-1">
+                    Adjustment Type <span className="text-danger">*</span>
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {(["ADD", "REMOVE", "SET"] as AdjustmentType[]).map((t) => (
@@ -669,14 +670,14 @@ export default function StockAdjustmentsPage() {
                         onClick={() =>
                           setForm((f) => ({ ...f, adjustmentType: t }))
                         }
-                        className={`py-2 rounded-lg border text-xs font-medium transition-colors ${
+                        className={`py-2 rounded-control border text-xs font-medium transition-colors ${
                           form.adjustmentType === t
                             ? t === "ADD"
-                              ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                              ? "bg-success-soft border-success/40 text-success"
                               : t === "REMOVE"
-                              ? "bg-red-500/20 border-red-500/40 text-red-400"
-                              : "bg-blue-500/20 border-blue-500/40 text-blue-400"
-                            : "bg-white border-gray-200 text-gray-500 hover:border-gray-400"
+                              ? "bg-danger-soft border-danger/40 text-danger"
+                              : "bg-info-soft border-info/40 text-info"
+                            : "bg-surface border-border text-ink-3 hover:border-border-strong"
                         }`}
                       >
                         {t === "ADD" ? "Add (IN)" : t === "REMOVE" ? "Remove (OUT)" : "Correction (SET)"}
@@ -687,8 +688,8 @@ export default function StockAdjustmentsPage() {
 
                 {/* Quantity */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">
-                    Quantity <span className="text-red-400">*</span>
+                  <label className="text-xs text-ink-3 block mb-1">
+                    Quantity <span className="text-danger">*</span>
                   </label>
                   <input
                     type="number"
@@ -704,11 +705,11 @@ export default function StockAdjustmentsPage() {
                       setForm((f) => ({ ...f, quantity: e.target.value }))
                     }
                     onFocus={(e) => e.target.select()}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+                    className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong"
                     required
                   />
                   {selectedItem && form.quantity && (
-                    <p className="text-xs text-gray-600 mt-1">
+                    <p className="text-xs text-ink-2 mt-1">
                       {form.adjustmentType === "ADD"
                         ? `New stock: ${(selectedItem.quantity ?? 0) + Number(form.quantity)}`
                         : form.adjustmentType === "REMOVE"
@@ -720,7 +721,7 @@ export default function StockAdjustmentsPage() {
 
                 {/* Reason */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">Reason</label>
+                  <label className="text-xs text-ink-3 block mb-1">Reason</label>
                   <input
                     type="text"
                     placeholder="e.g. Damaged goods, stock count correction..."
@@ -728,13 +729,13 @@ export default function StockAdjustmentsPage() {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, reason: e.target.value }))
                     }
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+                    className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong"
                   />
                 </div>
 
                 {/* Warehouse */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">
+                  <label className="text-xs text-ink-3 block mb-1">
                     Warehouse (optional)
                   </label>
                   <input
@@ -744,13 +745,13 @@ export default function StockAdjustmentsPage() {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, warehouse: e.target.value }))
                     }
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+                    className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong"
                   />
                 </div>
 
                 {/* Notes */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">
+                  <label className="text-xs text-ink-3 block mb-1">
                     Additional Notes
                   </label>
                   <textarea
@@ -760,13 +761,13 @@ export default function StockAdjustmentsPage() {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, notes: e.target.value }))
                     }
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 resize-none"
+                    className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong resize-none"
                   />
                 </div>
 
                 {/* Date */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">Date</label>
+                  <label className="text-xs text-ink-3 block mb-1">Date</label>
                   <input
                     type="date"
                     value={form.date}
@@ -774,31 +775,31 @@ export default function StockAdjustmentsPage() {
                       setForm((f) => ({ ...f, date: e.target.value }))
                     }
                     title="Adjustment date"
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-gray-400"
+                    className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink-2 focus:outline-none focus:border-border-strong"
                   />
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <div className="px-6 py-4 border-t border-border flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowModal(false);
                     setFormError(null);
                   }}
-                  className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400"
+                  className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-accent text-accent-fg rounded-card text-sm font-medium hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <>
-                      <RefreshCw size={14} className="animate-spin" />
+                      <Spinner size={14} />
                       Saving…
                     </>
                   ) : (

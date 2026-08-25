@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, Suspense } from 'react'
 import useSWR from 'swr'
@@ -178,7 +178,7 @@ function InvoiceTemplatesPageInner() {
 
   return (
       <div className="space-y-8">
-        <section className="rounded-[40px] border border-white/10 bg-white/5 p-10">
+        <section className="rounded-[40px] border border-white/10 bg-surface/5 p-10">
           <p className="uppercase tracking-[0.35em] text-cyan-300 text-sm">DOCUMENTS</p>
           <h1 className="mt-5 text-6xl font-black flex items-center gap-4">
             <FileText className="h-12 w-12" /> Invoice Templates
@@ -188,11 +188,11 @@ function InvoiceTemplatesPageInner() {
           </p>
         </section>
 
-        {msg && <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm">{msg}</div>}
+        {msg && <div className="rounded-card border border-white/10 bg-surface/5 px-6 py-3 text-sm">{msg}</div>}
 
         <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_1fr] gap-6">
           {/* Saved templates list */}
-          <section className="rounded-[32px] border border-white/10 bg-white/5 p-6">
+          <section className="rounded-[32px] border border-white/10 bg-surface/5 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold">Saved Templates</h2>
               <button onClick={newTemplate} className="text-sm text-cyan-300 hover:text-cyan-200">+ New</button>
@@ -202,14 +202,14 @@ function InvoiceTemplatesPageInner() {
                 <div
                   key={t._id}
                   onClick={() => loadIntoForm(t)}
-                  className={`cursor-pointer rounded-xl border px-4 py-3 text-sm ${editingId === t._id ? 'border-cyan-400 bg-cyan-400/10' : 'border-white/10 bg-black/20 hover:border-white/30'}`}
+                  className={`cursor-pointer rounded-card border px-4 py-3 text-sm ${editingId === t._id ? 'border-cyan-400 bg-cyan-400/10' : 'border-white/10 bg-black/20 hover:border-white/30'}`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold">{t.name}</span>
                     <div className="flex items-center gap-2">
-                      {t.isDefault && <Star className="h-4 w-4 text-amber-300 fill-amber-300" />}
+                      {t.isDefault && <Star className="h-4 w-4 text-warning fill-amber-300" />}
                       <Trash2
-                        className="h-4 w-4 text-white/30 hover:text-red-400"
+                        className="h-4 w-4 text-white/30 hover:text-danger"
                         onClick={(e: React.MouseEvent) => { e.stopPropagation(); remove(t._id) }}
                       />
                     </div>
@@ -222,19 +222,19 @@ function InvoiceTemplatesPageInner() {
           </section>
 
           {/* Editor form */}
-          <section className="rounded-[32px] border border-white/10 bg-white/5 p-6 space-y-4">
+          <section className="rounded-[32px] border border-white/10 bg-surface/5 p-6 space-y-4">
             <h2 className="text-lg font-bold">Editor</h2>
 
             <div>
               <label className="text-sm text-white/60">Template Name</label>
               <input value={form.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, name: e.target.value })}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" placeholder="e.g. Default, Festive Sale" />
+                className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" placeholder="e.g. Default, Festive Sale" />
             </div>
 
             <div>
               <label className="text-sm text-white/60">Layout</label>
               <select value={form.layoutKey} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({ ...form, layoutKey: e.target.value })}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
+                className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5">
                 {(layouts.length ? layouts : [
                   { key: 'classic-gst', label: 'Classic GST', description: '' },
                   { key: 'minimal', label: 'Minimal', description: '' },
@@ -250,37 +250,37 @@ function InvoiceTemplatesPageInner() {
               <div>
                 <label className="text-sm text-white/60">Logo URL</label>
                 <input value={form.logoUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, logoUrl: e.target.value })}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                  className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
               </div>
               <div>
                 <label className="text-sm text-white/60">Accent Color</label>
                 <input type="color" value={form.accentColor} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, accentColor: e.target.value })}
-                  className="mt-1 w-full h-[42px] rounded-xl border border-white/10 bg-black/30 px-2" />
+                  className="mt-1 w-full h-[42px] rounded-card border border-white/10 bg-black/30 px-2" />
               </div>
             </div>
 
             <div>
               <label className="text-sm text-white/60">Tagline</label>
               <input value={form.tagline} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, tagline: e.target.value })}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
             </div>
 
             <div>
               <label className="text-sm text-white/60">Footer Note</label>
               <input value={form.footerNote} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, footerNote: e.target.value })}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
             </div>
 
             <div>
               <label className="text-sm text-white/60">Declaration</label>
               <textarea value={form.declaration} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setForm({ ...form, declaration: e.target.value })}
-                rows={3} className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                rows={3} className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
             </div>
 
             <div>
               <label className="text-sm text-white/60">Terms &amp; Conditions (optional)</label>
               <textarea value={form.termsAndConditions} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setForm({ ...form, termsAndConditions: e.target.value })}
-                rows={2} className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                rows={2} className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
             </div>
 
             <label className="flex items-center gap-2 text-sm">
@@ -293,12 +293,12 @@ function InvoiceTemplatesPageInner() {
                 <div>
                   <label className="text-sm text-white/60">Signature Image URL</label>
                   <input value={form.signatureImageUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, signatureImageUrl: e.target.value })}
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                    className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
                 </div>
                 <div>
                   <label className="text-sm text-white/60">Signatory Label</label>
                   <input value={form.signatoryLabel} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, signatoryLabel: e.target.value })}
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                    className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
                 </div>
               </div>
             )}
@@ -315,9 +315,9 @@ function InvoiceTemplatesPageInner() {
           </section>
 
           {/* Live preview */}
-          <section className="rounded-[32px] border border-white/10 bg-white/5 p-6 flex flex-col">
+          <section className="rounded-[32px] border border-white/10 bg-surface/5 p-6 flex flex-col">
             <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><Eye className="h-5 w-5" /> Live Preview</h2>
-            <div className="flex-1 rounded-2xl overflow-hidden bg-white min-h-[600px]">
+            <div className="flex-1 rounded-card overflow-hidden bg-surface min-h-[600px]">
               <iframe srcDoc={previewHtml} className="w-full h-full min-h-[600px] border-0" title="Invoice preview" />
             </div>
           </section>

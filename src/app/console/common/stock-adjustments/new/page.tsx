@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import useSWR from "swr";
@@ -109,13 +109,13 @@ export default function NewStockAdjustmentPage() {
     return (
       <div className="p-6 flex items-center justify-center min-h-[60vh]">
         <div className="text-center max-w-sm">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle size={32} className="text-emerald-400" />
+          <div className="w-16 h-16 rounded-full bg-success-soft flex items-center justify-center mx-auto mb-4">
+            <CheckCircle size={32} className="text-success" />
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+          <h2 className="text-lg font-semibold text-ink mb-2">
             Adjustment Created
           </h2>
-          <p className="text-sm text-gray-500 mb-6">
+          <p className="text-sm text-ink-3 mb-6">
             Stock adjustment has been recorded successfully.
           </p>
           <div className="flex gap-3 justify-center">
@@ -133,14 +133,14 @@ export default function NewStockAdjustmentPage() {
                   date: new Date().toISOString().slice(0, 10),
                 });
               }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800"
+              className="flex items-center gap-2 px-4 py-2.5 bg-accent text-accent-fg rounded-card text-sm font-medium hover:bg-accent-hover"
             >
               <Plus size={14} />
               New Adjustment
             </button>
             <Link
               href="/console/common/stock-adjustments"
-              className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400 flex items-center"
+              className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong flex items-center"
             >
               View All
             </Link>
@@ -156,46 +156,46 @@ export default function NewStockAdjustmentPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/console/common/stock-adjustments"
-          className="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+          className="p-2 rounded-control text-ink-3 hover:text-ink hover:bg-surface-2 transition-colors"
         >
           <ArrowLeft size={18} />
         </Link>
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">
+          <h1 className="text-xl font-semibold text-ink">
             New Stock Adjustment
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-ink-3 mt-0.5">
             Record an inventory quantity change
           </p>
         </div>
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
-          <AlertCircle size={16} className="text-red-400 mt-0.5 shrink-0" />
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="flex items-start gap-2 px-4 py-3 rounded-card bg-danger-soft border border-danger">
+          <AlertCircle size={16} className="text-danger mt-0.5 shrink-0" />
+          <p className="text-sm text-danger">{error}</p>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Item Selection */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-          <h3 className="text-sm font-medium text-gray-900">Select Item</h3>
+        <div className="rounded-card border border-border bg-surface p-5 space-y-4">
+          <h3 className="text-sm font-medium text-ink">Select Item</h3>
 
           {selectedItem ? (
-            <div className="flex items-center justify-between p-4 rounded-xl border border-gray-300 bg-white">
+            <div className="flex items-center justify-between p-4 rounded-card border border-border bg-surface">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center">
-                  <Package size={18} className="text-gray-500" />
+                <div className="w-10 h-10 rounded-control bg-surface-2 flex items-center justify-center">
+                  <Package size={18} className="text-ink-3" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-ink">
                     {selectedItem.name}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-ink-3">
                     {selectedItem.sku && `SKU: ${selectedItem.sku} · `}
                     Current stock:{" "}
-                    <span className="text-gray-600">
+                    <span className="text-ink-2">
                       {selectedItem.quantity ?? 0}
                     </span>{" "}
                     {selectedItem.unit || "units"}
@@ -208,7 +208,7 @@ export default function NewStockAdjustmentPage() {
                   setSelectedItem(null);
                   setItemSearch("");
                 }}
-                className="text-xs text-gray-500 hover:text-gray-900 border border-gray-200 px-3 py-1.5 rounded-lg hover:border-gray-400 transition-colors"
+                className="text-xs text-ink-3 hover:text-ink border border-border px-3 py-1.5 rounded-control hover:border-border-strong transition-colors"
               >
                 Change
               </button>
@@ -218,22 +218,22 @@ export default function NewStockAdjustmentPage() {
               <div className="relative mb-3">
                 <Search
                   size={14}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3"
                 />
                 <input
                   type="text"
                   placeholder="Search by name, SKU, or category..."
                   value={itemSearch}
                   onChange={(e) => setItemSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+                  className="w-full pl-9 pr-3 py-2.5 bg-surface border border-border rounded-control text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-border-strong"
                 />
               </div>
               {loading ? (
-                <p className="text-xs text-gray-500 text-center py-4">
+                <p className="text-xs text-ink-3 text-center py-4">
                   Loading items…
                 </p>
               ) : (
-                <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-white/[0.04]">
+                <div className="max-h-56 overflow-y-auto rounded-control border border-border divide-y divide-border">
                   {(itemSearch ? filteredItems : inventoryItems)
                     .slice(0, 20)
                     .map((it) => (
@@ -244,30 +244,30 @@ export default function NewStockAdjustmentPage() {
                           setSelectedItem(it);
                           setItemSearch("");
                         }}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center justify-between group"
+                        className="w-full text-left px-4 py-3 hover:bg-surface-2 transition-colors flex items-center justify-between group"
                       >
                         <div>
-                          <p className="text-sm text-gray-900 group-hover:text-gray-900">
+                          <p className="text-sm text-ink group-hover:text-ink">
                             {it.name}
                           </p>
-                          <p className="text-xs text-gray-600">
+                          <p className="text-xs text-ink-2">
                             {it.sku && `${it.sku} · `}
                             {it.category && `${it.category} · `}
                             Stock: {it.quantity ?? 0}
                           </p>
                         </div>
-                        <span className="text-xs text-gray-600 group-hover:text-gray-500">
+                        <span className="text-xs text-ink-2 group-hover:text-ink-3">
                           Select →
                         </span>
                       </button>
                     ))}
                   {!itemSearch && inventoryItems.length === 0 && (
-                    <p className="text-xs text-gray-500 text-center py-4">
+                    <p className="text-xs text-ink-3 text-center py-4">
                       No inventory items found
                     </p>
                   )}
                   {itemSearch && filteredItems.length === 0 && (
-                    <p className="text-xs text-gray-500 text-center py-4">
+                    <p className="text-xs text-ink-3 text-center py-4">
                       No items match your search
                     </p>
                   )}
@@ -278,13 +278,13 @@ export default function NewStockAdjustmentPage() {
         </div>
 
         {/* Adjustment Details */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-5">
-          <h3 className="text-sm font-medium text-gray-900">Adjustment Details</h3>
+        <div className="rounded-card border border-border bg-surface p-5 space-y-5">
+          <h3 className="text-sm font-medium text-ink">Adjustment Details</h3>
 
           {/* Type */}
           <div>
-            <label className="text-xs text-gray-500 block mb-2">
-              Adjustment Type <span className="text-red-400">*</span>
+            <label className="text-xs text-ink-3 block mb-2">
+              Adjustment Type <span className="text-danger">*</span>
             </label>
             <div className="grid grid-cols-3 gap-3">
               <button
@@ -292,10 +292,10 @@ export default function NewStockAdjustmentPage() {
                 onClick={() =>
                   setForm((f) => ({ ...f, adjustmentType: "ADD" }))
                 }
-                className={`py-3 rounded-xl border text-sm font-medium transition-colors flex flex-col items-center gap-1.5 ${
+                className={`py-3 rounded-card border text-sm font-medium transition-colors flex flex-col items-center gap-1.5 ${
                   form.adjustmentType === "ADD"
-                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
-                    : "bg-white border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-600"
+                    ? "bg-success-soft border-success text-success"
+                    : "bg-surface border-border text-ink-3 hover:border-border-strong hover:text-ink-2"
                 }`}
               >
                 <PackagePlus size={18} />
@@ -306,10 +306,10 @@ export default function NewStockAdjustmentPage() {
                 onClick={() =>
                   setForm((f) => ({ ...f, adjustmentType: "REMOVE" }))
                 }
-                className={`py-3 rounded-xl border text-sm font-medium transition-colors flex flex-col items-center gap-1.5 ${
+                className={`py-3 rounded-card border text-sm font-medium transition-colors flex flex-col items-center gap-1.5 ${
                   form.adjustmentType === "REMOVE"
-                    ? "bg-red-500/20 border-red-500/40 text-red-400"
-                    : "bg-white border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-600"
+                    ? "bg-danger-soft border-danger text-danger"
+                    : "bg-surface border-border text-ink-3 hover:border-border-strong hover:text-ink-2"
                 }`}
               >
                 <PackageMinus size={18} />
@@ -320,10 +320,10 @@ export default function NewStockAdjustmentPage() {
                 onClick={() =>
                   setForm((f) => ({ ...f, adjustmentType: "SET" }))
                 }
-                className={`py-3 rounded-xl border text-sm font-medium transition-colors flex flex-col items-center gap-1.5 ${
+                className={`py-3 rounded-card border text-sm font-medium transition-colors flex flex-col items-center gap-1.5 ${
                   form.adjustmentType === "SET"
-                    ? "bg-blue-500/20 border-blue-500/40 text-blue-400"
-                    : "bg-white border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-600"
+                    ? "bg-info-soft border-info text-info"
+                    : "bg-surface border-border text-ink-3 hover:border-border-strong hover:text-ink-2"
                 }`}
               >
                 <Package size={18} />
@@ -334,8 +334,8 @@ export default function NewStockAdjustmentPage() {
 
           {/* Quantity */}
           <div>
-            <label className="text-xs text-gray-500 block mb-1">
-              Quantity <span className="text-red-400">*</span>
+            <label className="text-xs text-ink-3 block mb-1">
+              Quantity <span className="text-danger">*</span>
             </label>
             <input
               type="number"
@@ -351,19 +351,19 @@ export default function NewStockAdjustmentPage() {
                 setForm((f) => ({ ...f, quantity: e.target.value }))
               }
               onFocus={(e) => e.target.select()}
-              className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+              className="w-full px-3 py-2.5 bg-surface border border-border rounded-control text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-border-strong"
               required
             />
             {selectedItem && form.quantity && Number(form.quantity) > 0 && (
-              <div className="mt-2 px-3 py-2 rounded-lg bg-white border border-gray-200 flex items-center justify-between">
-                <span className="text-xs text-gray-500">Resulting stock:</span>
+              <div className="mt-2 px-3 py-2 rounded-control bg-surface border border-border flex items-center justify-between">
+                <span className="text-xs text-ink-3">Resulting stock:</span>
                 <span
                   className={`text-sm font-medium ${
                     newQuantity > (selectedItem.quantity ?? 0)
-                      ? "text-emerald-400"
+                      ? "text-success"
                       : newQuantity < (selectedItem.quantity ?? 0)
-                      ? "text-red-400"
-                      : "text-blue-400"
+                      ? "text-danger"
+                      : "text-info"
                   }`}
                 >
                   {selectedItem.quantity ?? 0} → {newQuantity}{" "}
@@ -375,7 +375,7 @@ export default function NewStockAdjustmentPage() {
 
           {/* Reason */}
           <div>
-            <label className="text-xs text-gray-500 block mb-1">Reason</label>
+            <label className="text-xs text-ink-3 block mb-1">Reason</label>
             <input
               type="text"
               placeholder="e.g. Physical count correction, damaged goods, supplier return..."
@@ -383,13 +383,13 @@ export default function NewStockAdjustmentPage() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, reason: e.target.value }))
               }
-              className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+              className="w-full px-3 py-2.5 bg-surface border border-border rounded-control text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-border-strong"
             />
           </div>
 
           {/* Warehouse */}
           <div>
-            <label className="text-xs text-gray-500 block mb-1">
+            <label className="text-xs text-ink-3 block mb-1">
               Warehouse / Location
             </label>
             <input
@@ -399,13 +399,13 @@ export default function NewStockAdjustmentPage() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, warehouse: e.target.value }))
               }
-              className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+              className="w-full px-3 py-2.5 bg-surface border border-border rounded-control text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-border-strong"
             />
           </div>
 
           {/* Notes */}
           <div>
-            <label className="text-xs text-gray-500 block mb-1">
+            <label className="text-xs text-ink-3 block mb-1">
               Additional Notes
             </label>
             <textarea
@@ -415,13 +415,13 @@ export default function NewStockAdjustmentPage() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, notes: e.target.value }))
               }
-              className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 resize-none"
+              className="w-full px-3 py-2.5 bg-surface border border-border rounded-control text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-border-strong resize-none"
             />
           </div>
 
           {/* Date */}
           <div>
-            <label className="text-xs text-gray-500 block mb-1">Date</label>
+            <label className="text-xs text-ink-3 block mb-1">Date</label>
             <input
               type="date"
               value={form.date}
@@ -429,7 +429,7 @@ export default function NewStockAdjustmentPage() {
                 setForm((f) => ({ ...f, date: e.target.value }))
               }
               title="Adjustment date"
-              className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-gray-400"
+              className="w-full px-3 py-2.5 bg-surface border border-border rounded-control text-sm text-ink-2 focus:outline-none focus:border-border-strong"
             />
           </div>
         </div>
@@ -438,14 +438,14 @@ export default function NewStockAdjustmentPage() {
         <div className="flex items-center justify-between">
           <Link
             href="/console/common/stock-adjustments"
-            className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400"
+            className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong"
           >
             Cancel
           </Link>
           <button
             type="submit"
             disabled={submitting || !selectedItem}
-            className="flex items-center gap-2 px-6 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-2.5 bg-accent text-accent-fg rounded-card text-sm font-medium hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? (
               <>

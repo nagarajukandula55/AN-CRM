@@ -69,8 +69,8 @@ const SECTIONS: Section[] = [
     title: 'Vendor types, onboarding, and login',
     body: (
       <div className="space-y-2 text-sm text-ink-2">
-        <p>Three vendor types (<code>VendorProfile.appliedAs</code>): <b>BRAND</b> (multi-role team, Owner/Manager + staff), <b>SC</b> (Service Center — single ID, no staff/team, single-screen workorder flow), <b>POS</b> (storefront billing).</p>
-        <p><b>A single business can host all three types together</b> — access control is keyed on the logged-in user's own vendor type, never on <code>Business.operatingMode</code> (that would incorrectly apply one type's restrictions to everyone in a mixed business).</p>
+        <p>SC (Service Center) is the only vendor type this platform supports (<code>VendorProfile.appliedAs</code>) — single ID, no staff/team, single-screen workorder flow. BRAND and POS were removed; the field itself is kept (not renamed/removed) since existing records may still carry a legacy value.</p>
+        <p>Access control is keyed on the logged-in user's own vendor type, never on <code>Business.operatingMode</code> (that would incorrectly apply one type's restrictions to everyone in a mixed business).</p>
         <p><b>Login:</b> a vendor's login ID is always their <b>Vendor ID</b> (e.g. <code>VND-2026-27-0003</code>), never their email. Email is for notifications only. Password is whatever they set on first login — a temporary password is emailed at activation with <code>mustChangePassword: true</code>, forcing a real password to be set before anything else is reachable.</p>
         <p><b>Instant trial:</b> a business can enable skip-approval signup (central-api's vendor-onboarding-config, "Access" tab) — a public signup at <code>/partner-signup</code> auto-activates on a 7-day trial with no admin step, agreement-signing optional (<code>skipAgreement</code>). Admins can also manually "Activate on Trial" from a vendor's profile page, or extend a trial period from there.</p>
         <p><b>Only one public signup link exists</b>: <code>/partner-signup</code> (the old <code>/vendor-apply</code> now redirects there).</p>

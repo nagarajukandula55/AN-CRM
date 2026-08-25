@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import useSWR from "swr";
-import { ChevronDown, ChevronRight, Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2 } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
 import { ACCESS_HIERARCHY } from "@/core/access/moduleHierarchy";
 import { STANDARD_ACTIONS } from "@/core/access/actions";
 import { STATIC_MODULES } from "@/components/sidebar";
@@ -406,7 +407,7 @@ export default function AccessPage() {
   }, [roles, activeBusinessId, anGroupBusinessId]);
 
   const rowCls =
-    "flex items-center justify-between gap-4 px-4 py-2.5 border-b border-gray-100 last:border-0";
+    "flex items-center justify-between gap-4 px-4 py-2.5 border-b border-border last:border-0";
 
   function renderModuleRow(moduleKey: string, label: string, currentParentKey?: string, description?: string) {
     if (!selectedRole) return null;
@@ -415,7 +416,7 @@ export default function AccessPage() {
     const allGranted = grantedCount === moduleCodes.length;
 
     return (
-      <div key={moduleKey} className="flex flex-col gap-2 px-4 py-2.5 border-b border-gray-100 last:border-0">
+      <div key={moduleKey} className="flex flex-col gap-2 px-4 py-2.5 border-b border-border last:border-0">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-2 min-w-0">
             <button
@@ -423,22 +424,22 @@ export default function AccessPage() {
               title={allGranted ? "Revoke all privileges for this module" : "Grant all privileges for this module"}
               className={`text-[10px] font-semibold px-2 py-1 rounded shrink-0 ${
                 allGranted
-                  ? "bg-emerald-100 text-emerald-700"
+                  ? "bg-success-soft text-success"
                   : grantedCount > 0
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-gray-100 text-gray-400"
+                  ? "bg-warning-soft text-warning"
+                  : "bg-surface-2 text-ink-3"
               }`}
             >
               {grantedCount}/{moduleCodes.length}
             </button>
-            <span className="text-sm font-medium text-gray-900">{label}</span>
+            <span className="text-sm font-medium text-ink">{label}</span>
             {currentParentKey && (
               <select
                 value={currentParentKey}
                 onChange={(e) => moveModuleTo(moduleKey, e.target.value)}
                 onClick={(e) => e.stopPropagation()}
                 title="Move this module to a different category/subcategory"
-                className="text-[10px] border border-gray-200 rounded px-1.5 py-1 text-gray-500 bg-white outline-none"
+                className="text-[10px] border border-border rounded px-1.5 py-1 text-ink-3 bg-surface outline-none"
               >
                 {allSubcategories.map((sc) => (
                   <option key={sc.key} value={sc.key}>{sc.label}</option>
@@ -457,8 +458,8 @@ export default function AccessPage() {
                   title={action.description}
                   className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors ${
                     active
-                      ? "bg-gray-900 text-white"
-                      : "border border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600"
+                      ? "bg-accent text-accent-fg"
+                      : "border border-border text-ink-3 hover:border-border-strong hover:text-ink-2"
                   }`}
                 >
                   {action.label}
@@ -470,21 +471,21 @@ export default function AccessPage() {
         {/* Always-visible plain-language summary of what this module's
             access grants -- was previously only in each action button's
             hover title, easy to miss entirely. */}
-        {description && <p className="text-xs text-gray-400 pl-1">{description}</p>}
+        {description && <p className="text-xs text-ink-3 pl-1">{description}</p>}
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-surface-2 overflow-hidden">
       {/* Left Panel */}
-      <aside className="w-72 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
-        <div className="px-4 py-4 border-b border-gray-200 space-y-3">
+      <aside className="w-72 bg-surface border-r border-border flex flex-col flex-shrink-0">
+        <div className="px-4 py-4 border-b border-border space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900">Roles</h2>
+            <h2 className="text-base font-semibold text-ink">Roles</h2>
             <button
               onClick={() => setCreating(true)}
-              className="px-3 py-1.5 text-xs font-medium bg-gray-900 text-white rounded-md hover:bg-gray-700 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium bg-accent text-accent-fg rounded-md hover:bg-surface-3 transition-colors"
             >
               Create Role
             </button>
@@ -495,7 +496,7 @@ export default function AccessPage() {
           <select
             value={activeBusinessId}
             onChange={(e) => setActiveBusinessId(e.target.value)}
-            className="w-full text-xs border border-gray-200 rounded-md px-2.5 py-2 text-gray-700 bg-white outline-none focus:border-gray-400"
+            className="w-full text-xs border border-border rounded-md px-2.5 py-2 text-ink-2 bg-surface outline-none focus:border-border-strong"
           >
             {[...businesses].sort((a, b) => (b.isPlatform ? 1 : 0) - (a.isPlatform ? 1 : 0)).map((b) => (
               <option key={b._id} value={b._id}>{b.isPlatform ? "AN Group" : b.name}</option>
@@ -505,11 +506,11 @@ export default function AccessPage() {
 
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-12 text-sm text-gray-400">
+            <div className="flex items-center justify-center py-12 text-sm text-ink-3">
               Loading...
             </div>
           ) : visibleRoles.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-sm text-gray-400">
+            <div className="flex items-center justify-center py-12 text-sm text-ink-3">
               No roles found for this business
             </div>
           ) : (
@@ -522,8 +523,8 @@ export default function AccessPage() {
                       onClick={() => setSelectedRole(role)}
                       className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors group ${
                         isSelected
-                          ? "bg-gray-50 border-l-2 border-gray-900"
-                          : "border-l-2 border-transparent hover:bg-gray-50"
+                          ? "bg-surface-2 border-l-2 border-ink"
+                          : "border-l-2 border-transparent hover:bg-surface-2"
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -531,16 +532,16 @@ export default function AccessPage() {
                           className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                           style={{ backgroundColor: role.color || "#6366f1" }}
                         />
-                        <span className="text-sm font-medium text-gray-900 truncate">
+                        <span className="text-sm font-medium text-ink truncate">
                           {role.name}
                         </span>
                         {role.roleNumber && (
-                          <span className="flex-shrink-0 font-mono text-[10px] text-gray-400">
+                          <span className="flex-shrink-0 font-mono text-[10px] text-ink-3">
                             {role.roleNumber}
                           </span>
                         )}
                         {role.isSystem && (
-                          <span className="flex-shrink-0 px-1.5 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 rounded">
+                          <span className="flex-shrink-0 px-1.5 py-0.5 text-xs font-medium bg-info-soft text-info rounded">
                             System
                           </span>
                         )}
@@ -551,7 +552,7 @@ export default function AccessPage() {
                             e.stopPropagation();
                             setDeleteModal({ open: true, role });
                           }}
-                          className="flex-shrink-0 ml-2 p-1 text-gray-400 hover:text-red-500 rounded transition-colors opacity-0 group-hover:opacity-100"
+                          className="flex-shrink-0 ml-2 p-1 text-ink-3 hover:text-danger rounded transition-colors opacity-0 group-hover:opacity-100"
                           aria-label={`Delete ${role.name}`}
                         >
                           <svg
@@ -578,36 +579,36 @@ export default function AccessPage() {
       </aside>
 
       {/* Right Panel */}
-      <main className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
+      <main className="flex-1 bg-surface-2 flex flex-col overflow-hidden">
         {!selectedRole ? (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-sm text-gray-400">Select a role to manage permissions</p>
+            <p className="text-sm text-ink-3">Select a role to manage permissions</p>
           </div>
         ) : (
           <>
             {/* Role Header */}
-            <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0 gap-4">
+            <div className="bg-surface border-b border-border px-6 py-4 flex items-center justify-between flex-shrink-0 gap-4">
               <div className="flex items-center gap-3 min-w-0">
                 <span
                   className="w-4 h-4 rounded-full flex-shrink-0"
                   style={{ backgroundColor: selectedRole.color || "#6366f1" }}
                 />
                 <div className="min-w-0">
-                  <h1 className="text-base font-semibold text-gray-900 truncate">{selectedRole.name}</h1>
+                  <h1 className="text-base font-semibold text-ink truncate">{selectedRole.name}</h1>
                   {selectedRole.description && (
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">{selectedRole.description}</p>
+                    <p className="text-xs text-ink-3 mt-0.5 truncate">{selectedRole.description}</p>
                   )}
                 </div>
                 <button
                   onClick={() => setEditRoleModal({ name: selectedRole.name, description: selectedRole.description || "" })}
                   title="Edit role name/description"
-                  className="p-1 text-gray-300 hover:text-gray-700 shrink-0"
+                  className="p-1 text-ink-3 hover:text-ink-2 shrink-0"
                   aria-label="Edit role"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
                 {selectedRole.isSystem && (
-                  <span className="px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 rounded shrink-0">
+                  <span className="px-2 py-0.5 text-xs font-medium bg-info-soft text-info rounded shrink-0">
                     System
                   </span>
                 )}
@@ -617,7 +618,7 @@ export default function AccessPage() {
                   value={selectedRole.homeRoute || ""}
                   onChange={(e) => setHomeRoute(e.target.value)}
                   title="Page a user with this role lands on right after login"
-                  className="w-48 bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-900 outline-none focus:border-gray-400 transition"
+                  className="w-48 bg-surface border border-border rounded-control px-3 py-2 text-xs text-ink outline-none focus:border-border-strong transition"
                 >
                   <option value="">Home Page: Default</option>
                   {STATIC_MODULES.map((m) => (
@@ -629,14 +630,14 @@ export default function AccessPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search modules…"
-                  className="w-48 bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-900 placeholder-gray-400 outline-none focus:border-gray-400 transition"
+                  className="w-48 bg-surface border border-border rounded-control px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-border-strong transition"
                 />
                 <button
                   onClick={savePermissions}
                   disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-900 text-white rounded-md hover:bg-gray-700 disabled:opacity-60 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-accent-fg rounded-md hover:bg-surface-3 disabled:opacity-60 transition-colors"
                 >
-                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {saving && <Spinner size={16} />}
                   {saving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
@@ -645,24 +646,24 @@ export default function AccessPage() {
             {/* Hierarchical Permission Tree: Category > Subcategory > Module > Privilege */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {grantedModuleKeys.length > 0 && (
-                <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-                  <div className="px-5 py-3 bg-gray-50">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-600">
+                <div className="rounded-card border border-border bg-surface overflow-hidden">
+                  <div className="px-5 py-3 bg-surface-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-ink-2">
                       Sidebar Order
                     </span>
-                    <p className="text-[11px] text-gray-400 mt-0.5">
+                    <p className="text-[11px] text-ink-3 mt-0.5">
                       Re-arrange the order these modules appear in the sidebar for this role (e.g. CRM Dashboard before Appointments).
                     </p>
                   </div>
                   <div>
                     {grantedModuleKeys.map((m, i) => (
                       <div key={m.key} className={rowCls}>
-                        <span className="text-sm text-gray-900">{m.label}</span>
+                        <span className="text-sm text-ink">{m.label}</span>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => moveModule(m.key, -1)}
                             disabled={i === 0}
-                            className="p-1 rounded text-gray-400 hover:text-gray-900 disabled:opacity-30 disabled:hover:text-gray-400"
+                            className="p-1 rounded text-ink-3 hover:text-ink disabled:opacity-30 disabled:hover:text-ink-3"
                             aria-label={`Move ${m.label} up`}
                           >
                             <ChevronDown className="w-4 h-4 rotate-180" />
@@ -670,7 +671,7 @@ export default function AccessPage() {
                           <button
                             onClick={() => moveModule(m.key, 1)}
                             disabled={i === grantedModuleKeys.length - 1}
-                            className="p-1 rounded text-gray-400 hover:text-gray-900 disabled:opacity-30 disabled:hover:text-gray-400"
+                            className="p-1 rounded text-ink-3 hover:text-ink disabled:opacity-30 disabled:hover:text-ink-3"
                             aria-label={`Move ${m.label} down`}
                           >
                             <ChevronDown className="w-4 h-4" />
@@ -689,15 +690,15 @@ export default function AccessPage() {
                       autoFocus value={newNodeLabel} onChange={(e) => setNewNodeLabel(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && addCategory()}
                       placeholder="New category name…"
-                      className="text-xs border border-gray-200 rounded-md px-2.5 py-1.5 outline-none focus:border-gray-400"
+                      className="text-xs border border-border rounded-md px-2.5 py-1.5 outline-none focus:border-border-strong"
                     />
-                    <button onClick={addCategory} className="text-xs px-2.5 py-1.5 bg-gray-900 text-white rounded-md">Add</button>
-                    <button onClick={() => { setAddingCategory(false); setNewNodeLabel(""); }} className="text-xs px-2.5 py-1.5 text-gray-500">Cancel</button>
+                    <button onClick={addCategory} className="text-xs px-2.5 py-1.5 bg-accent text-accent-fg rounded-md">Add</button>
+                    <button onClick={() => { setAddingCategory(false); setNewNodeLabel(""); }} className="text-xs px-2.5 py-1.5 text-ink-3">Cancel</button>
                   </div>
                 ) : (
                   <button
                     onClick={() => setAddingCategory(true)}
-                    className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
+                    className="flex items-center gap-1 text-xs font-medium text-ink-2 hover:text-ink"
                   >
                     <Plus className="w-3.5 h-3.5" /> Add Category
                   </button>
@@ -705,26 +706,26 @@ export default function AccessPage() {
               </div>
 
               {hierarchyLoading ? (
-                <p className="text-sm text-gray-400 text-center py-12">Loading hierarchy…</p>
+                <p className="text-sm text-ink-3 text-center py-12">Loading hierarchy…</p>
               ) : filteredHierarchy.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-12">
+                <p className="text-sm text-ink-3 text-center py-12">
                   {search ? `No modules match "${search}"` : "No modules enabled for this business yet."}
                 </p>
               ) : (
                 filteredHierarchy.map((cat) => {
                   const catOpen = openCategories[cat.key] !== false;
                   return (
-                    <div key={cat.key} className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-                      <div className="w-full flex items-center justify-between px-5 py-3 bg-gray-50 hover:bg-gray-100 transition-colors group">
+                    <div key={cat.key} className="rounded-card border border-border bg-surface overflow-hidden">
+                      <div className="w-full flex items-center justify-between px-5 py-3 bg-surface-2 hover:bg-surface-2 transition-colors group">
                         <button
                           onClick={() => setOpenCategories((p) => ({ ...p, [cat.key]: !catOpen }))}
                           className="flex items-center gap-2 flex-1 text-left"
                         >
-                          <span className="text-xs font-semibold uppercase tracking-wider text-gray-600">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-ink-2">
                             {cat.label}
                           </span>
                           {cat.isCustom && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600">Custom</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent-soft text-accent">Custom</span>
                           )}
                         </button>
                         <div className="flex items-center gap-1">
@@ -732,21 +733,21 @@ export default function AccessPage() {
                             <>
                               <button
                                 onClick={() => setRenameNodeModal({ key: cat.key, label: cat.label, kind: "category" })}
-                                className="p-1 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100"
+                                className="p-1 text-ink-3 hover:text-ink-2 opacity-0 group-hover:opacity-100"
                                 aria-label={`Rename ${cat.label}`}
                               ><Pencil className="w-3.5 h-3.5" /></button>
                               <button
                                 onClick={() => confirm(`Delete category "${cat.label}"? Its modules fall back to Unassigned.`) && deleteNode(cat.key)}
-                                className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100"
+                                className="p-1 text-ink-3 hover:text-danger opacity-0 group-hover:opacity-100"
                                 aria-label={`Delete ${cat.label}`}
                               ><Trash2 className="w-3.5 h-3.5" /></button>
                             </>
                           )}
                           <button onClick={() => setOpenCategories((p) => ({ ...p, [cat.key]: !catOpen }))}>
                             {catOpen ? (
-                              <ChevronDown className="w-4 h-4 text-gray-400" />
+                              <ChevronDown className="w-4 h-4 text-ink-3" />
                             ) : (
-                              <ChevronRight className="w-4 h-4 text-gray-400" />
+                              <ChevronRight className="w-4 h-4 text-ink-3" />
                             )}
                           </button>
                         </div>
@@ -757,17 +758,17 @@ export default function AccessPage() {
                           {cat.subcategories.map((sc) => {
                             const scOpen = openSubcategories[sc.key] !== false;
                             return (
-                              <div key={sc.key} className="border-t border-gray-100 first:border-0">
-                                <div className="w-full flex items-center justify-between px-5 py-2 bg-gray-25 hover:bg-gray-50 transition-colors group">
+                              <div key={sc.key} className="border-t border-border first:border-0">
+                                <div className="w-full flex items-center justify-between px-5 py-2 bg-surface-2 hover:bg-surface-2 transition-colors group">
                                   <button
                                     onClick={() => setOpenSubcategories((p) => ({ ...p, [sc.key]: !scOpen }))}
                                     className="flex items-center gap-2 flex-1 text-left"
                                   >
-                                    <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                                    <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">
                                       {sc.label}
                                     </span>
                                     {sc.isCustom && (
-                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600">Custom</span>
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent-soft text-accent">Custom</span>
                                     )}
                                   </button>
                                   <div className="flex items-center gap-1">
@@ -775,21 +776,21 @@ export default function AccessPage() {
                                       <>
                                         <button
                                           onClick={() => setRenameNodeModal({ key: sc.key, label: sc.label, kind: "subcategory" })}
-                                          className="p-1 text-gray-300 hover:text-gray-700 opacity-0 group-hover:opacity-100"
+                                          className="p-1 text-ink-3 hover:text-ink-2 opacity-0 group-hover:opacity-100"
                                           aria-label={`Rename ${sc.label}`}
                                         ><Pencil className="w-3 h-3" /></button>
                                         <button
                                           onClick={() => confirm(`Delete subcategory "${sc.label}"?`) && deleteNode(sc.key)}
-                                          className="p-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100"
+                                          className="p-1 text-ink-3 hover:text-danger opacity-0 group-hover:opacity-100"
                                           aria-label={`Delete ${sc.label}`}
                                         ><Trash2 className="w-3 h-3" /></button>
                                       </>
                                     )}
                                     <button onClick={() => setOpenSubcategories((p) => ({ ...p, [sc.key]: !scOpen }))}>
                                       {scOpen ? (
-                                        <ChevronDown className="w-3.5 h-3.5 text-gray-300" />
+                                        <ChevronDown className="w-3.5 h-3.5 text-ink-3" />
                                       ) : (
-                                        <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+                                        <ChevronRight className="w-3.5 h-3.5 text-ink-3" />
                                       )}
                                     </button>
                                   </div>
@@ -802,22 +803,22 @@ export default function AccessPage() {
                           })}
 
                           {/* Add Subcategory */}
-                          <div className="px-5 py-2 border-t border-gray-100">
+                          <div className="px-5 py-2 border-t border-border">
                             {addingSubFor === cat.key ? (
                               <div className="flex items-center gap-2">
                                 <input
                                   autoFocus value={newNodeLabel} onChange={(e) => setNewNodeLabel(e.target.value)}
                                   onKeyDown={(e) => e.key === "Enter" && addSubcategory(cat.key)}
                                   placeholder="New subcategory name…"
-                                  className="text-xs border border-gray-200 rounded-md px-2.5 py-1.5 outline-none focus:border-gray-400"
+                                  className="text-xs border border-border rounded-md px-2.5 py-1.5 outline-none focus:border-border-strong"
                                 />
-                                <button onClick={() => addSubcategory(cat.key)} className="text-xs px-2.5 py-1.5 bg-gray-900 text-white rounded-md">Add</button>
-                                <button onClick={() => { setAddingSubFor(null); setNewNodeLabel(""); }} className="text-xs px-2.5 py-1.5 text-gray-500">Cancel</button>
+                                <button onClick={() => addSubcategory(cat.key)} className="text-xs px-2.5 py-1.5 bg-accent text-accent-fg rounded-md">Add</button>
+                                <button onClick={() => { setAddingSubFor(null); setNewNodeLabel(""); }} className="text-xs px-2.5 py-1.5 text-ink-3">Cancel</button>
                               </div>
                             ) : (
                               <button
                                 onClick={() => setAddingSubFor(cat.key)}
-                                className="flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-gray-700"
+                                className="flex items-center gap-1 text-[11px] font-medium text-ink-3 hover:text-ink-2"
                               >
                                 <Plus className="w-3 h-3" /> Add Subcategory
                               </button>
@@ -837,12 +838,12 @@ export default function AccessPage() {
       {/* Create Role Modal */}
       {creating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-            <h3 className="text-base font-semibold text-gray-900 mb-5">Create Role</h3>
+          <div className="bg-surface rounded-card shadow-xl w-full max-w-md mx-4 p-6">
+            <h3 className="text-base font-semibold text-ink mb-5">Create Role</h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-ink-2 mb-1">
                   Role Name
                 </label>
                 <input
@@ -850,12 +851,12 @@ export default function AccessPage() {
                   value={newRoleName}
                   onChange={(e) => handleNameChange(e.target.value)}
                   placeholder="e.g. Store Manager"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder-gray-300"
+                  className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent placeholder-ink-3"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-ink-2 mb-1">
                   Role Code
                 </label>
                 <input
@@ -863,12 +864,12 @@ export default function AccessPage() {
                   value={newRoleCode}
                   onChange={(e) => setNewRoleCode(e.target.value)}
                   placeholder="e.g. STORE_MANAGER"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder-gray-300 font-mono"
+                  className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent placeholder-ink-3 font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-ink-2 mb-1">
                   Color
                 </label>
                 <div className="flex items-center gap-3">
@@ -876,9 +877,9 @@ export default function AccessPage() {
                     type="color"
                     value={newRoleColor}
                     onChange={(e) => setNewRoleColor(e.target.value)}
-                    className="w-10 h-9 rounded border border-gray-200 cursor-pointer p-0.5"
+                    className="w-10 h-9 rounded border border-border cursor-pointer p-0.5"
                   />
-                  <span className="text-sm text-gray-500 font-mono">{newRoleColor}</span>
+                  <span className="text-sm text-ink-3 font-mono">{newRoleColor}</span>
                 </div>
               </div>
             </div>
@@ -891,14 +892,14 @@ export default function AccessPage() {
                   setNewRoleCode("");
                   setNewRoleColor("#6366f1");
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-ink-2 border border-border rounded-md hover:bg-surface-2 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={createRole}
                 disabled={!newRoleName.trim() || !newRoleCode.trim()}
-                className="px-4 py-2 text-sm font-medium bg-gray-900 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium bg-accent text-accent-fg rounded-md hover:bg-surface-3 disabled:opacity-50 transition-colors"
               >
                 Create
               </button>
@@ -910,12 +911,12 @@ export default function AccessPage() {
       {/* Delete Confirmation Modal */}
       {deleteModal.open && deleteModal.role && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 p-6">
+          <div className="bg-surface rounded-card shadow-xl w-full max-w-sm mx-4 p-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="flex-shrink-0 w-10 h-10 bg-red-50 rounded-full flex items-center justify-center">
+              <div className="flex-shrink-0 w-10 h-10 bg-danger-soft rounded-full flex items-center justify-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 text-red-600"
+                  className="h-5 w-5 text-danger"
                   viewBox="0 0 20 20"
                   fill="currentColor"
                 >
@@ -927,10 +928,10 @@ export default function AccessPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-base font-semibold text-gray-900">Delete Role</h3>
-                <p className="text-sm text-gray-500 mt-1">
+                <h3 className="text-base font-semibold text-ink">Delete Role</h3>
+                <p className="text-sm text-ink-3 mt-1">
                   Are you sure you want to delete role{" "}
-                  <span className="font-medium text-gray-900">{deleteModal.role.name}</span>?
+                  <span className="font-medium text-ink">{deleteModal.role.name}</span>?
                   This cannot be undone.
                 </p>
               </div>
@@ -939,13 +940,13 @@ export default function AccessPage() {
             <div className="flex justify-end gap-2 mt-6">
               <button
                 onClick={() => setDeleteModal({ open: false, role: null })}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-ink-2 border border-border rounded-md hover:bg-surface-2 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => deleteModal.role && deleteRole(deleteModal.role)}
-                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                className="px-4 py-2 text-sm font-medium bg-danger text-accent-fg rounded-md hover:opacity-90 transition-colors"
               >
                 Delete
               </button>
@@ -956,30 +957,30 @@ export default function AccessPage() {
 
       {editRoleModal && selectedRole && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setEditRoleModal(null)}>
-          <div className="bg-white rounded-md shadow-xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Edit Role</h3>
+          <div className="bg-surface rounded-md shadow-xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-semibold text-ink mb-3">Edit Role</h3>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Role name</label>
+                <label className="text-xs text-ink-3 mb-1 block">Role name</label>
                 <input
                   autoFocus
                   value={editRoleModal.name}
                   onChange={(e) => setEditRoleModal({ ...editRoleModal, name: e.target.value })}
-                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-400"
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-border-strong"
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Description (optional)</label>
+                <label className="text-xs text-ink-3 mb-1 block">Description (optional)</label>
                 <textarea
                   value={editRoleModal.description}
                   onChange={(e) => setEditRoleModal({ ...editRoleModal, description: e.target.value })}
                   rows={3}
-                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-400 resize-none"
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-border-strong resize-none"
                 />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-5">
-              <button onClick={() => setEditRoleModal(null)} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors">
+              <button onClick={() => setEditRoleModal(null)} className="px-4 py-2 text-sm font-medium text-ink-2 border border-border rounded-md hover:bg-surface-2 transition-colors">
                 Cancel
               </button>
               <button
@@ -988,7 +989,7 @@ export default function AccessPage() {
                   setSelectedRole({ ...selectedRole, name: editRoleModal.name.trim(), description: editRoleModal.description || "" });
                   setEditRoleModal(null);
                 }}
-                className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                className="px-4 py-2 text-sm font-medium bg-accent text-accent-fg rounded-md hover:bg-accent-hover transition-colors"
               >
                 Save
               </button>
@@ -999,8 +1000,8 @@ export default function AccessPage() {
 
       {renameNodeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setRenameNodeModal(null)}>
-          <div className="bg-white rounded-md shadow-xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">
+          <div className="bg-surface rounded-md shadow-xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-semibold text-ink mb-3">
               Rename {renameNodeModal.kind === "category" ? "Category" : "Subcategory"}
             </h3>
             <input
@@ -1013,10 +1014,10 @@ export default function AccessPage() {
                   setRenameNodeModal(null);
                 }
               }}
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-400"
+              className="w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-border-strong"
             />
             <div className="flex justify-end gap-2 mt-5">
-              <button onClick={() => setRenameNodeModal(null)} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors">
+              <button onClick={() => setRenameNodeModal(null)} className="px-4 py-2 text-sm font-medium text-ink-2 border border-border rounded-md hover:bg-surface-2 transition-colors">
                 Cancel
               </button>
               <button
@@ -1025,7 +1026,7 @@ export default function AccessPage() {
                   renameNode(renameNodeModal.key, renameNodeModal.label.trim());
                   setRenameNodeModal(null);
                 }}
-                className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                className="px-4 py-2 text-sm font-medium bg-accent text-accent-fg rounded-md hover:bg-accent-hover transition-colors"
               >
                 Save
               </button>

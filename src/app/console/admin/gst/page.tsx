@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
@@ -215,11 +215,11 @@ export default function GstFilingPage() {
 
   function statusBadge(status: string) {
     const map: Record<string, { color: string; icon: any }> = {
-      PENDING: { color: 'text-amber-300 border-amber-400/30 bg-amber-400/10', icon: Clock },
-      SUBMITTED: { color: 'text-cyan-300 border-cyan-400/30 bg-cyan-400/10', icon: Send },
-      ACCEPTED: { color: 'text-emerald-300 border-emerald-400/30 bg-emerald-400/10', icon: CheckCircle2 },
-      REJECTED: { color: 'text-red-300 border-red-400/30 bg-red-400/10', icon: AlertCircle },
-      FAILED: { color: 'text-red-300 border-red-400/30 bg-red-400/10', icon: AlertCircle },
+      PENDING: { color: 'text-warning border-warning/30 bg-warning-soft', icon: Clock },
+      SUBMITTED: { color: 'text-info border-info/30 bg-info-soft', icon: Send },
+      ACCEPTED: { color: 'text-success border-success/30 bg-success-soft', icon: CheckCircle2 },
+      REJECTED: { color: 'text-danger border-danger/30 bg-danger-soft', icon: AlertCircle },
+      FAILED: { color: 'text-danger border-danger/30 bg-danger-soft', icon: AlertCircle },
     }
     const cfg = map[status] || map.PENDING
     const Icon = cfg.icon
@@ -232,7 +232,7 @@ export default function GstFilingPage() {
 
   return (
       <div className="space-y-8">
-        <section className="rounded-[40px] border border-white/10 bg-white/5 p-10">
+        <section className="rounded-[40px] border border-white/10 bg-surface/5 p-10">
           <p className="uppercase tracking-[0.35em] text-cyan-300 text-sm">COMPLIANCE</p>
           <h1 className="mt-5 text-6xl font-black flex items-center gap-4">
             <Landmark className="h-12 w-12" /> GST Filing
@@ -268,10 +268,10 @@ export default function GstFilingPage() {
           ))}
         </div>
 
-        {msg && <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm">{msg}</div>}
+        {msg && <div className="rounded-card border border-white/10 bg-surface/5 px-6 py-3 text-sm">{msg}</div>}
 
         {tab === 'push' && (
-          <section className="rounded-[32px] border border-white/10 bg-white/5 p-8">
+          <section className="rounded-[32px] border border-white/10 bg-surface/5 p-8">
             <h2 className="text-2xl font-bold mb-2 flex items-center gap-2"><Send className="h-6 w-6" /> Push Invoices to GST</h2>
             <p className="text-white/50 text-sm mb-6">
               Pick a date range — every sales invoice issued in that window gets queued and submitted to your
@@ -281,17 +281,17 @@ export default function GstFilingPage() {
               <div>
                 <label className="text-sm text-white/60">From</label>
                 <input type="date" value={pushFrom} onChange={(e) => setPushFrom(e.target.value)} required
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                  className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
               </div>
               <div>
                 <label className="text-sm text-white/60">To</label>
                 <input type="date" value={pushTo} onChange={(e) => setPushTo(e.target.value)} required
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                  className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
               </div>
               <div>
                 <label className="text-sm text-white/60">Return Type</label>
                 <select value={pushReturnType} onChange={(e) => setPushReturnType(e.target.value as any)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
+                  className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5">
                   <option value="GSTR1">GSTR-1</option>
                   <option value="GSTR3B">GSTR-3B</option>
                   <option value="IFF">IFF</option>
@@ -304,16 +304,16 @@ export default function GstFilingPage() {
             </form>
             {pushSummary && (
               <div className="mt-6 flex gap-4">
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-5 py-3">
+                <div className="rounded-card border border-white/10 bg-black/20 px-5 py-3">
                   <p className="text-2xl font-bold">{pushSummary.total}</p>
                   <p className="text-xs text-white/50">Total</p>
                 </div>
-                <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 px-5 py-3">
-                  <p className="text-2xl font-bold text-emerald-300">{pushSummary.submitted}</p>
+                <div className="rounded-card border border-success/20 bg-success-soft px-5 py-3">
+                  <p className="text-2xl font-bold text-success">{pushSummary.submitted}</p>
                   <p className="text-xs text-white/50">Submitted</p>
                 </div>
-                <div className="rounded-2xl border border-red-400/20 bg-red-400/5 px-5 py-3">
-                  <p className="text-2xl font-bold text-red-300">{pushSummary.failed}</p>
+                <div className="rounded-card border border-danger/20 bg-danger-soft px-5 py-3">
+                  <p className="text-2xl font-bold text-danger">{pushSummary.failed}</p>
                   <p className="text-xs text-white/50">Failed</p>
                 </div>
               </div>
@@ -326,7 +326,7 @@ export default function GstFilingPage() {
         )}
 
         {tab === 'filings' && (
-          <section className="rounded-[32px] border border-white/10 bg-white/5 p-8">
+          <section className="rounded-[32px] border border-white/10 bg-surface/5 p-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Filings</h2>
               <button onClick={() => refetchFilings()} className="flex items-center gap-2 text-sm text-white/60 hover:text-white">
@@ -340,11 +340,11 @@ export default function GstFilingPage() {
             ) : (
               <div className="space-y-3">
                 {filings.map((f: Filing) => (
-                  <div key={f._id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-6 py-4">
+                  <div key={f._id} className="flex items-center justify-between rounded-card border border-white/10 bg-black/20 px-6 py-4">
                     <div>
                       <p className="font-semibold">{f.invoiceNumber}</p>
                       <p className="text-sm text-white/50">{f.returnType} · {f.period}</p>
-                      {f.rejectionReason && <p className="text-sm text-red-300 mt-1">{f.rejectionReason}</p>}
+                      {f.rejectionReason && <p className="text-sm text-danger mt-1">{f.rejectionReason}</p>}
                     </div>
                     <div className="flex items-center gap-4">
                       {statusBadge(f.status)}
@@ -366,7 +366,7 @@ export default function GstFilingPage() {
         )}
 
         {tab === 'hsn' && (
-          <section className="rounded-[32px] border border-white/10 bg-white/5 p-8">
+          <section className="rounded-[32px] border border-white/10 bg-surface/5 p-8">
             <h2 className="text-2xl font-bold mb-2">HSN / Category / GST% Mapping</h2>
             <p className="text-white/50 text-sm mb-6">
               Business-specific rows override the global defaults for the same HSN code. Global/default rows are
@@ -377,22 +377,22 @@ export default function GstFilingPage() {
               <div>
                 <label className="text-sm text-white/60">HSN Code</label>
                 <input required value={hsnForm.hsnCode} onChange={(e) => setHsnForm((p) => ({ ...p, hsnCode: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                  className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
               </div>
               <div>
                 <label className="text-sm text-white/60">GST %</label>
                 <input required type="number" step="0.01" value={hsnForm.gstRate} onChange={(e) => setHsnForm((p) => ({ ...p, gstRate: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                  className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
               </div>
               <div>
                 <label className="text-sm text-white/60">Category</label>
                 <input value={hsnForm.category} onChange={(e) => setHsnForm((p) => ({ ...p, category: e.target.value }))}
-                  placeholder="Goods / Services" className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                  placeholder="Goods / Services" className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
               </div>
               <div>
                 <label className="text-sm text-white/60">Description</label>
                 <input value={hsnForm.description} onChange={(e) => setHsnForm((p) => ({ ...p, description: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                  className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
               </div>
               <button disabled={savingHsn} type="submit"
                 className="rounded-full bg-cyan-400 px-6 py-2.5 font-semibold text-black disabled:opacity-50 h-fit">
@@ -407,7 +407,7 @@ export default function GstFilingPage() {
             ) : (
               <div className="space-y-2">
                 {hsnRates.map((r) => (
-                  <div key={r._id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-6 py-3">
+                  <div key={r._id} className="flex items-center justify-between rounded-card border border-white/10 bg-black/20 px-6 py-3">
                     <div className="flex items-center gap-6">
                       <span className="font-mono text-sm">{r.hsnCode}</span>
                       <span className="text-sm text-white/60">{r.category || '—'}</span>
@@ -416,7 +416,7 @@ export default function GstFilingPage() {
                     <div className="flex items-center gap-4">
                       <span className="text-sm font-semibold">{r.gstRate}%</span>
                       {r.businessId ? (
-                        <button onClick={() => deleteHsnRate(r._id)} className="text-xs text-red-300 hover:underline">Delete</button>
+                        <button onClick={() => deleteHsnRate(r._id)} className="text-xs text-danger hover:underline">Delete</button>
                       ) : (
                         <span className="text-xs text-white/30">Global default</span>
                       )}
@@ -429,18 +429,18 @@ export default function GstFilingPage() {
         )}
 
         {tab === 'config' && (
-          <section className="rounded-[32px] border border-white/10 bg-white/5 p-8">
+          <section className="rounded-[32px] border border-white/10 bg-surface/5 p-8">
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2"><Settings2 className="h-6 w-6" /> Portal Settings</h2>
             <form onSubmit={saveConfig} className="space-y-5 max-w-xl">
               <div>
                 <label className="text-sm text-white/60">GSTIN</label>
                 <input value={gstin} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGstin(e.target.value)} required
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                  className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
               </div>
               <div>
                 <label className="text-sm text-white/60">Provider</label>
                 <select value={provider} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setProvider(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
+                  className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5">
                   <option value="NONE">Not configured</option>
                   <option value="GSTN_DIRECT">GSTN Direct</option>
                   <option value="CLEARTAX">ClearTax</option>
@@ -450,12 +450,12 @@ export default function GstFilingPage() {
               <div>
                 <label className="text-sm text-white/60">Client ID (GSP API Key) {config?.apiKeySet && '(already set — leave blank to keep)'}</label>
                 <input type="password" value={apiKey} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiKey(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                  className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
               </div>
               <div>
                 <label className="text-sm text-white/60">Client Secret (GSP API Secret) {config?.apiSecretSet && '(already set — leave blank to keep)'}</label>
                 <input type="password" value={apiSecret} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiSecret(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5" />
+                  className="mt-1 w-full rounded-card border border-white/10 bg-black/30 px-4 py-2.5" />
               </div>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={isEnabled} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setIsEnabled(e.target.checked)} /> Enable GST portal push

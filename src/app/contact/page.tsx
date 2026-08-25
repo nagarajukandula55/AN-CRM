@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, AlertCircle, Loader2, Mail, Phone, MapPin } from "lucide-react";
+import { ArrowRight, CheckCircle2, AlertCircle, Mail, Phone, MapPin } from "lucide-react";
 import Logo from "@/components/marketing/Logo";
+import { Spinner } from "@/components/ui/Spinner";
 import {
   neonButtonPrimary,
   neonPageBg,
@@ -114,10 +115,10 @@ export default function ContactPage() {
       <main className="relative z-10 mx-auto max-w-2xl px-6 pb-20">
         <div className="mb-8 text-center">
           <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-violet-500">Get In Touch</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink md:text-4xl">
             Contact <span className={neonGradientText}>Us</span>
           </h1>
-          <p className="mx-auto mt-3 max-w-md text-sm text-gray-500">
+          <p className="mx-auto mt-3 max-w-md text-sm text-ink-3">
             Questions about AN-CRM, an existing account, or becoming a partner — send us a
             message and our team will get back to you.
           </p>
@@ -126,23 +127,23 @@ export default function ContactPage() {
         <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className={`${neonCard} flex items-center gap-3 p-4`}>
             <Mail className="h-4 w-4 flex-shrink-0 text-violet-600" />
-            <span className="text-xs text-gray-600">hello@angroup.in</span>
+            <span className="text-xs text-ink-2">hello@angroup.in</span>
           </div>
           <div className={`${neonCard} flex items-center gap-3 p-4`}>
             <Phone className="h-4 w-4 flex-shrink-0 text-violet-600" />
-            <span className="text-xs text-gray-600">Mon–Sat, 10am–7pm IST</span>
+            <span className="text-xs text-ink-2">Mon–Sat, 10am–7pm IST</span>
           </div>
           <div className={`${neonCard} flex items-center gap-3 p-4`}>
             <MapPin className="h-4 w-4 flex-shrink-0 text-violet-600" />
-            <span className="text-xs text-gray-600">India</span>
+            <span className="text-xs text-ink-2">India</span>
           </div>
         </div>
 
         {state.kind === "success" ? (
           <div className={`${neonCard} p-8 text-center`}>
-            <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
-            <h2 className="mt-4 text-lg font-bold text-gray-900">Message sent</h2>
-            <p className="mt-2 text-sm text-gray-500">
+            <CheckCircle2 className="mx-auto h-10 w-10 text-success" />
+            <h2 className="mt-4 text-lg font-bold text-ink">Message sent</h2>
+            <p className="mt-2 text-sm text-ink-3">
               Thanks for reaching out — our team will get back to you shortly.
             </p>
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -157,7 +158,7 @@ export default function ContactPage() {
         ) : (
           <form onSubmit={handleSubmit} className={`${neonCard} p-6 sm:p-8`}>
             {state.kind === "error" && (
-              <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <div className="mb-4 flex items-center gap-2 rounded-control border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 {state.message}
               </div>
@@ -215,7 +216,7 @@ export default function ContactPage() {
               <button type="submit" disabled={submitting} className={`${neonButtonPrimary} mt-2 w-full disabled:opacity-60`}>
                 {submitting ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Spinner size={16} />
                     Sending...
                   </>
                 ) : (
@@ -229,7 +230,7 @@ export default function ContactPage() {
           </form>
         )}
 
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-6 text-center text-sm text-ink-3">
           Looking to partner with us instead?{" "}
           <Link href="/partner-signup" className="font-medium text-violet-700 hover:text-cyan-600">
             Become a Partner

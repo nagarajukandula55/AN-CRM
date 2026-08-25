@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, use as usePromise } from "react";
 import { useRouter } from "next/navigation";
@@ -34,25 +34,25 @@ export default function B2BOrdersPage({ params }: { params: Promise<{ vendorCode
   }, [vendorCode, router]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-surface-2 p-4">
       <div className="max-w-2xl mx-auto space-y-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-gray-900">My Orders</h1>
+          <h1 className="text-lg font-semibold text-ink">My Orders</h1>
           <Link href={`/b2b/${vendorCode}`} className="text-violet-600 text-sm">← Back to Catalog</Link>
         </div>
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-ink-3">Loading…</p>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-gray-400">No orders yet.</p>
+          <p className="text-sm text-ink-3">No orders yet.</p>
         ) : (
           orders.map((o) => (
-            <div key={o._id} className="bg-white border rounded-lg p-3">
+            <div key={o._id} className="bg-surface border rounded-control p-3">
               <div className="flex justify-between text-sm">
-                <span className="font-mono text-gray-500">{o.orderNumber}</span>
-                <span className="text-gray-500">{new Date(o.createdAt).toLocaleDateString()}</span>
+                <span className="font-mono text-ink-3">{o.orderNumber}</span>
+                <span className="text-ink-3">{new Date(o.createdAt).toLocaleDateString()}</span>
               </div>
               {o.items.map((it, i) => (
-                <p key={i} className="text-sm text-gray-700">{it.quantity} × {it.productName} — ₹{it.lineTotal}</p>
+                <p key={i} className="text-sm text-ink-2">{it.quantity} × {it.productName} — ₹{it.lineTotal}</p>
               ))}
               <div className="flex justify-between text-sm font-medium pt-1 border-t mt-1">
                 <span>{o.status} · {o.paymentMode === "CREDIT" ? "Credit" : "Pay on Delivery"}</span>

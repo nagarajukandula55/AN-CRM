@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -69,11 +69,11 @@ interface PaymentSummary {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  PAID: "text-emerald-400 bg-emerald-500/10",
-  SENT: "text-blue-400 bg-blue-500/10",
-  OVERDUE: "text-red-400 bg-red-500/10",
-  DRAFT: "text-zinc-400 bg-white/[0.04]",
-  CANCELLED: "text-zinc-400 bg-white/[0.04]",
+  PAID: "text-success bg-success/10",
+  SENT: "text-info bg-info/10",
+  OVERDUE: "text-danger bg-danger/10",
+  DRAFT: "text-zinc-400 bg-surface/[0.04]",
+  CANCELLED: "text-zinc-400 bg-surface/[0.04]",
 };
 
 const METHOD_LABELS: Record<string, string> = {
@@ -226,7 +226,7 @@ export default function FinancePage() {
             fetchInvoices();
             fetchPayments();
           }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-white text-black rounded-xl text-sm font-medium hover:bg-zinc-100"
+          className="flex items-center gap-2 px-4 py-2.5 bg-surface text-black rounded-card text-sm font-medium hover:bg-zinc-100"
         >
           <RefreshCw size={14} />
           Refresh
@@ -235,10 +235,10 @@ export default function FinancePage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="rounded-card border border-white/[0.06] bg-surface/[0.02] p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 rounded-lg bg-emerald-500/10">
-              <TrendingUp size={14} className="text-emerald-400" />
+            <div className="p-1.5 rounded-control bg-success/10">
+              <TrendingUp size={14} className="text-success" />
             </div>
             <span className="text-xs text-zinc-500">Total Revenue</span>
           </div>
@@ -246,10 +246,10 @@ export default function FinancePage() {
           <p className="text-xs text-zinc-600 mt-0.5">from paid invoices</p>
         </div>
 
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="rounded-card border border-white/[0.06] bg-surface/[0.02] p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 rounded-lg bg-red-500/10">
-              <TrendingDown size={14} className="text-red-400" />
+            <div className="p-1.5 rounded-control bg-danger/10">
+              <TrendingDown size={14} className="text-danger" />
             </div>
             <span className="text-xs text-zinc-500">Total Expenses</span>
           </div>
@@ -257,23 +257,23 @@ export default function FinancePage() {
           <p className="text-xs text-zinc-600 mt-0.5">payments made</p>
         </div>
 
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="rounded-card border border-white/[0.06] bg-surface/[0.02] p-4">
           <div className="flex items-center gap-2 mb-2">
             <div
-              className={`p-1.5 rounded-lg ${
-                netProfit >= 0 ? "bg-emerald-500/10" : "bg-red-500/10"
+              className={`p-1.5 rounded-control ${
+                netProfit >= 0 ? "bg-success/10" : "bg-danger/10"
               }`}
             >
               <DollarSign
                 size={14}
-                className={netProfit >= 0 ? "text-emerald-400" : "text-red-400"}
+                className={netProfit >= 0 ? "text-success" : "text-danger"}
               />
             </div>
             <span className="text-xs text-zinc-500">Net Profit</span>
           </div>
           <p
             className={`text-lg font-semibold ${
-              netProfit >= 0 ? "text-emerald-400" : "text-red-400"
+              netProfit >= 0 ? "text-success" : "text-danger"
             }`}
           >
             {INR(netProfit)}
@@ -281,10 +281,10 @@ export default function FinancePage() {
           <p className="text-xs text-zinc-600 mt-0.5">revenue - expenses</p>
         </div>
 
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="rounded-card border border-white/[0.06] bg-surface/[0.02] p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 rounded-lg bg-amber-500/10">
-              <Clock size={14} className="text-amber-400" />
+            <div className="p-1.5 rounded-control bg-warning/10">
+              <Clock size={14} className="text-warning" />
             </div>
             <span className="text-xs text-zinc-500">Pending Receivables</span>
           </div>
@@ -292,10 +292,10 @@ export default function FinancePage() {
           <p className="text-xs text-zinc-600 mt-0.5">unpaid invoices</p>
         </div>
 
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="rounded-card border border-white/[0.06] bg-surface/[0.02] p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 rounded-lg bg-red-500/10">
-              <AlertCircle size={14} className="text-red-400" />
+            <div className="p-1.5 rounded-control bg-danger/10">
+              <AlertCircle size={14} className="text-danger" />
             </div>
             <span className="text-xs text-zinc-500">Overdue</span>
           </div>
@@ -336,14 +336,14 @@ export default function FinancePage() {
                 placeholder="Search invoices..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-3 py-2 pl-9 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/20"
+                className="w-full px-3 py-2 pl-9 bg-surface/[0.04] border border-white/[0.08] rounded-control text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/20"
               />
             </div>
             <div className="relative">
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="appearance-none px-3 py-2 pr-8 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-zinc-300 focus:outline-none focus:border-white/20 cursor-pointer"
+                className="appearance-none px-3 py-2 pr-8 bg-surface/[0.04] border border-white/[0.08] rounded-control text-sm text-zinc-300 focus:outline-none focus:border-white/20 cursor-pointer"
               >
                 <option value="">All Statuses</option>
                 <option value="DRAFT">Draft</option>
@@ -367,10 +367,10 @@ export default function FinancePage() {
               <p className="text-sm text-zinc-500">No invoices found</p>
             </div>
           ) : (
-            <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+            <div className="rounded-card border border-white/[0.06] overflow-hidden">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/[0.06] bg-white/[0.02]">
+                  <tr className="border-b border-white/[0.06] bg-surface/[0.02]">
                     <th className="px-4 py-3 text-left text-xs text-zinc-500 font-medium">
                       Invoice #
                     </th>
@@ -395,7 +395,7 @@ export default function FinancePage() {
                   {filteredInvoices.map((inv) => (
                     <tr
                       key={inv._id}
-                      className="hover:bg-white/[0.02] transition-colors"
+                      className="hover:bg-surface/[0.02] transition-colors"
                     >
                       <td className="px-4 py-3">
                         <span className="text-sm font-mono text-white">
@@ -430,7 +430,7 @@ export default function FinancePage() {
                             className={`text-sm ${
                               inv.status !== "PAID" &&
                               new Date(inv.dueDate) < new Date()
-                                ? "text-red-400"
+                                ? "text-danger"
                                 : "text-zinc-400"
                             }`}
                           >
@@ -449,7 +449,7 @@ export default function FinancePage() {
                           <button
                             onClick={() => handleMarkPaid(inv._id)}
                             disabled={markingPaid === inv._id}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-success border border-success/20 rounded-control hover:bg-success/10 transition-colors disabled:opacity-50"
                           >
                             <CheckCircle size={12} />
                             {markingPaid === inv._id ? "Saving..." : "Mark Paid"}
@@ -479,38 +479,38 @@ export default function FinancePage() {
         <div className="space-y-4">
           {paymentSummary && (
             <div className="grid grid-cols-3 gap-4">
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-emerald-500/10">
-                  <ArrowDownLeft size={16} className="text-emerald-400" />
+              <div className="rounded-card border border-white/[0.06] bg-surface/[0.02] p-4 flex items-center gap-3">
+                <div className="p-2 rounded-control bg-success/10">
+                  <ArrowDownLeft size={16} className="text-success" />
                 </div>
                 <div>
                   <p className="text-xs text-zinc-500">Received</p>
-                  <p className="text-sm font-semibold text-emerald-400">
+                  <p className="text-sm font-semibold text-success">
                     {INR(paymentSummary.received)}
                   </p>
                 </div>
               </div>
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-red-500/10">
-                  <ArrowUpRight size={16} className="text-red-400" />
+              <div className="rounded-card border border-white/[0.06] bg-surface/[0.02] p-4 flex items-center gap-3">
+                <div className="p-2 rounded-control bg-danger/10">
+                  <ArrowUpRight size={16} className="text-danger" />
                 </div>
                 <div>
                   <p className="text-xs text-zinc-500">Made</p>
-                  <p className="text-sm font-semibold text-red-400">
+                  <p className="text-sm font-semibold text-danger">
                     {INR(paymentSummary.made)}
                   </p>
                 </div>
               </div>
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 flex items-center gap-3">
+              <div className="rounded-card border border-white/[0.06] bg-surface/[0.02] p-4 flex items-center gap-3">
                 <div
-                  className={`p-2 rounded-lg ${
-                    paymentSummary.net >= 0 ? "bg-emerald-500/10" : "bg-red-500/10"
+                  className={`p-2 rounded-control ${
+                    paymentSummary.net >= 0 ? "bg-success/10" : "bg-danger/10"
                   }`}
                 >
                   <CreditCard
                     size={16}
                     className={
-                      paymentSummary.net >= 0 ? "text-emerald-400" : "text-red-400"
+                      paymentSummary.net >= 0 ? "text-success" : "text-danger"
                     }
                   />
                 </div>
@@ -518,7 +518,7 @@ export default function FinancePage() {
                   <p className="text-xs text-zinc-500">Net</p>
                   <p
                     className={`text-sm font-semibold ${
-                      paymentSummary.net >= 0 ? "text-emerald-400" : "text-red-400"
+                      paymentSummary.net >= 0 ? "text-success" : "text-danger"
                     }`}
                   >
                     {INR(paymentSummary.net)}
@@ -536,10 +536,10 @@ export default function FinancePage() {
               <p className="text-sm text-zinc-500">No payments recorded</p>
             </div>
           ) : (
-            <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+            <div className="rounded-card border border-white/[0.06] overflow-hidden">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/[0.06] bg-white/[0.02]">
+                  <tr className="border-b border-white/[0.06] bg-surface/[0.02]">
                     <th className="px-4 py-3 text-left text-xs text-zinc-500 font-medium">
                       Payment #
                     </th>
@@ -567,7 +567,7 @@ export default function FinancePage() {
                   {payments.map((pay) => (
                     <tr
                       key={pay._id}
-                      className="hover:bg-white/[0.02] transition-colors"
+                      className="hover:bg-surface/[0.02] transition-colors"
                     >
                       <td className="px-4 py-3">
                         <span className="text-sm font-mono text-white">
@@ -584,8 +584,8 @@ export default function FinancePage() {
                         <span
                           className={`text-sm font-medium ${
                             pay.type === "RECEIVED"
-                              ? "text-emerald-400"
-                              : "text-red-400"
+                              ? "text-success"
+                              : "text-danger"
                           }`}
                         >
                           {pay.type === "RECEIVED" ? "+" : "-"}
@@ -596,8 +596,8 @@ export default function FinancePage() {
                         <span
                           className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                             pay.type === "RECEIVED"
-                              ? "text-emerald-400 bg-emerald-500/10"
-                              : "text-red-400 bg-red-500/10"
+                              ? "text-success bg-success/10"
+                              : "text-danger bg-danger/10"
                           }`}
                         >
                           {pay.type === "RECEIVED" ? "Received" : "Made"}
@@ -605,7 +605,7 @@ export default function FinancePage() {
                       </td>
                       <td className="px-4 py-3">
                         {pay.method ? (
-                          <span className="text-xs text-zinc-300 font-medium px-2 py-0.5 rounded-full bg-white/[0.04]">
+                          <span className="text-xs text-zinc-300 font-medium px-2 py-0.5 rounded-full bg-surface/[0.04]">
                             {METHOD_LABELS[pay.method] || pay.method}
                           </span>
                         ) : (
@@ -638,7 +638,7 @@ export default function FinancePage() {
       {/* Overview Tab */}
       {activeTab === "overview" && (
         <div className="space-y-6">
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+          <div className="rounded-card border border-white/[0.06] bg-surface/[0.02] p-5">
             <h2 className="text-sm font-medium text-white mb-4">
               Monthly Revenue (Last 6 Months)
             </h2>
@@ -653,9 +653,9 @@ export default function FinancePage() {
                   <div key={m.label} className="flex items-center gap-4">
                     <span className="text-xs text-zinc-500 w-16 shrink-0">{m.label}</span>
                     <div className="flex-1 flex items-center gap-3">
-                      <div className="flex-1 h-6 bg-white/[0.04] rounded-md overflow-hidden">
+                      <div className="flex-1 h-6 bg-surface/[0.04] rounded-md overflow-hidden">
                         <div
-                          className="h-full bg-emerald-500/30 rounded-md transition-all duration-500"
+                          className="h-full bg-success/30 rounded-md transition-all duration-500"
                           style={{
                             width: `${(m.amount / maxMonthlyRevenue) * 100}%`,
                           }}
@@ -672,7 +672,7 @@ export default function FinancePage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 space-y-3">
+            <div className="rounded-card border border-white/[0.06] bg-surface/[0.02] p-5 space-y-3">
               <h3 className="text-sm font-medium text-white">Invoice Summary</h3>
               <div className="space-y-2">
                 {[
@@ -684,17 +684,17 @@ export default function FinancePage() {
                   {
                     label: "Overdue",
                     value: invoiceStats?.overdue ?? 0,
-                    className: "text-red-400",
+                    className: "text-danger",
                   },
                   {
                     label: "Total Revenue",
                     value: INR(invoiceStats?.totalRevenue ?? 0),
-                    className: "text-emerald-400",
+                    className: "text-success",
                   },
                   {
                     label: "Outstanding",
                     value: INR(invoiceStats?.outstanding ?? 0),
-                    className: "text-amber-400",
+                    className: "text-warning",
                   },
                 ].map((row) => (
                   <div
@@ -714,7 +714,7 @@ export default function FinancePage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 space-y-3">
+            <div className="rounded-card border border-white/[0.06] bg-surface/[0.02] p-5 space-y-3">
               <h3 className="text-sm font-medium text-white">Payment Summary</h3>
               <div className="space-y-2">
                 {[
@@ -730,12 +730,12 @@ export default function FinancePage() {
                   {
                     label: "Total Received",
                     value: INR(paymentSummary?.received ?? 0),
-                    className: "text-emerald-400",
+                    className: "text-success",
                   },
                   {
                     label: "Total Made",
                     value: INR(paymentSummary?.made ?? 0),
-                    className: "text-red-400",
+                    className: "text-danger",
                   },
                 ].map((row) => (
                   <div

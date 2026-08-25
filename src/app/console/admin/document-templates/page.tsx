@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * Document Templates — unified viewer + drag-and-drop builder covering
@@ -125,31 +125,31 @@ function SortableBlock({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white"
+      className="flex items-start gap-3 p-3 rounded-card border border-border bg-surface"
     >
       <button
         {...attributes}
         {...listeners}
-        className="mt-1 text-gray-400 hover:text-gray-700 cursor-grab active:cursor-grabbing"
+        className="mt-1 text-ink-3 hover:text-ink-2 cursor-grab active:cursor-grabbing"
         title="Drag to reorder"
       >
         <GripVertical size={16} />
       </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-gray-900">{entry?.label ?? block.type}</p>
-          <button onClick={() => onRemove(block.id)} className="text-gray-400 hover:text-red-500">
+          <p className="text-sm font-medium text-ink">{entry?.label ?? block.type}</p>
+          <button onClick={() => onRemove(block.id)} className="text-ink-3 hover:text-danger">
             <X size={14} />
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-0.5">{entry?.description}</p>
+        <p className="text-xs text-ink-3 mt-0.5">{entry?.description}</p>
         {block.type === "custom-text" && (
           <textarea
             value={(block.config?.text as string) ?? ""}
             onChange={(e) => onConfigChange(block.id, { ...block.config, text: e.target.value })}
             placeholder="Enter custom text for this block…"
             rows={2}
-            className="mt-2 w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+            className="mt-2 w-full px-2 py-1.5 text-xs border border-border rounded-control focus:outline-none focus:border-border-strong"
           />
         )}
         {block.type === "header" && (
@@ -157,7 +157,7 @@ function SortableBlock({
             value={(block.config?.title as string) ?? ""}
             onChange={(e) => onConfigChange(block.id, { ...block.config, title: e.target.value })}
             placeholder={`Title, e.g. "TAX INVOICE"`}
-            className="mt-2 w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+            className="mt-2 w-full px-2 py-1.5 text-xs border border-border rounded-control focus:outline-none focus:border-border-strong"
           />
         )}
         {block.type === "terms" && (
@@ -166,7 +166,7 @@ function SortableBlock({
             onChange={(e) => onConfigChange(block.id, { ...block.config, text: e.target.value })}
             placeholder="Terms and conditions / footer note…"
             rows={2}
-            className="mt-2 w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+            className="mt-2 w-full px-2 py-1.5 text-xs border border-border rounded-control focus:outline-none focus:border-border-strong"
           />
         )}
       </div>
@@ -307,14 +307,14 @@ export default function DocumentTemplatesPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Document Templates</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-xl font-semibold text-ink">Document Templates</h1>
+          <p className="text-sm text-ink-3 mt-0.5">
             Drag and drop to design the layout of every document type — invoices, purchase orders, quotations, and more.
           </p>
         </div>
         <Link
           href="/console/admin/invoice-templates"
-          className="flex items-center gap-1.5 px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400"
+          className="flex items-center gap-1.5 px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong"
         >
           Ecommerce invoice branding editor <ExternalLink size={12} />
         </Link>
@@ -326,10 +326,10 @@ export default function DocumentTemplatesPage() {
           <button
             key={key}
             onClick={() => { setDocumentType(key); setSelected(null); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+            className={`px-3 py-1.5 rounded-control text-xs font-medium border transition-colors ${
               documentType === key
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-900"
+                ? "bg-accent text-accent-fg border-accent"
+                : "bg-surface text-ink-3 border-border hover:border-border-strong hover:text-ink"
             }`}
           >
             {label}
@@ -343,19 +343,19 @@ export default function DocumentTemplatesPage() {
           <button
             onClick={createTemplate}
             disabled={saving || !businessId}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-accent-fg rounded-card text-sm font-medium hover:bg-accent-hover disabled:opacity-60"
           >
             <Plus size={16} />
             New {DOC_TYPE_LABELS[documentType]} Template
           </button>
 
           {loading ? (
-            <div className="p-8 text-center text-gray-500 text-sm">
+            <div className="p-8 text-center text-ink-3 text-sm">
               <Loader2 className="animate-spin mx-auto mb-2" size={20} />
               Loading…
             </div>
           ) : templates.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 text-sm border border-dashed border-gray-200 rounded-xl">
+            <div className="p-8 text-center text-ink-3 text-sm border border-dashed border-border rounded-card">
               No {DOC_TYPE_LABELS[documentType].toLowerCase()} templates yet.
             </div>
           ) : (
@@ -363,20 +363,20 @@ export default function DocumentTemplatesPage() {
               <button
                 key={t._id}
                 onClick={() => setSelected(t)}
-                className={`w-full text-left p-3 rounded-xl border transition-colors ${
+                className={`w-full text-left p-3 rounded-card border transition-colors ${
                   selected?._id === t._id
-                    ? "border-gray-400 bg-gray-50"
-                    : "border-gray-200 bg-white hover:border-gray-300"
+                    ? "border-border-strong bg-surface-2"
+                    : "border-border bg-surface hover:border-border"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <FileText size={14} className="text-gray-500" />
-                    <span className="text-sm font-medium text-gray-900">{t.name}</span>
+                    <FileText size={14} className="text-ink-3" />
+                    <span className="text-sm font-medium text-ink">{t.name}</span>
                   </div>
-                  {t.isDefault && <Star size={13} className="text-amber-500 fill-amber-500" />}
+                  {t.isDefault && <Star size={13} className="text-warning fill-amber-500" />}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">{t.blocks?.length ?? 0} blocks</p>
+                <p className="text-xs text-ink-3 mt-1">{t.blocks?.length ?? 0} blocks</p>
               </button>
             ))
           )}
@@ -385,13 +385,13 @@ export default function DocumentTemplatesPage() {
         {/* Builder */}
         <div className="lg:col-span-2">
           {!selected ? (
-            <div className="h-full min-h-[300px] flex items-center justify-center text-gray-500 text-sm border border-dashed border-gray-200 rounded-xl">
+            <div className="h-full min-h-[300px] flex items-center justify-center text-ink-3 text-sm border border-dashed border-border rounded-card">
               Select or create a template to start designing its layout.
             </div>
           ) : (
             <div className="space-y-4">
               {error && (
-                <div className="px-3 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-500">
+                <div className="px-3 py-2.5 bg-danger-soft border border-danger rounded-control text-xs text-danger">
                   {error}
                 </div>
               )}
@@ -400,9 +400,9 @@ export default function DocumentTemplatesPage() {
                 <input
                   value={selected.name}
                   onChange={(e) => setSelected({ ...selected, name: e.target.value })}
-                  className="flex-1 min-w-[180px] px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-900 focus:outline-none focus:border-gray-400"
+                  className="flex-1 min-w-[180px] px-3 py-2 border border-border rounded-control text-sm font-medium text-ink focus:outline-none focus:border-border-strong"
                 />
-                <label className="flex items-center gap-1.5 text-xs text-gray-500">
+                <label className="flex items-center gap-1.5 text-xs text-ink-3">
                   <input
                     type="checkbox"
                     checked={selected.isDefault}
@@ -414,7 +414,7 @@ export default function DocumentTemplatesPage() {
                   type="color"
                   value={selected.accentColor}
                   onChange={(e) => setSelected({ ...selected, accentColor: e.target.value })}
-                  className="w-9 h-9 rounded-lg border border-gray-200 cursor-pointer"
+                  className="w-9 h-9 rounded-control border border-border cursor-pointer"
                   title="Accent color"
                 />
                 <input
@@ -431,14 +431,14 @@ export default function DocumentTemplatesPage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingLogo}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs border border-gray-200 rounded-lg text-gray-500 hover:text-gray-900 hover:border-gray-400 disabled:opacity-60"
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs border border-border rounded-control text-ink-3 hover:text-ink hover:border-border-strong disabled:opacity-60"
                 >
                   {uploadingLogo ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
                   {selected.logoUrl ? "Change Logo" : "Upload Logo"}
                 </button>
                 {selected.logoUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={selected.logoUrl} alt="Logo" className="h-9 w-9 object-contain rounded border border-gray-200" />
+                  <img src={selected.logoUrl} alt="Logo" className="h-9 w-9 object-contain rounded border border-border" />
                 )}
               </div>
 
@@ -448,7 +448,7 @@ export default function DocumentTemplatesPage() {
                   <button
                     key={p.type}
                     onClick={() => addBlock(p.type)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-500 hover:text-gray-900"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-dashed border-border rounded-control text-ink-3 hover:border-border-strong hover:text-ink"
                     title={p.description}
                   >
                     <Plus size={11} />
@@ -475,7 +475,7 @@ export default function DocumentTemplatesPage() {
               </DndContext>
 
               {selected.blocks.length === 0 && (
-                <div className="p-8 text-center text-gray-500 text-sm border border-dashed border-gray-200 rounded-xl">
+                <div className="p-8 text-center text-ink-3 text-sm border border-dashed border-border rounded-card">
                   No blocks yet — add some from the palette above.
                 </div>
               )}
@@ -484,7 +484,7 @@ export default function DocumentTemplatesPage() {
                 <button
                   onClick={deleteSelected}
                   disabled={saving}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs text-red-500 border border-red-200 rounded-xl hover:bg-red-50 disabled:opacity-60"
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs text-danger border border-danger rounded-card hover:bg-danger-soft disabled:opacity-60"
                 >
                   <Trash2 size={13} />
                   Delete Template
@@ -492,7 +492,7 @@ export default function DocumentTemplatesPage() {
                 <button
                   onClick={saveSelected}
                   disabled={saving}
-                  className="px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-60"
+                  className="px-4 py-2.5 bg-accent text-accent-fg rounded-card text-sm font-medium hover:bg-accent-hover disabled:opacity-60"
                 >
                   {saving ? "Saving…" : "Save Template"}
                 </button>
@@ -505,9 +505,9 @@ export default function DocumentTemplatesPage() {
             with representative sample data via the same shared renderer the
             real print pages use, so what's shown here is what will print. */}
         <div className="lg:col-span-1">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-2">Preview</p>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-ink-3 mb-2">Preview</p>
           {selected ? (
-            <div className="border border-gray-200 rounded-xl bg-white p-4 overflow-auto max-h-[80vh] text-[11px] scale-[0.85] origin-top">
+            <div className="border border-border rounded-card bg-surface p-4 overflow-auto max-h-[80vh] text-[11px] scale-[0.85] origin-top">
               <DocumentRenderer
                 blocks={selected.blocks}
                 accentColor={selected.accentColor}
@@ -516,7 +516,7 @@ export default function DocumentTemplatesPage() {
               />
             </div>
           ) : (
-            <div className="p-8 text-center text-gray-400 text-xs border border-dashed border-gray-200 rounded-xl">
+            <div className="p-8 text-center text-ink-3 text-xs border border-dashed border-border rounded-card">
               Select a template to preview it.
             </div>
           )}

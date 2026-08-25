@@ -9,6 +9,7 @@ import Agreement, { ISignature } from "@/models/Agreement";
 import { generateGlobalDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { sendAgreementOtpEmail, sendGenericEmail } from "@/services/email/resend.service";
+import { renderEmailShell } from "@/services/email/emailShell";
 import { getCentralAgreementTemplate } from "@/core/agreements/getCentralAgreementTemplate";
 
 function generateOtp(): string {
@@ -61,7 +62,15 @@ export async function POST(req: NextRequest, context: RouteContext) {
         sendGenericEmail({
           to: vendor.email,
           subject: "Update on your partner application",
-          html: `<p>Hi ${vendor.contactPerson || ""},</p><p>Thanks for your interest in becoming a partner with <strong>${vendor.companyName}</strong>. After review, we're not able to move forward with this application at this time.</p>${vendor.rejectionReason ? `<p>Reason: ${vendor.rejectionReason}</p>` : ""}`,
+          html: renderEmailShell({
+            heading: "Update on your application",
+            previewText: "An update on your partner application.",
+            bodyHtml: `
+              <p>Hi ${vendor.contactPerson || ""},</p>
+              <p>Thanks for your interest in becoming a partner with <strong>${vendor.companyName}</strong>. After review, we're not able to move forward with this application at this time.</p>
+              ${vendor.rejectionReason ? `<p style="font-size:13px;color:#8B8F94;">Reason: ${vendor.rejectionReason}</p>` : ""}
+            `,
+          }),
           businessId: (vendor.businessId as any)?.toString(),
           templateKey: "VENDOR_REJECTED",
           templateTokens: { vendorName: vendor.contactPerson || "", businessName: vendor.companyName || "", reason: vendor.rejectionReason || "" },
@@ -251,7 +260,15 @@ By signing below, both parties agree to the terms above.`;
       sendGenericEmail({
         to: vendorParty.email,
         subject: "Your application has been approved",
-        html: `<p>Hi ${vendorParty.name || ""},</p><p>Good news — your application with <strong>${businessDisplay}</strong> has been approved. We've sent you a separate email with a link to review and sign your partner agreement. Once you've signed, please allow us a little time to countersign and confirm — you'll get a confirmation email as soon as that's done.</p>`,
+        html: renderEmailShell({
+          heading: "Your application has been approved",
+          previewText: `Good news from ${businessDisplay} — you're approved.`,
+          bodyHtml: `
+            <p>Hi ${vendorParty.name || ""},</p>
+            <p>Good news — your application with <strong>${businessDisplay}</strong> has been approved. We've sent you a separate email with a link to review and sign your partner agreement.</p>
+            <p style="font-size:13px;color:#8B8F94;">Once you've signed, please allow us a little time to countersign and confirm — you'll get a confirmation email as soon as that's done.</p>
+          `,
+        }),
         businessId: (vendor.businessId as any)?.toString(),
         templateKey: "VENDOR_APPROVED",
         templateTokens: { vendorName: vendorParty.name || "", businessName: businessDisplay, loginUrl: baseUrl },

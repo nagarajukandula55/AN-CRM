@@ -93,48 +93,48 @@ export default function PublicInvoiceView({ params }: { params: Promise<{ token:
 
   const printPage = () => window.print();
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="text-gray-500">Loading invoice…</div></div>;
-  if (error || !invoice) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="text-red-500">{error || "Invoice not found"}</div></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-surface-2"><div className="text-ink-3">Loading invoice…</div></div>;
+  if (error || !invoice) return <div className="min-h-screen flex items-center justify-center bg-surface-2"><div className="text-danger">{error || "Invoice not found"}</div></div>;
 
   const statusColors: Record<string, string> = {
-    DRAFT: "bg-gray-100 text-gray-600",
-    SENT: "bg-blue-100 text-blue-700",
-    PAID: "bg-green-100 text-green-700",
-    OVERDUE: "bg-red-100 text-red-700",
-    CANCELLED: "bg-gray-100 text-gray-500",
+    DRAFT: "bg-surface-2 text-ink-2",
+    SENT: "bg-info-soft text-info",
+    PAID: "bg-success-soft text-success",
+    OVERDUE: "bg-danger-soft text-danger",
+    CANCELLED: "bg-surface-2 text-ink-3",
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 print:bg-white print:py-0">
+    <div className="min-h-screen bg-surface-2 py-8 px-4 print:bg-surface print:py-0">
       {/* Print button — hidden on print */}
       <div className="max-w-3xl mx-auto mb-4 flex justify-end gap-2 print:hidden">
         <button
           onClick={printPage}
-          className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800"
+          className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-fg rounded-control text-sm hover:bg-accent-hover"
         >
           <Download size={15} />
           Download / Print
         </button>
       </div>
 
-      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 print:shadow-none print:border-none">
+      <div className="max-w-3xl mx-auto bg-surface rounded-card shadow-sm border border-border print:shadow-none print:border-none">
         {/* Header */}
-        <div className="p-8 border-b border-gray-100">
+        <div className="p-8 border-b border-border">
           <div className="flex justify-between items-start">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <Building2 size={20} className="text-gray-400" />
-                <span className="text-sm text-gray-500 font-medium">AN Group</span>
+                <Building2 size={20} className="text-ink-3" />
+                <span className="text-sm text-ink-3 font-medium">AN Group</span>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900">{invoice.invoiceNumber}</h1>
+              <h1 className="text-3xl font-bold text-ink">{invoice.invoiceNumber}</h1>
               <div className="mt-2 flex items-center gap-3">
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusColors[invoice.status] || "bg-gray-100 text-gray-600"}`}>
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusColors[invoice.status] || "bg-surface-2 text-ink-2"}`}>
                   {invoice.status}
                 </span>
-                {invoice.status === "PAID" && <CheckCircle size={16} className="text-green-500" />}
+                {invoice.status === "PAID" && <CheckCircle size={16} className="text-success" />}
               </div>
             </div>
-            <div className="text-right text-sm text-gray-500 space-y-1">
+            <div className="text-right text-sm text-ink-3 space-y-1">
               <div className="flex items-center gap-1.5 justify-end">
                 <Calendar size={13} />
                 <span>Issued: {new Date(invoice.issueDate).toLocaleDateString("en-IN")}</span>
@@ -150,50 +150,50 @@ export default function PublicInvoiceView({ params }: { params: Promise<{ token:
         </div>
 
         {/* Bill To */}
-        <div className="p-8 border-b border-gray-100">
-          <p className="text-xs uppercase tracking-widest text-gray-400 mb-3">Bill To</p>
-          <h2 className="text-lg font-semibold text-gray-900">{invoice.customer.name}</h2>
-          {invoice.customer.gstin && <p className="text-sm text-gray-500 mt-0.5">GSTIN: {invoice.customer.gstin}</p>}
+        <div className="p-8 border-b border-border">
+          <p className="text-xs uppercase tracking-widest text-ink-3 mb-3">Bill To</p>
+          <h2 className="text-lg font-semibold text-ink">{invoice.customer.name}</h2>
+          {invoice.customer.gstin && <p className="text-sm text-ink-3 mt-0.5">GSTIN: {invoice.customer.gstin}</p>}
           {invoice.customer.address && (
-            <p className="text-sm text-gray-500 mt-1 flex items-start gap-1.5">
+            <p className="text-sm text-ink-3 mt-1 flex items-start gap-1.5">
               <MapPin size={13} className="mt-0.5 shrink-0" />{invoice.customer.address}
             </p>
           )}
           {invoice.customer.email && (
-            <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
+            <p className="text-sm text-ink-3 mt-1 flex items-center gap-1.5">
               <Mail size={13} />{invoice.customer.email}
             </p>
           )}
           {invoice.customer.phone && (
-            <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
+            <p className="text-sm text-ink-3 mt-1 flex items-center gap-1.5">
               <Phone size={13} />{invoice.customer.phone}
             </p>
           )}
         </div>
 
         {/* Line Items */}
-        <div className="p-8 border-b border-gray-100">
+        <div className="p-8 border-b border-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left pb-3 text-gray-400 font-medium">Description</th>
-                <th className="text-right pb-3 text-gray-400 font-medium w-16">Qty</th>
-                <th className="text-right pb-3 text-gray-400 font-medium w-24">Unit Price</th>
-                <th className="text-right pb-3 text-gray-400 font-medium w-16">GST%</th>
-                <th className="text-right pb-3 text-gray-400 font-medium w-24">Total</th>
+              <tr className="border-b border-border">
+                <th className="text-left pb-3 text-ink-3 font-medium">Description</th>
+                <th className="text-right pb-3 text-ink-3 font-medium w-16">Qty</th>
+                <th className="text-right pb-3 text-ink-3 font-medium w-24">Unit Price</th>
+                <th className="text-right pb-3 text-ink-3 font-medium w-16">GST%</th>
+                <th className="text-right pb-3 text-ink-3 font-medium w-24">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-border">
               {invoice.items.map((item, i) => (
                 <tr key={i}>
-                  <td className="py-3 text-gray-800">
+                  <td className="py-3 text-ink">
                     {item.description}
-                    <span className="text-gray-400 text-xs ml-1">({item.unit})</span>
+                    <span className="text-ink-3 text-xs ml-1">({item.unit})</span>
                   </td>
-                  <td className="py-3 text-right text-gray-600">{item.quantity}</td>
-                  <td className="py-3 text-right text-gray-600">{fmt(item.unitPrice)}</td>
-                  <td className="py-3 text-right text-gray-500 text-xs">{item.taxRate}%</td>
-                  <td className="py-3 text-right font-medium text-gray-900">{fmt(item.total)}</td>
+                  <td className="py-3 text-right text-ink-2">{item.quantity}</td>
+                  <td className="py-3 text-right text-ink-2">{fmt(item.unitPrice)}</td>
+                  <td className="py-3 text-right text-ink-3 text-xs">{item.taxRate}%</td>
+                  <td className="py-3 text-right font-medium text-ink">{fmt(item.total)}</td>
                 </tr>
               ))}
             </tbody>
@@ -201,25 +201,25 @@ export default function PublicInvoiceView({ params }: { params: Promise<{ token:
         </div>
 
         {/* Totals */}
-        <div className="p-8 border-b border-gray-100">
+        <div className="p-8 border-b border-border">
           <div className="ml-auto w-72 space-y-2 text-sm">
-            <div className="flex justify-between text-gray-600">
+            <div className="flex justify-between text-ink-2">
               <span>Subtotal</span>
               <span>{fmt(invoice.subtotal)}</span>
             </div>
             {invoice.taxTotal > 0 && (
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-ink-2">
                 <span>GST</span>
                 <span>{fmt(invoice.taxTotal)}</span>
               </div>
             )}
             {invoice.discountAmount > 0 && (
-              <div className="flex justify-between text-green-600">
+              <div className="flex justify-between text-success">
                 <span>Discount</span>
                 <span>−{fmt(invoice.discountAmount)}</span>
               </div>
             )}
-            <div className="flex justify-between font-bold text-gray-900 text-base pt-2 border-t border-gray-200">
+            <div className="flex justify-between font-bold text-ink text-base pt-2 border-t border-border">
               <span>Total</span>
               <span>{fmt(invoice.grandTotal)}</span>
             </div>
@@ -228,23 +228,23 @@ export default function PublicInvoiceView({ params }: { params: Promise<{ token:
 
         {/* Notes & Terms */}
         {(invoice.notes || invoice.terms) && (
-          <div className="p-8 grid grid-cols-2 gap-8 text-sm text-gray-500">
+          <div className="p-8 grid grid-cols-2 gap-8 text-sm text-ink-3">
             {invoice.notes && (
               <div>
-                <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">Notes</p>
+                <p className="text-xs uppercase tracking-widest text-ink-3 mb-2">Notes</p>
                 <p className="whitespace-pre-line">{invoice.notes}</p>
               </div>
             )}
             {invoice.terms && (
               <div>
-                <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">Terms</p>
+                <p className="text-xs uppercase tracking-widest text-ink-3 mb-2">Terms</p>
                 <p className="whitespace-pre-line">{invoice.terms}</p>
               </div>
             )}
           </div>
         )}
 
-        <div className="px-8 py-4 bg-gray-50 rounded-b-2xl text-center text-xs text-gray-400 print:bg-white">
+        <div className="px-8 py-4 bg-surface-2 rounded-b-card text-center text-xs text-ink-3 print:bg-surface">
           This invoice was generated by AN Group ERP. For questions, contact us directly.
         </div>
       </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, use as usePromise } from "react";
 import Link from "next/link";
@@ -44,15 +44,15 @@ export default function B2BSignupPage({ params }: { params: Promise<{ vendorCode
   }
 
   if (notFound) {
-    return <div className="min-h-screen flex items-center justify-center text-gray-500">B2B ordering isn't available for this vendor.</div>;
+    return <div className="min-h-screen flex items-center justify-center text-ink-3">B2B ordering isn't available for this vendor.</div>;
   }
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-        <div className="w-full max-w-sm bg-white rounded-xl border p-6 text-center space-y-2">
-          <h1 className="text-lg font-semibold text-gray-900">Signup Received</h1>
-          <p className="text-sm text-gray-500">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-surface-2">
+        <div className="w-full max-w-sm bg-surface rounded-card border p-6 text-center space-y-2">
+          <h1 className="text-lg font-semibold text-ink">Signup Received</h1>
+          <p className="text-sm text-ink-3">
             {vendorName} will review your account and set your credit terms. You'll be able to log in once approved.
           </p>
           <Link href={`/b2b/${vendorCode}/login`} className="text-violet-600 text-sm">Go to login</Link>
@@ -62,24 +62,24 @@ export default function B2BSignupPage({ params }: { params: Promise<{ vendorCode
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-      <div className="w-full max-w-sm bg-white rounded-xl border p-6 space-y-3">
-        <h1 className="text-lg font-semibold text-gray-900">Become a {vendorName || "..."} Partner</h1>
-        <p className="text-xs text-gray-500">Sign up as a Distributor or Retailer to order directly at your channel price.</p>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <input className="w-full border rounded-lg p-2 text-sm" placeholder="Business name *" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
-        <select className="w-full border rounded-lg p-2 text-sm" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as any }))}>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-surface-2">
+      <div className="w-full max-w-sm bg-surface rounded-card border p-6 space-y-3">
+        <h1 className="text-lg font-semibold text-ink">Become a {vendorName || "..."} Partner</h1>
+        <p className="text-xs text-ink-3">Sign up as a Distributor or Retailer to order directly at your channel price.</p>
+        {error && <p className="text-sm text-danger">{error}</p>}
+        <input className="w-full border rounded-control p-2 text-sm" placeholder="Business name *" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
+        <select className="w-full border rounded-control p-2 text-sm" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as any }))}>
           <option value="RETAILER">Retailer</option>
           <option value="DISTRIBUTOR">Distributor</option>
         </select>
-        <input className="w-full border rounded-lg p-2 text-sm" placeholder="Contact person" value={form.contactPerson} onChange={(e) => setForm((p) => ({ ...p, contactPerson: e.target.value }))} />
-        <input className="w-full border rounded-lg p-2 text-sm" placeholder="Phone" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
-        <input className="w-full border rounded-lg p-2 text-sm" placeholder="Email *" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
-        <input type="password" className="w-full border rounded-lg p-2 text-sm" placeholder="Password (min 6 chars) *" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} />
-        <button onClick={submit} disabled={loading} className="w-full py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">
+        <input className="w-full border rounded-control p-2 text-sm" placeholder="Contact person" value={form.contactPerson} onChange={(e) => setForm((p) => ({ ...p, contactPerson: e.target.value }))} />
+        <input className="w-full border rounded-control p-2 text-sm" placeholder="Phone" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
+        <input className="w-full border rounded-control p-2 text-sm" placeholder="Email *" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+        <input type="password" className="w-full border rounded-control p-2 text-sm" placeholder="Password (min 6 chars) *" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} />
+        <button onClick={submit} disabled={loading} className="w-full py-2 bg-accent text-accent-fg rounded-control text-sm disabled:opacity-50">
           {loading ? "Submitting…" : "Sign Up"}
         </button>
-        <p className="text-xs text-gray-500 text-center">
+        <p className="text-xs text-ink-3 text-center">
           Already approved? <Link href={`/b2b/${vendorCode}/login`} className="text-violet-600">Log in</Link>
         </p>
       </div>

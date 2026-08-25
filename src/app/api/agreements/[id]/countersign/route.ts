@@ -4,6 +4,7 @@ import Agreement, { ISignature, IParty } from '@/models/Agreement';
 import { getEnrichedSession } from '@/lib/auth/session-enriched';
 import { logAction } from '@/lib/audit/logAction';
 import { sendGenericEmail } from '@/services/email/resend.service';
+import { renderEmailShell } from '@/services/email/emailShell';
 import { activateVendorAfterAgreement } from '@/services/vendorActivation.service';
 import mongoose from 'mongoose';
 
@@ -114,7 +115,15 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         sendGenericEmail({
           to: vendorParty.email,
           subject: `Your agreement "${agreement.title}" has been fully executed`,
-          html: `<p>Hi ${vendorParty.name || ''},</p><p>Good news — your agreement <strong>${agreement.title}</strong> has now been signed by both parties and is fully executed. You'll receive a separate email shortly with your login details.</p>`,
+          html: renderEmailShell({
+            heading: "Your agreement is fully executed",
+            previewText: `"${agreement.title}" has been signed by both parties.`,
+            bodyHtml: `
+              <p>Hi ${vendorParty.name || ''},</p>
+              <p>Good news — your agreement <strong>${agreement.title}</strong> has now been signed by both parties and is fully executed.</p>
+              <p style="font-size:13px;color:#8B8F94;">You'll receive a separate email shortly with your login details.</p>
+            `,
+          }),
           businessId: (agreement as any).businessId?.toString(),
           templateKey: "AGREEMENT_FULLY_EXECUTED",
           templateTokens: { partyName: vendorParty.name || '', agreementTitle: agreement.title },

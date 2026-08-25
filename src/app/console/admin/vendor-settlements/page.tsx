@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * Vendor Settlements — admin visibility into Razorpay Route vendor
@@ -31,10 +31,10 @@ interface Settlement {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  TRANSFERRED: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-  PENDING: "bg-amber-50 text-amber-700 border border-amber-200",
-  FAILED: "bg-red-50 text-red-700 border border-red-200",
-  ON_HOLD: "bg-gray-100 text-gray-600 border border-gray-200",
+  TRANSFERRED: "bg-success-soft text-success border border-success",
+  PENDING: "bg-warning-soft text-warning border border-warning",
+  FAILED: "bg-danger-soft text-danger border border-danger",
+  ON_HOLD: "bg-surface-2 text-ink-2 border border-border",
 };
 
 const STATUS_ICON: Record<string, typeof CheckCircle2> = {
@@ -95,29 +95,29 @@ export default function VendorSettlementsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Vendor Settlements</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <h1 className="text-xl font-semibold text-ink">Vendor Settlements</h1>
+        <p className="text-sm text-ink-3 mt-0.5">
           Razorpay Route payouts to vendors — what&apos;s owed, transferred, and outstanding.
         </p>
       </div>
 
       {error && (
-        <div className="px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">{error}</div>
+        <div className="px-3 py-2.5 bg-danger-soft border border-danger rounded-control text-xs text-danger">{error}</div>
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Gross (all vendors)", value: totals.gross, accent: "bg-blue-50 text-blue-600" },
-          { label: "Platform Commission", value: totals.commission, accent: "bg-purple-50 text-purple-600" },
-          { label: "Net Paid Out", value: totals.net - totals.outstanding, accent: "bg-emerald-50 text-emerald-600" },
-          { label: "Outstanding", value: totals.outstanding, accent: "bg-amber-50 text-amber-600" },
+          { label: "Gross (all vendors)", value: totals.gross, accent: "bg-info-soft text-info" },
+          { label: "Platform Commission", value: totals.commission, accent: "bg-accent-soft text-accent" },
+          { label: "Net Paid Out", value: totals.net - totals.outstanding, accent: "bg-success-soft text-success" },
+          { label: "Outstanding", value: totals.outstanding, accent: "bg-warning-soft text-warning" },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-gray-200 bg-white p-4">
-            <div className={`inline-flex p-2 rounded-lg mb-2 ${s.accent}`}>
+          <div key={s.label} className="rounded-card border border-border bg-surface p-4">
+            <div className={`inline-flex p-2 rounded-control mb-2 ${s.accent}`}>
               <IndianRupee size={14} />
             </div>
-            <p className="text-xs text-gray-500">{s.label}</p>
-            <p className="text-lg font-semibold text-gray-900 mt-0.5">{inr(s.value)}</p>
+            <p className="text-xs text-ink-3">{s.label}</p>
+            <p className="text-lg font-semibold text-ink mt-0.5">{inr(s.value)}</p>
           </div>
         ))}
       </div>
@@ -126,7 +126,7 @@ export default function VendorSettlementsPage() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-gray-400"
+          className="px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink focus:outline-none focus:border-border-strong"
         >
           <option value="all">All Statuses</option>
           <option value="TRANSFERRED">Transferred</option>
@@ -136,54 +136,54 @@ export default function VendorSettlementsPage() {
         </select>
         <button
           onClick={fetchSettlements}
-          className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:text-gray-900 hover:border-gray-400 flex items-center gap-1.5"
+          className="px-3 py-2 text-xs text-ink-3 border border-border rounded-card hover:text-ink hover:border-border-strong flex items-center gap-1.5"
         >
           <RefreshCw size={13} /> Refresh
         </button>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+      <div className="rounded-card border border-border bg-surface overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium">Order</th>
-              <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium">Vendor</th>
-              <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium">Gross</th>
-              <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium">Commission</th>
-              <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium">Net Payout</th>
-              <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium">Status</th>
+            <tr className="border-b border-border bg-surface-2">
+              <th className="text-left px-4 py-3 text-xs text-ink-3 font-medium">Order</th>
+              <th className="text-left px-4 py-3 text-xs text-ink-3 font-medium">Vendor</th>
+              <th className="text-left px-4 py-3 text-xs text-ink-3 font-medium">Gross</th>
+              <th className="text-left px-4 py-3 text-xs text-ink-3 font-medium">Commission</th>
+              <th className="text-left px-4 py-3 text-xs text-ink-3 font-medium">Net Payout</th>
+              <th className="text-left px-4 py-3 text-xs text-ink-3 font-medium">Status</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-border">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-12 text-center text-gray-500">Loading…</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-ink-3">Loading…</td></tr>
             ) : settlements.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-12 text-center text-gray-500">No settlements yet.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-ink-3">No settlements yet.</td></tr>
             ) : (
               settlements.map((s) => {
                 const Icon = STATUS_ICON[s.status] || Clock;
                 return (
-                  <tr key={s._id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-xs text-gray-700">{s.orderId}</td>
-                    <td className="px-4 py-3 text-gray-900 font-medium">{vendorLabel(s.vendorId)}</td>
-                    <td className="px-4 py-3 text-gray-700">{inr(s.grossAmount)}</td>
-                    <td className="px-4 py-3 text-gray-500">
+                  <tr key={s._id} className="hover:bg-surface-2">
+                    <td className="px-4 py-3 font-mono text-xs text-ink-2">{s.orderId}</td>
+                    <td className="px-4 py-3 text-ink font-medium">{vendorLabel(s.vendorId)}</td>
+                    <td className="px-4 py-3 text-ink-2">{inr(s.grossAmount)}</td>
+                    <td className="px-4 py-3 text-ink-3">
                       {inr(s.platformCommissionAmount)} ({s.platformCommissionPercent}%)
                     </td>
-                    <td className="px-4 py-3 text-gray-900 font-medium">{inr(s.netPayoutAmount)}</td>
+                    <td className="px-4 py-3 text-ink font-medium">{inr(s.netPayoutAmount)}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[s.status]}`}>
                         <Icon size={11} /> {s.status}
                       </span>
-                      {s.failureReason && <p className="text-[10px] text-red-500 mt-1 max-w-xs">{s.failureReason}</p>}
+                      {s.failureReason && <p className="text-[10px] text-danger mt-1 max-w-xs">{s.failureReason}</p>}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {(s.status === "PENDING" || s.status === "FAILED") && (
                         <button
                           onClick={() => retry(s._id)}
                           disabled={retryingId === s._id}
-                          className="px-3 py-1.5 text-xs text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+                          className="px-3 py-1.5 text-xs text-ink-2 border border-border rounded-control hover:bg-surface-2 disabled:opacity-50"
                         >
                           {retryingId === s._id ? "Retrying…" : "Retry"}
                         </button>

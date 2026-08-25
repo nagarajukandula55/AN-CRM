@@ -1,9 +1,10 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
 import { StateSelect, CitySelect, PincodeInput } from '@/components/shared/LocationSelect'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 import { DEVICE_CATEGORIES, DEVICE_CATEGORY_LABELS, type DeviceCategory } from '@/core/catalog/deviceCategory'
@@ -87,36 +88,36 @@ export default function NewVendorJobSheetPage() {
     }
   }
 
-  const inputCls = "w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-400"
-  const labelCls = "block text-xs text-gray-500 mb-1.5"
+  const inputCls = "w-full bg-surface border border-border rounded-card px-4 py-2.5 text-sm text-ink outline-none focus:border-border-strong"
+  const labelCls = "block text-xs text-ink-3 mb-1.5"
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-surface-2 text-ink">
       <div className="max-w-[1800px] mx-auto px-6 py-10">
         <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => router.push('/vendor/crm/jobsheets')} className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-100 transition">
+          <button onClick={() => router.push('/vendor/crm/jobsheets')} className="w-9 h-9 rounded-card border border-border bg-surface flex items-center justify-center hover:bg-surface-2 transition">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
             <h1 className="text-2xl font-semibold">New Workorder</h1>
-            <p className="text-sm text-gray-400">For a direct walk-in — no appointment needed first.</p>
+            <p className="text-sm text-ink-3">For a direct walk-in — no appointment needed first.</p>
           </div>
         </div>
 
         {formError && (
-          <div className="mb-6 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{formError}</div>
+          <div className="mb-6 text-sm text-danger bg-danger-soft border border-danger/20 rounded-card px-4 py-3">{formError}</div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-gray-900">Customer</h2>
+          <section className="rounded-card border border-border bg-surface p-6 space-y-4">
+            <h2 className="text-sm font-semibold text-ink">Customer</h2>
             <div>
               <label className={labelCls}>Customer Name *</label>
               <input required value={form.customerName} onChange={e => setForm(p => ({ ...p, customerName: e.target.value }))} className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>
-                Company <span className="text-gray-400 font-normal">(optional — only if this is a B2B customer needing a company name on the invoice)</span>
+                Company <span className="text-ink-3 font-normal">(optional — only if this is a B2B customer needing a company name on the invoice)</span>
               </label>
               <input value={form.company} onChange={e => setForm(p => ({ ...p, company: e.target.value }))} className={inputCls} />
             </div>
@@ -132,8 +133,8 @@ export default function NewVendorJobSheetPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-gray-900">Address</h2>
+          <section className="rounded-card border border-border bg-surface p-6 space-y-4">
+            <h2 className="text-sm font-semibold text-ink">Address</h2>
             <div>
               <label className={labelCls}>Address</label>
               <input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} className={inputCls} />
@@ -169,8 +170,8 @@ export default function NewVendorJobSheetPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-gray-900">Device</h2>
+          <section className="rounded-card border border-border bg-surface p-6 space-y-4">
+            <h2 className="text-sm font-semibold text-ink">Device</h2>
             <div>
               <label className={labelCls}>Device Category *</label>
               <select
@@ -200,8 +201,8 @@ export default function NewVendorJobSheetPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-gray-900">Workorder Details</h2>
+          <section className="rounded-card border border-border bg-surface p-6 space-y-4">
+            <h2 className="text-sm font-semibold text-ink">Workorder Details</h2>
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className={labelCls}>Warranty Status</label>
@@ -228,8 +229,8 @@ export default function NewVendorJobSheetPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-gray-900">Visit</h2>
+          <section className="rounded-card border border-border bg-surface p-6 space-y-4">
+            <h2 className="text-sm font-semibold text-ink">Visit</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Appointment Type</label>
@@ -257,8 +258,8 @@ export default function NewVendorJobSheetPage() {
             )}
           </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-gray-900">Issue</h2>
+          <section className="rounded-card border border-border bg-surface p-6 space-y-4">
+            <h2 className="text-sm font-semibold text-ink">Issue</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Fault Code</label>
@@ -296,15 +297,15 @@ export default function NewVendorJobSheetPage() {
           </section>
 
           <div className="flex gap-3">
-            <button type="button" onClick={() => router.push('/vendor/crm/jobsheets')} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-500 hover:text-gray-900 transition">
+            <button type="button" onClick={() => router.push('/vendor/crm/jobsheets')} className="flex-1 px-4 py-2.5 rounded-card border border-border bg-surface text-sm text-ink-3 hover:text-ink transition">
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 px-4 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2.5 rounded-card bg-accent text-accent-fg text-sm font-medium hover:bg-accent-hover transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {submitting && <Spinner size={16} />}
               Create Job Sheet
             </button>
           </div>

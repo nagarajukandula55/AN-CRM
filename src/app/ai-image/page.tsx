@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -30,7 +30,7 @@ const PRESET_CATEGORIES = [
     title: 'Product Banners',
     emoji: '🛍️',
     color: 'from-blue-500/20 to-cyan-500/10',
-    border: 'border-blue-500/30',
+    border: 'border-info/30',
     prompts: [
       { label: 'Product Showcase', prompt: 'Professional product showcase on clean white background with dramatic lighting, commercial photography style, luxury presentation' },
       { label: 'Promotional Banner', prompt: 'Eye-catching promotional banner with bold typography, modern design, gradient background, sale announcement, retail advertising' },
@@ -57,7 +57,7 @@ const PRESET_CATEGORIES = [
     title: 'Business Cards',
     emoji: '💼',
     color: 'from-emerald-500/20 to-teal-500/10',
-    border: 'border-emerald-500/30',
+    border: 'border-success/30',
     prompts: [
       { label: 'Minimalist', prompt: 'Minimalist business card design on premium paper, clean typography, white space, professional corporate identity' },
       { label: 'Luxury Black', prompt: 'Luxury black business card with gold foil accents, elegant typography, premium matte finish, sophisticated design' },
@@ -189,15 +189,15 @@ export default function AIImagePage() {
           <span className="text-4xl">✦</span>
           AI Studio
         </h1>
-        <p className="text-gray-400 mt-1">Generate stunning images with AI — completely free</p>
+        <p className="text-ink-3 mt-1">Generate stunning images with AI — completely free</p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Left: Controls */}
         <div className="xl:col-span-2 space-y-6">
           {/* Preset Categories */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-            <h2 className="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wider">
+          <div className="rounded-card border border-white/10 bg-surface/5 backdrop-blur-sm p-5">
+            <h2 className="text-sm font-semibold text-ink-3 mb-4 uppercase tracking-wider">
               Quick Presets
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
@@ -207,10 +207,10 @@ export default function AIImagePage() {
                   onClick={() =>
                     setActiveCategory(activeCategory === cat.id ? null : cat.id)
                   }
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all duration-200 text-left ${
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-card text-sm font-medium border transition-all duration-200 text-left ${
                     activeCategory === cat.id
                       ? `bg-gradient-to-br ${cat.color} ${cat.border} text-white`
-                      : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-gray-200'
+                      : 'bg-surface/5 border-white/10 text-ink-3 hover:bg-surface/10 hover:text-ink-3'
                   }`}
                 >
                   <span className="text-base">{cat.emoji}</span>
@@ -221,7 +221,7 @@ export default function AIImagePage() {
 
             {activeCategory && (
               <div className="border-t border-white/10 pt-4">
-                <p className="text-xs text-gray-500 mb-3">
+                <p className="text-xs text-ink-3 mb-3">
                   Click a preset to use it as your prompt:
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -229,10 +229,10 @@ export default function AIImagePage() {
                     <button
                       key={p.label}
                       onClick={() => setPrompt(p.prompt)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                      className={`px-3 py-1.5 rounded-control text-xs font-medium transition-all border ${
                         prompt === p.prompt
                           ? 'bg-purple-600/40 border-purple-500/60 text-purple-200'
-                          : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10 hover:text-white'
+                          : 'bg-surface/5 border-white/10 text-ink-3 hover:bg-surface/10 hover:text-white'
                       }`}
                     >
                       {p.label}
@@ -244,8 +244,8 @@ export default function AIImagePage() {
           </div>
 
           {/* Prompt Input */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-            <label className="block text-sm font-semibold text-gray-300 mb-3">
+          <div className="rounded-card border border-white/10 bg-surface/5 backdrop-blur-sm p-5">
+            <label className="block text-sm font-semibold text-ink-3 mb-3">
               Describe your image
             </label>
             <textarea
@@ -253,9 +253,9 @@ export default function AIImagePage() {
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="A serene mountain landscape at golden hour with vibrant colors reflecting in a crystal clear lake..."
               rows={4}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 resize-none transition-all"
+              className="w-full bg-surface/5 border border-white/10 rounded-card px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 resize-none transition-all"
             />
-            <p className="text-xs text-gray-600 mt-2">
+            <p className="text-xs text-ink-2 mt-2">
               Be descriptive — mention style, lighting, mood, colors, and composition for best results.
             </p>
           </div>
@@ -263,42 +263,42 @@ export default function AIImagePage() {
           {/* Style & Size */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Style */}
-            <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-              <label className="block text-sm font-semibold text-gray-300 mb-3">Style</label>
+            <div className="rounded-card border border-white/10 bg-surface/5 backdrop-blur-sm p-5">
+              <label className="block text-sm font-semibold text-ink-3 mb-3">Style</label>
               <div className="space-y-2">
                 {STYLES.map((style) => (
                   <button
                     key={style.id}
                     onClick={() => setSelectedStyle(style.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm border transition-all duration-200 ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-card text-sm border transition-all duration-200 ${
                       selectedStyle === style.id
                         ? 'bg-purple-600/30 border-purple-500/50 text-white'
-                        : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-gray-200'
+                        : 'bg-surface/5 border-white/10 text-ink-3 hover:bg-surface/10 hover:text-ink-3'
                     }`}
                   >
                     <span className="font-medium">{style.label}</span>
-                    <span className="text-xs text-gray-500">{style.desc}</span>
+                    <span className="text-xs text-ink-3">{style.desc}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Size */}
-            <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-              <label className="block text-sm font-semibold text-gray-300 mb-3">Size</label>
+            <div className="rounded-card border border-white/10 bg-surface/5 backdrop-blur-sm p-5">
+              <label className="block text-sm font-semibold text-ink-3 mb-3">Size</label>
               <div className="space-y-2">
                 {SIZES.map((size) => (
                   <button
                     key={size.id}
                     onClick={() => setSelectedSize(size.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm border transition-all duration-200 ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-card text-sm border transition-all duration-200 ${
                       selectedSize === size.id
                         ? 'bg-purple-600/30 border-purple-500/50 text-white'
-                        : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-gray-200'
+                        : 'bg-surface/5 border-white/10 text-ink-3 hover:bg-surface/10 hover:text-ink-3'
                     }`}
                   >
                     <span className="font-medium">{size.label}</span>
-                    <span className="text-xs text-gray-500">{size.desc}</span>
+                    <span className="text-xs text-ink-3">{size.desc}</span>
                   </button>
                 ))}
               </div>
@@ -309,7 +309,7 @@ export default function AIImagePage() {
           <button
             onClick={handleGenerate}
             disabled={generating || !prompt.trim()}
-            className="w-full py-4 rounded-2xl font-bold text-base bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 hover:from-violet-500 hover:via-purple-500 hover:to-pink-500 text-white transition-all duration-300 shadow-lg shadow-purple-900/50 hover:shadow-purple-900/70 hover:scale-[1.01] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
+            className="w-full py-4 rounded-card font-bold text-base bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 hover:from-violet-500 hover:via-purple-500 hover:to-pink-500 text-white transition-all duration-300 shadow-lg shadow-purple-900/50 hover:shadow-purple-900/70 hover:scale-[1.01] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
           >
             {generating ? (
               <>
@@ -328,7 +328,7 @@ export default function AIImagePage() {
           </button>
 
           {error && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            <div className="rounded-card border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
               {error}
             </div>
           )}
@@ -337,14 +337,14 @@ export default function AIImagePage() {
         {/* Right: Output */}
         <div className="space-y-6">
           {/* Generated Image */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-            <h2 className="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wider">
+          <div className="rounded-card border border-white/10 bg-surface/5 backdrop-blur-sm p-5">
+            <h2 className="text-sm font-semibold text-ink-3 mb-4 uppercase tracking-wider">
               Generated Image
             </h2>
 
             {generatedImage ? (
               <div className="space-y-3">
-                <div className="rounded-xl overflow-hidden border border-white/10 group relative">
+                <div className="rounded-card overflow-hidden border border-white/10 group relative">
                   <img
                     src={generatedImage}
                     alt="Generated"
@@ -358,7 +358,7 @@ export default function AIImagePage() {
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => handleDownload(generatedImage)}
-                    className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all text-xs font-medium"
+                    className="flex flex-col items-center gap-1 py-2.5 rounded-card bg-surface/5 hover:bg-surface/10 border border-white/10 text-ink-3 hover:text-white transition-all text-xs font-medium"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -367,7 +367,7 @@ export default function AIImagePage() {
                   </button>
                   <button
                     onClick={() => handleShareToSocial(generatedImage)}
-                    className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 hover:text-purple-200 transition-all text-xs font-medium"
+                    className="flex flex-col items-center gap-1 py-2.5 rounded-card bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 hover:text-purple-200 transition-all text-xs font-medium"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -377,7 +377,7 @@ export default function AIImagePage() {
                   <button
                     onClick={handleGenerate}
                     disabled={generating}
-                    className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all text-xs font-medium disabled:opacity-50"
+                    className="flex flex-col items-center gap-1 py-2.5 rounded-card bg-surface/5 hover:bg-surface/10 border border-white/10 text-ink-3 hover:text-white transition-all text-xs font-medium disabled:opacity-50"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -387,7 +387,7 @@ export default function AIImagePage() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-16 text-gray-600 rounded-xl border border-dashed border-white/10">
+              <div className="flex flex-col items-center justify-center py-16 text-ink-2 rounded-card border border-dashed border-white/10">
                 <div className="text-5xl mb-4 opacity-30">✦</div>
                 <p className="text-sm text-center">
                   Your generated image <br /> will appear here
@@ -398,15 +398,15 @@ export default function AIImagePage() {
 
           {/* Recent Images */}
           {recentImages.length > 0 && (
-            <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-              <h2 className="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wider">
+            <div className="rounded-card border border-white/10 bg-surface/5 backdrop-blur-sm p-5">
+              <h2 className="text-sm font-semibold text-ink-3 mb-4 uppercase tracking-wider">
                 Recent Generations
               </h2>
               <div className="grid grid-cols-3 gap-2">
                 {recentImages.map((img) => (
                   <div
                     key={img.id}
-                    className="group relative rounded-xl overflow-hidden cursor-pointer border border-white/10 hover:border-purple-500/40 transition-all"
+                    className="group relative rounded-card overflow-hidden cursor-pointer border border-white/10 hover:border-purple-500/40 transition-all"
                     onClick={() => setGeneratedImage(img.imageUrl)}
                   >
                     <img
@@ -424,11 +424,11 @@ export default function AIImagePage() {
           )}
 
           {/* Tips */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-            <h2 className="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wider">
+          <div className="rounded-card border border-white/10 bg-surface/5 backdrop-blur-sm p-5">
+            <h2 className="text-sm font-semibold text-ink-3 mb-3 uppercase tracking-wider">
               Pro Tips
             </h2>
-            <ul className="space-y-2 text-xs text-gray-500">
+            <ul className="space-y-2 text-xs text-ink-3">
               <li className="flex items-start gap-2">
                 <span className="text-purple-400 mt-0.5">•</span>
                 <span>Add lighting details: "dramatic side lighting", "golden hour", "neon glow"</span>

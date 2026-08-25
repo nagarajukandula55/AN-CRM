@@ -1,16 +1,16 @@
-"use client";
+﻿"use client";
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Eye,
   EyeOff,
-  Loader2,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
 import { StateSelect, CitySelect, PincodeInput } from "@/components/shared/LocationSelect";
 import { validateGSTINAgainstState } from "@/lib/validation/gst";
 import Logo from "@/components/marketing/Logo";
@@ -67,7 +67,7 @@ function Field({
         {label} {required && <span className="text-pink-500">*</span>}
       </label>
       {children}
-      {hint && <p className="mt-1 text-[10px] text-gray-400">{hint}</p>}
+      {hint && <p className="mt-1 text-[10px] text-ink-3">{hint}</p>}
     </div>
   );
 }
@@ -94,7 +94,7 @@ function PasswordInput({
       <button
         type="button"
         onClick={() => setShow((s) => !s)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-violet-600 transition-colors"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-violet-600 transition-colors"
       >
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
@@ -315,10 +315,10 @@ function PartnerSignupPageInner() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-violet-500">
             Partner With Us
           </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink md:text-4xl">
             Become a <span className={neonGradientText}>Partner</span>
           </h1>
-          <p className="mx-auto mt-3 max-w-md text-sm text-gray-500">
+          <p className="mx-auto mt-3 max-w-md text-sm text-ink-3">
             Create your account and submit your business application in one
             guided flow.
           </p>
@@ -326,13 +326,13 @@ function PartnerSignupPageInner() {
 
         {state.kind === "success" ? (
           <div className={`${neonCard} p-8 text-center`}>
-            <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
-            <h2 className="mt-4 text-lg font-bold text-gray-900">
+            <CheckCircle2 className="mx-auto h-10 w-10 text-success" />
+            <h2 className="mt-4 text-lg font-bold text-ink">
               You&apos;re almost there!
             </h2>
-            <div className="mt-4 space-y-3 text-left text-sm text-gray-600">
+            <div className="mt-4 space-y-3 text-left text-sm text-ink-2">
               <p>
-                <span className="font-semibold text-gray-900">
+                <span className="font-semibold text-ink">
                   ✅ Your account has been created
                 </span>{" "}
                 — your login ID is{" "}
@@ -343,14 +343,14 @@ function PartnerSignupPageInner() {
               </p>
               {state.trialActivated ? (
                 <p>
-                  <span className="font-semibold text-gray-900">
+                  <span className="font-semibold text-ink">
                     ✅ Your Service Center application was approved instantly
                   </span>{" "}
                   — your 7-day trial has already started. Log in with your Vendor ID above whenever you&apos;re ready.
                 </p>
               ) : (
                 <p>
-                  <span className="font-semibold text-gray-900">
+                  <span className="font-semibold text-ink">
                     ✅ Your partner application has been submitted for review
                   </span>
                   {state.requestNumber ? (
@@ -375,11 +375,11 @@ function PartnerSignupPageInner() {
           </div>
         ) : state.kind === "accountFailed" ? (
           <div className={`${neonCard} p-8 text-center`}>
-            <AlertCircle className="mx-auto h-10 w-10 text-red-500" />
-            <h2 className="mt-4 text-lg font-bold text-gray-900">
+            <AlertCircle className="mx-auto h-10 w-10 text-danger" />
+            <h2 className="mt-4 text-lg font-bold text-ink">
               We couldn&apos;t create your account
             </h2>
-            <p className="mt-2 text-sm text-gray-500">{state.message}</p>
+            <p className="mt-2 text-sm text-ink-3">{state.message}</p>
             <button
               onClick={() => setState({ kind: "idle" })}
               className={`${neonButtonPrimary} mt-6`}
@@ -389,16 +389,16 @@ function PartnerSignupPageInner() {
           </div>
         ) : state.kind === "vendorFailed" ? (
           <div className={`${neonCard} p-8 text-center`}>
-            <AlertCircle className="mx-auto h-10 w-10 text-amber-500" />
-            <h2 className="mt-4 text-lg font-bold text-gray-900">
+            <AlertCircle className="mx-auto h-10 w-10 text-warning" />
+            <h2 className="mt-4 text-lg font-bold text-ink">
               Your account was created — but the business application didn&apos;t go through
             </h2>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-ink-3">
               Good news: your login <span className="font-mono font-semibold text-violet-700">{email}</span> exists
               and works right now. However, we couldn&apos;t submit your
               business application: {state.message}
             </p>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-ink-3">
               Please complete your business application separately using
               your email to log in.
             </p>
@@ -419,26 +419,26 @@ function PartnerSignupPageInner() {
                         ? "bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-[0_4px_16px_-4px_rgba(139,92,246,0.6)]"
                         : step > n
                         ? "bg-violet-100 text-violet-600"
-                        : "bg-gray-100 text-gray-400"
+                        : "bg-surface-2 text-ink-3"
                     }`}
                   >
                     {n}
                   </div>
                   <span
                     className={`text-xs font-medium ${
-                      step === n ? "text-gray-900" : "text-gray-400"
+                      step === n ? "text-ink" : "text-ink-3"
                     }`}
                   >
                     {n === 1 ? "Account" : "Business Details"}
                   </span>
-                  {n === 1 && <div className="h-px w-8 bg-gray-200" />}
+                  {n === 1 && <div className="h-px w-8 bg-surface-3" />}
                 </div>
               ))}
             </div>
 
             <form onSubmit={handleSubmit} className={`${neonCard} p-6 sm:p-8`}>
               {error && (
-                <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                <div className="mb-4 flex items-center gap-2 rounded-card border border-danger bg-danger-soft px-4 py-3 text-sm text-danger">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   {error}
                 </div>
@@ -528,28 +528,28 @@ function PartnerSignupPageInner() {
                       </select>
                     </Field>
                     <Field label="What are you applying as?">
-                      <div className={`${neonInputCls} flex items-center bg-violet-50/60 text-gray-700`}>
+                      <div className={`${neonInputCls} flex items-center bg-violet-50/60 text-ink-2`}>
                         <span>Service Center (single login, workorder flow)</span>
                       </div>
                     </Field>
                   </div>
 
-                  <div className="rounded-xl border px-4 py-3 text-xs border-emerald-200 bg-emerald-50 text-emerald-700">
+                  <div className="rounded-card border px-4 py-3 text-xs border-success bg-success-soft text-success">
                     Service Center applications activate instantly (where enabled) — you'll get portal access and a 7-day trial right after submitting, no waiting on review.
                   </div>
 
                   <div>
-                    <p className="mb-2 text-xs font-medium text-gray-600">
+                    <p className="mb-2 text-xs font-medium text-ink-2">
                       GST Registration<span className="text-pink-500">*</span>
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setGstRegistered(true)}
-                        className={`rounded-xl border py-2.5 text-sm font-medium transition-all ${
+                        className={`rounded-card border py-2.5 text-sm font-medium transition-all ${
                           gstRegistered
                             ? "border-transparent bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-[0_4px_16px_-4px_rgba(139,92,246,0.5)]"
-                            : "border-violet-100 bg-white text-gray-600 hover:border-violet-300"
+                            : "border-violet-100 bg-surface text-ink-2 hover:border-violet-300"
                         }`}
                       >
                         With GST
@@ -557,10 +557,10 @@ function PartnerSignupPageInner() {
                       <button
                         type="button"
                         onClick={() => setGstRegistered(false)}
-                        className={`rounded-xl border py-2.5 text-sm font-medium transition-all ${
+                        className={`rounded-card border py-2.5 text-sm font-medium transition-all ${
                           !gstRegistered
                             ? "border-transparent bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-[0_4px_16px_-4px_rgba(139,92,246,0.5)]"
-                            : "border-violet-100 bg-white text-gray-600 hover:border-violet-300"
+                            : "border-violet-100 bg-surface text-ink-2 hover:border-violet-300"
                         }`}
                       >
                         Without GST
@@ -599,7 +599,7 @@ function PartnerSignupPageInner() {
                   </div>
 
                   <div>
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-3">
                       Registered Address
                     </p>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -648,7 +648,7 @@ function PartnerSignupPageInner() {
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                     />
-                    <p className="mt-1 text-[10px] text-gray-400">
+                    <p className="mt-1 text-[10px] text-ink-3">
                       Our team will contact you for any additional documents
                       required.
                     </p>
@@ -659,7 +659,7 @@ function PartnerSignupPageInner() {
                       type="button"
                       onClick={() => setStep(1)}
                       disabled={submitting}
-                      className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white px-6 py-3 text-sm font-semibold text-violet-700 transition-all hover:border-cyan-300 disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-surface px-6 py-3 text-sm font-semibold text-violet-700 transition-all hover:border-cyan-300 disabled:opacity-50"
                     >
                       <ArrowLeft size={16} />
                       Back
@@ -671,7 +671,7 @@ function PartnerSignupPageInner() {
                     >
                       {submitting ? (
                         <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Spinner size={16} />
                           Submitting...
                         </>
                       ) : (
@@ -686,7 +686,7 @@ function PartnerSignupPageInner() {
               )}
             </form>
 
-            <p className="mt-6 text-center text-sm text-gray-500">
+            <p className="mt-6 text-center text-sm text-ink-3">
               Already have an account?{" "}
               <Link href="/vendor-apply" className="font-medium text-violet-700 hover:text-cyan-600">
                 Apply as a vendor here

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -36,12 +36,12 @@ interface Agreement {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: 'Draft', color: 'bg-gray-500/20 text-gray-300 border-gray-500/30' },
-  PENDING_SIGNATURE: { label: 'Pending Signature', color: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
+  DRAFT: { label: 'Draft', color: 'bg-surface-3/20 text-ink-3 border-border-strong/30' },
+  PENDING_SIGNATURE: { label: 'Pending Signature', color: 'bg-warning/20 text-warning border-warning/30' },
   PARTIALLY_SIGNED: { label: 'Partially Signed', color: 'bg-orange-500/20 text-orange-300 border-orange-500/30' },
-  FULLY_SIGNED: { label: 'Fully Signed', color: 'bg-green-500/20 text-green-300 border-green-500/30' },
-  EXPIRED: { label: 'Expired', color: 'bg-red-500/20 text-red-300 border-red-500/30' },
-  CANCELLED: { label: 'Cancelled', color: 'bg-red-900/20 text-red-400 border-red-900/30' },
+  FULLY_SIGNED: { label: 'Fully Signed', color: 'bg-success/20 text-success border-success/30' },
+  EXPIRED: { label: 'Expired', color: 'bg-danger/20 text-danger border-danger/30' },
+  CANCELLED: { label: 'Cancelled', color: 'bg-red-900/20 text-danger border-red-900/30' },
 };
 
 const TEMPLATE_LABELS: Record<string, string> = {
@@ -216,16 +216,16 @@ function SigningModal({ partyName, partyEmail, agreementId, onClose, onSigned }:
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-md shadow-2xl">
+      <div className="bg-ink border border-white/10 rounded-card w-full max-w-md shadow-2xl">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <div>
             <h3 className="text-white font-semibold">Sign Agreement</h3>
-            <p className="text-gray-400 text-sm">{partyName}</p>
+            <p className="text-ink-3 text-sm">{partyName}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-white transition-colors text-xl"
+            className="text-ink-3 hover:text-white transition-colors text-xl"
           >
             ✕
           </button>
@@ -233,8 +233,8 @@ function SigningModal({ partyName, partyEmail, agreementId, onClose, onSigned }:
 
         {/* Step indicators */}
         <div className="flex px-6 pt-4 gap-2">
-          <div className={`flex-1 h-1 rounded-full ${modalStep === 'otp' || modalStep === 'sign' ? 'bg-blue-500' : 'bg-white/10'}`} />
-          <div className={`flex-1 h-1 rounded-full ${modalStep === 'sign' ? 'bg-blue-500' : 'bg-white/10'}`} />
+          <div className={`flex-1 h-1 rounded-full ${modalStep === 'otp' || modalStep === 'sign' ? 'bg-info' : 'bg-surface/10'}`} />
+          <div className={`flex-1 h-1 rounded-full ${modalStep === 'sign' ? 'bg-info' : 'bg-surface/10'}`} />
         </div>
 
         <div className="px-6 py-5">
@@ -244,7 +244,7 @@ function SigningModal({ partyName, partyEmail, agreementId, onClose, onSigned }:
               <div className="text-center py-2">
                 <div className="text-4xl mb-3">📱</div>
                 <p className="text-white font-medium">OTP Verification</p>
-                <p className="text-gray-400 text-sm mt-1">
+                <p className="text-ink-3 text-sm mt-1">
                   {otpSent
                     ? `Enter the OTP sent to ${partyEmail}`
                     : `We will send an OTP to ${partyEmail}`}
@@ -253,20 +253,20 @@ function SigningModal({ partyName, partyEmail, agreementId, onClose, onSigned }:
 
               {otpSent && (
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1.5">Enter 6-digit OTP</label>
+                  <label className="block text-sm text-ink-3 mb-1.5">Enter 6-digit OTP</label>
                   <input
                     type="text"
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="000000"
                     maxLength={6}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-center text-2xl font-mono tracking-widest focus:outline-none focus:border-blue-500/50"
+                    className="w-full bg-surface/5 border border-white/10 rounded-card px-4 py-3 text-white text-center text-2xl font-mono tracking-widest focus:outline-none focus:border-info/50"
                   />
                 </div>
               )}
 
               {otpError && (
-                <p className="text-red-400 text-sm text-center">{otpError}</p>
+                <p className="text-danger text-sm text-center">{otpError}</p>
               )}
 
               <div className="flex gap-2">
@@ -274,7 +274,7 @@ function SigningModal({ partyName, partyEmail, agreementId, onClose, onSigned }:
                   <button
                     onClick={sendOtp}
                     disabled={otpLoading}
-                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl font-medium transition-colors"
+                    className="flex-1 py-2.5 bg-info hover:bg-info disabled:opacity-50 text-white rounded-card font-medium transition-colors"
                   >
                     {otpLoading ? 'Sending...' : 'Send OTP'}
                   </button>
@@ -283,14 +283,14 @@ function SigningModal({ partyName, partyEmail, agreementId, onClose, onSigned }:
                     <button
                       onClick={sendOtp}
                       disabled={otpLoading}
-                      className="py-2.5 px-4 bg-white/5 hover:bg-white/10 text-gray-400 rounded-xl text-sm transition-colors"
+                      className="py-2.5 px-4 bg-surface/5 hover:bg-surface/10 text-ink-3 rounded-card text-sm transition-colors"
                     >
                       {otpLoading ? '...' : 'Resend'}
                     </button>
                     <button
                       onClick={verifyOtp}
                       disabled={otpLoading || otp.length !== 6}
-                      className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl font-medium transition-colors"
+                      className="flex-1 py-2.5 bg-info hover:bg-info disabled:opacity-50 text-white rounded-card font-medium transition-colors"
                     >
                       Verify OTP →
                     </button>
@@ -305,10 +305,10 @@ function SigningModal({ partyName, partyEmail, agreementId, onClose, onSigned }:
             <div className="space-y-4">
               <div className="text-center">
                 <p className="text-white font-medium">Draw Your Signature</p>
-                <p className="text-gray-400 text-xs mt-1">Use your mouse or finger to sign below</p>
+                <p className="text-ink-3 text-xs mt-1">Use your mouse or finger to sign below</p>
               </div>
 
-              <div className="relative bg-white/5 border border-white/20 rounded-xl overflow-hidden">
+              <div className="relative bg-surface/5 border border-white/20 rounded-card overflow-hidden">
                 <canvas
                   ref={canvasRef}
                   width={420}
@@ -324,39 +324,39 @@ function SigningModal({ partyName, partyEmail, agreementId, onClose, onSigned }:
                 />
                 <button
                   onClick={clearCanvas}
-                  className="absolute top-2 right-2 px-2 py-1 text-xs bg-white/10 hover:bg-white/20 text-gray-400 rounded-lg transition-colors"
+                  className="absolute top-2 right-2 px-2 py-1 text-xs bg-surface/10 hover:bg-surface/20 text-ink-3 rounded-control transition-colors"
                 >
                   Clear
                 </button>
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1/2 border-b border-gray-600 pointer-events-none" />
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1/2 border-b border-border-strong pointer-events-none" />
               </div>
 
               <div
-                className="flex items-start gap-3 p-3 bg-white/5 border border-white/10 rounded-xl cursor-pointer"
+                className="flex items-start gap-3 p-3 bg-surface/5 border border-white/10 rounded-card cursor-pointer"
                 onClick={() => setSignatureConsent(!signatureConsent)}
               >
                 <div
                   className={`w-5 h-5 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
-                    signatureConsent ? 'bg-blue-600 border-blue-600' : 'border-gray-600'
+                    signatureConsent ? 'bg-info border-info' : 'border-border-strong'
                   }`}
                 >
                   {signatureConsent && <span className="text-white text-xs">✓</span>}
                 </div>
-                <p className="text-gray-400 text-xs leading-relaxed">
+                <p className="text-ink-3 text-xs leading-relaxed">
                   I agree that this electronic signature is legally binding under the{' '}
-                  <span className="text-blue-400">Information Technology Act, 2000</span>, and the{' '}
-                  <span className="text-blue-400">Indian Contract Act, 1872</span>. I confirm that I am authorised to sign this agreement.
+                  <span className="text-info">Information Technology Act, 2000</span>, and the{' '}
+                  <span className="text-info">Indian Contract Act, 1872</span>. I confirm that I am authorised to sign this agreement.
                 </p>
               </div>
 
               {signError && (
-                <p className="text-red-400 text-sm text-center">{signError}</p>
+                <p className="text-danger text-sm text-center">{signError}</p>
               )}
 
               <button
                 onClick={submitSignature}
                 disabled={signing || !signatureConsent}
-                className="w-full py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded-xl font-medium transition-colors"
+                className="w-full py-2.5 bg-success hover:bg-success disabled:opacity-50 text-white rounded-card font-medium transition-colors"
               >
                 {signing ? 'Submitting...' : 'Submit Signature'}
               </button>
@@ -439,7 +439,7 @@ export default function AgreementDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-2 border-info border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -448,8 +448,8 @@ export default function AgreementDetailPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-400 text-lg">Agreement not found</p>
-          <button onClick={() => router.push('/agreements')} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm">
+          <p className="text-ink-3 text-lg">Agreement not found</p>
+          <button onClick={() => router.push('/agreements')} className="mt-4 px-4 py-2 bg-info text-white rounded-card text-sm">
             Back to Agreements
           </button>
         </div>
@@ -480,21 +480,21 @@ export default function AgreementDetailPage() {
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => router.push('/agreements')}
-            className="p-2 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-card bg-surface/5 border border-white/10 text-ink-3 hover:text-white hover:bg-surface/10 transition-colors"
           >
             ←
           </button>
           <div className="flex-1">
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold text-white">{agreement.title}</h1>
-              <span className="px-2.5 py-1 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-medium">
+              <span className="px-2.5 py-1 bg-info/20 text-info border border-info/30 rounded-control text-xs font-medium">
                 {TEMPLATE_LABELS[agreement.templateType] || agreement.templateType}
               </span>
-              <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${statusCfg.color}`}>
+              <span className={`px-2.5 py-1 rounded-control text-xs font-medium border ${statusCfg.color}`}>
                 {statusCfg.label}
               </span>
             </div>
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-ink-3 text-sm mt-1">
               Created {new Date(agreement.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
               {agreement.expiresAt && ` · Expires ${new Date(agreement.expiresAt).toLocaleDateString('en-IN')}`}
             </p>
@@ -503,17 +503,17 @@ export default function AgreementDetailPage() {
 
         {/* Send Result Banner */}
         {sendResult && (
-          <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4">
+          <div className="mb-6 bg-warning/10 border border-warning/30 rounded-card p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-yellow-400 font-medium">Agreement Sent for Signing</h3>
-              <button onClick={() => setSendResult(null)} className="text-yellow-600 hover:text-yellow-400 text-sm">✕</button>
+              <h3 className="text-warning font-medium">Agreement Sent for Signing</h3>
+              <button onClick={() => setSendResult(null)} className="text-warning hover:text-warning text-sm">✕</button>
             </div>
-            <p className="text-yellow-600 text-xs mb-3">Each party has been emailed a signing link and OTP.</p>
+            <p className="text-warning text-xs mb-3">Each party has been emailed a signing link and OTP.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {sendResult.map((r) => (
-                <div key={r.partyEmail} className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3">
-                  <p className="text-yellow-300 text-sm font-medium">{r.partyEmail}</p>
-                  <p className={`text-xs mt-0.5 ${r.emailSent ? 'text-emerald-400' : 'text-red-400'}`}>
+                <div key={r.partyEmail} className="bg-warning/10 border border-warning/20 rounded-card p-3">
+                  <p className="text-warning text-sm font-medium">{r.partyEmail}</p>
+                  <p className={`text-xs mt-0.5 ${r.emailSent ? 'text-success' : 'text-danger'}`}>
                     {r.emailSent ? 'Email sent' : 'Email failed to send'}
                   </p>
                 </div>
@@ -526,23 +526,23 @@ export default function AgreementDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Agreement Content */}
           <div className="lg:col-span-2">
-            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+            <div className="bg-surface/5 border border-white/10 rounded-card overflow-hidden">
               <div className="px-6 py-4 border-b border-white/10">
                 <h2 className="text-white font-semibold">Agreement Content</h2>
               </div>
               <div
-                className="p-6 text-gray-200 text-sm leading-relaxed prose prose-invert max-w-none"
+                className="p-6 text-ink-3 text-sm leading-relaxed prose prose-invert max-w-none"
                 style={{ minHeight: '500px', maxHeight: '700px', overflowY: 'auto' }}
                 dangerouslySetInnerHTML={{
-                  __html: agreement.content || '<p class="text-gray-500">No content available.</p>',
+                  __html: agreement.content || '<p class="text-ink-3">No content available.</p>',
                 }}
               />
-              <div className="px-6 py-4 border-t border-white/10 bg-white/3">
-                <p className="text-gray-600 text-xs">
-                  <strong className="text-gray-500">Governing Law:</strong> {agreement.governingLaw} &nbsp;·&nbsp;
-                  <strong className="text-gray-500">Jurisdiction:</strong> {agreement.jurisdiction}
+              <div className="px-6 py-4 border-t border-white/10 bg-surface/3">
+                <p className="text-ink-2 text-xs">
+                  <strong className="text-ink-3">Governing Law:</strong> {agreement.governingLaw} &nbsp;·&nbsp;
+                  <strong className="text-ink-3">Jurisdiction:</strong> {agreement.jurisdiction}
                 </p>
-                <p className="text-gray-600 text-xs mt-1">{agreement.stampDutyNotice}</p>
+                <p className="text-ink-2 text-xs mt-1">{agreement.stampDutyNotice}</p>
               </div>
             </div>
           </div>
@@ -550,7 +550,7 @@ export default function AgreementDetailPage() {
           {/* Right: Parties & Actions */}
           <div className="space-y-4">
             {/* Parties & Signatures */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+            <div className="bg-surface/5 border border-white/10 rounded-card overflow-hidden">
               <div className="px-5 py-4 border-b border-white/10">
                 <h2 className="text-white font-semibold">Parties & Signatures</h2>
               </div>
@@ -559,30 +559,30 @@ export default function AgreementDetailPage() {
                   const sig = agreement.signatures?.find((s) => s.partyEmail === party.email);
                   const hasSigned = !!sig?.signedAt;
                   return (
-                    <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                    <div key={i} className="bg-surface/5 border border-white/10 rounded-card p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <p className="text-white font-medium truncate">{party.name}</p>
-                          <p className="text-gray-400 text-xs truncate">{party.email}</p>
-                          <p className="text-gray-600 text-xs">{party.role}</p>
+                          <p className="text-ink-3 text-xs truncate">{party.email}</p>
+                          <p className="text-ink-2 text-xs">{party.role}</p>
                         </div>
                         <div className="flex-shrink-0 text-right">
                           {hasSigned ? (
                             <div>
-                              <span className="text-green-400 text-sm">✅ Signed</span>
-                              <p className="text-gray-600 text-xs">
+                              <span className="text-success text-sm">✅ Signed</span>
+                              <p className="text-ink-2 text-xs">
                                 {new Date(sig!.signedAt!).toLocaleDateString('en-IN')}
                               </p>
                             </div>
                           ) : (
-                            <span className="text-yellow-400 text-sm">⏳ Pending</span>
+                            <span className="text-warning text-sm">⏳ Pending</span>
                           )}
                         </div>
                       </div>
                       {!hasSigned && ['PENDING_SIGNATURE', 'PARTIALLY_SIGNED'].includes(agreement.status) && (
                         <button
                           onClick={() => setSigningParty({ name: party.name, email: party.email })}
-                          className="mt-3 w-full py-1.5 text-xs bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-600/30 transition-colors"
+                          className="mt-3 w-full py-1.5 text-xs bg-info/20 text-info border border-info/30 rounded-control hover:bg-info/30 transition-colors"
                         >
                           Sign Now
                         </button>
@@ -594,14 +594,14 @@ export default function AgreementDetailPage() {
             </div>
 
             {/* Actions */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-3">
+            <div className="bg-surface/5 border border-white/10 rounded-card p-5 space-y-3">
               <h2 className="text-white font-semibold mb-3">Actions</h2>
 
               {agreement.status === 'DRAFT' && (
                 <button
                   onClick={handleSendForSigning}
                   disabled={actionLoading}
-                  className="w-full py-2.5 bg-yellow-600/20 text-yellow-400 border border-yellow-500/30 rounded-xl hover:bg-yellow-600/30 disabled:opacity-50 transition-colors text-sm font-medium"
+                  className="w-full py-2.5 bg-yellow-600/20 text-warning border border-warning/30 rounded-card hover:bg-yellow-600/30 disabled:opacity-50 transition-colors text-sm font-medium"
                 >
                   {actionLoading ? 'Sending...' : '📤 Send for Signing'}
                 </button>
@@ -610,7 +610,7 @@ export default function AgreementDetailPage() {
               {agreement.status === 'DRAFT' && (
                 <button
                   onClick={() => router.push(`/agreements/new`)}
-                  className="w-full py-2.5 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-xl hover:bg-purple-600/30 transition-colors text-sm font-medium"
+                  className="w-full py-2.5 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-card hover:bg-purple-600/30 transition-colors text-sm font-medium"
                 >
                   ✏️ Edit Agreement
                 </button>
@@ -619,7 +619,7 @@ export default function AgreementDetailPage() {
               {agreement.status === 'FULLY_SIGNED' && (
                 <button
                   onClick={() => window.print()}
-                  className="w-full py-2.5 bg-green-600/20 text-green-400 border border-green-500/30 rounded-xl hover:bg-green-600/30 transition-colors text-sm font-medium"
+                  className="w-full py-2.5 bg-success/20 text-success border border-success/30 rounded-card hover:bg-success/30 transition-colors text-sm font-medium"
                 >
                   📥 Download Signed Copy
                 </button>
@@ -629,7 +629,7 @@ export default function AgreementDetailPage() {
                 <button
                   onClick={handleCancel}
                   disabled={actionLoading}
-                  className="w-full py-2.5 bg-red-600/20 text-red-400 border border-red-500/30 rounded-xl hover:bg-red-600/30 disabled:opacity-50 transition-colors text-sm font-medium"
+                  className="w-full py-2.5 bg-danger/20 text-danger border border-danger/30 rounded-card hover:bg-danger/30 disabled:opacity-50 transition-colors text-sm font-medium"
                 >
                   {actionLoading ? 'Cancelling...' : '🚫 Cancel Agreement'}
                 </button>
@@ -637,9 +637,9 @@ export default function AgreementDetailPage() {
             </div>
 
             {/* Legal Notice */}
-            <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-4">
-              <p className="text-blue-400 text-xs font-medium mb-2">Legal Notice</p>
-              <p className="text-gray-500 text-xs leading-relaxed">
+            <div className="bg-info/5 border border-info/20 rounded-card p-4">
+              <p className="text-info text-xs font-medium mb-2">Legal Notice</p>
+              <p className="text-ink-3 text-xs leading-relaxed">
                 Electronic signatures on this agreement are valid under Section 5 of the Information Technology Act, 2000, and are admissible as evidence under the Indian Evidence Act, 1872.
               </p>
             </div>
@@ -654,9 +654,9 @@ export default function AgreementDetailPage() {
         repo; a server-side PDF renderer was previously tried and removed
         because it depended on the serverless filesystem). Light-themed
         since the rest of this page is a dark UI unsuitable for print. */}
-    <div className="hidden print:block bg-white text-gray-900 p-10">
+    <div className="hidden print:block bg-surface text-ink p-10">
       <h1 className="text-2xl font-bold mb-1">{agreement.title}</h1>
-      <p className="text-xs text-gray-500 mb-6">
+      <p className="text-xs text-ink-3 mb-6">
         {TEMPLATE_LABELS[agreement.templateType] || agreement.templateType} · Fully Signed ·{' '}
         Created {new Date(agreement.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
       </p>
@@ -666,10 +666,10 @@ export default function AgreementDetailPage() {
         dangerouslySetInnerHTML={{ __html: agreement.content || '' }}
       />
 
-      <h2 className="text-base font-semibold mb-3 border-t border-gray-300 pt-4">Signatures</h2>
+      <h2 className="text-base font-semibold mb-3 border-t border-border pt-4">Signatures</h2>
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr className="border-b border-gray-300 text-left">
+          <tr className="border-b border-border text-left">
             <th className="py-1.5 pr-3">Party</th>
             <th className="py-1.5 pr-3">Role</th>
             <th className="py-1.5 pr-3">Email</th>
@@ -680,7 +680,7 @@ export default function AgreementDetailPage() {
           {agreement.parties.map((party, i) => {
             const sig = agreement.signatures?.find((s) => s.partyEmail === party.email);
             return (
-              <tr key={i} className="border-b border-gray-200">
+              <tr key={i} className="border-b border-border">
                 <td className="py-1.5 pr-3">{party.name}</td>
                 <td className="py-1.5 pr-3">{party.role}</td>
                 <td className="py-1.5 pr-3">{party.email}</td>
@@ -695,11 +695,11 @@ export default function AgreementDetailPage() {
         </tbody>
       </table>
 
-      <p className="text-[10px] text-gray-500 mt-6">
+      <p className="text-[10px] text-ink-3 mt-6">
         Governing Law: {agreement.governingLaw} · Jurisdiction: {agreement.jurisdiction}
       </p>
-      <p className="text-[10px] text-gray-500 mt-1">{agreement.stampDutyNotice}</p>
-      <p className="text-[10px] text-gray-400 mt-4">
+      <p className="text-[10px] text-ink-3 mt-1">{agreement.stampDutyNotice}</p>
+      <p className="text-[10px] text-ink-3 mt-4">
         Electronic signatures on this agreement are valid under Section 5 of the Information Technology Act, 2000, and are admissible as evidence under the Indian Evidence Act, 1872.
       </p>
     </div>

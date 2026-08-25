@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import {
@@ -38,11 +38,11 @@ interface Invoice {
 const EMPTY_ITEM: InvoiceItem = { description: "", quantity: 1, unit: "pcs", unitPrice: 0, taxRate: 18, taxAmount: 0, total: 0 };
 
 const STATUS_BADGE: Record<string, string> = {
-  DRAFT: "bg-gray-100 text-gray-500",
-  SENT: "bg-blue-500/10 text-blue-700",
-  PAID: "bg-emerald-500/10 text-emerald-700",
-  OVERDUE: "bg-red-500/10 text-red-700",
-  CANCELLED: "bg-gray-100 text-gray-500",
+  DRAFT: "bg-surface-2 text-ink-3",
+  SENT: "bg-info/10 text-info",
+  PAID: "bg-success/10 text-success",
+  OVERDUE: "bg-danger/10 text-danger",
+  CANCELLED: "bg-surface-2 text-ink-3",
 };
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
@@ -168,10 +168,10 @@ export default function SalesInvoicesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Sales Invoices</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Create and share invoices with partners</p>
+          <h1 className="text-xl font-semibold text-ink">Sales Invoices</h1>
+          <p className="text-sm text-ink-3 mt-0.5">Create and share invoices with partners</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800">
+        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2.5 bg-accent text-accent-fg rounded-card text-sm font-medium hover:bg-accent-hover">
           <Plus size={15} /> New Invoice
         </button>
       </div>
@@ -179,13 +179,13 @@ export default function SalesInvoicesPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "Revenue Collected", value: fmt(totalRevenue), icon: <CheckCircle size={16} className="text-emerald-700" /> },
-          { label: "Outstanding", value: fmt(outstanding), icon: <Clock size={16} className="text-amber-700" /> },
-          { label: "Drafts", value: String(draftCount), icon: <FileText size={16} className="text-gray-500" /> },
+          { label: "Revenue Collected", value: fmt(totalRevenue), icon: <CheckCircle size={16} className="text-success" /> },
+          { label: "Outstanding", value: fmt(outstanding), icon: <Clock size={16} className="text-warning" /> },
+          { label: "Drafts", value: String(draftCount), icon: <FileText size={16} className="text-ink-3" /> },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-gray-200 bg-white p-4">
-            <div className="flex items-center gap-2 mb-1">{s.icon}<span className="text-xs text-gray-500">{s.label}</span></div>
-            <p className="text-lg font-semibold text-gray-900">{s.value}</p>
+          <div key={s.label} className="rounded-card border border-border bg-surface p-4">
+            <div className="flex items-center gap-2 mb-1">{s.icon}<span className="text-xs text-ink-3">{s.label}</span></div>
+            <p className="text-lg font-semibold text-ink">{s.value}</p>
           </div>
         ))}
       </div>
@@ -193,10 +193,10 @@ export default function SalesInvoicesPage() {
       {/* Filters */}
       <div className="flex gap-3">
         <div className="relative flex-1 max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search invoices…" className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search invoices…" className="w-full pl-9 pr-4 py-2 bg-surface border border-border rounded-card text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong" />
         </div>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-500 focus:outline-none">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 bg-surface border border-border rounded-card text-sm text-ink-3 focus:outline-none">
           {["ALL", "DRAFT", "SENT", "PAID", "OVERDUE", "CANCELLED"].map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
@@ -204,34 +204,34 @@ export default function SalesInvoicesPage() {
       </div>
 
       {/* Invoice List */}
-      <div className="rounded-xl border border-gray-200 overflow-hidden">
+      <div className="rounded-card border border-border overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-gray-500">Loading…</div>
+          <div className="p-12 text-center text-ink-3">Loading…</div>
         ) : invoices.length === 0 ? (
           <div className="p-12 text-center">
-            <FileText size={32} className="text-gray-700 mx-auto mb-3" />
-            <p className="text-gray-500">No invoices yet. Create your first invoice.</p>
+            <FileText size={32} className="text-ink-2 mx-auto mb-3" />
+            <p className="text-ink-3">No invoices yet. Create your first invoice.</p>
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-200">
+            <thead className="border-b border-border">
               <tr className="text-left">
                 {["Invoice #", "Customer", "Issued", "Due", "Amount", "Status", ""].map((h) => (
-                  <th key={h} className="px-4 py-3 text-xs text-gray-500 font-medium">{h}</th>
+                  <th key={h} className="px-4 py-3 text-xs text-ink-3 font-medium">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border">
               {invoices.map((inv) => (
-                <tr key={inv._id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-gray-600">{inv.invoiceNumber}</td>
+                <tr key={inv._id} className="hover:bg-surface-2 transition-colors">
+                  <td className="px-4 py-3 font-mono text-xs text-ink-2">{inv.invoiceNumber}</td>
                   <td className="px-4 py-3">
-                    <p className="text-gray-900 font-medium">{inv.customer.name}</p>
-                    {inv.customer.email && <p className="text-xs text-gray-500">{inv.customer.email}</p>}
+                    <p className="text-ink font-medium">{inv.customer.name}</p>
+                    {inv.customer.email && <p className="text-xs text-ink-3">{inv.customer.email}</p>}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{new Date(inv.issueDate).toLocaleDateString("en-IN")}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-IN") : "—"}</td>
-                  <td className="px-4 py-3 font-semibold text-gray-900">{fmt(inv.grandTotal)}</td>
+                  <td className="px-4 py-3 text-ink-3 text-xs">{new Date(inv.issueDate).toLocaleDateString("en-IN")}</td>
+                  <td className="px-4 py-3 text-ink-3 text-xs">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-IN") : "—"}</td>
+                  <td className="px-4 py-3 font-semibold text-ink">{fmt(inv.grandTotal)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[inv.status]}`}>
                       {STATUS_ICON[inv.status]} {inv.status}
@@ -241,15 +241,15 @@ export default function SalesInvoicesPage() {
                     <div className="flex items-center gap-1 justify-end">
                       {inv.status !== "PAID" && inv.status !== "CANCELLED" && (
                         <>
-                          <button onClick={() => shareInvoice(inv._id)} title="Share link" className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+                          <button onClick={() => shareInvoice(inv._id)} title="Share link" className="p-1.5 text-ink-3 hover:text-ink hover:bg-surface-2 rounded-control transition-colors">
                             <Share2 size={13} />
                           </button>
-                          <button onClick={() => { setMarkPaidModal(inv); setPaymentData({ paidAmount: inv.grandTotal, paymentMethod: "Bank Transfer", paymentRef: "" }); }} title="Mark paid" className="p-1.5 text-gray-500 hover:text-emerald-700 hover:bg-emerald-500/10 rounded-lg transition-colors">
+                          <button onClick={() => { setMarkPaidModal(inv); setPaymentData({ paidAmount: inv.grandTotal, paymentMethod: "Bank Transfer", paymentRef: "" }); }} title="Mark paid" className="p-1.5 text-ink-3 hover:text-success hover:bg-success/10 rounded-control transition-colors">
                             <CheckCircle size={13} />
                           </button>
                         </>
                       )}
-                      <a href={`/invoice/view/${inv.shareToken || "preview"}`} target="_blank" rel="noreferrer" title="Preview" className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+                      <a href={`/invoice/view/${inv.shareToken || "preview"}`} target="_blank" rel="noreferrer" title="Preview" className="p-1.5 text-ink-3 hover:text-ink hover:bg-surface-2 rounded-control transition-colors">
                         <Printer size={13} />
                       </a>
                     </div>
@@ -264,16 +264,16 @@ export default function SalesInvoicesPage() {
       {/* ── NEW INVOICE FORM MODAL ─────────────────────────── */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-3xl bg-white border border-gray-200 rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-gray-900 font-semibold">New Invoice</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-900 text-xl leading-none">×</button>
+          <div className="w-full max-w-3xl bg-surface border border-border rounded-card overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center">
+              <h2 className="text-ink font-semibold">New Invoice</h2>
+              <button onClick={() => setShowForm(false)} className="text-ink-3 hover:text-ink text-xl leading-none">×</button>
             </div>
 
             <div className="overflow-y-auto flex-1 p-6 space-y-6">
               {/* Customer */}
               <div>
-                <h3 className="text-xs uppercase tracking-widest text-gray-500 mb-3">Customer / Partner</h3>
+                <h3 className="text-xs uppercase tracking-widest text-ink-3 mb-3">Customer / Partner</h3>
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { key: "name", label: "Name *", placeholder: "Customer name" },
@@ -282,22 +282,22 @@ export default function SalesInvoicesPage() {
                     { key: "gstin", label: "GSTIN", placeholder: "22AAAAA0000A1Z5" },
                   ].map(({ key, label, placeholder }) => (
                     <div key={key}>
-                      <label className="text-xs text-gray-500 block mb-1">{label}</label>
+                      <label className="text-xs text-ink-3 block mb-1">{label}</label>
                       <input
                         value={(form.customer as any)[key]}
                         onChange={(e) => setForm((f) => ({ ...f, customer: { ...f.customer, [key]: e.target.value } }))}
                         placeholder={placeholder}
-                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong"
                       />
                     </div>
                   ))}
                   <div className="col-span-2">
-                    <label className="text-xs text-gray-500 block mb-1">Address</label>
+                    <label className="text-xs text-ink-3 block mb-1">Address</label>
                     <input
                       value={form.customer.address}
                       onChange={(e) => setForm((f) => ({ ...f, customer: { ...f.customer, address: e.target.value } }))}
                       placeholder="Full address"
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-border-strong"
                     />
                   </div>
                 </div>
@@ -305,9 +305,9 @@ export default function SalesInvoicesPage() {
 
               {/* Line Items */}
               <div>
-                <h3 className="text-xs uppercase tracking-widest text-gray-500 mb-3">Line Items</h3>
+                <h3 className="text-xs uppercase tracking-widest text-ink-3 mb-3">Line Items</h3>
                 <div className="space-y-2">
-                  <div className="grid grid-cols-12 gap-2 text-xs text-gray-600 px-1">
+                  <div className="grid grid-cols-12 gap-2 text-xs text-ink-2 px-1">
                     <span className="col-span-4">Description</span>
                     <span className="col-span-1 text-center">Qty</span>
                     <span className="col-span-1 text-center">Unit</span>
@@ -317,20 +317,20 @@ export default function SalesInvoicesPage() {
                   </div>
                   {form.items.map((item, i) => (
                     <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                      <input value={item.description} onChange={(e) => updateItem(i, "description", e.target.value)} placeholder="Item description" className="col-span-4 px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none" />
-                      <input type="number" value={item.quantity} onChange={(e) => updateItem(i, "quantity", parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.select()} placeholder="Qty" className="col-span-1 px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 text-center focus:outline-none" />
-                      <input value={item.unit} onChange={(e) => updateItem(i, "unit", e.target.value)} className="col-span-1 px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-500 text-center focus:outline-none" />
-                      <input type="number" value={item.unitPrice} onChange={(e) => updateItem(i, "unitPrice", parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.select()} placeholder="Price" className="col-span-2 px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 text-right focus:outline-none" />
-                      <input type="number" value={item.taxRate} onChange={(e) => updateItem(i, "taxRate", parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.select()} placeholder="GST %" className="col-span-2 px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 text-right focus:outline-none" />
+                      <input value={item.description} onChange={(e) => updateItem(i, "description", e.target.value)} placeholder="Item description" className="col-span-4 px-2 py-1.5 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none" />
+                      <input type="number" value={item.quantity} onChange={(e) => updateItem(i, "quantity", parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.select()} placeholder="Qty" className="col-span-1 px-2 py-1.5 bg-surface border border-border rounded-control text-sm text-ink text-center focus:outline-none" />
+                      <input value={item.unit} onChange={(e) => updateItem(i, "unit", e.target.value)} className="col-span-1 px-2 py-1.5 bg-surface border border-border rounded-control text-sm text-ink-3 text-center focus:outline-none" />
+                      <input type="number" value={item.unitPrice} onChange={(e) => updateItem(i, "unitPrice", parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.select()} placeholder="Price" className="col-span-2 px-2 py-1.5 bg-surface border border-border rounded-control text-sm text-ink text-right focus:outline-none" />
+                      <input type="number" value={item.taxRate} onChange={(e) => updateItem(i, "taxRate", parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.select()} placeholder="GST %" className="col-span-2 px-2 py-1.5 bg-surface border border-border rounded-control text-sm text-ink text-right focus:outline-none" />
                       <div className="col-span-2 flex items-center justify-end gap-1">
-                        <span className="text-sm text-gray-900 font-medium">{fmt(item.total)}</span>
+                        <span className="text-sm text-ink font-medium">{fmt(item.total)}</span>
                         {form.items.length > 1 && (
-                          <button onClick={() => setForm((f) => ({ ...f, items: f.items.filter((_, j) => j !== i) }))} className="text-gray-600 hover:text-red-700 text-xs ml-1">×</button>
+                          <button onClick={() => setForm((f) => ({ ...f, items: f.items.filter((_, j) => j !== i) }))} className="text-ink-2 hover:text-danger text-xs ml-1">×</button>
                         )}
                       </div>
                     </div>
                   ))}
-                  <button onClick={() => setForm((f) => ({ ...f, items: [...f.items, { ...EMPTY_ITEM }] }))} className="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1 mt-1">
+                  <button onClick={() => setForm((f) => ({ ...f, items: [...f.items, { ...EMPTY_ITEM }] }))} className="text-xs text-ink-3 hover:text-ink flex items-center gap-1 mt-1">
                     <Plus size={12} /> Add item
                   </button>
                 </div>
@@ -340,46 +340,46 @@ export default function SalesInvoicesPage() {
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs text-gray-500 block mb-1">Due Date</label>
-                    <input type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none" />
+                    <label className="text-xs text-ink-3 block mb-1">Due Date</label>
+                    <input type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink focus:outline-none" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 block mb-1">Status</label>
-                    <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as any }))} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none">
+                    <label className="text-xs text-ink-3 block mb-1">Status</label>
+                    <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as any }))} className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink-2 focus:outline-none">
                       <option value="DRAFT">Draft</option>
                       <option value="SENT">Send now</option>
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 block mb-1">Discount (₹)</label>
-                    <input type="number" value={form.discountAmount} onChange={(e) => setForm((f) => ({ ...f, discountAmount: parseFloat(e.target.value) || 0 }))} onFocus={(e) => e.target.select()} placeholder="Discount amount" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none" />
+                    <label className="text-xs text-ink-3 block mb-1">Discount (₹)</label>
+                    <input type="number" value={form.discountAmount} onChange={(e) => setForm((f) => ({ ...f, discountAmount: parseFloat(e.target.value) || 0 }))} onFocus={(e) => e.target.select()} placeholder="Discount amount" className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink focus:outline-none" />
                   </div>
                 </div>
                 <div>
-                  <div className="rounded-xl border border-gray-200 p-4 space-y-2 text-sm">
-                    <div className="flex justify-between text-gray-500"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-                    <div className="flex justify-between text-gray-500"><span>GST</span><span>{fmt(taxTotal)}</span></div>
-                    {form.discountAmount > 0 && <div className="flex justify-between text-emerald-700"><span>Discount</span><span>−{fmt(form.discountAmount)}</span></div>}
-                    <div className="flex justify-between font-semibold text-gray-900 text-base pt-2 border-t border-gray-200"><span>Total</span><span>{fmt(grandTotal)}</span></div>
+                  <div className="rounded-card border border-border p-4 space-y-2 text-sm">
+                    <div className="flex justify-between text-ink-3"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
+                    <div className="flex justify-between text-ink-3"><span>GST</span><span>{fmt(taxTotal)}</span></div>
+                    {form.discountAmount > 0 && <div className="flex justify-between text-success"><span>Discount</span><span>−{fmt(form.discountAmount)}</span></div>}
+                    <div className="flex justify-between font-semibold text-ink text-base pt-2 border-t border-border"><span>Total</span><span>{fmt(grandTotal)}</span></div>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">Notes</label>
-                  <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Additional notes…" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none" />
+                  <label className="text-xs text-ink-3 block mb-1">Notes</label>
+                  <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Additional notes…" className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none resize-none" />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">Terms & Conditions</label>
-                  <textarea value={form.terms} onChange={(e) => setForm((f) => ({ ...f, terms: e.target.value }))} rows={3} placeholder="Terms and conditions…" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none resize-none" />
+                  <label className="text-xs text-ink-3 block mb-1">Terms & Conditions</label>
+                  <textarea value={form.terms} onChange={(e) => setForm((f) => ({ ...f, terms: e.target.value }))} rows={3} placeholder="Terms and conditions…" className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink focus:outline-none resize-none" />
                 </div>
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-900">Cancel</button>
-              <button onClick={saveInvoice} disabled={saving} className="px-5 py-2 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
+            <div className="px-6 py-4 border-t border-border flex justify-end gap-3">
+              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-ink-3 hover:text-ink">Cancel</button>
+              <button onClick={saveInvoice} disabled={saving} className="px-5 py-2 bg-accent text-accent-fg rounded-card text-sm font-medium hover:bg-accent-hover disabled:opacity-50">
                 {saving ? "Saving…" : "Create Invoice"}
               </button>
             </div>
@@ -390,18 +390,18 @@ export default function SalesInvoicesPage() {
       {/* Share Modal */}
       {shareModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="w-full max-w-md bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
-            <h2 className="text-gray-900 font-semibold flex items-center gap-2"><Share2 size={16} /> Share Invoice</h2>
-            <p className="text-sm text-gray-500">This link allows anyone to view the invoice without logging in. Valid for 72 hours.</p>
+          <div className="w-full max-w-md bg-surface border border-border rounded-card p-6 space-y-4">
+            <h2 className="text-ink font-semibold flex items-center gap-2"><Share2 size={16} /> Share Invoice</h2>
+            <p className="text-sm text-ink-3">This link allows anyone to view the invoice without logging in. Valid for 72 hours.</p>
             <div className="flex gap-2">
-              <input readOnly value={shareModal.url} className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 select-all" />
-              <button onClick={() => copyUrl(shareModal.url)} className="px-3 py-2 bg-gray-50 rounded-lg text-sm text-gray-900 hover:bg-gray-100 flex items-center gap-1">
+              <input readOnly value={shareModal.url} className="flex-1 px-3 py-2 bg-surface border border-border rounded-control text-xs text-ink-2 select-all" />
+              <button onClick={() => copyUrl(shareModal.url)} className="px-3 py-2 bg-surface-2 rounded-control text-sm text-ink hover:bg-surface-3 flex items-center gap-1">
                 <Copy size={13} />{copying ? "Copied!" : "Copy"}
               </button>
             </div>
             <div className="flex gap-2">
-              <a href={shareModal.url} target="_blank" rel="noreferrer" className="flex-1 text-center px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 hover:bg-gray-50">Open Preview</a>
-              <button onClick={() => setShareModal(null)} className="flex-1 px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-medium">Done</button>
+              <a href={shareModal.url} target="_blank" rel="noreferrer" className="flex-1 text-center px-4 py-2 border border-border rounded-card text-sm text-ink hover:bg-surface-2">Open Preview</a>
+              <button onClick={() => setShareModal(null)} className="flex-1 px-4 py-2 bg-accent text-accent-fg rounded-card text-sm font-medium">Done</button>
             </div>
           </div>
         </div>
@@ -410,28 +410,28 @@ export default function SalesInvoicesPage() {
       {/* Mark Paid Modal */}
       {markPaidModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="w-full max-w-sm bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
-            <h2 className="text-gray-900 font-semibold flex items-center gap-2"><CheckCircle size={16} className="text-emerald-700" /> Mark as Paid</h2>
-            <p className="text-sm text-gray-500">{markPaidModal.invoiceNumber} · {markPaidModal.customer.name}</p>
+          <div className="w-full max-w-sm bg-surface border border-border rounded-card p-6 space-y-4">
+            <h2 className="text-ink font-semibold flex items-center gap-2"><CheckCircle size={16} className="text-success" /> Mark as Paid</h2>
+            <p className="text-sm text-ink-3">{markPaidModal.invoiceNumber} · {markPaidModal.customer.name}</p>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Amount Received (₹)</label>
-                <input type="number" value={paymentData.paidAmount} onChange={(e) => setPaymentData((p) => ({ ...p, paidAmount: parseFloat(e.target.value) || 0 }))} onFocus={(e) => e.target.select()} placeholder="Amount received" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none" />
+                <label className="text-xs text-ink-3 block mb-1">Amount Received (₹)</label>
+                <input type="number" value={paymentData.paidAmount} onChange={(e) => setPaymentData((p) => ({ ...p, paidAmount: parseFloat(e.target.value) || 0 }))} onFocus={(e) => e.target.select()} placeholder="Amount received" className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink focus:outline-none" />
               </div>
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Payment Method</label>
-                <select value={paymentData.paymentMethod} onChange={(e) => setPaymentData((p) => ({ ...p, paymentMethod: e.target.value }))} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none">
+                <label className="text-xs text-ink-3 block mb-1">Payment Method</label>
+                <select value={paymentData.paymentMethod} onChange={(e) => setPaymentData((p) => ({ ...p, paymentMethod: e.target.value }))} className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink-2 focus:outline-none">
                   {["Bank Transfer", "UPI", "Cash", "Cheque", "Card"].map((m) => <option key={m}>{m}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Reference / UTR</label>
-                <input value={paymentData.paymentRef} onChange={(e) => setPaymentData((p) => ({ ...p, paymentRef: e.target.value }))} placeholder="Transaction reference" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none" />
+                <label className="text-xs text-ink-3 block mb-1">Reference / UTR</label>
+                <input value={paymentData.paymentRef} onChange={(e) => setPaymentData((p) => ({ ...p, paymentRef: e.target.value }))} placeholder="Transaction reference" className="w-full px-3 py-2 bg-surface border border-border rounded-control text-sm text-ink placeholder-ink-3 focus:outline-none" />
               </div>
             </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={() => setMarkPaidModal(null)} className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-500">Cancel</button>
-              <button onClick={markPaid} disabled={saving} className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-medium hover:bg-emerald-600 disabled:opacity-50">
+              <button onClick={() => setMarkPaidModal(null)} className="flex-1 px-4 py-2 border border-border rounded-card text-sm text-ink-3">Cancel</button>
+              <button onClick={markPaid} disabled={saving} className="flex-1 px-4 py-2 bg-success text-white rounded-card text-sm font-medium hover:opacity-90 disabled:opacity-50">
                 {saving ? "Saving…" : "Confirm Payment"}
               </button>
             </div>

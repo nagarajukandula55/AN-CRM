@@ -25,6 +25,14 @@ export interface IVendorSubscription extends Document {
   validityDays: number;
   currentPeriodStart: Date | null;
   currentPeriodEnd: Date | null;
+  // Set when this subscription's modules/validityDays came from a
+  // self-serve VendorPlan pick (see api/vendor/billing/subscribe) rather
+  // than an admin hand-picking modules on console/admin/vendor-billing.
+  // planName is a denormalized snapshot at purchase time -- a later edit
+  // or deletion of the VendorPlan itself must never change what an
+  // already-active vendor's invoice/plan-page shows they bought.
+  planId: mongoose.Types.ObjectId | null;
+  planName: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,6 +51,8 @@ const VendorSubscriptionSchema = new Schema<IVendorSubscription>(
     validityDays: { type: Number, required: true, default: 30 },
     currentPeriodStart: { type: Date, default: null },
     currentPeriodEnd: { type: Date, default: null },
+    planId: { type: Schema.Types.ObjectId, ref: "VendorPlan", default: null },
+    planName: { type: String, default: null },
   },
   { timestamps: true }
 );

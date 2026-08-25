@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 
@@ -123,7 +123,7 @@ export default function CreateBusinessPage() {
           onSubmit={handleSubmit}
           className="space-y-8"
         >
-          <div className="rounded-[32px] border border-white/10 bg-white/5 p-8">
+          <div className="rounded-[32px] border border-white/10 bg-surface/5 p-8">
             <h2 className="text-2xl font-bold mb-6">
               Basic Information
             </h2>
@@ -182,7 +182,7 @@ export default function CreateBusinessPage() {
             </div>
           </div>
 
-          <div className="rounded-[32px] border border-white/10 bg-white/5 p-8">
+          <div className="rounded-[32px] border border-white/10 bg-surface/5 p-8">
             <h2 className="text-2xl font-bold mb-6">
               Contact Information
             </h2>
@@ -225,7 +225,7 @@ export default function CreateBusinessPage() {
             </div>
           </div>
 
-          <div className="rounded-[32px] border border-white/10 bg-white/5 p-8">
+          <div className="rounded-[32px] border border-white/10 bg-surface/5 p-8">
             <h2 className="text-2xl font-bold mb-6">
               Head Office Location
             </h2>
@@ -302,7 +302,7 @@ function Input({
 
       <input
         {...props}
-        className="w-full rounded-2xl border border-white/10 bg-[#0d1728] px-5 py-4 outline-none transition-all focus:border-cyan-400"
+        className="w-full rounded-card border border-white/10 bg-[#0d1728] px-5 py-4 outline-none transition-all focus:border-cyan-400"
       />
     </div>
   )
@@ -321,7 +321,7 @@ function Textarea({
       <textarea
         rows={5}
         {...props}
-        className="w-full rounded-2xl border border-white/10 bg-[#0d1728] px-5 py-4 outline-none transition-all focus:border-cyan-400"
+        className="w-full rounded-card border border-white/10 bg-[#0d1728] px-5 py-4 outline-none transition-all focus:border-cyan-400"
       />
     </div>
   )

@@ -84,21 +84,21 @@ export default function VendorBillingPayPage({ params }: { params: Promise<{ inv
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setScriptReady(true)} />
       <div className="p-6 max-w-md mx-auto">
-        <div className="rounded-xl border border-gray-200 p-6 text-center space-y-4">
-          <h1 className="text-lg font-semibold text-gray-900">Pay Invoice</h1>
-          <p className="text-sm text-gray-500">
+        <div className="rounded-card border border-border p-6 text-center space-y-4">
+          <h1 className="text-lg font-semibold text-ink">Pay Invoice</h1>
+          <p className="text-sm text-ink-3">
             You&apos;ll be taken to Razorpay&apos;s secure checkout to complete this payment.
           </p>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
           {notConfigured && (
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p className="text-xs text-warning bg-warning-soft border border-warning/20 rounded-control p-3">
               Payments aren&apos;t live yet -- the team is finishing setup. Please check back shortly or contact support.
             </p>
           )}
           <button
             onClick={payNow}
             disabled={loading || !scriptReady}
-            className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50"
+            className="w-full px-4 py-2 bg-accent text-accent-fg rounded-control text-sm disabled:opacity-50"
           >
             {loading ? "Opening checkout…" : !scriptReady ? "Loading…" : "Pay Now"}
           </button>

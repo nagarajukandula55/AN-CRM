@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import useSWR from "swr";
@@ -193,7 +193,7 @@ export default function VendorCreditsPage() {
         <Card className="p-3 space-y-2 border-warning/20 bg-warning-soft">
           <p className="text-sm font-semibold text-warning">Pending Approval ({pending.length})</p>
           {pending.map((a) => (
-            <div key={a._id} className="flex items-center justify-between text-sm bg-surface rounded-lg p-2">
+            <div key={a._id} className="flex items-center justify-between text-sm bg-surface rounded-control p-2">
               <div>
                 <p className="font-medium text-ink">{a.name} <span className="text-xs text-ink-3">({a.type})</span></p>
                 <p className="text-xs text-ink-3">{a.email} · {a.phone}</p>

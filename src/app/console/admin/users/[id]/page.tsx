@@ -1,8 +1,9 @@
-'use client';
+﻿'use client';
 
 import { use, useState } from 'react';
 import useSWR from 'swr';
 import { useToast } from '@/components/shared/Toast';
+import { LoadingPanel } from '@/components/ui/Spinner';
 
 interface Role {
   _id: string;
@@ -51,24 +52,24 @@ interface User {
 
 const ROLE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   SUPER_ADMIN: { bg: 'bg-purple-500/20', text: 'text-purple-300', border: 'border-purple-500/30' },
-  ADMIN: { bg: 'bg-red-500/20', text: 'text-red-300', border: 'border-red-500/30' },
+  ADMIN: { bg: 'bg-danger/20', text: 'text-danger', border: 'border-danger/30' },
   MANAGER: { bg: 'bg-orange-500/20', text: 'text-orange-300', border: 'border-orange-500/30' },
-  EMPLOYEE: { bg: 'bg-blue-500/20', text: 'text-blue-300', border: 'border-blue-500/30' },
-  VENDOR: { bg: 'bg-green-500/20', text: 'text-green-300', border: 'border-green-500/30' },
-  CUSTOMER: { bg: 'bg-gray-100', text: 'text-gray-600', border: 'border-gray-300' },
+  EMPLOYEE: { bg: 'bg-info/20', text: 'text-info', border: 'border-info/30' },
+  VENDOR: { bg: 'bg-success/20', text: 'text-success', border: 'border-success/30' },
+  CUSTOMER: { bg: 'bg-surface-2', text: 'text-ink-2', border: 'border-border' },
 };
 
-const AVATAR_COLORS = ['bg-purple-500', 'bg-blue-500', 'bg-green-500', 'bg-orange-500', 'bg-red-500', 'bg-indigo-500'];
+const AVATAR_COLORS = ['bg-purple-500', 'bg-info', 'bg-success', 'bg-orange-500', 'bg-danger', 'bg-accent'];
 
 function getRoleColor(code: string) {
-  return ROLE_COLORS[code] || { bg: 'bg-gray-100', text: 'text-gray-600', border: 'border-gray-300' };
+  return ROLE_COLORS[code] || { bg: 'bg-surface-2', text: 'text-ink-2', border: 'border-border' };
 }
 
 function InfoRow({ label, value }: { label: string; value?: string | number }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-xs text-gray-500">{label}</span>
-      <span className="text-sm text-gray-900">{value || '—'}</span>
+      <span className="text-xs text-ink-3">{label}</span>
+      <span className="text-sm text-ink">{value || '—'}</span>
     </div>
   );
 }
@@ -77,7 +78,7 @@ function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map((star) => (
-        <span key={star} className={star <= rating ? 'text-yellow-400' : 'text-gray-600'}>★</span>
+        <span key={star} className={star <= rating ? 'text-warning' : 'text-ink-2'}>★</span>
       ))}
     </div>
   );
@@ -224,18 +225,18 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-surface-2 flex items-center justify-center">
+        <LoadingPanel label="Loading…" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-2 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-500 text-lg">User not found</p>
-          <a href="/console/admin/users" className="text-blue-400 hover:text-blue-300 text-sm mt-2 inline-block">← Back to Users</a>
+          <p className="text-ink-3 text-lg">User not found</p>
+          <a href="/console/admin/users" className="text-info hover:text-info text-sm mt-2 inline-block">← Back to Users</a>
         </div>
       </div>
     );
@@ -261,9 +262,9 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 p-6">
+    <div className="min-h-screen bg-surface-2 text-ink p-6">
       {/* Back button */}
-      <a href="/console/admin/users" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 text-sm mb-6 transition-colors">
+      <a href="/console/admin/users" className="inline-flex items-center gap-2 text-ink-3 hover:text-ink text-sm mb-6 transition-colors">
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>
@@ -271,35 +272,35 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
       </a>
 
       {/* User header card */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+      <div className="bg-surface border border-border rounded-card p-6 mb-6">
         <div className="flex items-start gap-5">
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center text-gray-900 text-xl font-bold flex-shrink-0 ${avatarColor}`}>
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center text-ink text-xl font-bold flex-shrink-0 ${avatarColor}`}>
             {initials}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
+              <h1 className="text-2xl font-bold text-ink">{user.name}</h1>
               {primaryRole && (
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${roleColor.bg} ${roleColor.text} ${roleColor.border}`}>
                   {primaryRole.code}
                 </span>
               )}
-              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${user.status === 'ACTIVE' ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}`}>
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${user.status === 'ACTIVE' ? 'bg-success/20 text-success border border-success/30' : 'bg-danger/20 text-danger border border-danger/30'}`}>
                 {user.status}
               </span>
             </div>
-            <p className="text-gray-500 mt-1">{user.email}</p>
+            <p className="text-ink-3 mt-1">{user.email}</p>
             {user.employeeProfile?.employeeId && (
-              <p className="text-xs text-gray-500 mt-1 font-mono">{user.employeeProfile.employeeId}</p>
+              <p className="text-xs text-ink-3 mt-1 font-mono">{user.employeeProfile.employeeId}</p>
             )}
             {user.vendorProfile?.vendorId && (
-              <p className="text-xs text-gray-500 mt-1 font-mono">{user.vendorProfile.vendorId}</p>
+              <p className="text-xs text-ink-3 mt-1 font-mono">{user.vendorProfile.vendorId}</p>
             )}
           </div>
           <a
             href={`/console/users`}
             onClick={(e) => { e.preventDefault(); /* edit inline */ }}
-            className="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-control text-ink-3 hover:text-ink hover:bg-surface-2 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -309,15 +310,15 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-0 border-b border-gray-200 mb-6">
+      <div className="flex gap-0 border-b border-border mb-6">
         {(['profile', 'access', 'activity'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-5 py-3 text-sm font-medium capitalize transition-colors relative ${activeTab === tab ? 'text-blue-400' : 'text-gray-500 hover:text-gray-900'}`}
+            className={`px-5 py-3 text-sm font-medium capitalize transition-colors relative ${activeTab === tab ? 'text-info' : 'text-ink-3 hover:text-ink'}`}
           >
             {tab === 'access' ? 'Access & Roles' : tab === 'activity' ? 'Activity Log' : 'Profile'}
-            {activeTab === tab && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t-full" />}
+            {activeTab === tab && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-info rounded-t-full" />}
           </button>
         ))}
       </div>
@@ -325,8 +326,8 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
       {/* Profile Tab */}
       {activeTab === 'profile' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-gray-600 mb-4 uppercase tracking-wider">Basic Information</h3>
+          <div className="bg-surface border border-border rounded-card p-5">
+            <h3 className="text-sm font-semibold text-ink-2 mb-4 uppercase tracking-wider">Basic Information</h3>
             <div className="space-y-4">
               <InfoRow label="Full Name" value={user.name} />
               <InfoRow label="Email Address" value={user.email} />
@@ -338,10 +339,10 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
           </div>
 
           {user.employeeProfile && (
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="bg-surface border border-border rounded-card p-5">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Employee Details</h3>
+                <div className="w-2 h-2 rounded-full bg-info" />
+                <h3 className="text-sm font-semibold text-ink-2 uppercase tracking-wider">Employee Details</h3>
               </div>
               <div className="space-y-4">
                 <InfoRow label="Employee ID" value={user.employeeProfile.employeeId} />
@@ -356,10 +357,10 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
           )}
 
           {user.vendorProfile && (
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="bg-surface border border-border rounded-card p-5">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Vendor Details</h3>
+                <div className="w-2 h-2 rounded-full bg-success" />
+                <h3 className="text-sm font-semibold text-ink-2 uppercase tracking-wider">Vendor Details</h3>
               </div>
               <div className="space-y-4">
                 <InfoRow label="Vendor ID" value={user.vendorProfile.vendorId} />
@@ -369,12 +370,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                 <InfoRow label="Payment Terms" value={user.vendorProfile.paymentTerms} />
                 <InfoRow label="Category" value={user.vendorProfile.category} />
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-gray-500">Rating</span>
+                  <span className="text-xs text-ink-3">Rating</span>
                   <StarRating rating={user.vendorProfile.rating || 0} />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-gray-500">Approval Status</span>
-                  <span className={`text-sm font-medium ${user.vendorProfile.isApproved ? 'text-green-400' : 'text-yellow-400'}`}>
+                  <span className="text-xs text-ink-3">Approval Status</span>
+                  <span className={`text-sm font-medium ${user.vendorProfile.isApproved ? 'text-success' : 'text-warning'}`}>
                     {user.vendorProfile.isApproved ? 'Approved' : 'Pending Approval'}
                   </span>
                 </div>
@@ -387,23 +388,23 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
       {/* Access & Roles Tab */}
       {activeTab === 'access' && (
         <div className="space-y-6">
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-gray-600 mb-4 uppercase tracking-wider">Password Control</h3>
-            <p className="text-xs text-gray-500 mb-4">
+          <div className="bg-surface border border-border rounded-card p-5">
+            <h3 className="text-sm font-semibold text-ink-2 mb-4 uppercase tracking-wider">Password Control</h3>
+            <p className="text-xs text-ink-3 mb-4">
               The user's actual password can never be viewed — it's stored as a one-way hash. Reset it here instead;
               the user must change it on their next login.
             </p>
             {resetMsg && (
-              <div className={`mb-4 rounded-lg px-3 py-2 text-xs ${tempPassword ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-700' : 'bg-amber-500/10 border border-amber-500/20 text-amber-700'}`}>
+              <div className={`mb-4 rounded-control px-3 py-2 text-xs ${tempPassword ? 'bg-success/10 border border-success/20 text-success' : 'bg-warning/10 border border-warning/20 text-warning'}`}>
                 {resetMsg}
               </div>
             )}
             {tempPassword && (
-              <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                <code className="text-sm font-mono text-gray-900 flex-1">{tempPassword}</code>
+              <div className="mb-4 flex items-center gap-2 rounded-control border border-border bg-surface-2 px-3 py-2">
+                <code className="text-sm font-mono text-ink flex-1">{tempPassword}</code>
                 <button
                   onClick={() => navigator.clipboard.writeText(tempPassword)}
-                  className="text-xs text-blue-600 hover:underline"
+                  className="text-xs text-info hover:underline"
                 >Copy</button>
               </div>
             )}
@@ -411,7 +412,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
               <button
                 onClick={generateTempPassword}
                 disabled={resetting}
-                className="px-4 py-2 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white text-sm rounded-lg font-medium transition-colors"
+                className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-fg text-sm rounded-control font-medium transition-colors"
               >
                 {resetting ? 'Working…' : 'Generate Temporary Password'}
               </button>
@@ -421,12 +422,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                   placeholder="Set a specific password"
                   value={manualPassword}
                   onChange={(e) => setManualPassword(e.target.value)}
-                  className="bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-blue-500/50"
+                  className="bg-surface-2 border border-border rounded-control px-3 py-2 text-ink text-sm focus:outline-none focus:border-info/50"
                 />
                 <button
                   onClick={setManualPasswordForUser}
                   disabled={resetting || !manualPassword}
-                  className="px-4 py-2 border border-gray-200 hover:bg-gray-100 disabled:opacity-50 text-gray-900 text-sm rounded-lg font-medium transition-colors"
+                  className="px-4 py-2 border border-border hover:bg-surface-2 disabled:opacity-50 text-ink text-sm rounded-control font-medium transition-colors"
                 >
                   Set Password
                 </button>
@@ -434,10 +435,10 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-gray-600 mb-4 uppercase tracking-wider">Current Roles</h3>
+          <div className="bg-surface border border-border rounded-card p-5">
+            <h3 className="text-sm font-semibold text-ink-2 mb-4 uppercase tracking-wider">Current Roles</h3>
             {user.roles.filter(Boolean).length === 0 ? (
-              <p className="text-gray-500 text-sm">No roles assigned yet.</p>
+              <p className="text-ink-3 text-sm">No roles assigned yet.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {user.roles.filter(Boolean).map((role) => {
@@ -460,13 +461,13 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             )}
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-gray-600 mb-4 uppercase tracking-wider">Assign Role</h3>
+          <div className="bg-surface border border-border rounded-card p-5">
+            <h3 className="text-sm font-semibold text-ink-2 mb-4 uppercase tracking-wider">Assign Role</h3>
             <div className="flex gap-3">
               <select
                 value={selectedRoleToAssign}
                 onChange={(e) => setSelectedRoleToAssign(e.target.value)}
-                className="flex-1 bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-blue-500/50"
+                className="flex-1 bg-surface-2 border border-border rounded-control px-3 py-2 text-ink text-sm focus:outline-none focus:border-info/50"
               >
                 <option value="">Select a role...</option>
                 {availableRoles
@@ -478,7 +479,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
               <button
                 onClick={assignRole}
                 disabled={!selectedRoleToAssign || assigning}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 text-sm rounded-lg font-medium transition-colors"
+                className="px-4 py-2 bg-info hover:bg-info disabled:opacity-50 disabled:cursor-not-allowed text-ink text-sm rounded-control font-medium transition-colors"
               >
                 {assigning ? 'Assigning...' : 'Assign'}
               </button>
@@ -486,18 +487,18 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
           </div>
 
           {uniquePermissions.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-gray-600 mb-4 uppercase tracking-wider">
+            <div className="bg-surface border border-border rounded-card p-5">
+              <h3 className="text-sm font-semibold text-ink-2 mb-4 uppercase tracking-wider">
                 Permissions
-                <span className="ml-2 text-xs font-normal text-gray-500 normal-case">({uniquePermissions.length} total)</span>
+                <span className="ml-2 text-xs font-normal text-ink-3 normal-case">({uniquePermissions.length} total)</span>
               </h3>
               <div className="space-y-4">
                 {Object.entries(permissionsByModule).map(([module, perms]) => (
                   <div key={module}>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">{module}</p>
+                    <p className="text-xs text-ink-3 uppercase tracking-wider mb-2">{module}</p>
                     <div className="flex flex-wrap gap-2">
                       {perms.map((perm) => (
-                        <span key={perm} className="text-xs bg-white border border-gray-200 text-gray-600 px-2.5 py-1 rounded-full font-mono">
+                        <span key={perm} className="text-xs bg-surface border border-border text-ink-2 px-2.5 py-1 rounded-full font-mono">
                           {perm}
                         </span>
                       ))}
@@ -512,12 +513,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* Activity Log Tab */}
       {activeTab === 'activity' && (
-        <div className="bg-white border border-gray-200 rounded-xl p-12 flex flex-col items-center justify-center">
-          <svg className="w-12 h-12 text-gray-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="bg-surface border border-border rounded-card p-12 flex flex-col items-center justify-center">
+          <svg className="w-12 h-12 text-ink-2 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-gray-500 font-medium">No activity recorded yet</p>
-          <p className="text-gray-600 text-sm mt-1">User actions and login history will appear here once activity logging is enabled.</p>
+          <p className="text-ink-3 font-medium">No activity recorded yet</p>
+          <p className="text-ink-2 text-sm mt-1">User actions and login history will appear here once activity logging is enabled.</p>
         </div>
       )}
     </div>

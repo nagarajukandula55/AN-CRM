@@ -116,7 +116,7 @@ const VendorDocRequirementSchema = new mongoose.Schema(
 // See core/access/vendorAccess.service.ts's getVendorAvailableModules.
 const VendorTypeModulesSchema = new mongoose.Schema(
   {
-    appliedAs: { type: String, enum: ["BRAND", "SC", "POS"], required: true },
+    appliedAs: { type: String, enum: ["SC"], required: true },
     moduleKeys: { type: [String], default: [] },
   },
   { _id: false }

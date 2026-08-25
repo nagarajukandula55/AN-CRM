@@ -36,7 +36,9 @@ export async function POST(req: NextRequest) {
     if (password.length < 8) {
       return NextResponse.json({ success: false, message: "Password must be at least 8 characters" }, { status: 400 });
     }
-    if (appliedAs && !["BRAND", "SC", "POS"].includes(appliedAs)) {
+    // SC (Service Center) is the only vendor type this platform supports
+    // now -- BRAND and POS were removed.
+    if (appliedAs && appliedAs !== "SC") {
       return NextResponse.json({ success: false, message: "Invalid business type" }, { status: 400 });
     }
 

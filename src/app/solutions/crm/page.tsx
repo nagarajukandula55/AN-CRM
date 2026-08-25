@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import {
@@ -97,10 +97,10 @@ export default function CrmSolutionPage() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-violet-500">
             Repair & Service Centers
           </p>
-          <h1 className="mt-3 text-4xl font-bold leading-tight tracking-tight text-gray-900 md:text-5xl">
+          <h1 className="mt-3 text-4xl font-bold leading-tight tracking-tight text-ink md:text-5xl">
             CRM & Repair Service, <span className={neonGradientText}>Built End to End</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg text-gray-500">
+          <p className="mx-auto mt-5 max-w-2xl text-lg text-ink-3">
             From the first appointment request to a closed, invoiced job — AN Group's CRM & Repair
             Service module runs your service business on one connected system, with a
             brand/model-aware catalog, technician workflows and GST-ready invoicing built in.
@@ -125,11 +125,11 @@ export default function CrmSolutionPage() {
               const Icon = f.icon;
               return (
                 <div key={f.title} className={`${neonCard} p-7`}>
-                  <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50">
+                  <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-card bg-violet-50">
                     <Icon size={22} strokeWidth={1.75} className="text-violet-600" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900">{f.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-gray-500">{f.description}</p>
+                  <h3 className="text-lg font-semibold text-ink">{f.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-ink-3">{f.description}</p>
                 </div>
               );
             })}
@@ -138,17 +138,17 @@ export default function CrmSolutionPage() {
       </section>
 
       {/* Lifecycle strip */}
-      <section className="relative z-10 border-y border-violet-100 bg-white/60 px-6 py-14 backdrop-blur-sm">
+      <section className="relative z-10 border-y border-violet-100 bg-surface/60 px-6 py-14 backdrop-blur-sm">
         <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900">Lead to Closed Job — All in One Flow</h2>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm text-gray-600">
+          <h2 className="text-2xl font-bold tracking-tight text-ink">Lead to Closed Job — All in One Flow</h2>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm text-ink-2">
             {["Lead Captured", "Qualified", "Job Sheet Created", "Technician Assigned", "Repair Completed", "Invoiced & Closed"].map((step, i, arr) => (
               <span key={step} className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-white px-3 py-1.5 font-medium">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-surface px-3 py-1.5 font-medium">
                   <CheckCircle2 size={14} className="text-violet-600" />
                   {step}
                 </span>
-                {i < arr.length - 1 && <ArrowRight size={14} className="text-gray-300" />}
+                {i < arr.length - 1 && <ArrowRight size={14} className="text-ink-3" />}
               </span>
             ))}
           </div>
@@ -168,14 +168,14 @@ export default function CrmSolutionPage() {
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
               href="/appointment-request"
-              className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-base font-semibold text-violet-700 shadow-sm transition-transform hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 rounded-full bg-surface px-7 py-3.5 text-base font-semibold text-violet-700 shadow-sm transition-transform hover:-translate-y-0.5"
             >
               Book a Service
               <ArrowRight size={18} />
             </Link>
             <Link
               href="/partner-signup"
-              className="inline-flex items-center gap-2 rounded-full border border-white/40 px-7 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/10"
+              className="inline-flex items-center gap-2 rounded-full border border-white/40 px-7 py-3.5 text-base font-semibold text-white transition-colors hover:bg-surface/10"
             >
               Run This For Your Own Business
             </Link>

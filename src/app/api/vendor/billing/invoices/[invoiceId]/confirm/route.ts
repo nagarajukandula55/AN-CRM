@@ -53,26 +53,53 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ inv
       return NextResponse.json({ success: false, message: "Payment verification failed" }, { status: 402 });
     }
 
-    const subscription = await VendorSubscription.findById(invoice.subscriptionId);
+    // Atomic claim -- guards against a double-click/retry sending two
+    // concurrent requests with the same valid signature both passing the
+    // status check above and both extending the subscription period. Only
+    // the request that actually flips PENDING -> PAID here proceeds to
+    // extend the subscription; a second concurrent request finds no
+    // matching document (status already PAID) and just returns the
+    // already-confirmed invoice, same pattern as activateSubscription's
+    // atomic claim for the customer-subscription flow.
+    const claimed = await VendorBillingInvoice.findOneAndUpdate(
+      { _id: invoiceId, vendorId: vendor._id, status: { $ne: "PAID" } },
+      { $set: { status: "PAID", paidAt: new Date(), gatewayPaymentId: razorpayPaymentId } },
+      { new: true }
+    );
+    if (!claimed) {
+      const current = await VendorBillingInvoice.findById(invoiceId);
+      return NextResponse.json({ success: true, invoice: current });
+    }
+
+    const subscription = await VendorSubscription.findById(claimed.subscriptionId);
     if (!subscription) return NextResponse.json({ success: false, message: "Subscription not found" }, { status: 404 });
 
-    const { start, end } = extendPeriod(subscription.currentPeriodEnd, subscription.validityDays);
+    // Apply the modules/validityDays/plan SNAPSHOTTED ON THE INVOICE (set
+    // at invoice-creation time, see api/vendor/billing/subscribe) onto the
+    // subscription only now, having just verified real money moved --
+    // never trust whatever the live subscription doc holds, since a
+    // self-serve vendor could otherwise get access by creating an invoice
+    // and abandoning checkout. A no-op for the admin-generated-invoice
+    // flow, where the subscription's modules were already set (by a
+    // trusted admin) to the same values before the invoice existed.
+    const validityDays = claimed.validityDays || subscription.validityDays;
+    if (claimed.modules?.length) subscription.modules = claimed.modules as any;
+    subscription.validityDays = validityDays;
+    if (claimed.planId) subscription.planId = claimed.planId;
+    if (claimed.planName) subscription.planName = claimed.planName;
+
+    const { start, end } = extendPeriod(subscription.currentPeriodEnd, validityDays);
     subscription.currentPeriodStart = start;
     subscription.currentPeriodEnd = end;
     await subscription.save();
 
-    invoice.status = "PAID";
-    invoice.paidAt = new Date();
-    invoice.gatewayPaymentId = razorpayPaymentId;
-    await invoice.save();
-
     sendVendorAlert(
       String(vendor._id),
       "PAYMENT_RECEIVED",
-      `Payment received for invoice ${invoice.invoiceNumber} (₹${invoice.amount}). Subscription extended to ${end.toLocaleDateString("en-IN")}.`
+      `Payment received for invoice ${claimed.invoiceNumber} (₹${claimed.amount}). Subscription extended to ${end.toLocaleDateString("en-IN")}.`
     ).catch(() => {});
 
-    return NextResponse.json({ success: true, invoice, subscription });
+    return NextResponse.json({ success: true, invoice: claimed, subscription });
   } catch (err: any) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }

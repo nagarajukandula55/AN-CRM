@@ -4,6 +4,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { getSharedIntegration } from "@/lib/centralApiRead";
 import { renderEmailTemplate } from "@/core/email/renderEmailTemplate";
 import { connectDB } from "@/lib/mongodb";
+import { renderEmailShell, emailButton, emailCode, emailInfoBox } from "./emailShell";
 
 /**
  * Central-api is now the ONLY source for Resend credentials -- per
@@ -62,11 +63,15 @@ export async function sendPasswordResetEmail({
       from,
       to,
       subject: override?.subject || "Reset your password",
-      html: override?.html || `
-        <p>We received a request to reset your password.</p>
-        <p><a href="${resetUrl}">Click here to reset your password</a>. This link expires in 30 minutes.</p>
-        <p>If you didn't request this, you can safely ignore this email.</p>
-      `,
+      html: override?.html || renderEmailShell({
+        heading: "Reset your password",
+        previewText: "Reset your AN Group password — this link expires in 30 minutes.",
+        bodyHtml: `
+          <p>We received a request to reset your password.</p>
+          <div style="text-align:center;margin:24px 0;">${emailButton("Reset password", resetUrl)}</div>
+          <p style="font-size:13px;color:#8B8F94;">This link expires in 30 minutes. If you didn't request this, you can safely ignore this email — your password won't be changed.</p>
+        `,
+      }),
     });
 
     return { success: true, result };
@@ -109,11 +114,15 @@ export async function sendVerificationOtpEmail({
       from,
       to,
       subject: override?.subject || `Your verification code: ${otp}`,
-      html: override?.html || `
-        <p>Your verification code for ${purpose} is:</p>
-        <p style="font-size:28px;font-weight:700;letter-spacing:4px;">${otp}</p>
-        <p>This code is valid for 10 minutes. If you didn't request this, you can ignore this email.</p>
-      `,
+      html: override?.html || renderEmailShell({
+        heading: "Verify your email",
+        previewText: `Your verification code is ${otp}`,
+        bodyHtml: `
+          <p>Your verification code for ${purpose} is:</p>
+          ${emailCode(otp)}
+          <p style="font-size:13px;color:#8B8F94;">This code is valid for 10 minutes. If you didn't request this, you can safely ignore this email.</p>
+        `,
+      }),
     });
 
     return { success: true, result };
@@ -146,7 +155,11 @@ export async function sendNewsletterWelcomeEmail({
       from,
       to,
       subject: override?.subject || "You're subscribed!",
-      html: override?.html || `<p>Thanks for subscribing -- we'll keep you posted on new products and offers.</p>`,
+      html: override?.html || renderEmailShell({
+        heading: "You're subscribed",
+        previewText: "Thanks for subscribing to AN Group updates.",
+        bodyHtml: `<p>Thanks for subscribing — we'll keep you posted on new products and offers.</p>`,
+      }),
     });
 
     return { success: true, result };
@@ -188,13 +201,18 @@ export async function sendAgreementOtpEmail({
       from,
       to,
       subject: override?.subject || `Action required: sign "${agreementTitle}"`,
-      html: override?.html || `
-        <p>Dear ${partyName},</p>
-        <p>You have been requested to sign the agreement "${agreementTitle}".</p>
-        ${signingLink ? `<p><a href="${signingLink}">Click here to review and sign</a></p>` : ""}
-        <p>Your OTP to verify your identity and sign is: <b>${otp}</b></p>
-        <p>This OTP is valid for 30 minutes.</p>
-      `,
+      html: override?.html || renderEmailShell({
+        heading: `Sign "${agreementTitle}"`,
+        previewText: `Your signing code is ${otp}`,
+        bodyHtml: `
+          <p>Dear ${partyName},</p>
+          <p>You've been requested to sign the agreement <strong>${agreementTitle}</strong>.</p>
+          ${signingLink ? `<div style="text-align:center;margin:24px 0;">${emailButton("Review and sign", signingLink)}</div>` : ""}
+          <p>Your OTP to verify your identity and sign is:</p>
+          ${emailCode(otp)}
+          <p style="font-size:13px;color:#8B8F94;">This OTP is valid for 30 minutes.</p>
+        `,
+      }),
     });
 
     return { success: true, result };
@@ -229,10 +247,11 @@ export async function sendWelcomeEmail({
       from,
       to,
       subject: override?.subject || "Welcome to AN Group",
-      html: override?.html || `
-        <p>Hi ${name},</p>
-        <p>Your account has been created successfully. You can now sign in and get started.</p>
-      `,
+      html: override?.html || renderEmailShell({
+        heading: `Welcome, ${name}`,
+        previewText: "Your AN Group account is ready.",
+        bodyHtml: `<p>Your account has been created successfully. You can now sign in and get started.</p>`,
+      }),
     });
 
     return { success: true, result };
@@ -274,14 +293,19 @@ export async function sendAccountCredentialsEmail({
       from,
       to,
       subject: override?.subject || "Your AN Group account is ready",
-      html: override?.html || `
-        <p>Hi ${name},</p>
-        <p>An account has been created for you on AN Group.</p>
-        <p>Login email: <b>${to}</b></p>
-        ${tempPassword ? `<p>Temporary password: <b>${tempPassword}</b></p>` : ""}
-        ${loginUrl ? `<p><a href="${loginUrl}">Click here to sign in</a>.</p>` : ""}
-        <p>You'll be asked to set a new password the first time you sign in.</p>
-      `,
+      html: override?.html || renderEmailShell({
+        heading: `Hi ${name}, your account is ready`,
+        previewText: "Your AN Group login details are inside.",
+        bodyHtml: `
+          <p>An account has been created for you on AN Group.</p>
+          ${emailInfoBox([
+            { label: "Login email", value: to },
+            ...(tempPassword ? [{ label: "Temporary password", value: tempPassword }] : []),
+          ])}
+          ${loginUrl ? `<div style="text-align:center;margin:24px 0;">${emailButton("Sign in", loginUrl)}</div>` : ""}
+          <p style="font-size:13px;color:#8B8F94;">You'll be asked to set a new password the first time you sign in.</p>
+        `,
+      }),
     });
 
     return { success: true, result };

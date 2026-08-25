@@ -1,13 +1,14 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import useSWR from 'swr'
 import { useParams, useRouter } from 'next/navigation'
 import {
-  ArrowLeft, Loader2, Plus, Trash2, CheckCircle2, FileText, PauseCircle,
+  ArrowLeft, Plus, Trash2, CheckCircle2, FileText, PauseCircle,
   Check, Wrench, Printer,
 } from 'lucide-react'
 import { formatAgeing } from '@/lib/format/ageing'
+import { LoadingPanel, Spinner } from '@/components/ui/Spinner'
 
 interface LineItem {
   description: string
@@ -117,14 +118,14 @@ const MILESTONES = [
 function MilestoneStepper({ status }: { status: string }) {
   if (status === 'CANCELLED') {
     return (
-      <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
+      <div className="flex items-center gap-2 px-4 py-3 rounded-card bg-danger-soft border border-danger text-danger text-sm font-medium">
         <PauseCircle className="w-4 h-4" /> Cancelled
       </div>
     )
   }
   if (status === 'PART_PENDING') {
     return (
-      <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium">
+      <div className="flex items-center gap-2 px-4 py-3 rounded-card bg-warning-soft border border-warning text-warning text-sm font-medium">
         <PauseCircle className="w-4 h-4" /> Part Pending — repair paused, waiting on a part order
       </div>
     )
@@ -139,18 +140,18 @@ function MilestoneStepper({ status }: { status: string }) {
           <div key={m.key} className="flex items-center flex-1 last:flex-none">
             <div className="flex flex-col items-center gap-1.5 shrink-0">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold border-2 transition-colors ${
-                done ? 'bg-emerald-600 border-emerald-600 text-white'
-                : active ? 'bg-gray-900 border-gray-900 text-white'
-                : 'bg-white border-gray-200 text-gray-300'
+                done ? 'bg-success border-success text-accent-fg'
+                : active ? 'bg-accent border-accent text-accent-fg'
+                : 'bg-surface border-border text-ink-3'
               }`}>
                 {done ? <Check className="w-3.5 h-3.5" /> : i + 1}
               </div>
-              <span className={`text-[11px] font-medium whitespace-nowrap ${active ? 'text-gray-900' : done ? 'text-emerald-700' : 'text-gray-400'}`}>
+              <span className={`text-[11px] font-medium whitespace-nowrap ${active ? 'text-ink' : done ? 'text-success' : 'text-ink-3'}`}>
                 {m.label}
               </span>
             </div>
             {i < MILESTONES.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-1 mb-4 ${i < currentIdx ? 'bg-emerald-600' : 'bg-gray-200'}`} />
+              <div className={`flex-1 h-0.5 mx-1 mb-4 ${i < currentIdx ? 'bg-success' : 'bg-surface-3'}`} />
             )}
           </div>
         )
@@ -563,13 +564,13 @@ export default function JobSheetDetailPage() {
   }
 
   if (loading) {
-    return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><Loader2 className="w-8 h-8 text-gray-500 animate-spin" /></div>
+    return <div className="min-h-screen bg-surface-2 flex items-center justify-center"><LoadingPanel label="Loading…" /></div>
   }
   if (error || !job) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-3">
-        <p className="text-red-600 text-sm">{error || 'Workorder not found'}</p>
-        <button onClick={() => router.push('/vendor/crm/jobsheets')} className="text-sm text-gray-500 underline">Back to Workorders</button>
+      <div className="min-h-screen bg-surface-2 flex flex-col items-center justify-center gap-3">
+        <p className="text-danger text-sm">{error || 'Workorder not found'}</p>
+        <button onClick={() => router.push('/vendor/crm/jobsheets')} className="text-sm text-ink-3 underline">Back to Workorders</button>
       </div>
     )
   }
@@ -606,21 +607,21 @@ export default function JobSheetDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-surface-2 text-ink">
       <div className="px-6 py-10">
         <div className="flex items-center gap-4 mb-6">
-          <button onClick={() => router.push('/vendor/crm/jobsheets')} className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-100 transition">
+          <button onClick={() => router.push('/vendor/crm/jobsheets')} className="w-9 h-9 rounded-card border border-border bg-surface flex items-center justify-center hover:bg-surface-2 transition">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
             <h1 className="text-2xl font-semibold font-mono">{job.jobSheetNumber}</h1>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-ink-3">
               {job.customerName} · {job.title}
               {deviceLine && <> · {deviceLine}</>}
             </p>
           </div>
           {isOpen && (
-            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${overdue ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${overdue ? 'bg-danger-soft text-danger' : 'bg-surface-2 text-ink-3'}`}>
               {formatAgeing(job.createdAt)} open
             </span>
           )}
@@ -635,13 +636,13 @@ export default function JobSheetDetailPage() {
                   : `/print/jobsheets/${id}/intake-receipt`,
                 '_blank'
               )}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-100 transition"
+              className="flex items-center gap-2 px-4 py-2 rounded-card border border-border bg-surface text-sm text-ink-2 hover:bg-surface-2 transition"
             >
               <Printer className="w-4 h-4" /> {job.status === 'CLOSED' ? 'Print Service Record' : 'Print Workorder'}
             </button>
             <button
               onClick={() => window.open(`/print/jobsheets/${id}?doc=estimate`, '_blank')}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-100 transition"
+              className="flex items-center gap-2 px-4 py-2 rounded-card border border-border bg-surface text-sm text-ink-2 hover:bg-surface-2 transition"
             >
               <Printer className="w-4 h-4" /> Print Estimate
             </button>
@@ -656,7 +657,7 @@ export default function JobSheetDetailPage() {
               // link there directly instead of that dead end.
               <button
                 onClick={() => window.open(`/invoice/${job.invoiceNumber}`, '_blank')}
-                className="flex items-center gap-2 bg-gray-900 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-gray-800 transition"
+                className="flex items-center gap-2 bg-accent text-accent-fg text-sm font-medium px-4 py-2 rounded-card hover:bg-accent-hover transition"
               >
                 {/* NON_GST_INVOICE ("BILL-...") means no company name and
                     no tax -- a plain Bill, not a Tax/B2B Invoice. See
@@ -670,30 +671,30 @@ export default function JobSheetDetailPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Customer</h3>
-            <div className="space-y-1.5 text-sm text-gray-700">
-              <p className="font-medium text-gray-900">{job.customerName}</p>
-              {job.company && <p className="text-gray-500">{job.company}</p>}
+          <div className="rounded-card border border-border bg-surface p-5">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-3 mb-3">Customer</h3>
+            <div className="space-y-1.5 text-sm text-ink-2">
+              <p className="font-medium text-ink">{job.customerName}</p>
+              {job.company && <p className="text-ink-3">{job.company}</p>}
               <p>{job.phone}{job.email ? ` · ${job.email}` : ''}</p>
               {(job.address || job.city || job.state || job.pincode) && (
-                <p className="text-gray-500">
+                <p className="text-ink-3">
                   {[job.address, job.city, job.state, job.pincode].filter(Boolean).join(', ')}
                 </p>
               )}
             </div>
           </div>
-          <div className="rounded-2xl border border-gray-200 bg-white p-5">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Device & Reported Issue</h3>
-            <div className="space-y-1.5 text-sm text-gray-700">
-              <p className="font-medium text-gray-900">{deviceLine || '—'}</p>
-              {job.imeiOrSerialNumber && <p className="text-gray-500 font-mono text-xs">IMEI/SN: {job.imeiOrSerialNumber}</p>}
-              <p className="text-gray-500">{job.title}</p>
+          <div className="rounded-card border border-border bg-surface p-5">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-3 mb-3">Device & Reported Issue</h3>
+            <div className="space-y-1.5 text-sm text-ink-2">
+              <p className="font-medium text-ink">{deviceLine || '—'}</p>
+              {job.imeiOrSerialNumber && <p className="text-ink-3 font-mono text-xs">IMEI/SN: {job.imeiOrSerialNumber}</p>}
+              <p className="text-ink-3">{job.title}</p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 mb-6">
+        <div className="rounded-card border border-border bg-surface p-6 mb-6">
           <MilestoneStepper status={job.status} />
         </div>
 
@@ -703,20 +704,20 @@ export default function JobSheetDetailPage() {
               <select
                 value={selectedEngineer}
                 onChange={(e) => setSelectedEngineer(e.target.value)}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700"
+                className="border border-border rounded-card px-3 py-2 text-sm text-ink-2"
               >
                 <option value="">Select engineer…</option>
                 {engineers.map((e) => (
                   <option key={e._id} value={e._id}>{e.name || e.email}</option>
                 ))}
               </select>
-              <button onClick={assignEngineer} disabled={assigning || !selectedEngineer} className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-100 transition disabled:opacity-50">
+              <button onClick={assignEngineer} disabled={assigning || !selectedEngineer} className="px-4 py-2 rounded-card border border-border bg-surface text-sm text-ink-2 hover:bg-surface-2 transition disabled:opacity-50">
                 {assigning ? 'Assigning…' : 'Assign Engineer'}
               </button>
             </>
           )}
           {job.status === 'REPAIR_STARTED' && (
-            <button onClick={startRepair} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-100 transition">
+            <button onClick={startRepair} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-card border border-border bg-surface text-sm text-ink-2 hover:bg-surface-2 transition">
               <Wrench className="w-4 h-4" /> Start Repair
             </button>
           )}
@@ -725,83 +726,83 @@ export default function JobSheetDetailPage() {
               <button
                 onClick={completeRepair}
                 disabled={closing || lineItems.every((l) => !l.description.trim())}
-                className="flex items-center gap-2 bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-emerald-700 transition disabled:opacity-50"
+                className="flex items-center gap-2 bg-success text-accent-fg text-sm font-medium px-4 py-2 rounded-card hover:opacity-90 transition disabled:opacity-50"
               >
-                {closing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                {closing ? <Spinner size={16} /> : <CheckCircle2 className="w-4 h-4" />}
                 Complete Repair & Generate Invoice
               </button>
               <button
                 onClick={() => setShowBrandJobPopup(true)}
                 disabled={markingPartPending}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-800 hover:bg-amber-100 transition disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-card border border-warning bg-warning-soft text-sm text-warning hover:bg-warning-soft transition disabled:opacity-50"
               >
                 <PauseCircle className="w-4 h-4" /> Mark Part Pending
               </button>
             </>
           )}
           {job.status === 'PART_PENDING' && (
-            <button onClick={resumeRepair} disabled={saving} className="flex items-center gap-2 bg-gray-900 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-gray-800 transition disabled:opacity-50">
+            <button onClick={resumeRepair} disabled={saving} className="flex items-center gap-2 bg-accent text-accent-fg text-sm font-medium px-4 py-2 rounded-card hover:bg-accent-hover transition disabled:opacity-50">
               <Wrench className="w-4 h-4" /> Part Arrived — Resume Repair
             </button>
           )}
           {job.status === 'REPAIR_COMPLETED' && (
-            <button onClick={() => setShowHandover(true)} className="flex items-center gap-2 bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-emerald-700 transition">
+            <button onClick={() => setShowHandover(true)} className="flex items-center gap-2 bg-success text-accent-fg text-sm font-medium px-4 py-2 rounded-card hover:opacity-90 transition">
               <CheckCircle2 className="w-4 h-4" /> Handover to Customer
             </button>
           )}
           {job.status !== 'CLOSED' && job.status !== 'CANCELLED' && (
-            <button onClick={() => setShowCancel(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700 hover:bg-red-100 transition">
+            <button onClick={() => setShowCancel(true)} className="flex items-center gap-2 px-4 py-2 rounded-card border border-danger bg-danger-soft text-sm text-danger hover:bg-danger-soft transition">
               <PauseCircle className="w-4 h-4" /> Cancel
             </button>
           )}
         </div>
 
-        {actionError && <div className="mb-6 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{actionError}</div>}
+        {actionError && <div className="mb-6 text-sm text-danger bg-danger-soft border border-danger rounded-card px-4 py-3">{actionError}</div>}
 
         {job.status === 'CANCELLED' && job.cancelReason && (
-          <div className="mb-6 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <div className="mb-6 text-sm text-danger bg-danger-soft border border-danger rounded-card px-4 py-3">
             Cancelled — Reason: {job.cancelReason}
           </div>
         )}
 
         {stockWarning && (
-          <div className="mb-4 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
+          <div className="mb-4 text-sm text-warning bg-warning-soft border border-warning rounded-card px-4 py-3 flex items-start justify-between gap-3">
             <span>{stockWarning}</span>
-            <button onClick={() => setStockWarning(null)} className="text-amber-600 hover:text-amber-800 shrink-0">✕</button>
+            <button onClick={() => setStockWarning(null)} className="text-warning hover:text-warning shrink-0">✕</button>
           </div>
         )}
 
         {job.status === 'CREATED' ? (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 mb-6 text-center py-12">
-            <Wrench className="w-8 h-8 mx-auto mb-3 text-gray-300" />
-            <p className="text-sm text-gray-500">Assign an engineer above to begin repair work.</p>
-            <p className="text-xs text-gray-400 mt-1">Parts, symptoms, solutions and service charge become available once someone is assigned.</p>
+          <div className="rounded-card border border-border bg-surface p-6 mb-6 text-center py-12">
+            <Wrench className="w-8 h-8 mx-auto mb-3 text-ink-3" />
+            <p className="text-sm text-ink-3">Assign an engineer above to begin repair work.</p>
+            <p className="text-xs text-ink-3 mt-1">Parts, symptoms, solutions and service charge become available once someone is assigned.</p>
           </div>
         ) : (
         <>
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 mb-6 overflow-x-auto">
+        <div className="rounded-card border border-border bg-surface p-6 mb-6 overflow-x-auto">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-900">Service Info</h3>
+            <h3 className="text-sm font-semibold text-ink">Service Info</h3>
             {!isLocked && isAssignedEngineer && (
               <div className="flex items-center gap-3">
-                <button onClick={addLabourCharge} className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800">
+                <button onClick={addLabourCharge} className="flex items-center gap-1 text-xs font-medium text-accent hover:text-accent-hover">
                   <Wrench className="w-3.5 h-3.5" /> Add Labour Charge
                 </button>
-                <button onClick={addLine} className="flex items-center gap-1 text-xs font-medium text-gray-700 hover:text-gray-900">
+                <button onClick={addLine} className="flex items-center gap-1 text-xs font-medium text-ink-2 hover:text-ink">
                   <Plus className="w-3.5 h-3.5" /> Add Item
                 </button>
               </div>
             )}
           </div>
           {!isLocked && !isAssignedEngineer && (
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+            <p className="text-xs text-warning bg-warning-soft border border-warning rounded-control px-3 py-2 mb-3">
               Only the assigned engineer can add or edit line items on this workorder.
             </p>
           )}
           {!isLocked && isAssignedEngineer && bomParts.length === 0 && (
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+            <p className="text-xs text-warning bg-warning-soft border border-warning rounded-control px-3 py-2 mb-3">
               No parts found in Service Center BOM for this device's brand/model.{' '}
-              <button type="button" onClick={() => router.push('/vendor/service-bom')} className="underline font-medium hover:text-amber-800">
+              <button type="button" onClick={() => router.push('/vendor/service-bom')} className="underline font-medium hover:text-warning">
                 Add some there
               </button>{' '}
               before picking a part here.
@@ -809,7 +810,7 @@ export default function JobSheetDetailPage() {
           )}
 
           <div className="w-full">
-            <div className="flex gap-2 px-2 pb-1 text-[11px] font-medium text-gray-400 uppercase tracking-wide">
+            <div className="flex gap-2 px-2 pb-1 text-[11px] font-medium text-ink-3 uppercase tracking-wide">
               <span className={CELL.faultCode}>Fault Phenomenon</span>
               <span className={CELL.symptom}>Symptom</span>
               <span className={CELL.solution}>Solution</span>
@@ -827,13 +828,13 @@ export default function JobSheetDetailPage() {
               {lineItems.map((item, i) => {
                 const disabledLine = isLocked || !isAssignedEngineer
                 return (
-                <div key={i} className="border border-gray-100 rounded-lg p-2">
+                <div key={i} className="border border-border rounded-control p-2">
                   <div className="flex gap-2 items-center">
                     <select
                       disabled={disabledLine}
                       value={item.faultCodeId || ''}
                       onChange={(e) => updateLine(i, { faultCodeId: e.target.value || undefined })}
-                      className={`${CELL.faultCode} border border-gray-200 rounded-lg px-2 py-2 text-sm disabled:bg-gray-50`}
+                      className={`${CELL.faultCode} border border-border rounded-control px-2 py-2 text-sm disabled:bg-surface-2`}
                     >
                       <option value="">— None —</option>
                       {faultCodes.map((f) => (
@@ -844,7 +845,7 @@ export default function JobSheetDetailPage() {
                       disabled={disabledLine}
                       value={item.symptomCodeId || ''}
                       onChange={(e) => updateLine(i, { symptomCodeId: e.target.value || undefined })}
-                      className={`${CELL.symptom} border border-gray-200 rounded-lg px-2 py-2 text-sm disabled:bg-gray-50`}
+                      className={`${CELL.symptom} border border-border rounded-control px-2 py-2 text-sm disabled:bg-surface-2`}
                     >
                       <option value="">— None —</option>
                       {symptomCodes.map((s) => (
@@ -855,7 +856,7 @@ export default function JobSheetDetailPage() {
                       disabled={disabledLine}
                       value={item.solutionId || ''}
                       onChange={(e) => updateLine(i, { solutionId: e.target.value || undefined })}
-                      className={`${CELL.solution} border border-gray-200 rounded-lg px-2 py-2 text-sm disabled:bg-gray-50`}
+                      className={`${CELL.solution} border border-border rounded-control px-2 py-2 text-sm disabled:bg-surface-2`}
                     >
                       <option value="">— None —</option>
                       {solutions.map((s) => (
@@ -867,7 +868,7 @@ export default function JobSheetDetailPage() {
                       value={item.serviceCenterBOMId || ''}
                       onChange={(e) => onDescriptionSelect(i, e.target.value)}
                       title={bomParts.length === 0 ? 'No BOM parts configured for this vendor/brand yet' : undefined}
-                      className={`${CELL.description} border border-gray-200 rounded-lg px-2 py-2 text-sm disabled:bg-gray-50`}
+                      className={`${CELL.description} border border-border rounded-control px-2 py-2 text-sm disabled:bg-surface-2`}
                     >
                       <option value="">{item.description || 'Select part/labour…'}</option>
                       {bomParts.map((p) => (
@@ -879,7 +880,7 @@ export default function JobSheetDetailPage() {
                       placeholder="—"
                       value={bomParts.find((p) => p._id === item.serviceCenterBOMId)?.partCode || ''}
                       title="Auto-filled from the selected BOM part"
-                      className={`${CELL.materialCode} border border-gray-200 rounded-lg px-2 py-2 text-sm bg-gray-50 text-gray-500 font-mono`}
+                      className={`${CELL.materialCode} border border-border rounded-control px-2 py-2 text-sm bg-surface-2 text-ink-3 font-mono`}
                     />
                     <input
                       disabled
@@ -887,7 +888,7 @@ export default function JobSheetDetailPage() {
                       placeholder="Qty"
                       value={1}
                       title="Quantity is fixed at 1 per line -- add another line for more"
-                      className={`${CELL.qty} border border-gray-200 rounded-lg px-2 py-2 text-sm bg-gray-50 text-gray-500`}
+                      className={`${CELL.qty} border border-border rounded-control px-2 py-2 text-sm bg-surface-2 text-ink-3`}
                     />
                     {inventorySerialized && (
                       <input
@@ -895,7 +896,7 @@ export default function JobSheetDetailPage() {
                         placeholder="—"
                         value={lineStock[i] != null ? String(lineStock[i]) : ''}
                         title="Available stock for this part, at the moment it was selected"
-                        className={`${CELL.invQty} border rounded-lg px-2 py-2 text-sm bg-gray-50 ${lineStock[i] === 0 ? 'border-red-200 text-red-500' : 'border-gray-200 text-gray-500'}`}
+                        className={`${CELL.invQty} border rounded-control px-2 py-2 text-sm bg-surface-2 ${lineStock[i] === 0 ? 'border-danger text-danger' : 'border-border text-ink-3'}`}
                       />
                     )}
                     <input
@@ -904,7 +905,7 @@ export default function JobSheetDetailPage() {
                       placeholder="—"
                       value={item.unitPrice}
                       title="Auto-filled from the selected BOM part"
-                      className={`${CELL.rate} border border-gray-200 rounded-lg px-2 py-2 text-sm bg-gray-50 text-gray-500`}
+                      className={`${CELL.rate} border border-border rounded-control px-2 py-2 text-sm bg-surface-2 text-ink-3`}
                     />
                     <input
                       disabled
@@ -912,23 +913,23 @@ export default function JobSheetDetailPage() {
                       placeholder="—"
                       value={item.taxRate}
                       title="Auto-filled from the selected BOM part"
-                      className={`${CELL.tax} border border-gray-200 rounded-lg px-2 py-2 text-sm bg-gray-50 text-gray-500`}
+                      className={`${CELL.tax} border border-border rounded-control px-2 py-2 text-sm bg-surface-2 text-ink-3`}
                     />
                     <input
                       disabled
                       placeholder="—"
                       value={`₹${lineCost(item).toLocaleString('en-IN')}`}
                       title="Qty x Rate, plus tax"
-                      className={`${CELL.cost} border border-gray-200 rounded-lg px-2 py-2 text-sm bg-gray-50 text-gray-600 font-medium`}
+                      className={`${CELL.cost} border border-border rounded-control px-2 py-2 text-sm bg-surface-2 text-ink-2 font-medium`}
                     />
                     {!isLocked && isAssignedEngineer && (
-                      <button onClick={() => removeLine(i)} className={`${CELL.delete} flex justify-center text-red-400 hover:text-red-600`}>
+                      <button onClick={() => removeLine(i)} className={`${CELL.delete} flex justify-center text-danger hover:text-danger`}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}
                   </div>
                   {item.hsnCode && (
-                    <p className="mt-1 text-[11px] text-gray-400 pl-1">HSN: {item.hsnCode}</p>
+                    <p className="mt-1 text-[11px] text-ink-3 pl-1">HSN: {item.hsnCode}</p>
                   )}
                 </div>
                 )
@@ -937,8 +938,8 @@ export default function JobSheetDetailPage() {
           </div>
 
           <div className="flex items-center justify-end mt-4 gap-2 text-sm">
-            <label className="text-gray-500">Service Charge:</label>
-            <span className="text-gray-400">₹</span>
+            <label className="text-ink-3">Service Charge:</label>
+            <span className="text-ink-3">₹</span>
             <input
               type="number"
               disabled={isLocked || !canEditServiceCharge}
@@ -946,21 +947,21 @@ export default function JobSheetDetailPage() {
               onChange={(e) => setServiceCharge(parseFloat(e.target.value) || 0)}
               onFocus={(e) => e.target.select()}
               title={canEditServiceCharge ? undefined : 'Only an Owner or Manager can edit the service charge'}
-              className="w-28 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right disabled:bg-gray-50 disabled:text-gray-400"
+              className="w-28 border border-border rounded-control px-2 py-1 text-sm text-right disabled:bg-surface-2 disabled:text-ink-3"
             />
           </div>
 
-          <div className="flex justify-end mt-2 text-sm text-gray-600 gap-6">
+          <div className="flex justify-end mt-2 text-sm text-ink-2 gap-6">
             <span>Subtotal: ₹{subtotal.toLocaleString('en-IN')}</span>
             <span>Tax: ₹{taxTotal.toLocaleString('en-IN')}</span>
             <span>Service Charge: ₹{(serviceCharge || 0).toLocaleString('en-IN')}</span>
-            <span className="font-semibold text-gray-900">Total: ₹{grandTotal.toLocaleString('en-IN')}</span>
+            <span className="font-semibold text-ink">Total: ₹{grandTotal.toLocaleString('en-IN')}</span>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 mb-6 space-y-4">
+        <div className="rounded-card border border-border bg-surface p-6 mb-6 space-y-4">
           <div>
-            <label className="block text-xs text-gray-500 mb-1.5">Remark</label>
+            <label className="block text-xs text-ink-3 mb-1.5">Remark</label>
             <textarea
               disabled={isLocked || !isAssignedEngineer}
               value={remark}
@@ -968,21 +969,21 @@ export default function JobSheetDetailPage() {
               placeholder="Any additional remark about this repair"
               rows={2}
               title={isAssignedEngineer ? undefined : 'Only the assigned engineer can edit this'}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm disabled:bg-gray-50"
+              className="w-full border border-border rounded-card px-4 py-2.5 text-sm disabled:bg-surface-2"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1.5">Brand Job No. (for part order)</label>
+            <label className="block text-xs text-ink-3 mb-1.5">Brand Job No. (for part order)</label>
             <input
               disabled={isLocked}
               value={brandJobNo}
               onChange={(e) => setBrandJobNo(e.target.value)}
               placeholder="Enter once a part order is actually being placed"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm disabled:bg-gray-50"
+              className="w-full border border-border rounded-card px-4 py-2.5 text-sm disabled:bg-surface-2"
             />
           </div>
           {!isLocked && isAssignedEngineer && (
-            <button onClick={() => saveLineItems()} disabled={saving} className="px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition disabled:opacity-50">
+            <button onClick={() => saveLineItems()} disabled={saving} className="px-4 py-2 rounded-card bg-accent text-accent-fg text-sm font-medium hover:bg-accent-hover transition disabled:opacity-50">
               {saving ? 'Saving…' : 'Save'}
             </button>
           )}
@@ -993,20 +994,20 @@ export default function JobSheetDetailPage() {
 
       {showHandover && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-          <div className="w-full max-w-xl bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-2">Handover to Customer</h2>
-            <p className="text-xs text-gray-500 mb-4">Record what was collected before closing this workorder.</p>
+          <div className="w-full max-w-xl bg-surface rounded-card border border-border p-6">
+            <h2 className="font-semibold text-ink mb-2">Handover to Customer</h2>
+            <p className="text-xs text-ink-3 mb-4">Record what was collected before closing this workorder.</p>
             <input
               type="number"
               value={paymentCollected}
               onChange={(e) => setPaymentCollected(e.target.value)}
               placeholder="Amount collected"
-              className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-400 mb-3"
+              className="w-full bg-surface border border-border rounded-card px-4 py-2.5 text-sm text-ink outline-none focus:border-border-strong mb-3"
             />
             <select
               value={paymentMode}
               onChange={(e) => setPaymentMode(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-400 mb-4"
+              className="w-full bg-surface border border-border rounded-card px-4 py-2.5 text-sm text-ink outline-none focus:border-border-strong mb-4"
             >
               <option value="CASH">Cash</option>
               <option value="UPI">UPI</option>
@@ -1015,8 +1016,8 @@ export default function JobSheetDetailPage() {
               <option value="OTHER">Other</option>
             </select>
             <div className="flex gap-3">
-              <button onClick={() => setShowHandover(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-500">Cancel</button>
-              <button onClick={submitHandover} disabled={handingOver || !paymentCollected} className="flex-1 px-4 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition disabled:opacity-50">
+              <button onClick={() => setShowHandover(false)} className="flex-1 px-4 py-2.5 rounded-card border border-border bg-surface text-sm text-ink-3">Cancel</button>
+              <button onClick={submitHandover} disabled={handingOver || !paymentCollected} className="flex-1 px-4 py-2.5 rounded-card bg-accent text-accent-fg text-sm font-medium hover:bg-accent-hover transition disabled:opacity-50">
                 {handingOver ? 'Saving…' : 'Confirm Handover'}
               </button>
             </div>
@@ -1026,18 +1027,18 @@ export default function JobSheetDetailPage() {
 
       {showCancel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-          <div className="w-full max-w-xl bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-2">Cancel Workorder</h2>
-            <p className="text-xs text-gray-500 mb-4">This will be routed to the manager. Provide a reason.</p>
+          <div className="w-full max-w-xl bg-surface rounded-card border border-border p-6">
+            <h2 className="font-semibold text-ink mb-2">Cancel Workorder</h2>
+            <p className="text-xs text-ink-3 mb-4">This will be routed to the manager. Provide a reason.</p>
             <input
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
               placeholder="Cancellation reason"
-              className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-400 mb-4"
+              className="w-full bg-surface border border-border rounded-card px-4 py-2.5 text-sm text-ink outline-none focus:border-border-strong mb-4"
             />
             <div className="flex gap-3">
-              <button onClick={() => setShowCancel(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-500">Back</button>
-              <button onClick={submitCancel} disabled={cancelling || !cancelReason.trim()} className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition disabled:opacity-50">
+              <button onClick={() => setShowCancel(false)} className="flex-1 px-4 py-2.5 rounded-card border border-border bg-surface text-sm text-ink-3">Back</button>
+              <button onClick={submitCancel} disabled={cancelling || !cancelReason.trim()} className="flex-1 px-4 py-2.5 rounded-card bg-danger text-accent-fg text-sm font-medium hover:opacity-90 transition disabled:opacity-50">
                 {cancelling ? 'Cancelling…' : 'Confirm Cancel'}
               </button>
             </div>
@@ -1049,9 +1050,9 @@ export default function JobSheetDetailPage() {
           auto-fire on the first BOM part pick. */}
       {showBrandJobPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-2">Brand Job Number</h2>
-            <p className="text-xs text-gray-500 mb-4">
+          <div className="w-full max-w-md bg-surface rounded-card border border-border p-6">
+            <h2 className="font-semibold text-ink mb-2">Brand Job Number</h2>
+            <p className="text-xs text-ink-3 mb-4">
               If this brand requires their own job reference number for the part order, enter it now. Leave blank if not required, then confirm to mark this workorder Part Pending.
             </p>
             <input
@@ -1059,19 +1060,19 @@ export default function JobSheetDetailPage() {
               onChange={(e) => setBrandJobNo(e.target.value)}
               placeholder="Brand's job number (optional)"
               autoFocus
-              className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-400 mb-4"
+              className="w-full bg-surface border border-border rounded-card px-4 py-2.5 text-sm text-ink outline-none focus:border-border-strong mb-4"
             />
             <div className="flex gap-3">
               <button
                 onClick={() => setShowBrandJobPopup(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-500"
+                className="flex-1 px-4 py-2.5 rounded-card border border-border bg-surface text-sm text-ink-3"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmPartPending}
                 disabled={markingPartPending}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 transition disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 rounded-card bg-warning text-accent-fg text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
               >
                 {markingPartPending ? 'Marking…' : 'Confirm Part Pending'}
               </button>

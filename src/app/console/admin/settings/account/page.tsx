@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { User, Bell, Shield, Globe, Key, Save, Eye, EyeOff } from 'lucide-react'
@@ -76,54 +76,54 @@ export default function AccountSettingsPage() {
   return (
       <div className="space-y-5 max-w-3xl mx-auto">
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-widest">Account</p>
-          <h1 className="text-2xl font-bold text-gray-900">My Account</h1>
+          <p className="text-xs text-ink-3 uppercase tracking-widest">Account</p>
+          <h1 className="text-2xl font-bold text-ink">My Account</h1>
         </div>
 
         {msg && (
-          <div className={`rounded-xl px-4 py-3 text-sm ${msg.startsWith('✓') ? 'bg-green-500/10 border border-green-500/20 text-green-700' : 'bg-red-500/10 border border-red-500/20 text-red-700'}`}>
+          <div className={`rounded-card px-4 py-3 text-sm ${msg.startsWith('✓') ? 'bg-success-soft border border-success/20 text-success' : 'bg-danger-soft border border-danger/20 text-danger'}`}>
             {msg}
           </div>
         )}
 
-        <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1">
+        <div className="flex items-center gap-1 rounded-card border border-border bg-surface p-1">
           {TABS.map(t => (
             <button key={t.key} onClick={() => { setTab(t.key as any); setMsg('') }}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-all flex-1 justify-center ${tab === t.key ? 'bg-gray-900 text-white font-semibold' : 'text-gray-500 hover:text-gray-900'}`}>
+              className={`flex items-center gap-2 rounded-control px-4 py-2 text-sm transition-all flex-1 justify-center ${tab === t.key ? 'bg-ink text-white font-semibold' : 'text-ink-3 hover:text-ink'}`}>
               {t.icon} {t.label}
             </button>
           ))}
         </div>
 
         {tab === 'profile' && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-5">Profile Information</h3>
+          <div className="rounded-card border border-border bg-surface p-6">
+            <h3 className="text-sm font-semibold text-ink mb-5">Profile Information</h3>
             <form onSubmit={saveProfile} className="space-y-4">
               <div className="flex items-center gap-4 mb-5">
-                <div className="h-16 w-16 rounded-2xl bg-gray-100 flex items-center justify-center text-2xl font-bold text-gray-900">
+                <div className="h-16 w-16 rounded-card bg-surface-2 flex items-center justify-center text-2xl font-bold text-ink">
                   {profileForm.name?.[0]?.toUpperCase() || 'U'}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{profileForm.name}</p>
-                  <p className="text-xs text-gray-500">{user?.role} · {user?.isSuperAdmin ? 'Super Admin' : 'Staff'}</p>
+                  <p className="text-sm font-semibold text-ink">{profileForm.name}</p>
+                  <p className="text-xs text-ink-3">{user?.role} · {user?.isSuperAdmin ? 'Super Admin' : 'Staff'}</p>
                 </div>
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Full Name</label>
+                <label className="text-xs text-ink-3 mb-1 block">Full Name</label>
                 <input value={profileForm.name} onChange={e => setProfileForm({...profileForm, name: e.target.value})}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-400" />
+                  className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-border-strong" />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Email</label>
+                <label className="text-xs text-ink-3 mb-1 block">Email</label>
                 <input type="email" value={profileForm.email} onChange={e => setProfileForm({...profileForm, email: e.target.value})}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-400" />
+                  className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-border-strong" />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Phone</label>
+                <label className="text-xs text-ink-3 mb-1 block">Phone</label>
                 <input value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-400" />
+                  className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-border-strong" />
               </div>
-              <button type="submit" disabled={saving} className="btn-primary rounded-xl px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-50">
+              <button type="submit" disabled={saving} className="btn-primary rounded-card px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-50">
                 <Save size={13} /> {saving ? 'Saving…' : 'Save Profile'}
               </button>
             </form>
@@ -131,8 +131,8 @@ export default function AccountSettingsPage() {
         )}
 
         {tab === 'security' && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-5 flex items-center gap-2"><Key size={14} /> Change Password</h3>
+          <div className="rounded-card border border-border bg-surface p-6">
+            <h3 className="text-sm font-semibold text-ink mb-5 flex items-center gap-2"><Key size={14} /> Change Password</h3>
             <form onSubmit={changePassword} className="space-y-4">
               {[
                 { label: 'Current Password', key: 'current' },
@@ -140,26 +140,26 @@ export default function AccountSettingsPage() {
                 { label: 'Confirm New Password', key: 'confirm' },
               ].map(({ label, key }) => (
                 <div key={key}>
-                  <label className="text-xs text-gray-500 mb-1 block">{label}</label>
+                  <label className="text-xs text-ink-3 mb-1 block">{label}</label>
                   <div className="relative">
                     <input type={showPw ? 'text' : 'password'} value={(pwForm as any)[key]}
                       onChange={e => setPwForm({...pwForm, [key]: e.target.value})} required
-                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 pr-10 text-sm text-gray-900 outline-none focus:border-gray-400" />
+                      className="w-full rounded-card border border-border bg-surface px-3 py-2 pr-10 text-sm text-ink outline-none focus:border-border-strong" />
                     <button type="button" onClick={() => setShowPw(!showPw)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3">
                       {showPw ? <EyeOff size={13} /> : <Eye size={13} />}
                     </button>
                   </div>
                 </div>
               ))}
-              <button type="submit" disabled={saving} className="btn-primary rounded-xl px-5 py-2 text-sm disabled:opacity-50">
+              <button type="submit" disabled={saving} className="btn-primary rounded-card px-5 py-2 text-sm disabled:opacity-50">
                 {saving ? 'Changing…' : 'Change Password'}
               </button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">Security Info</h4>
-              <div className="space-y-2 text-xs text-gray-500">
+            <div className="mt-6 pt-6 border-t border-border">
+              <h4 className="text-sm font-semibold text-ink mb-3">Security Info</h4>
+              <div className="space-y-2 text-xs text-ink-3">
                 <p>Last login: {user?.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'N/A'}</p>
                 <p>Account created: {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</p>
               </div>
@@ -168,8 +168,8 @@ export default function AccountSettingsPage() {
         )}
 
         {tab === 'notifications' && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-5">Notification Preferences</h3>
+          <div className="rounded-card border border-border bg-surface p-6">
+            <h3 className="text-sm font-semibold text-ink mb-5">Notification Preferences</h3>
             <div className="space-y-4">
               {[
                 { key: 'email', label: 'Email Notifications', desc: 'Receive notifications via email' },
@@ -178,32 +178,32 @@ export default function AccountSettingsPage() {
                 { key: 'payments', label: 'Payment Alerts', desc: 'Invoice payments, overdue reminders' },
                 { key: 'newAgreements', label: 'Agreement Notifications', desc: 'New agreements, signing requests' },
               ].map(pref => (
-                <div key={pref.key} className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div key={pref.key} className="flex items-center justify-between py-3 border-b border-border">
                   <div>
-                    <p className="text-sm text-gray-900">{pref.label}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{pref.desc}</p>
+                    <p className="text-sm text-ink">{pref.label}</p>
+                    <p className="text-xs text-ink-3 mt-0.5">{pref.desc}</p>
                   </div>
                   <button
                     onClick={() => setNotifPrefs(prev => ({ ...prev, [pref.key]: !prev[pref.key as keyof typeof prev] }))}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-all ${(notifPrefs as any)[pref.key] ? 'bg-emerald-500' : 'bg-gray-200'}`}>
-                    <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-all ${(notifPrefs as any)[pref.key] ? 'translate-x-5' : 'translate-x-1'}`} />
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-all ${(notifPrefs as any)[pref.key] ? 'bg-success' : 'bg-surface-3'}`}>
+                    <span className={`inline-block h-3.5 w-3.5 rounded-full bg-surface shadow transition-all ${(notifPrefs as any)[pref.key] ? 'translate-x-5' : 'translate-x-1'}`} />
                   </button>
                 </div>
               ))}
             </div>
-            <button onClick={() => setMsg('✓ Preferences saved')} className="mt-4 btn-primary rounded-xl px-5 py-2 text-sm flex items-center gap-2">
+            <button onClick={() => setMsg('✓ Preferences saved')} className="mt-4 btn-primary rounded-card px-5 py-2 text-sm flex items-center gap-2">
               <Save size={13} /> Save Preferences
             </button>
           </div>
         )}
 
         {tab === 'platform' && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-5 flex items-center gap-2"><Globe size={14} /> Platform Settings</h3>
+          <div className="rounded-card border border-border bg-surface p-6">
+            <h3 className="text-sm font-semibold text-ink mb-5 flex items-center gap-2"><Globe size={14} /> Platform Settings</h3>
             <div className="space-y-4 text-sm">
-              <div className="rounded-xl border border-gray-200 bg-white p-4">
-                <p className="text-gray-500 font-medium">AN Group Enterprise</p>
-                <div className="mt-2 space-y-1.5 text-xs text-gray-600">
+              <div className="rounded-card border border-border bg-surface p-4">
+                <p className="text-ink-3 font-medium">AN Group Enterprise</p>
+                <div className="mt-2 space-y-1.5 text-xs text-ink-2">
                   <p>Version: 2.0.0</p>
                   <p>SSO: Enabled</p>
                   <p>ERP Modules: Inventory, Purchase, Sales, Finance, HR, CRM</p>
@@ -211,10 +211,10 @@ export default function AccountSettingsPage() {
                   <p>Documents: Agreements, Invoices, POs</p>
                 </div>
               </div>
-              <div className="rounded-xl border border-yellow-500/15 bg-yellow-500/5 p-4">
-                <p className="text-xs text-yellow-700 font-semibold mb-1">Environment</p>
-                <p className="text-xs text-gray-500">For configuration, update your .env.local file:</p>
-                <ul className="mt-2 space-y-1 text-xs text-gray-600 font-mono">
+              <div className="rounded-card border border-warning/20 bg-warning-soft p-4">
+                <p className="text-xs text-warning font-semibold mb-1">Environment</p>
+                <p className="text-xs text-ink-3">For configuration, update your .env.local file:</p>
+                <ul className="mt-2 space-y-1 text-xs text-ink-2 font-mono">
                   <li>MONGODB_URI — MongoDB Atlas connection string</li>
                   <li>JWT_SECRET — Auth signing secret</li>
                   <li>NEXT_PUBLIC_APP_URL — Your deployment URL</li>

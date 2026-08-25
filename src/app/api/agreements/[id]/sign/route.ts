@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 import bcryptjs from 'bcryptjs';
 import { logAction } from "@/lib/audit/logAction";
 import { sendGenericEmail } from "@/services/email/resend.service";
+import { renderEmailShell } from "@/services/email/emailShell";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -133,7 +134,15 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       sendGenericEmail({
         to: partyEmail,
         subject: 'Thanks for signing — please wait for confirmation',
-        html: `<p>Hi ${sig.partyName || ''},</p><p>Thanks for signing <strong>${agreement.title}</strong>. We've received your signature and it's now with us for final confirmation. Please allow us a little time — you'll get a confirmation email as soon as it's been countersigned on our end.</p>`,
+        html: renderEmailShell({
+          heading: "Thanks for signing",
+          previewText: `We're finalizing "${agreement.title}".`,
+          bodyHtml: `
+            <p>Hi ${sig.partyName || ''},</p>
+            <p>Thanks for signing <strong>${agreement.title}</strong>. We've received your signature and it's now with us for final confirmation.</p>
+            <p style="font-size:13px;color:#8B8F94;">Please allow us a little time — you'll get a confirmation email as soon as it's been countersigned on our end.</p>
+          `,
+        }),
         businessId: (agreement as any).businessId?.toString(),
         templateKey: "AGREEMENT_PARTIAL_SIGNED",
         templateTokens: { partyName: sig.partyName || '', agreementTitle: agreement.title },

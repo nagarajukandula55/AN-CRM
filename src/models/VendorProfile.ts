@@ -204,7 +204,7 @@ export interface IVendorProfile extends Document {
   // approval time; the actual operating mode is set on the Business
   // record it gets attached to (see models/Business.ts's operatingMode),
   // not enforced from this field automatically.
-  appliedAs?: "BRAND" | "SC" | "POS";
+  appliedAs?: "SC";
   /**
    * Which electronics device types (Mobile, Laptop, TV, ...) this vendor
    * actually services -- distinct from the single free-text `category`
@@ -347,7 +347,7 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     marketplaceCommissionPercent: { type: Number, default: 20, min: 0, max: 100 },
     category:     { type: String },
     businessType: { type: String },
-    appliedAs:    { type: String, enum: ["BRAND", "SC", "POS"] },
+    appliedAs:    { type: String, enum: ["SC"] },
     productCategories: [{ type: String, enum: DEVICE_CATEGORIES }],
     notes:        { type: String },
     // Vendor-editable service terms & conditions, shown on the

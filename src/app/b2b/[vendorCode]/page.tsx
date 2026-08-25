@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, use as usePromise } from "react";
 import { useRouter } from "next/navigation";
@@ -92,40 +92,40 @@ export default function B2BCatalogPage({ params }: { params: Promise<{ vendorCod
     }
   }
 
-  if (!me) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>;
+  if (!me) return <div className="min-h-screen flex items-center justify-center text-ink-3">Loading…</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b p-4 flex items-center justify-between">
+    <div className="min-h-screen bg-surface-2">
+      <header className="bg-surface border-b p-4 flex items-center justify-between">
         <div>
-          <p className="font-semibold text-gray-900">{me.vendor.companyName}</p>
-          <p className="text-xs text-gray-500">{me.account.name} ({me.account.type})</p>
+          <p className="font-semibold text-ink">{me.vendor.companyName}</p>
+          <p className="text-xs text-ink-3">{me.account.name} ({me.account.type})</p>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <Link href={`/b2b/${vendorCode}/orders`} className="text-violet-600">My Orders</Link>
-          <button onClick={logout} className="text-gray-400">Logout</button>
+          <button onClick={logout} className="text-ink-3">Logout</button>
         </div>
       </header>
 
       {me.account.daysOverdue > 0 && (
-        <div className="bg-red-50 border-b border-red-200 text-red-700 text-sm p-2 text-center">
+        <div className="bg-danger-soft border-b border-danger text-danger text-sm p-2 text-center">
           {me.account.daysOverdue} days overdue on an unpaid invoice — settle before placing a new credit order.
         </div>
       )}
 
       <div className="p-4 grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2 space-y-2">
-          <h2 className="font-medium text-gray-900">Catalog</h2>
+          <h2 className="font-medium text-ink">Catalog</h2>
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-ink-3">Loading…</p>
           ) : products.length === 0 ? (
-            <p className="text-sm text-gray-400">No products available yet.</p>
+            <p className="text-sm text-ink-3">No products available yet.</p>
           ) : (
             products.map((p) => (
-              <div key={p._id} className="bg-white border rounded-lg p-3 flex items-center justify-between">
+              <div key={p._id} className="bg-surface border rounded-control p-3 flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900">{p.name}</p>
-                  <p className="text-xs text-gray-500">₹{p.price}/{p.unit} · MOQ {p.minimumOrderQty}</p>
+                  <p className="font-medium text-ink">{p.name}</p>
+                  <p className="text-xs text-ink-3">₹{p.price}/{p.unit} · MOQ {p.minimumOrderQty}</p>
                 </div>
                 <input
                   type="number"
@@ -140,12 +140,12 @@ export default function B2BCatalogPage({ params }: { params: Promise<{ vendorCod
           )}
         </div>
 
-        <div className="bg-white border rounded-lg p-4 space-y-3 h-fit">
-          <h2 className="font-medium text-gray-900">Cart</h2>
-          {placed && <p className="text-sm text-emerald-600">Order {placed} placed!</p>}
-          {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="bg-surface border rounded-control p-4 space-y-3 h-fit">
+          <h2 className="font-medium text-ink">Cart</h2>
+          {placed && <p className="text-sm text-success">Order {placed} placed!</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
           {cartItems.length === 0 ? (
-            <p className="text-sm text-gray-400">Empty.</p>
+            <p className="text-sm text-ink-3">Empty.</p>
           ) : (
             <>
               {cartItems.map((i) => (
@@ -154,15 +154,15 @@ export default function B2BCatalogPage({ params }: { params: Promise<{ vendorCod
                   <span>₹{(i.product.price * i.qty).toLocaleString("en-IN")}</span>
                 </div>
               ))}
-              <div className="flex justify-between font-semibold text-gray-900 border-t pt-2">
+              <div className="flex justify-between font-semibold text-ink border-t pt-2">
                 <span>Total</span>
                 <span>₹{cartTotal.toLocaleString("en-IN")}</span>
               </div>
-              <select className="w-full border rounded-lg p-2 text-sm" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value as any)}>
+              <select className="w-full border rounded-control p-2 text-sm" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value as any)}>
                 <option value="PAY_ON_DELIVERY">Pay on Delivery / Offline</option>
                 <option value="CREDIT">Credit (₹{me.account.creditLimit - me.account.outstandingBalance} available)</option>
               </select>
-              <button onClick={placeOrder} disabled={placing} className="w-full py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">
+              <button onClick={placeOrder} disabled={placing} className="w-full py-2 bg-accent text-accent-fg rounded-control text-sm disabled:opacity-50">
                 {placing ? "Placing…" : "Place Order"}
               </button>
             </>

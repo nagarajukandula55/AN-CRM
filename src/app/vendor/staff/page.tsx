@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * Vendor-facing staff management — completes the hierarchy requested:
@@ -192,7 +192,7 @@ export default function VendorStaffPage() {
                 ID: {createdCreds.loginUsername} &nbsp;•&nbsp; Temp password: {createdCreds.temporaryPassword}
               </p>
             </div>
-            <button onClick={() => setCreatedCreds(null)} className="p-1 rounded-lg hover:bg-success/10 flex-shrink-0">
+            <button onClick={() => setCreatedCreds(null)} className="p-1 rounded-control hover:bg-success/10 flex-shrink-0">
               <X size={16} className="text-success" />
             </button>
           </Card>
@@ -250,7 +250,7 @@ export default function VendorStaffPage() {
             <div className="w-full max-w-md bg-surface rounded-card border border-border shadow-card-lg p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="h-section">Add Staff Member</h2>
-                <button onClick={() => setShowForm(false)} className="p-1 rounded-lg hover:bg-surface-2">
+                <button onClick={() => setShowForm(false)} className="p-1 rounded-control hover:bg-surface-2">
                   <X size={16} className="text-ink-3" />
                 </button>
               </div>
@@ -261,14 +261,14 @@ export default function VendorStaffPage() {
                 <button
                   type="button"
                   onClick={() => setMode("existing")}
-                  className={`flex-1 py-1.5 rounded-lg font-medium transition ${mode === "existing" ? "bg-surface shadow-card text-ink" : "text-ink-3"}`}
+                  className={`flex-1 py-1.5 rounded-control font-medium transition ${mode === "existing" ? "bg-surface shadow-card text-ink" : "text-ink-3"}`}
                 >
                   Existing user
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("new")}
-                  className={`flex-1 py-1.5 rounded-lg font-medium transition ${mode === "new" ? "bg-surface shadow-card text-ink" : "text-ink-3"}`}
+                  className={`flex-1 py-1.5 rounded-control font-medium transition ${mode === "new" ? "bg-surface shadow-card text-ink" : "text-ink-3"}`}
                 >
                   Create new employee
                 </button>

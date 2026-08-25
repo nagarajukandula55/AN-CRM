@@ -9,16 +9,33 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { LoadingPanel } from '@/components/ui/Spinner'
+import { MODULE_LABELS } from '@/core/billing/moduleCatalog'
 
-const MODULE_LABELS: Record<string, string> = {
-  sales: "Sales", reviews: "Reviews", inventory: "Inventory", products: "Products",
-  product_categories: "Product Categories", materials: "Materials", bom: "BOM",
-  grn: "Goods Receipts", warehouses: "Warehouses", stock_transfers: "Stock Transfers",
-  stock_adjustments: "Stock Adjustments", purchase: "Purchase", vendor_products: "Vendor Products",
-  logistics: "Logistics", finance: "Finance", gst: "GST", crm: "CRM",
-  crm_jobsheets: "CRM Job Sheets", fault_codes: "Fault Codes", solutions: "Solutions",
-  banners: "Banners", blog: "Blog", staff: "Staff", brands: "Brands", device_models: "Device Models",
-};
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+interface VendorPlan {
+  _id: string;
+  name: string;
+  description: string;
+  moduleKeys: string[];
+  price: number;
+  validityDays: number;
+}
 
 type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral'
 const STATUS_COPY: Record<string, { label: string; tone: Tone }> = {
@@ -31,11 +48,17 @@ const STATUS_COPY: Record<string, { label: string; tone: Tone }> = {
 export default function VendorBillingPage() {
   const router = useRouter();
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [subscribingId, setSubscribingId] = useState<string | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
 
-  const { data: billingRes, isLoading: loading } = useSWR("/api/vendor/billing");
+  const { data: billingRes, isLoading: loading, mutate: reloadBilling } = useSWR("/api/vendor/billing");
   const subscription = billingRes?.success ? billingRes.subscription : null;
   const status = billingRes?.success ? billingRes.status : "NOT_SET";
   const invoices: any[] = billingRes?.success ? billingRes.invoices || [] : [];
+
+  const showPlanPicker = status === "NOT_SET" || status === "EXPIRED";
+  const { data: plansRes } = useSWR(showPlanPicker ? "/api/vendor/plans" : null);
+  const plans: VendorPlan[] = plansRes?.success ? plansRes.plans || [] : [];
 
   async function payInvoice(invoiceId: string) {
     setPayingId(invoiceId);
@@ -45,6 +68,57 @@ export default function VendorBillingPage() {
       if (data.success) router.push(data.paymentLink);
     } finally {
       setPayingId(null);
+    }
+  }
+
+  // Self-serve: pick a plan -> mint a Razorpay order for it -> pay via
+  // Checkout -> the SAME already-hardened confirm route used by the
+  // admin-invoice pay flow verifies the signature and activates. See
+  // api/vendor/billing/subscribe/route.ts's own comment for why this
+  // reuses confirm rather than duplicating verification logic.
+  async function subscribeToPlan(planId: string) {
+    setPlanError(null);
+    setSubscribingId(planId);
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error("Could not load payment gateway");
+
+      const res = await fetch("/api/vendor/billing/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId }),
+      });
+      const orderData = await res.json();
+      if (!orderData.success) throw new Error(orderData.message || "Failed to start payment");
+
+      const rzp = new window.Razorpay({
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        order_id: orderData.razorpayOrderId,
+        name: "AN Group",
+        description: `${orderData.planName} plan`,
+        handler: async (response: any) => {
+          const confirmRes = await fetch(`/api/vendor/billing/invoices/${orderData.invoiceId}/confirm`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            }),
+          });
+          const confirmData = await confirmRes.json();
+          if (confirmData.success) reloadBilling();
+          else setPlanError(confirmData.message || "Payment verification failed");
+        },
+        theme: { color: "#B5541F" },
+      });
+      rzp.open();
+    } catch (err: any) {
+      setPlanError(err.message || "Something went wrong");
+    } finally {
+      setSubscribingId(null);
     }
   }
 
@@ -64,7 +138,7 @@ export default function VendorBillingPage() {
         </div>
 
         {!subscription || !subscription.modules?.length ? (
-          <p className="text-sm text-ink-3">No plan has been configured for your account yet — contact AN Group.</p>
+          <p className="text-sm text-ink-3">No plan selected yet — pick one below to get started.</p>
         ) : (
           <>
             <div className="flex flex-wrap gap-1.5">
@@ -85,6 +159,47 @@ export default function VendorBillingPage() {
           </>
         )}
       </Card>
+
+      {showPlanPicker && (
+        <Card className="p-4 space-y-3">
+          <h2 className="h-section">{status === "EXPIRED" ? "Renew Your Plan" : "Choose a Plan"}</h2>
+          {planError && <p className="text-sm text-danger bg-danger-soft rounded-control p-2">{planError}</p>}
+          {plans.length === 0 ? (
+            <p className="text-sm text-ink-3">No plans are available to self-serve right now — contact AN Group.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {plans.map((plan) => (
+                <div key={plan._id} className="border border-border rounded-card p-3 space-y-2">
+                  <div>
+                    <p className="font-medium text-ink">{plan.name}</p>
+                    {plan.description && <p className="text-xs text-ink-3">{plan.description}</p>}
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-lg font-semibold tabular text-ink">₹{plan.price.toLocaleString("en-IN")}</span>
+                    <span className="text-xs text-ink-3">/ {plan.validityDays} days</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {plan.moduleKeys.map((k) => (
+                      <span key={k} className="text-xs bg-surface-2 text-ink-2 rounded-full px-2 py-0.5">
+                        {MODULE_LABELS[k] || k}
+                      </span>
+                    ))}
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={() => subscribeToPlan(plan._id)}
+                    disabled={subscribingId === plan._id}
+                    loading={subscribingId === plan._id}
+                  >
+                    Subscribe & Pay
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {pendingInvoices.length > 0 && (
         <Card className="p-4 space-y-2 border-warning/20 bg-warning-soft">

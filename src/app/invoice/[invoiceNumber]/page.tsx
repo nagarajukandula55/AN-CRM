@@ -466,7 +466,7 @@ export default function InvoicePage() {
 
 <div className="footer">
 
-  Thanks for Shopping with Native ❤️
+  Thank you for your business with {safe(data?.company?.name)}
 
   <br />
 

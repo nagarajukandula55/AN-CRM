@@ -131,6 +131,12 @@ const EDITABLE_FIELDS = [
   "city",
   "state",
   "pincode",
+  // Business's own contact phone -- printed as the seller's phone on every
+  // invoice (see api/invoice/view/[invoiceNumber]/vendorBillingView.ts's
+  // company.phone). Existed on the schema (see models/Business.ts) but had
+  // no editable path here at all until now -- every invoice's seller phone
+  // was permanently blank regardless of what a business tried to save.
+  "phone",
   // Marketplace dual-invoice configuration — see models/Business.ts's
   // InvoicingRulesSchema comment. Editable here so the Settings UI can
   // actually save it.

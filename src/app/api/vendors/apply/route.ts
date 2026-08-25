@@ -9,6 +9,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { notifySuperAdmins } from "@/services/notification.service";
 import { activateVendorWithTrial } from "@/services/vendorActivation.service";
 import { sendGenericEmail } from "@/services/email/resend.service";
+import { renderEmailShell, emailInfoBox } from "@/services/email/emailShell";
 import { getVendorOnboardingConfig, getPlatformBusinessId } from "@/lib/centralApiRead";
 import { sendTelegramMessage } from "@/lib/telegram";
 
@@ -226,7 +227,10 @@ export async function POST(req: NextRequest) {
       panNumber: panNumber ? String(panNumber).toUpperCase().trim() : undefined,
       category,
       businessType,
-      appliedAs: ["BRAND", "SC", "POS"].includes(appliedAs) ? appliedAs : undefined,
+      // SC (Service Center) is the only vendor type this platform supports
+      // now -- BRAND and POS were removed. Any other value submitted is
+      // silently dropped rather than accepted, same as before.
+      appliedAs: appliedAs === "SC" ? appliedAs : undefined,
       address,
       bankDetails,
       documents,
@@ -279,13 +283,12 @@ export async function POST(req: NextRequest) {
       );
       if (centralConfig) skipApproval = centralConfig.skipVendorApproval;
     }
-    // Per explicit direction: instant, no-approval activation is an SC-only
-    // path -- "for SC ... direct vendor entry creation should happen but
-    // for remaining both types [BRAND/POS] just take details but inform
-    // them to wait ... send this for Approval." The per-business
-    // skipVendorApproval toggle above still governs WHETHER SC gets this
-    // (an admin can still require review for SC too), but it can never
-    // auto-activate a BRAND or POS applicant regardless of that toggle.
+    // Instant, no-approval activation is SC-only -- SC is the only vendor
+    // type this platform supports now (BRAND/POS were removed). The
+    // per-business skipVendorApproval toggle above still governs WHETHER
+    // SC gets this (an admin can still require review for SC too), but it
+    // can never auto-activate an application with no (or a non-SC)
+    // appliedAs.
     if (skipApproval && appliedAs !== "SC") {
       skipApproval = false;
     }
@@ -316,12 +319,26 @@ export async function POST(req: NextRequest) {
           ? "Your partner application was approved — check your inbox for the agreement"
           : `We received your partner application — ${requestNumber}`,
         html: trialActivated
-          ? `<p>Hi ${String(contactPerson).trim()},</p>
-             <p>Thanks for applying to become a partner${business ? ` with ${business.brandName || business.name}` : ""}. Your application (request <strong>${requestNumber}</strong>) was approved instantly.</p>
-             <p>You should receive a separate email shortly with your partner agreement to sign, and another with your portal login details. Your 7-day trial has already started.</p>`
-          : `<p>Hi ${String(contactPerson).trim()},</p>
-             <p>Thanks for applying to become a partner${business ? ` with ${business.brandName || business.name}` : ""}. We've received your application.</p>
-             <p>Your request number is <strong>${requestNumber}</strong> — please quote it in any follow-up. Our team will review your details and contact you with the partner agreement.</p>`,
+          ? renderEmailShell({
+              heading: "Your application was approved",
+              previewText: `Request ${requestNumber} approved — your trial has started.`,
+              bodyHtml: `
+                <p>Hi ${String(contactPerson).trim()},</p>
+                <p>Thanks for applying to become a partner${business ? ` with ${business.brandName || business.name}` : ""}. Your application was approved instantly.</p>
+                ${emailInfoBox([{ label: "Request number", value: requestNumber }])}
+                <p style="font-size:13px;color:#8B8F94;">You should receive a separate email shortly with your partner agreement to sign, and another with your portal login details. Your 7-day trial has already started.</p>
+              `,
+            })
+          : renderEmailShell({
+              heading: "We've received your application",
+              previewText: `Request ${requestNumber} is under review.`,
+              bodyHtml: `
+                <p>Hi ${String(contactPerson).trim()},</p>
+                <p>Thanks for applying to become a partner${business ? ` with ${business.brandName || business.name}` : ""}. We've received your application.</p>
+                ${emailInfoBox([{ label: "Request number", value: requestNumber }])}
+                <p style="font-size:13px;color:#8B8F94;">Please quote your request number in any follow-up. Our team will review your details and contact you with the partner agreement.</p>
+              `,
+            }),
         businessId: resolvedBusinessId ? String(resolvedBusinessId) : undefined,
         // Only the "under review" branch maps to a configurable occasion --
         // the instant-trial-activation branch has its own distinct wording

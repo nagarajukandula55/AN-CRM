@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, use as usePromise } from "react";
 import { useRouter } from "next/navigation";
@@ -32,27 +32,27 @@ export default function B2BLoginPage({ params }: { params: Promise<{ vendorCode:
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-      <div className="w-full max-w-sm bg-white rounded-xl border p-6 space-y-3">
-        <h1 className="text-lg font-semibold text-gray-900">Partner Login</h1>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+    <div className="min-h-screen flex items-center justify-center p-4 bg-surface-2">
+      <div className="w-full max-w-sm bg-surface rounded-card border p-6 space-y-3">
+        <h1 className="text-lg font-semibold text-ink">Partner Login</h1>
+        {error && <p className="text-sm text-danger">{error}</p>}
         <input
-          className="w-full border rounded-lg p-2 text-sm"
+          className="w-full border rounded-control p-2 text-sm"
           placeholder="Email"
           value={form.email}
           onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
         />
         <input
           type="password"
-          className="w-full border rounded-lg p-2 text-sm"
+          className="w-full border rounded-control p-2 text-sm"
           placeholder="Password"
           value={form.password}
           onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
         />
-        <button onClick={login} disabled={loading} className="w-full py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-50">
+        <button onClick={login} disabled={loading} className="w-full py-2 bg-accent text-accent-fg rounded-control text-sm disabled:opacity-50">
           {loading ? "Signing in…" : "Sign In"}
         </button>
-        <p className="text-xs text-gray-500 text-center">
+        <p className="text-xs text-ink-3 text-center">
           New here? <Link href={`/b2b/${vendorCode}/signup`} className="text-violet-600">Sign up</Link>
         </p>
       </div>

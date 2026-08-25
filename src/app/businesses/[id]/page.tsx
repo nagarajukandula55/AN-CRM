@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 
@@ -90,7 +90,7 @@ export default function BusinessDetailsPage({
   return (
     <div className="min-h-screen bg-[#07111f] p-8 text-white">
       <div className="mx-auto max-w-7xl">
-        <div className="rounded-[40px] border border-white/10 bg-white/5 p-10">
+        <div className="rounded-[40px] border border-white/10 bg-surface/5 p-10">
           <div className="flex flex-col gap-8 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <div className="flex items-center gap-4">
@@ -98,7 +98,7 @@ export default function BusinessDetailsPage({
                   {business.businessType}
                 </span>
 
-                <span className="rounded-full bg-green-500/10 px-4 py-2 text-sm text-green-400">
+                <span className="rounded-full bg-success/10 px-4 py-2 text-sm text-success">
                   Active
                 </span>
               </div>
@@ -184,7 +184,7 @@ export default function BusinessDetailsPage({
                 {locations.map((location, index) => (
                   <div
                     key={index}
-                    className="rounded-2xl border border-white/10 bg-[#0d1728] p-5"
+                    className="rounded-card border border-white/10 bg-[#0d1728] p-5"
                   >
                     <div className="flex items-center justify-between">
                       <h3 className="text-xl font-bold capitalize">
@@ -248,8 +248,8 @@ export default function BusinessDetailsPage({
               />
             </SectionCard>
 
-            <div className="rounded-[32px] border border-emerald-500/10 bg-gradient-to-b from-emerald-500/10 to-teal-700/10 p-7">
-              <p className="text-sm uppercase tracking-widest text-emerald-300">
+            <div className="rounded-[32px] border border-success/10 bg-gradient-to-b from-emerald-500/10 to-teal-700/10 p-7">
+              <p className="text-sm uppercase tracking-widest text-success">
                 PUBLIC APPOINTMENT BOOKING
               </p>
 
@@ -266,7 +266,7 @@ export default function BusinessDetailsPage({
               <button
                 onClick={() => toggleDefaultPublic(!business.isDefaultPublicBusiness)}
                 disabled={savingDefaultPublic}
-                className="mt-8 w-full rounded-2xl bg-white py-4 font-semibold text-black disabled:opacity-50"
+                className="mt-8 w-full rounded-card bg-surface py-4 font-semibold text-black disabled:opacity-50"
               >
                 {savingDefaultPublic
                   ? 'Saving…'
@@ -290,7 +290,7 @@ export default function BusinessDetailsPage({
                 Intelligence Engine.
               </p>
 
-              <button className="mt-8 w-full rounded-2xl bg-white py-4 font-semibold text-black">
+              <button className="mt-8 w-full rounded-card bg-surface py-4 font-semibold text-black">
                 Open AI Workspace
               </button>
             </div>
@@ -306,7 +306,7 @@ function SectionCard({
   children,
 }: any) {
   return (
-    <div className="rounded-[32px] border border-white/10 bg-white/5 p-8">
+    <div className="rounded-[32px] border border-white/10 bg-surface/5 p-8">
       <h2 className="mb-8 text-3xl font-black">
         {title}
       </h2>
@@ -323,7 +323,7 @@ function GridItem({
   value,
 }: any) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#0d1728] p-5">
+    <div className="rounded-card border border-white/10 bg-[#0d1728] p-5">
       <p className="text-sm text-slate-400">
         {label}
       </p>

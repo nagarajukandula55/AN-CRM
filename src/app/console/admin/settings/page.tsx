@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
@@ -38,7 +38,7 @@ import { EmojiPicker } from '@/components/ui/EmojiPicker'
  */
 
 type View = 'business' | 'platform'
-type Tab = 'integrations' | 'ai' | 'invoicing' | 'operations' | 'communication' | 'numbering'
+type Tab = 'profile' | 'integrations' | 'ai' | 'invoicing' | 'operations' | 'communication' | 'numbering'
 
 interface SsoMapping {
   _id: string
@@ -57,8 +57,43 @@ interface InvoicingRules {
 
 export default function AdminSettingsPage() {
   const [view, setView] = useState<View>('business')
-  const [tab, setTab] = useState<Tab>('operations')
+  const [tab, setTab] = useState<Tab>('profile')
   const [msg, setMsg] = useState('')
+
+  // Business Profile -- the identity/GST/contact fields every printed
+  // document (customer invoice AND the business->vendor billing invoice,
+  // see buildVendorBillingInvoiceView.ts) reads directly off this app's own
+  // local Business record. Previously PATCH-able via /api/businesses/[id]
+  // (already existed, already correct) but with no UI left to actually
+  // reach it here -- this tab was apparently removed at some point in favor
+  // of "managed centrally" (central-api), but central-api sync is a
+  // separate, best-effort system and never populated these fields, so an
+  // invoice's seller identity (name/address/GSTIN/logo) had no working way
+  // to be set at all. Re-added, writing straight to local Mongo -- the same
+  // source every invoice-rendering code path (both SalesInvoice's own
+  // getBusinessBySourceId central-api read AND VendorBillingInvoice's
+  // direct Business.findById) ultimately depends on this record existing
+  // and being correct.
+  const [profile, setProfile] = useState({
+    name: '',
+    legalName: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
+    gstNumber: '',
+    logo: '',
+  })
+  // Compliance has other fields (pan/cin/msme/iec/fssai/drugLicense) this
+  // tab doesn't edit -- PATCH /api/businesses/[id] replaces `compliance`
+  // wholesale (it's not a deep merge), so the save below must round-trip
+  // whatever else was already there rather than $set-ing just {gstNumber}
+  // and silently wiping the rest.
+  const [complianceRest, setComplianceRest] = useState<Record<string, any>>({})
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [logoUploadError, setLogoUploadError] = useState<string | null>(null)
 
   // Platform (AN Group) -- SSO source mappings
   const [ssoForm, setSsoForm] = useState({ urlPattern: '', sourceLabel: '', defaultRoleCode: '' })
@@ -120,6 +155,25 @@ export default function AdminSettingsPage() {
     }
   }
 
+  async function handleLogoUpload(file: File) {
+    setUploadingLogo(true)
+    setLogoUploadError(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('name', 'logo')
+      fd.append('category', 'logo')
+      const res = await fetch('/api/assets/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || data.message || 'Failed to upload logo')
+      setProfile((p) => ({ ...p, logo: data.asset?.fileUrl || '' }))
+    } catch (err: any) {
+      setLogoUploadError(err?.message || 'Failed to upload logo')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
   const { data: meData } = useSWR('/api/auth/me')
   const isSuperAdmin = !!meData?.user?.isSuperAdmin
   const businessId: string | null = meData?.success
@@ -168,11 +222,23 @@ export default function AdminSettingsPage() {
   }, [invoicingRes])
 
   const { data: operationsRes } = useSWR(
-    businessId && view === 'business' && (tab === 'operations' || tab === 'integrations') ? `/api/businesses/${businessId}` : null
+    businessId && view === 'business' && (tab === 'operations' || tab === 'integrations' || tab === 'profile') ? `/api/businesses/${businessId}` : null
   )
   useEffect(() => {
     if (operationsRes?.success && operationsRes.business) {
       const b = operationsRes.business
+      setProfile({
+        name: b.name || '',
+        legalName: b.legalName || '',
+        phone: b.phone || '',
+        address: b.address || '',
+        city: b.city || '',
+        state: b.state || '',
+        pincode: b.pincode || '',
+        gstNumber: b.compliance?.gstNumber || '',
+        logo: b.logo || '',
+      })
+      setComplianceRest(b.compliance || {})
       setOperations({
         inventorySerialized: !!b.inventorySerialized,
         applyTaxOnB2CBilling: b.applyTaxOnB2CBilling !== false,
@@ -422,6 +488,36 @@ export default function AdminSettingsPage() {
     setSavingOperations(false)
   }
 
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault()
+    if (!businessId) return
+    setSavingProfile(true)
+    setMsg('')
+    try {
+      const res = await fetch(`/api/businesses/${businessId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: profile.name,
+          legalName: profile.legalName,
+          phone: profile.phone,
+          address: profile.address,
+          city: profile.city,
+          state: profile.state,
+          pincode: profile.pincode,
+          compliance: { ...complianceRest, gstNumber: profile.gstNumber },
+          logo: profile.logo,
+        }),
+      })
+      const d = await res.json()
+      setMsg(d.success ? '✓ Business profile updated' : d.message || 'Failed to save')
+    } catch {
+      setMsg('Failed to save')
+    }
+    setSavingProfile(false)
+  }
+
   // Integrations, Communication Quota, and AI/ANu are platform-level,
   // Super-Admin-only concerns -- not a vendor's own business settings,
   // regardless of vendor type (was previously only hidden for SC; Brand/
@@ -437,6 +533,7 @@ export default function AdminSettingsPage() {
   // configuring their own Telegram chat is a business-level concern, not a
   // platform one), per explicit direction.
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: 'profile', label: 'Business Profile', icon: <Building2 size={14} /> },
     { key: 'operations', label: 'Operations', icon: <Building2 size={14} /> },
     { key: 'integrations', label: 'Integrations', icon: <Plug size={14} /> },
     { key: 'numbering', label: 'Document Numbers', icon: <Receipt size={14} /> },
@@ -455,27 +552,27 @@ export default function AdminSettingsPage() {
       <div className="space-y-5 max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-widest">Admin</p>
-            <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+            <p className="text-xs text-ink-3 uppercase tracking-widest">Admin</p>
+            <h1 className="text-2xl font-bold text-ink">Settings</h1>
           </div>
-          <Link href="/console/admin/settings/account" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900">
+          <Link href="/console/admin/settings/account" className="flex items-center gap-1.5 text-xs text-ink-3 hover:text-ink">
             <User size={13} /> My Account Settings <ChevronRight size={13} />
           </Link>
         </div>
 
         {msg && (
-          <div className={`rounded-xl px-4 py-3 text-sm ${msg.startsWith('✓') ? 'bg-green-500/10 border border-green-500/20 text-green-700' : 'bg-red-500/10 border border-red-500/20 text-red-700'}`}>
+          <div className={`rounded-card px-4 py-3 text-sm ${msg.startsWith('✓') ? 'bg-success-soft border border-success/20 text-success' : 'bg-danger-soft border border-danger/20 text-danger'}`}>
             {msg}
           </div>
         )}
 
         {isSuperAdmin && (
-          <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 w-fit">
+          <div className="flex items-center gap-1 rounded-card border border-border bg-surface p-1 w-fit">
             {(['business', 'platform'] as View[]).map((v) => (
               <button
                 key={v}
                 onClick={() => { setView(v); setMsg('') }}
-                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-all ${view === v ? 'bg-gray-900 text-white font-semibold' : 'text-gray-500 hover:text-gray-900'}`}
+                className={`flex items-center gap-2 rounded-control px-4 py-2 text-sm transition-all ${view === v ? 'bg-ink text-white font-semibold' : 'text-ink-3 hover:text-ink'}`}
               >
                 {v === 'platform' && <Globe2 size={14} />}
                 {v === 'business' ? 'This Business' : 'Platform (AN Group)'}
@@ -486,56 +583,56 @@ export default function AdminSettingsPage() {
 
         {view === 'platform' ? (
           <div className="space-y-5">
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">SSO Registration Sources</h3>
-              <p className="text-xs text-gray-500 mb-5">
+            <div className="rounded-card border border-border bg-surface p-6">
+              <h3 className="text-sm font-semibold text-ink mb-1">SSO Registration Sources</h3>
+              <p className="text-xs text-ink-3 mb-5">
                 Maps a registering site's URL to the default role new accounts from that origin get (see
                 /api/auth/register). Add a new storefront here without any code change.
               </p>
               <form onSubmit={addSsoMapping} className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end mb-6">
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">URL Pattern</label>
+                  <label className="text-xs text-ink-3 mb-1 block">URL Pattern</label>
                   <input required value={ssoForm.urlPattern} onChange={(e) => setSsoForm((p) => ({ ...p, urlPattern: e.target.value }))}
                     placeholder="e.g. shopnative.in"
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400" />
+                    className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Source Label</label>
+                  <label className="text-xs text-ink-3 mb-1 block">Source Label</label>
                   <input required value={ssoForm.sourceLabel} onChange={(e) => setSsoForm((p) => ({ ...p, sourceLabel: e.target.value }))}
                     placeholder="e.g. shopnative"
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400" />
+                    className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Default Role Code</label>
+                  <label className="text-xs text-ink-3 mb-1 block">Default Role Code</label>
                   <input required value={ssoForm.defaultRoleCode} onChange={(e) => setSsoForm((p) => ({ ...p, defaultRoleCode: e.target.value }))}
                     placeholder="e.g. CUSTOMER_SHOPNATIVE"
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400" />
+                    className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
                 </div>
-                <button type="submit" disabled={savingSso} className="btn-primary rounded-xl px-4 py-2 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+                <button type="submit" disabled={savingSso} className="btn-primary rounded-card px-4 py-2 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
                   <Plus size={14} /> {savingSso ? 'Saving…' : 'Add'}
                 </button>
               </form>
 
               {loadingSso ? (
-                <p className="text-sm text-gray-500">Loading…</p>
+                <p className="text-sm text-ink-3">Loading…</p>
               ) : ssoMappings.length === 0 ? (
-                <p className="text-sm text-gray-400">No SSO source mappings yet.</p>
+                <p className="text-sm text-ink-3">No SSO source mappings yet.</p>
               ) : (
                 <div className="space-y-2">
                   {ssoMappings.map((m) => (
-                    <div key={m._id} className="rounded-xl border border-gray-200 p-3 flex items-center justify-between flex-wrap gap-2">
+                    <div key={m._id} className="rounded-card border border-border p-3 flex items-center justify-between flex-wrap gap-2">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{m.urlPattern}</p>
-                        <p className="text-xs text-gray-500">{m.sourceLabel} → {m.defaultRoleCode}</p>
+                        <p className="text-sm font-medium text-ink">{m.urlPattern}</p>
+                        <p className="text-xs text-ink-3">{m.sourceLabel} → {m.defaultRoleCode}</p>
                       </div>
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => toggleSsoActive(m)}
-                          className={`text-xs font-medium px-2 py-0.5 rounded-full ${m.isActive ? 'text-emerald-600 bg-emerald-500/10' : 'text-gray-500 bg-gray-100'}`}
+                          className={`text-xs font-medium px-2 py-0.5 rounded-full ${m.isActive ? 'text-success bg-success-soft' : 'text-ink-3 bg-surface-2'}`}
                         >
                           {m.isActive ? 'Active' : 'Inactive'}
                         </button>
-                        <button onClick={() => deleteSsoMapping(m._id)} className="text-gray-400 hover:text-red-500">
+                        <button onClick={() => deleteSsoMapping(m._id)} className="text-ink-3 hover:text-danger">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -708,13 +805,13 @@ export default function AdminSettingsPage() {
                       (Integrations, per business); the template/on-off config here is ready either way so nothing
                       needs revisiting once that's added.
                     </p>
-                    <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 w-fit mb-4">
+                    <div className="flex items-center gap-1 rounded-card border border-border bg-surface p-1 w-fit mb-4">
                       {(['TELEGRAM', 'WHATSAPP'] as const).map((c) => (
                         <button
                           key={c}
                           type="button"
                           onClick={() => { setTemplateChannel(c); setExpandedTemplateKey(null); setTemplateDrafts({}); setEnabledDrafts({}); setStyleDrafts({}) }}
-                          className={`rounded-lg px-4 py-1.5 text-sm transition-all ${templateChannel === c ? 'bg-gray-900 text-white font-semibold' : 'text-gray-500 hover:text-gray-900'}`}
+                          className={`rounded-control px-4 py-1.5 text-sm transition-all ${templateChannel === c ? 'bg-ink text-white font-semibold' : 'text-ink-3 hover:text-ink'}`}
                         >
                           {c === 'TELEGRAM' ? 'Telegram' : 'WhatsApp'}
                         </button>
@@ -732,50 +829,136 @@ export default function AdminSettingsPage() {
               )
             })()}
 
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Other Platform Configuration</h3>
+            <div className="rounded-card border border-border bg-surface p-6">
+              <h3 className="text-sm font-semibold text-ink mb-3">Other Platform Configuration</h3>
               <div className="space-y-2 text-sm">
-                <Link href="/console/admin/roles" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
-                  Roles &amp; Permissions <ChevronRight size={14} className="text-gray-400" />
+                <Link href="/console/admin/roles" className="flex items-center justify-between rounded-card border border-border px-4 py-3 hover:border-border-strong transition">
+                  Roles &amp; Permissions <ChevronRight size={14} className="text-ink-3" />
                 </Link>
-                <Link href="/console/document-numbers" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
-                  Document Numbers — "AN Group (Platform)" scope <ChevronRight size={14} className="text-gray-400" />
+                <Link href="/console/document-numbers" className="flex items-center justify-between rounded-card border border-border px-4 py-3 hover:border-border-strong transition">
+                  Document Numbers — "AN Group (Platform)" scope <ChevronRight size={14} className="text-ink-3" />
                 </Link>
-                <Link href="/console/admin/plan-features" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
-                  Plan Features — module access per plan tier <ChevronRight size={14} className="text-gray-400" />
+                <Link href="/console/admin/plan-features" className="flex items-center justify-between rounded-card border border-border px-4 py-3 hover:border-border-strong transition">
+                  Plan Features — module access per plan tier <ChevronRight size={14} className="text-ink-3" />
                 </Link>
-                <Link href="/console/admin/vendor-subscriptions" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
-                  Vendor Subscriptions — plan status, payments, renewals <ChevronRight size={14} className="text-gray-400" />
+                <Link href="/console/admin/vendor-subscriptions" className="flex items-center justify-between rounded-card border border-border px-4 py-3 hover:border-border-strong transition">
+                  Vendor Subscriptions — plan status, payments, renewals <ChevronRight size={14} className="text-ink-3" />
                 </Link>
-                <Link href="/console/admin/telegram-ids" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
-                  Telegram Chat IDs — bulk view/edit every vendor's linked chats, bot connectivity check <ChevronRight size={14} className="text-gray-400" />
+                <Link href="/console/admin/telegram-ids" className="flex items-center justify-between rounded-card border border-border px-4 py-3 hover:border-border-strong transition">
+                  Telegram Chat IDs — bulk view/edit every vendor's linked chats, bot connectivity check <ChevronRight size={14} className="text-ink-3" />
                 </Link>
-                <Link href="/console/admin/telegram-notifications-log" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
-                  Telegram/WhatsApp Notifications Log — every alert sent, success/fail <ChevronRight size={14} className="text-gray-400" />
+                <Link href="/console/admin/telegram-notifications-log" className="flex items-center justify-between rounded-card border border-border px-4 py-3 hover:border-border-strong transition">
+                  Telegram/WhatsApp Notifications Log — every alert sent, success/fail <ChevronRight size={14} className="text-ink-3" />
                 </Link>
-                <Link href="/console/admin/email-templates" className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 transition">
-                  Email Templates — subject/body per occasion <ChevronRight size={14} className="text-gray-400" />
+                <Link href="/console/admin/email-templates" className="flex items-center justify-between rounded-card border border-border px-4 py-3 hover:border-border-strong transition">
+                  Email Templates — subject/body per occasion <ChevronRight size={14} className="text-ink-3" />
                 </Link>
               </div>
             </div>
           </div>
         ) : (
         <>
-        <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 overflow-x-auto">
+        <div className="flex items-center gap-1 rounded-card border border-border bg-surface p-1 overflow-x-auto">
           {TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => { setTab(t.key); setMsg('') }}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-all flex-1 justify-center whitespace-nowrap ${tab === t.key ? 'bg-gray-900 text-white font-semibold' : 'text-gray-500 hover:text-gray-900'}`}
+              className={`flex items-center gap-2 rounded-control px-4 py-2 text-sm transition-all flex-1 justify-center whitespace-nowrap ${tab === t.key ? 'bg-ink text-white font-semibold' : 'text-ink-3 hover:text-ink'}`}
             >
               {t.icon} {t.label}
             </button>
           ))}
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 flex items-center gap-2 text-sm text-gray-500">
-          <Building2 size={14} /> Business profile (name, address, GST, logo) is managed centrally and no longer editable here.
-        </div>
+        {tab === 'profile' && (
+          <div className="rounded-card border border-border bg-surface p-6">
+            <h3 className="h-section mb-1">Business Profile</h3>
+            <p className="text-xs text-ink-3 mb-5">
+              Your business's own identity, address, and GSTIN — this is what prints as the seller on every
+              customer invoice and on invoices this platform bills to your vendors.
+            </p>
+            <form onSubmit={saveProfile} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-ink-3 mb-1 block">Business Name</label>
+                  <input type="text" required value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
+                </div>
+                <div>
+                  <label className="text-xs text-ink-3 mb-1 block">Legal Name</label>
+                  <input type="text" value={profile.legalName} onChange={(e) => setProfile({ ...profile, legalName: e.target.value })}
+                    placeholder="Defaults to Business Name if blank"
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-ink-3 mb-1 block">Phone</label>
+                  <input type="text" value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
+                </div>
+                <div>
+                  <label className="text-xs text-ink-3 mb-1 block">GSTIN</label>
+                  <input type="text" value={profile.gstNumber} onChange={(e) => setProfile({ ...profile, gstNumber: e.target.value.toUpperCase() })}
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong font-mono" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-ink-3 mb-1 block">Address</label>
+                <input type="text" value={profile.address} onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                  className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-ink-3 mb-1 block">City</label>
+                  <input type="text" value={profile.city} onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
+                </div>
+                <div>
+                  <label className="text-xs text-ink-3 mb-1 block">State</label>
+                  <input type="text" value={profile.state} onChange={(e) => setProfile({ ...profile, state: e.target.value })}
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
+                </div>
+                <div>
+                  <label className="text-xs text-ink-3 mb-1 block">Pincode</label>
+                  <input type="text" value={profile.pincode} onChange={(e) => setProfile({ ...profile, pincode: e.target.value })}
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <div className="text-sm font-medium text-ink mb-1">Logo</div>
+                <div className="text-xs text-ink-3 mb-3">Shown on printed invoices and documents.</div>
+                <div className="flex items-center gap-4">
+                  {profile.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={profile.logo} alt="Logo" className="h-14 w-40 object-contain border border-border rounded-control bg-surface-2" />
+                  ) : (
+                    <div className="h-14 w-40 flex items-center justify-center border border-dashed border-border rounded-control text-xs text-ink-3">No logo set</div>
+                  )}
+                  <label className="text-xs font-medium text-accent hover:underline cursor-pointer">
+                    {uploadingLogo ? 'Uploading…' : 'Upload Logo'}
+                    <input type="file" accept="image/*" className="hidden" disabled={uploadingLogo} onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleLogoUpload(file)
+                    }} />
+                  </label>
+                  {profile.logo && (
+                    <button type="button" onClick={() => setProfile({ ...profile, logo: '' })} className="text-xs text-danger hover:underline">Remove</button>
+                  )}
+                </div>
+                {logoUploadError && <p className="text-xs text-danger mt-1">{logoUploadError}</p>}
+              </div>
+
+              <button type="submit" disabled={savingProfile} className="btn-primary rounded-control px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-50">
+                <Save size={14} /> {savingProfile ? 'Saving…' : 'Save Profile'}
+              </button>
+            </form>
+          </div>
+        )}
 
         {tab === 'numbering' && businessId && (
           <div className="rounded-card border border-border bg-surface p-6">
@@ -948,9 +1131,9 @@ export default function AdminSettingsPage() {
         )}
 
         {tab === 'invoicing' && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">Marketplace Invoicing Rules</h3>
-            <p className="text-xs text-gray-400 mb-5">
+          <div className="rounded-card border border-border bg-surface p-6">
+            <h3 className="text-sm font-semibold text-ink mb-1">Marketplace Invoicing Rules</h3>
+            <p className="text-xs text-ink-3 mb-5">
               Controls what happens when a customer order is fulfilled by a vendor. Off by default —
               vendor payouts are still settled normally (Vendor Settlements) either way.
             </p>
@@ -961,7 +1144,7 @@ export default function AdminSettingsPage() {
                   all, so neither field means anything for an SC business. */}
               {!isSC && (
                 <>
-                  <label className="flex items-center gap-3 rounded-xl border border-gray-200 px-4 py-3 cursor-pointer">
+                  <label className="flex items-center gap-3 rounded-card border border-border px-4 py-3 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={invoicingRules.dualInvoiceMode}
@@ -969,8 +1152,8 @@ export default function AdminSettingsPage() {
                       className="w-4 h-4"
                     />
                     <div>
-                      <div className="text-sm font-medium text-gray-900">Generate dual invoices (B2B + B2C)</div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-sm font-medium text-ink">Generate dual invoices (B2B + B2C)</div>
+                      <div className="text-xs text-ink-3">
                         When on: a B2B invoice is generated from the vendor to this business (at their cost basis
                         below), and a separate B2C invoice from this business to the customer (at the sale price),
                         for every order with vendor-fulfilled items.
@@ -979,12 +1162,12 @@ export default function AdminSettingsPage() {
                   </label>
 
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Vendor cost basis (for the B2B leg)</label>
+                    <label className="text-xs text-ink-3 mb-1 block">Vendor cost basis (for the B2B leg)</label>
                     <select
                       value={invoicingRules.vendorCostBasis}
                       onChange={(e) => setInvoicingRules({ ...invoicingRules, vendorCostBasis: e.target.value as InvoicingRules['vendorCostBasis'] })}
                       title="Vendor cost basis"
-                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
+                      className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong"
                     >
                       <option value="NET_PAYOUT">Net payout — sale value minus platform commission (matches Vendor Settlements)</option>
                       <option value="GROSS_AMOUNT">Gross amount — full sale value, no commission deducted</option>
@@ -995,7 +1178,7 @@ export default function AdminSettingsPage() {
 
                   {invoicingRules.vendorCostBasis === 'FIXED_MARGIN_PERCENT' && (
                     <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Fixed margin percent</label>
+                      <label className="text-xs text-ink-3 mb-1 block">Fixed margin percent</label>
                       <input
                         type="number"
                         min={0}
@@ -1004,7 +1187,7 @@ export default function AdminSettingsPage() {
                         onChange={(e) => setInvoicingRules({ ...invoicingRules, fixedMarginPercent: Number(e.target.value) })}
                         onFocus={(e) => e.target.select()}
                         placeholder="Fixed margin percent"
-                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
+                        className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong"
                       />
                     </div>
                   )}
@@ -1012,19 +1195,19 @@ export default function AdminSettingsPage() {
               )}
 
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Default supply type (GST)</label>
+                <label className="text-xs text-ink-3 mb-1 block">Default supply type (GST)</label>
                 <select
                   value={invoicingRules.defaultSupplyType}
                   onChange={(e) => setInvoicingRules({ ...invoicingRules, defaultSupplyType: e.target.value as InvoicingRules['defaultSupplyType'] })}
                   title="Default supply type"
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
+                  className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong"
                 >
                   <option value="INTRASTATE">Intrastate (CGST + SGST)</option>
                   <option value="INTERSTATE">Interstate (IGST)</option>
                 </select>
               </div>
 
-              <button type="submit" disabled={savingInvoicing} className="btn-primary rounded-xl px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-50">
+              <button type="submit" disabled={savingInvoicing} className="btn-primary rounded-card px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-50">
                 <Save size={13} /> {savingInvoicing ? 'Saving…' : 'Save Invoicing Rules'}
               </button>
             </form>
@@ -1270,21 +1453,21 @@ export default function AdminSettingsPage() {
             </div>
 
             {isSuperAdmin && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-6">
-                <h3 className="text-sm font-semibold text-gray-900 mb-5">Notification Integrations (platform status)</h3>
+              <div className="rounded-card border border-border bg-surface p-6">
+                <h3 className="text-sm font-semibold text-ink mb-5">Notification Integrations (platform status)</h3>
                 {loadingIntegrations ? (
-                  <p className="text-sm text-gray-500">Loading…</p>
+                  <p className="text-sm text-ink-3">Loading…</p>
                 ) : (
                   <div className="space-y-3">
                     {['TELEGRAM', 'WHATSAPP', 'SLACK', 'EMAIL'].map((provider) => (
-                      <div key={provider} className="rounded-xl border border-gray-200 p-4 flex items-center justify-between">
+                      <div key={provider} className="rounded-card border border-border p-4 flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{provider}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">
+                          <p className="text-sm font-medium text-ink">{provider}</p>
+                          <p className="text-xs text-ink-3 mt-0.5">
                             {integrations[provider]?.isActive ? 'Connected' : 'Not configured'}
                           </p>
                         </div>
-                        <span className={`h-2.5 w-2.5 rounded-full ${integrations[provider]?.isActive ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                        <span className={`h-2.5 w-2.5 rounded-full ${integrations[provider]?.isActive ? 'bg-success' : 'bg-surface-3'}`} />
                       </div>
                     ))}
                   </div>
@@ -1295,29 +1478,29 @@ export default function AdminSettingsPage() {
         )}
 
         {tab === 'ai' && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">AI / ANu Configuration</h3>
-            <p className="text-xs text-gray-500 mb-5">
+          <div className="rounded-card border border-border bg-surface p-6">
+            <h3 className="text-sm font-semibold text-ink mb-2">AI / ANu Configuration</h3>
+            <p className="text-xs text-ink-3 mb-5">
               ANu (the assistant reachable from the graduation-cap/bot icon on every admin page) uses whichever provider below is enabled, preferring Anthropic if both are set. This page is a status summary only — the previous copy here wrongly said "add a key here"; use the button below instead.
             </p>
             {loadingAi ? (
-              <p className="text-sm text-gray-500">Loading…</p>
+              <p className="text-sm text-ink-3">Loading…</p>
             ) : (
               <div className="space-y-3">
                 {aiConfig && ['anthropic', 'openai'].map((provider) => (
-                  <div key={provider} className="rounded-xl border border-gray-200 p-4 flex items-center justify-between">
+                  <div key={provider} className="rounded-card border border-border p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-900 capitalize">{provider}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-sm font-medium text-ink capitalize">{provider}</p>
+                      <p className="text-xs text-ink-3 mt-0.5">
                         {aiConfig.providers[provider]?.apiKey ? `Key ${aiConfig.providers[provider].apiKey}` : 'No key configured'}
                       </p>
                     </div>
-                    <span className={`h-2.5 w-2.5 rounded-full ${aiConfig.providers[provider]?.isEnabled ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                    <span className={`h-2.5 w-2.5 rounded-full ${aiConfig.providers[provider]?.isEnabled ? 'bg-success' : 'bg-surface-3'}`} />
                   </div>
                 ))}
                 <a
                   href="/console/ai-image"
-                  className="inline-flex items-center gap-1.5 mt-2 px-3 py-2 text-xs font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+                  className="inline-flex items-center gap-1.5 mt-2 px-3 py-2 text-xs font-medium bg-ink text-white rounded-control hover:bg-ink transition"
                 >
                   Add / edit API keys in AI Studio
                 </a>

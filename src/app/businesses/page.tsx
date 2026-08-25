@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -39,7 +39,7 @@ export default function BusinessesPage() {
 
         <Link
           href="/businesses/create"
-          className="rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-4 font-semibold"
+          className="rounded-card bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-4 font-semibold"
         >
           Create Business
         </Link>
@@ -50,14 +50,14 @@ export default function BusinessesPage() {
           <Link
             key={business._id}
             href={`/businesses/${business._id}`}
-            className="rounded-[32px] border border-white/10 bg-white/5 p-6 transition-all hover:-translate-y-1"
+            className="rounded-[32px] border border-white/10 bg-surface/5 p-6 transition-all hover:-translate-y-1"
           >
             <div className="flex items-center justify-between">
               <span className="rounded-full bg-cyan-500/10 px-3 py-1 text-sm text-cyan-300">
                 {business.businessType}
               </span>
 
-              <span className="text-green-400">
+              <span className="text-success">
                 Active
               </span>
             </div>
