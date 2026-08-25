@@ -10,6 +10,7 @@ import { verifyRazorpaySignature } from "@/core/billing/paymentGateway";
 import { extendPeriod } from "@/core/billing/billing.service";
 import { sendVendorAlert } from "@/core/telegram/sendVendorAlert";
 import { notifyUser } from "@/services/notification.service";
+import { sendInvoiceEmail } from "@/services/email/resend.service";
 import { findPlan, type OperatingMode } from "@/core/pricing/plans";
 
 // POST /api/vendor/billing/invoices/:invoiceId/confirm
@@ -153,6 +154,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ inv
       "PAYMENT_RECEIVED",
       `Payment received for invoice ${claimed.invoiceNumber} (₹${claimed.amount}). Subscription extended to ${end.toLocaleDateString("en-IN")}.`
     ).catch(() => {});
+
+    // Emails the vendor their own GST invoice (buildInvoiceEmailTemplate,
+    // see services/email/resend.service.ts) -- this event previously only
+    // ever reached Telegram and the in-app bell, neither of which a vendor
+    // can forward to their accountant the way an email with the invoice
+    // link can. pdfUrl points at the printable /invoice/:number page
+    // (this app has no separate PDF-generation route) -- the "Download
+    // invoice" button in the email opens/prints that page.
+    if (vendor.email) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crm.angroup.in";
+      sendInvoiceEmail({
+        to: vendor.email,
+        customerName: vendor.companyName || vendor.contactPerson || "there",
+        invoiceNumber: claimed.invoiceNumber,
+        pdfUrl: `${appUrl}/invoice/${claimed.invoiceNumber}`,
+        grandTotal: claimed.amount,
+        businessId: String(vendor.businessId),
+      }).catch(() => {});
+    }
 
     // In-app notification (the top-right bell) -- this event previously
     // only ever reached Telegram, so a vendor with no/unlinked Telegram
