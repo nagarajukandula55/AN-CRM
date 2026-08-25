@@ -144,7 +144,26 @@ function MilestoneStepper({ job }: { job: JobSheet }) {
   )
 }
 
-export default function SCJobSheetScreen() {
+/**
+ * basePath/dashboardPath let this same component render inside BOTH the
+ * console (/console/sc/jobsheets/*, businessId-scoped) and the vendor
+ * portal (/vendor/crm/jobsheets/*) -- previously the vendor portal had a
+ * completely separate, drifted 1000+-line reimplementation of this same
+ * screen instead of sharing it, reported live ("the one we worked on
+ * earlier and designed... was missing something else mapped"). useVendorScope
+ * swaps the saved-Brands/Models/Payment-Collectors/labour-charge source
+ * from /api/businesses/[id] (rejected for a vendor Owner, see that
+ * route's own comment) to /api/vendor/saved-catalog (vendor-scoped).
+ */
+export default function SCJobSheetScreen({
+  basePath = '/console/sc/jobsheets',
+  dashboardPath = '/console/sc/dashboard',
+  useVendorScope = false,
+}: {
+  basePath?: string
+  dashboardPath?: string
+  useVendorScope?: boolean
+} = {}) {
   const router = useRouter()
   const params = useParams()
   const idFromRoute = Array.isArray(params?.id) ? params.id[0] : (typeof params?.id === 'string' ? params.id : undefined)
@@ -168,14 +187,21 @@ export default function SCJobSheetScreen() {
     if (typeContextLoading || !typeContext) return
     if (typeContext.isSuperAdmin) return
     if (typeContext.appliedAs !== 'SC') {
-      router.replace('/console/sc/dashboard')
+      router.replace(dashboardPath)
     }
   }, [typeContext, typeContextLoading, router])
 
   const { data: deviceAppearancesRes } = useSWR(businessId ? `/api/crm-option-lists?listType=DEVICE_APPEARANCE&businessId=${businessId}` : null)
   const deviceAppearances: CrmOption[] = deviceAppearancesRes?.options || []
 
-  const { data: businessData, mutate: fetchBusiness } = useSWR(businessId ? `/api/businesses/${businessId}` : null)
+  // useVendorScope reads/writes the vendor-safe proxy instead of the raw
+  // Business document (which now correctly rejects a vendor Owner/Manager
+  // -- see api/businesses/[id]/route.ts's own comment) -- normalized into
+  // the same `{ business: {...} }` shape so every read below (savedBrands,
+  // defaultLabourCharge, etc.) works unchanged regardless of source.
+  const catalogEndpoint = useVendorScope ? '/api/vendor/saved-catalog' : (businessId ? `/api/businesses/${businessId}` : null)
+  const { data: catalogRaw, mutate: fetchBusiness } = useSWR(catalogEndpoint)
+  const businessData = useVendorScope ? (catalogRaw?.success ? { business: catalogRaw } : null) : catalogRaw
   const defaultLabourCharge: number = businessData?.business?.defaultLabourCharge || 0
   const savedBrands: string[] = businessData?.business?.savedBrands || []
   // Keyed by brand name -- a model always belongs to a specific brand now
@@ -194,7 +220,7 @@ export default function SCJobSheetScreen() {
     const current: string[] = businessData?.business?.[field] || []
     if (current.some(v => v.toLowerCase() === value.trim().toLowerCase())) return
     const next = [...current, value.trim()]
-    await fetch(`/api/businesses/${businessId}`, {
+    await fetch(catalogEndpoint!, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ [field]: next }),
@@ -218,7 +244,7 @@ export default function SCJobSheetScreen() {
       ? currentModels
       : [...currentModels, modelName]
     const nextModelsByBrand = { ...savedModelsByBrand, [brandName]: nextModelsForBrand }
-    await fetch(`/api/businesses/${businessId}`, {
+    await fetch(catalogEndpoint!, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ savedBrands: nextBrands, savedModelsByBrand: nextModelsByBrand }),
@@ -342,7 +368,7 @@ export default function SCJobSheetScreen() {
       const d = await res.json()
       if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to create job sheet')
       setJobId(d.jobSheet._id)
-      router.replace(`/console/sc/jobsheets/${d.jobSheet._id}`)
+      router.replace(`${basePath}/${d.jobSheet._id}`)
     } catch (err: any) {
       setIntakeError(err.message || 'Something went wrong')
     } finally {
@@ -679,7 +705,7 @@ export default function SCJobSheetScreen() {
           description="This same screen carries the job through repair to closure."
           actions={
             <>
-              <Button variant="secondary" size="sm" onClick={() => router.push('/console/sc/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
+              <Button variant="secondary" size="sm" onClick={() => router.push(basePath)} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
               <Button type="submit" form="sc-intake-form" size="sm" disabled={creating} icon={creating ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Save</Button>
             </>
           }
@@ -928,7 +954,7 @@ export default function SCJobSheetScreen() {
         description={`${job.customerName} — ${[job.product, job.deviceModel].filter(Boolean).join(' · ') || 'Device'}`}
         actions={
           <>
-            <Button variant="secondary" size="sm" onClick={() => router.push('/console/sc/jobsheets')} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
+            <Button variant="secondary" size="sm" onClick={() => router.push(basePath)} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
             <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/print/jobsheets/${job._id}`)} icon={<Printer className="w-4 h-4" />}>Print Workorder</Button>
             {inRepair && (
               <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)} icon={<FileText className="w-4 h-4" />}>Print Estimate</Button>

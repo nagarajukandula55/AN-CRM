@@ -265,6 +265,16 @@ export interface IVendorProfile extends Document {
   serviceOrderTerms?: string;
   estimateTerms?: string;
   invoiceTerms?: string;
+  // Same isolation reasoning as the fields above -- these were also being
+  // read/written on the shared platform Business (Business.savedBrands/
+  // savedModelsByBrand/savedPaymentCollectors) via the "add new" mini-modal
+  // on the workorder intake screen, so one vendor's saved brand/model/
+  // payment-collector names leaked into and were writable by every other
+  // vendor. Per-vendor dropdown-suggestion lists, not an approval-gated
+  // shared catalog (see the intake screen's own comment on that distinction).
+  savedBrands?: string[];
+  savedModelsByBrand?: Record<string, string[]>;
+  savedPaymentCollectors?: string[];
   customerLogoUrl?: string;
   documentSignatureUrl?: string;
   applyTaxOnB2CBilling?: boolean;
@@ -424,6 +434,9 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     serviceOrderTerms: { type: String, default: '' },
     estimateTerms: { type: String, default: '' },
     invoiceTerms: { type: String, default: '' },
+    savedBrands: [{ type: String }],
+    savedModelsByBrand: { type: Schema.Types.Mixed, default: {} },
+    savedPaymentCollectors: [{ type: String }],
     upiId: { type: String, default: '' },
     rating:       { type: Number, min: 0, max: 5, default: 0 },
     status: {
