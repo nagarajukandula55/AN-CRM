@@ -26,12 +26,14 @@ export interface IVendorSubscription extends Document {
   currentPeriodStart: Date | null;
   currentPeriodEnd: Date | null;
   // Set when this subscription's modules/validityDays came from a
-  // self-serve VendorPlan pick (see api/vendor/billing/subscribe) rather
-  // than an admin hand-picking modules on console/admin/vendor-billing.
-  // planName is a denormalized snapshot at purchase time -- a later edit
-  // or deletion of the VendorPlan itself must never change what an
+  // self-serve tier pick (see api/vendor/billing/subscribe) rather than an
+  // admin hand-picking modules on console/admin/vendor-billing. planKey is
+  // the BASIC/PRO/ULTIMATE tier off core/pricing/plans.ts (the single plan
+  // catalog -- see that file's own comment); planName is a denormalized
+  // snapshot at purchase time so a later admin edit to that tier's
+  // name/features (via PlanFeatureConfig) never changes what an
   // already-active vendor's invoice/plan-page shows they bought.
-  planId: mongoose.Types.ObjectId | null;
+  planKey: string | null;
   planName: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -51,7 +53,7 @@ const VendorSubscriptionSchema = new Schema<IVendorSubscription>(
     validityDays: { type: Number, required: true, default: 30 },
     currentPeriodStart: { type: Date, default: null },
     currentPeriodEnd: { type: Date, default: null },
-    planId: { type: Schema.Types.ObjectId, ref: "VendorPlan", default: null },
+    planKey: { type: String, enum: ["BASIC", "PRO", "ULTIMATE", null], default: null },
     planName: { type: String, default: null },
   },
   { timestamps: true }

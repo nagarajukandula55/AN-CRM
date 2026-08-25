@@ -21,7 +21,7 @@ export interface IVendorBillingInvoice extends Document {
   // can never get module access by merely creating an invoice and
   // abandoning checkout. See api/vendor/billing/subscribe/route.ts.
   validityDays: number;
-  planId: mongoose.Types.ObjectId | null;
+  planKey: string | null;
   planName: string | null;
   periodStart: Date;
   periodEnd: Date;
@@ -43,7 +43,7 @@ const VendorBillingInvoiceSchema = new Schema<IVendorBillingInvoice>(
     modules: [{ key: String, rate: Number, _id: false }],
     amount: { type: Number, required: true, min: 0 },
     validityDays: { type: Number, default: 30 },
-    planId: { type: Schema.Types.ObjectId, ref: "VendorPlan", default: null },
+    planKey: { type: String, enum: ["BASIC", "PRO", "ULTIMATE", null], default: null },
     planName: { type: String, default: null },
     periodStart: { type: Date, required: true },
     periodEnd: { type: Date, required: true },

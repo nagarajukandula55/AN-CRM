@@ -46,7 +46,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ ve
       modules: subscription.modules,
       amount,
       validityDays: subscription.validityDays,
-      planId: subscription.planId || null,
+      planKey: subscription.planKey || null,
       planName: subscription.planName || null,
       periodStart: start,
       periodEnd: end,

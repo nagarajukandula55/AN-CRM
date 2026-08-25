@@ -28,13 +28,14 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
-interface VendorPlan {
-  _id: string;
+interface BillingPlanOption {
+  key: string;
   name: string;
-  description: string;
+  tagline: string;
   moduleKeys: string[];
-  price: number;
-  validityDays: number;
+  monthlyPriceINR: number;
+  seatLimit: string;
+  highlight?: boolean;
 }
 
 type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral'
@@ -58,7 +59,7 @@ export default function VendorBillingPage() {
 
   const showPlanPicker = status === "NOT_SET" || status === "EXPIRED";
   const { data: plansRes } = useSWR(showPlanPicker ? "/api/vendor/plans" : null);
-  const plans: VendorPlan[] = plansRes?.success ? plansRes.plans || [] : [];
+  const plans: BillingPlanOption[] = plansRes?.success ? plansRes.plans || [] : [];
 
   async function payInvoice(invoiceId: string) {
     setPayingId(invoiceId);
@@ -76,9 +77,9 @@ export default function VendorBillingPage() {
   // admin-invoice pay flow verifies the signature and activates. See
   // api/vendor/billing/subscribe/route.ts's own comment for why this
   // reuses confirm rather than duplicating verification logic.
-  async function subscribeToPlan(planId: string) {
+  async function subscribeToPlan(planKey: string) {
     setPlanError(null);
-    setSubscribingId(planId);
+    setSubscribingId(planKey);
     try {
       const loaded = await loadRazorpayScript();
       if (!loaded) throw new Error("Could not load payment gateway");
@@ -86,7 +87,7 @@ export default function VendorBillingPage() {
       const res = await fetch("/api/vendor/billing/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId }),
+        body: JSON.stringify({ planKey }),
       });
       const orderData = await res.json();
       if (!orderData.success) throw new Error(orderData.message || "Failed to start payment");
@@ -169,14 +170,14 @@ export default function VendorBillingPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {plans.map((plan) => (
-                <div key={plan._id} className="border border-border rounded-card p-3 space-y-2">
+                <div key={plan.key} className={`border rounded-card p-3 space-y-2 ${plan.highlight ? 'border-accent' : 'border-border'}`}>
                   <div>
                     <p className="font-medium text-ink">{plan.name}</p>
-                    {plan.description && <p className="text-xs text-ink-3">{plan.description}</p>}
+                    {plan.tagline && <p className="text-xs text-ink-3">{plan.tagline}</p>}
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-semibold tabular text-ink">₹{plan.price.toLocaleString("en-IN")}</span>
-                    <span className="text-xs text-ink-3">/ {plan.validityDays} days</span>
+                    <span className="text-lg font-semibold tabular text-ink">₹{plan.monthlyPriceINR.toLocaleString("en-IN")}</span>
+                    <span className="text-xs text-ink-3">/ month</span>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {plan.moduleKeys.map((k) => (
@@ -188,9 +189,9 @@ export default function VendorBillingPage() {
                   <Button
                     size="sm"
                     className="w-full"
-                    onClick={() => subscribeToPlan(plan._id)}
-                    disabled={subscribingId === plan._id}
-                    loading={subscribingId === plan._id}
+                    onClick={() => subscribeToPlan(plan.key)}
+                    disabled={subscribingId === plan.key}
+                    loading={subscribingId === plan.key}
                   >
                     Subscribe & Pay
                   </Button>

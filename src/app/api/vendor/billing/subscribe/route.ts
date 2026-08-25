@@ -1,24 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
-import VendorPlan from "@/models/VendorPlan";
+import Business from "@/models/Business";
 import VendorSubscription from "@/models/VendorSubscription";
 import VendorBillingInvoice from "@/models/VendorBillingInvoice";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
 import { extendPeriod } from "@/core/billing/billing.service";
 import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
 import { createRazorpayOrder } from "@/core/billing/paymentGateway";
+import { getEffectivePlan } from "@/core/pricing/planAccess";
+import type { OperatingMode, PlanKey } from "@/core/pricing/plans";
+
+// Self-serve validity is fixed at one calendar-month cycle for now (see
+// BILLING_PERIODS.MONTHLY in core/pricing/plans.ts) -- period-length
+// picking (quarterly/half-yearly/yearly discounts) is a pricing-UI concern
+// for later, not a data-model one.
+const SELF_SERVE_VALIDITY_DAYS = 30;
 
 /**
  * POST /api/vendor/billing/subscribe — self-serve entry point: vendor picks
- * a VendorPlan and this mints a real Razorpay order for it. The client then
+ * a BASIC/PRO/ULTIMATE tier off the SAME plan catalog that drives /pricing
+ * and module gating (core/pricing/plans.ts, PlanFeatureConfig overrides via
+ * getEffectivePlan) -- there is no separate self-serve-only plan catalog
+ * any more (see git history: VendorPlan used to be a parallel catalog a
+ * vendor could buy into that module-gating didn't actually understand).
+ * This mints a real Razorpay order for the picked tier. The client then
  * opens Razorpay Checkout and, on success, calls the ALREADY-HARDENED
  * /api/vendor/billing/invoices/:invoiceId/confirm route (unchanged) to
  * verify the signature and activate — this route deliberately does not
  * duplicate any of that verification logic, it only prepares the
  * subscription+invoice+order for confirm to act on.
  *
- * Body: { planId }
+ * Body: { planKey: "BASIC" | "PRO" | "ULTIMATE" }
  */
 export async function POST(req: NextRequest) {
   try {
@@ -27,8 +40,10 @@ export async function POST(req: NextRequest) {
     if (!userId) return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const { planId } = body;
-    if (!planId) return NextResponse.json({ success: false, message: "planId is required" }, { status: 400 });
+    const planKey = body.planKey as PlanKey;
+    if (!planKey || !["BASIC", "PRO", "ULTIMATE"].includes(planKey)) {
+      return NextResponse.json({ success: false, message: "A valid planKey is required" }, { status: 400 });
+    }
 
     await connectDB();
     const ctx = await resolveVendorContext(userId);
@@ -48,24 +63,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const plan = await VendorPlan.findOne({ _id: planId, isActive: true });
+    const business = await Business.findById(vendor.businessId).select("operatingMode").lean();
+    const mode = ((business as any)?.operatingMode || "SC") as OperatingMode;
+    const plan = await getEffectivePlan(mode, planKey);
     if (!plan) return NextResponse.json({ success: false, message: "Plan not found or no longer available" }, { status: 404 });
 
-    // Split the plan's flat price evenly across its module keys so each
-    // module keeps a real rate for invoice line items (GST is computed
+    // Split the plan's flat monthly price evenly across its module keys so
+    // each module keeps a real rate for invoice line items (GST is computed
     // per-line in vendorBillingView.ts) while modules[].key stays the real
     // module list vendorAccess.service.ts reads for actual feature access
     // -- collapsing to one synthetic line would silently break access
     // gating. Remainder from integer-paise rounding goes on the last
-    // module so the rates always sum to exactly plan.price.
+    // module so the rates always sum to exactly the plan's price.
+    const price = plan.monthlyPriceINR;
     const n = plan.moduleKeys.length;
-    const base = Math.floor((plan.price / n) * 100) / 100;
+    const base = Math.floor((price / n) * 100) / 100;
     const modules = plan.moduleKeys.map((key, i) => ({
       key,
-      rate: i === n - 1 ? Math.round((plan.price - base * (n - 1)) * 100) / 100 : base,
+      rate: i === n - 1 ? Math.round((price - base * (n - 1)) * 100) / 100 : base,
     }));
 
-    // Deliberately does NOT write modules/validityDays/planId onto the
+    // Deliberately does NOT write modules/validityDays/planKey onto the
     // subscription here -- getVendorAvailableModules() (see
     // core/access/vendorAccess.service.ts) grants real module access the
     // moment a VendorSubscription has a non-empty modules list, with no
@@ -83,7 +101,7 @@ export async function POST(req: NextRequest) {
         vendorId: vendor._id,
         businessId: vendor.businessId,
         modules: [],
-        validityDays: plan.validityDays,
+        validityDays: SELF_SERVE_VALIDITY_DAYS,
       });
     }
 
@@ -96,12 +114,9 @@ export async function POST(req: NextRequest) {
       { $set: { status: "CANCELLED" } }
     );
 
-    // Uses the NEW plan's validityDays, not whatever the subscription's
-    // stale field currently holds (relevant on a renewal/upgrade where the
-    // vendor picks a different plan than they had before) -- early-renewal
-    // still extends from the existing currentPeriodEnd if it's in the
-    // future, same rule extendPeriod always applies.
-    const { start, end } = extendPeriod(subscription.currentPeriodEnd, plan.validityDays);
+    // early-renewal still extends from the existing currentPeriodEnd if
+    // it's in the future, same rule extendPeriod always applies.
+    const { start, end } = extendPeriod(subscription.currentPeriodEnd, SELF_SERVE_VALIDITY_DAYS);
     // Scoped to this vendor's own counter, not the shared business one --
     // see the matching comment in api/crm/jobsheets/[id]/close/route.ts
     // for why (every vendor under one business used to share one counter,
@@ -118,9 +133,9 @@ export async function POST(req: NextRequest) {
       subscriptionId: subscription._id,
       invoiceNumber,
       modules,
-      amount: plan.price,
-      validityDays: plan.validityDays,
-      planId: plan._id,
+      amount: price,
+      validityDays: SELF_SERVE_VALIDITY_DAYS,
+      planKey: plan.key,
       planName: plan.name,
       periodStart: start,
       periodEnd: end,

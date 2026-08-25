@@ -86,7 +86,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ inv
     const validityDays = claimed.validityDays || subscription.validityDays;
     if (claimed.modules?.length) subscription.modules = claimed.modules as any;
     subscription.validityDays = validityDays;
-    if (claimed.planId) subscription.planId = claimed.planId;
+    if (claimed.planKey) subscription.planKey = claimed.planKey;
     if (claimed.planName) subscription.planName = claimed.planName;
 
     let start: Date, end: Date;
