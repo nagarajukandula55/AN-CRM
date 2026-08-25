@@ -34,10 +34,10 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const TYPE_CONFIG: Record<ToastType, { icon: typeof CheckCircle; className: string }> = {
-  success: { icon: CheckCircle, className: "border-green-200 bg-green-50 text-green-800" },
-  error: { icon: XCircle, className: "border-red-200 bg-red-50 text-red-800" },
-  warning: { icon: AlertTriangle, className: "border-yellow-200 bg-yellow-50 text-yellow-800" },
-  info: { icon: Info, className: "border-blue-200 bg-blue-50 text-blue-800" },
+  success: { icon: CheckCircle, className: "border-success/20 bg-success-soft text-success" },
+  error: { icon: XCircle, className: "border-danger/20 bg-danger-soft text-danger" },
+  warning: { icon: AlertTriangle, className: "border-warning/20 bg-warning-soft text-warning" },
+  info: { icon: Info, className: "border-info/20 bg-info-soft text-info" },
 };
 
 const AUTO_DISMISS_MS = 5000;
@@ -94,7 +94,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 w-80 max-w-[calc(100vw-2rem)]">
+      {/* top-right, offset below the notification bell (fixed top-4
+          right-4, ~44px tall) so the two never overlap -- per explicit
+          direction that every notification surface should live top-right. */}
+      <div className="fixed top-20 right-4 z-[100] flex flex-col gap-2 w-80 max-w-[calc(100vw-2rem)]">
         {toasts.map((t) => {
           const cfg = TYPE_CONFIG[t.type];
           const Icon = cfg.icon;
@@ -103,11 +106,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             <div
               key={t.id}
               role="status"
-              className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm shadow-lg ${cfg.className}`}
+              className={`flex items-start gap-2.5 rounded-card border px-4 py-3 text-sm shadow-card-lg ${cfg.className}`}
             >
               <div className="shrink-0 mt-0.5 relative">
                 <Bot size={16} />
-                <Icon size={10} className="absolute -bottom-1 -right-1 rounded-full bg-white" />
+                <Icon size={10} className="absolute -bottom-1 -right-1 rounded-full bg-surface" />
               </div>
               <p className="flex-1 leading-snug">
                 <span className="font-medium">{greeting}</span>

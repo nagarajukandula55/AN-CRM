@@ -98,6 +98,10 @@ const EDITABLE_FIELDS = [
   // UPI VPA (e.g. "business@okhdfcbank") used to generate the payment QR
   // code on printed invoices -- see models/Business.ts's upiId comment.
   "upiId",
+  // Support contact -- vendor portal's "Connect" buttons link straight to
+  // these (wa.me / t.me). See models/Business.ts's own comment.
+  "supportWhatsAppNumber",
+  "supportTelegramUsername",
   // Bank details + signature image shown on printed invoices -- see
   // models/Business.ts's comments on these fields. documentSignatureUrl
   // existed on the schema but was never actually editable from anywhere.

@@ -799,6 +799,22 @@ const BusinessSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Support contact -- the "Connect on WhatsApp/Telegram" buttons the
+    // vendor portal's Contact widget shows (see components/ContactWidget)
+    // link to these directly (wa.me/<number>, t.me/<username>). Blank
+    // (the default) hides that button entirely rather than linking to
+    // nothing -- never a hardcoded/shared fallback number.
+    supportWhatsAppNumber: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    supportTelegramUsername: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     // Shown on the printed Intake Receipt/Workorder in place of the
     // device brand's own logo -- per explicit direction, that document
     // should never show the device manufacturer's branding or name.

@@ -2,7 +2,8 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import VendorLogoutButton from '@/components/vendor/VendorLogoutButton'
-import AnuWidget from '@/components/AnuWidget'
+import NotificationBell from '@/components/NotificationBell'
+import ContactWidget from '@/components/ContactWidget'
 import BrowserPushRegister from '@/components/shared/BrowserPushRegister'
 import { connectDB } from '@/lib/mongodb'
 import BusinessMember from '@/models/BusinessMember'
@@ -277,10 +278,13 @@ export default async function VendorLayout({
       <main className="flex-1 overflow-y-auto">
         <div className="p-4 lg:p-6">{children}</div>
       </main>
-      {/* Per explicit direction: no separate floating bell in the vendor
-          portal -- notifications live inside ANu instead (see AnuWidget's
-          showNotifications prop). */}
-      <AnuWidget showNotifications />
+      {/* ANu widget removed from the vendor portal per explicit direction --
+          notifications now live in their own top-right bell (previously
+          folded into ANu's showNotifications prop), and human contact
+          (WhatsApp/Telegram) replaces the AI assistant as the floating
+          bottom-right affordance. */}
+      <NotificationBell />
+      <ContactWidget />
       <BrowserPushRegister />
     </div>
   )

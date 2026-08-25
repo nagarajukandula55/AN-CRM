@@ -84,6 +84,8 @@ export default function AdminSettingsPage() {
     pincode: '',
     gstNumber: '',
     logo: '',
+    supportWhatsAppNumber: '',
+    supportTelegramUsername: '',
   })
   // Compliance has other fields (pan/cin/msme/iec/fssai/drugLicense) this
   // tab doesn't edit -- PATCH /api/businesses/[id] replaces `compliance`
@@ -237,6 +239,8 @@ export default function AdminSettingsPage() {
         pincode: b.pincode || '',
         gstNumber: b.compliance?.gstNumber || '',
         logo: b.logo || '',
+        supportWhatsAppNumber: b.supportWhatsAppNumber || '',
+        supportTelegramUsername: b.supportTelegramUsername || '',
       })
       setComplianceRest(b.compliance || {})
       setOperations({
@@ -508,6 +512,8 @@ export default function AdminSettingsPage() {
           pincode: profile.pincode,
           compliance: { ...complianceRest, gstNumber: profile.gstNumber },
           logo: profile.logo,
+          supportWhatsAppNumber: profile.supportWhatsAppNumber,
+          supportTelegramUsername: profile.supportTelegramUsername,
         }),
       })
       const d = await res.json()
@@ -951,6 +957,25 @@ export default function AdminSettingsPage() {
                   )}
                 </div>
                 {logoUploadError && <p className="text-xs text-danger mt-1">{logoUploadError}</p>}
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <div className="text-sm font-medium text-ink mb-1">Support Contact</div>
+                <div className="text-xs text-ink-3 mb-3">Powers the "Connect" buttons in the vendor portal. Leave blank to hide a button.</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-ink-3 mb-1 block">WhatsApp Number</label>
+                    <input type="text" value={profile.supportWhatsAppNumber} onChange={(e) => setProfile({ ...profile, supportWhatsAppNumber: e.target.value })}
+                      placeholder="+919000000000"
+                      className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-ink-3 mb-1 block">Telegram Username</label>
+                    <input type="text" value={profile.supportTelegramUsername} onChange={(e) => setProfile({ ...profile, supportTelegramUsername: e.target.value.replace(/^@/, '') })}
+                      placeholder="yourusername (no @)"
+                      className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-border-strong" />
+                  </div>
+                </div>
               </div>
 
               <button type="submit" disabled={savingProfile} className="btn-primary rounded-control px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-50">

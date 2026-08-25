@@ -7,6 +7,7 @@ import { resolveVendorContext } from "@/lib/auth/vendorContext";
 import { verifyRazorpaySignature } from "@/core/billing/paymentGateway";
 import { extendPeriod } from "@/core/billing/billing.service";
 import { sendVendorAlert } from "@/core/telegram/sendVendorAlert";
+import { notifyUser } from "@/services/notification.service";
 
 // POST /api/vendor/billing/invoices/:invoiceId/confirm
 // Body: { razorpayOrderId, razorpayPaymentId, razorpaySignature } -- the
@@ -119,6 +120,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ inv
       "PAYMENT_RECEIVED",
       `Payment received for invoice ${claimed.invoiceNumber} (₹${claimed.amount}). Subscription extended to ${end.toLocaleDateString("en-IN")}.`
     ).catch(() => {});
+
+    // In-app notification (the top-right bell) -- this event previously
+    // only ever reached Telegram, so a vendor with no/unlinked Telegram
+    // chat had no record of their own payment anywhere in the app itself.
+    if (vendor.userId) {
+      notifyUser({
+        userId: String(vendor.userId),
+        businessId: String(vendor.businessId),
+        title: "Payment received",
+        message: `Invoice ${claimed.invoiceNumber} (₹${claimed.amount}) confirmed. Your plan is active until ${end.toLocaleDateString("en-IN")}.`,
+        type: "success",
+        link: "/vendor/billing",
+      }).catch(() => {});
+    }
 
     return NextResponse.json({ success: true, invoice: claimed, subscription });
   } catch (err: any) {
