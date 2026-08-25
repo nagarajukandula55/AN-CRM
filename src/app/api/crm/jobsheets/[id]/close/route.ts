@@ -16,6 +16,7 @@ import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
 import SalesInvoice from "@/models/SalesInvoice";
 import Business from "@/models/Business";
+import VendorProfile from "@/models/VendorProfile";
 import Brand from "@/models/Brand";
 import BOM from "@/models/BOM";
 import Inventory from "@/models/Inventory";
@@ -109,9 +110,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // in the job sheet's warehouse; deducted only after every check
     // passes, so a mid-batch insufficient-stock failure never leaves a
     // partial deduction behind.
-    const business = await Business.findById(jobSheet.businessId).select("inventorySerialized applyTaxOnB2CBilling").lean();
+    const business = await Business.findById(jobSheet.businessId).select("compliance inventorySerialized").lean();
+    // Per-vendor inventory-serialization + GST-registration status, not the
+    // shared Business's -- see VendorProfile's own comment on why these
+    // moved off Business (every self-signed-up vendor shares one platform
+    // Business, so a Business-level field silently applied to every vendor
+    // at once). Falls back to the Business fields for a jobsheet with no
+    // vendorId (single-tenant business, no marketplace vendors).
+    const vendorSettings = (jobSheet as any).vendorId
+      ? await VendorProfile.findById((jobSheet as any).vendorId).select("inventorySerialized gstRegistered gstNumber").lean()
+      : null;
+    const inventorySerialized = vendorSettings
+      ? Boolean((vendorSettings as any).inventorySerialized)
+      : Boolean((business as any)?.inventorySerialized);
     const deductions: { materialId: string; quantity: number; partName: string }[] = [];
-    if ((business as any)?.inventorySerialized) {
+    if (inventorySerialized) {
       if (!jobSheet.warehouseId) {
         return NextResponse.json(
           { success: false, message: "This business tracks serialized inventory -- assign a Service Center/Warehouse to this job sheet before closing." },
@@ -157,7 +170,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // invoice we will give input and those invoices make user INV series
     // and rest where Customer GST is not there all take under BILL
     // Series."
-    const isB2B = Boolean((jobSheet as any).gstin?.trim());
+    // A GST invoice additionally requires the ISSUING vendor/business to
+    // actually be GST-registered themselves -- a non-GST-registered
+    // vendor legally cannot issue a CGST/SGST/IGST-split invoice no
+    // matter what GSTIN the customer supplies. Previously this only
+    // checked the customer's GSTIN, so a vendor with no gstNumber of
+    // their own could still generate fully-formed GST invoices --
+    // reported live as an illegal-invoice risk.
+    const issuerGstOk = vendorSettings
+      ? Boolean((vendorSettings as any).gstRegistered && (vendorSettings as any).gstNumber)
+      : Boolean((business as any)?.compliance?.gstNumber);
+    const isB2B = Boolean((jobSheet as any).gstin?.trim()) && issuerGstOk;
     // Per-workorder "Tax Apply" toggle (Parts & Service Lines) -- the one
     // remaining, explicit, per-job override to skip tax entirely (e.g. a
     // genuinely tax-exempt job), left as-is; everything else always uses
@@ -402,7 +425,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }).catch(() => {});
 
     return NextResponse.json(
-      { success: true, jobSheet, invoice },
+      {
+        success: true,
+        jobSheet,
+        invoice,
+        // Surfaces to the UI when a would-be B2B invoice got issued as
+        // B2C instead purely because the vendor/business itself has no
+        // GST number on file -- so the Owner/Manager understands WHY
+        // (and knows to add their GSTIN in Profile/Settings) rather than
+        // just seeing an unexpectedly non-GST invoice.
+        warning: Boolean((jobSheet as any).gstin?.trim()) && !issuerGstOk
+          ? "This customer has a GSTIN, but no GST number is on file for your own business/vendor account, so this was issued as a non-GST bill instead of a GST invoice. Add your GST number in Profile to issue GST invoices."
+          : undefined,
+      },
       { status: 201 }
     );
   } catch (err: any) {

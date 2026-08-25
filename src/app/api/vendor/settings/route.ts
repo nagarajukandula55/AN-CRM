@@ -1,27 +1,34 @@
 /**
- * GET/PATCH /api/vendor/settings — business-level settings a vendor
+ * GET/PATCH /api/vendor/settings — PER-VENDOR operational settings an
  * Owner or Manager (not any other staff role) can see/change themselves,
  * without needing Super Admin:
  *  - inventorySerialized -- whether workorder part selection checks real
  *    Inventory stock or just pulls from the Service Center BOM price list.
- *  - termsAndConditions -- free text shown on this business's workorder,
+ *  - termsAndConditions -- free text shown on this vendor's workorder,
  *    estimate and invoice pages/prints.
  *  - defaultLabourCharge -- fallback rate for the workorder page's
  *    "Add Labour Charge" line when no LABOUR-type BOM entry is configured.
  *  - customerLogoUrl -- shown on the Intake Receipt/Workorder print in
  *    place of the device brand's own logo (blank = no logo at all).
+ *  - documentSignatureUrl -- signature image on printed documents.
  *  - applyTaxOnB2CBilling -- whether GST/tax is applied when a job sheet
  *    closes into a plain B2C bill (no company name on the customer). B2B
  *    invoices (company name present) always carry tax regardless of this
  *    toggle -- see api/crm/jobsheets/[id]/close/route.ts.
+ *  - upiId -- this vendor's own UPI ID for the payment QR on their
+ *    invoices (see api/sales/invoices/[id]/upi-qr/route.ts).
+ *
+ * Stored on VendorProfile, NOT Business -- every self-signed-up vendor
+ * shares one platform Business document (see api/vendors/self-signup/
+ * route.ts), so storing these here instead means one vendor's saved
+ * settings can never leak into or overwrite another's. Reported live
+ * ("in operations tab for new vendor also all terms and conditions,
+ * service charges, upi id, everything coming what i set for my vendor").
  */
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
-import Business from "@/models/Business";
-// ONE shared Owner-or-Manager definition for every vendor management
-// surface (settings, team access, portal nav) -- see
-// core/access/vendorAccess.service.ts.
+import VendorProfile from "@/models/VendorProfile";
 import { resolveOwnerOrManagerVendor } from "@/core/access/vendorAccess.service";
 
 export async function GET() {
@@ -33,19 +40,17 @@ export async function GET() {
     if (!vendor) {
       return NextResponse.json({ success: false, error: "Only a vendor Owner or Manager can view these settings" }, { status: 403 });
     }
-    if (!(vendor as any).businessId) {
-      return NextResponse.json({ success: false, error: "Vendor is not yet assigned to a business" }, { status: 400 });
-    }
 
-    const business = await Business.findById((vendor as any).businessId).select("inventorySerialized termsAndConditions defaultLabourCharge customerLogoUrl documentSignatureUrl applyTaxOnB2CBilling").lean();
+    const v = vendor as any;
     return NextResponse.json({
       success: true,
-      inventorySerialized: Boolean((business as any)?.inventorySerialized),
-      termsAndConditions: (business as any)?.termsAndConditions || "",
-      defaultLabourCharge: Number((business as any)?.defaultLabourCharge) || 0,
-      customerLogoUrl: (business as any)?.customerLogoUrl || "",
-      documentSignatureUrl: (business as any)?.documentSignatureUrl || "",
-      applyTaxOnB2CBilling: (business as any)?.applyTaxOnB2CBilling !== false,
+      inventorySerialized: Boolean(v.inventorySerialized),
+      termsAndConditions: v.termsAndConditions || "",
+      defaultLabourCharge: Number(v.defaultLabourCharge) || 0,
+      customerLogoUrl: v.customerLogoUrl || "",
+      documentSignatureUrl: v.documentSignatureUrl || "",
+      applyTaxOnB2CBilling: v.applyTaxOnB2CBilling !== false,
+      upiId: v.upiId || "",
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -62,9 +67,6 @@ export async function PATCH(req: NextRequest) {
     if (!vendor) {
       return NextResponse.json({ success: false, error: "Only a vendor Owner or Manager can change these settings" }, { status: 403 });
     }
-    if (!(vendor as any).businessId) {
-      return NextResponse.json({ success: false, error: "Vendor is not yet assigned to a business" }, { status: 400 });
-    }
 
     const body = await req.json().catch(() => ({}));
     const update: Record<string, unknown> = {};
@@ -74,11 +76,12 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.customerLogoUrl === "string") update.customerLogoUrl = body.customerLogoUrl;
     if (typeof body.documentSignatureUrl === "string") update.documentSignatureUrl = body.documentSignatureUrl;
     if (typeof body.applyTaxOnB2CBilling === "boolean") update.applyTaxOnB2CBilling = body.applyTaxOnB2CBilling;
+    if (typeof body.upiId === "string") update.upiId = body.upiId;
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ success: false, error: "Nothing to update" }, { status: 400 });
     }
 
-    await Business.updateOne({ _id: (vendor as any).businessId }, { $set: update });
+    await VendorProfile.updateOne({ _id: (vendor as any)._id }, { $set: update });
 
     return NextResponse.json({ success: true, ...update });
   } catch (error: unknown) {

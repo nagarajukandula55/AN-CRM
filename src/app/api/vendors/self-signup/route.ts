@@ -13,6 +13,7 @@ import { notifySuperAdmins } from "@/services/notification.service";
 import { logAction } from "@/lib/audit/logAction";
 import { sendAdminSystemAlert } from "@/core/telegram/sendAdminSystemAlert";
 import { notifyAdmins } from "@/core/telegram/notifyAdmins";
+import { sendWelcomeEmail } from "@/services/email/resend.service";
 
 const TRIAL_DAYS = 7;
 
@@ -164,6 +165,18 @@ export async function POST(req: NextRequest) {
     notifyAdmins(
       `🆕 <b>New vendor signup</b>\n${companyName.trim()} (${vendorId})\n${normalizedEmail}\nAuto-activated, ${TRIAL_DAYS}-day trial started.`
     ).catch(() => {});
+
+    // Previously this route sent NO email to the vendor themselves --
+    // only admin-facing Telegram alerts, so a self-signed-up vendor had
+    // no record anywhere of their own Vendor ID or where to log back in.
+    sendWelcomeEmail({
+      to: normalizedEmail,
+      name: name.trim(),
+      businessId: resolvedBusinessId || undefined,
+      vendorId,
+      loginId: vendorId,
+      loginUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://crm.angroup.in"}/login`,
+    }).catch(() => {});
 
     return NextResponse.json(
       {

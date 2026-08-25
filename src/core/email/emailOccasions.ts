@@ -18,7 +18,7 @@ export interface EmailOccasion {
 
 export const EMAIL_OCCASIONS: EmailOccasion[] = [
   { key: "FORGOT_PASSWORD", label: "Forgot Password", description: "Password reset link email.", tokens: ["resetUrl"] },
-  { key: "WELCOME_REGISTRATION", label: "Welcome / Registration", description: "Sent right after a new account registers.", tokens: ["name"] },
+  { key: "WELCOME_REGISTRATION", label: "Welcome / Registration", description: "Sent right after a new account registers. vendorId/loginId/loginUrl are blank for a plain (non-vendor) registration.", tokens: ["name", "vendorId", "loginId", "loginUrl"] },
   { key: "ACCOUNT_CREDENTIALS", label: "Account Created (Admin-issued)", description: "An admin/vendor created a login for someone else with a temporary password.", tokens: ["name", "email", "tempPassword", "loginUrl"] },
   { key: "VERIFICATION_OTP", label: "Email Verification OTP", description: "Generic email-verification code (e.g. public appointment request form).", tokens: ["otp", "purpose"] },
   { key: "VENDOR_APPLICATION_RECEIVED", label: "Vendor Application Received", description: "Confirms a vendor application was submitted and is under review.", tokens: ["vendorName", "vendorId", "businessName"] },

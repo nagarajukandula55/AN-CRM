@@ -222,19 +222,32 @@ export async function sendAgreementOtpEmail({
   }
 }
 
-/** Registration welcome email -- best-effort, non-fatal (see callers). */
+/**
+ * Registration welcome email -- best-effort, non-fatal (see callers).
+ * vendorId/loginId/loginUrl are optional: present for a vendor self-
+ * signup (api/vendors/self-signup, which previously sent NO email to the
+ * vendor at all -- only admin-facing Telegram alerts), absent for the
+ * generic /api/auth/register path (plain customer/staff account, no
+ * vendor identity to show).
+ */
 export async function sendWelcomeEmail({
   to,
   name,
   businessId,
+  vendorId,
+  loginId,
+  loginUrl,
 }: {
   to: string;
   name: string;
   businessId?: string;
+  vendorId?: string;
+  loginId?: string;
+  loginUrl?: string;
 }) {
   try {
     await connectDB();
-    const override = await renderEmailTemplate("WELCOME_REGISTRATION", { name });
+    const override = await renderEmailTemplate("WELCOME_REGISTRATION", { name, vendorId: vendorId || "", loginId: loginId || "", loginUrl: loginUrl || "" });
     if (override === "disabled") return { success: false, error: "Occasion disabled by admin" };
 
     const { apiKey, from } = await resolveResendCreds(businessId);
@@ -246,11 +259,18 @@ export async function sendWelcomeEmail({
     const result = await resend.emails.send({
       from,
       to,
-      subject: override?.subject || "Welcome to AN Group",
+      subject: override?.subject || (vendorId ? "Welcome to AN-CRM — your account is ready" : "Welcome to AN Group"),
       html: override?.html || renderEmailShell({
         heading: `Welcome, ${name}`,
-        previewText: "Your AN Group account is ready.",
-        bodyHtml: `<p>Your account has been created successfully. You can now sign in and get started.</p>`,
+        previewText: vendorId ? `Your Vendor ID is ${vendorId}.` : "Your AN Group account is ready.",
+        bodyHtml: `
+          <p>Your account has been created successfully.</p>
+          ${vendorId || loginId ? emailInfoBox([
+            ...(vendorId ? [{ label: "Vendor ID", value: vendorId }] : []),
+            ...(loginId ? [{ label: "Login ID", value: loginId }] : []),
+          ]) : ""}
+          ${loginUrl ? `<div style="text-align:center;margin:24px 0;">${emailButton("Sign in", loginUrl)}</div>` : "<p>You can now sign in and get started.</p>"}
+        `,
       }),
     });
 

@@ -242,6 +242,22 @@ export interface IVendorProfile extends Document {
   productCategories?: DeviceCategory[];
   notes?:    string;
   termsAndConditions?: string;
+  // Per-vendor operational settings -- previously these all lived on the
+  // shared platform Business document, which every self-signed-up vendor
+  // points its businessId at (see api/vendors/self-signup/route.ts).
+  // Reading/writing them there meant one vendor's saved logo/UPI ID/T&C/
+  // labour rate silently overwrote every OTHER vendor's, since they were
+  // all reading and writing the exact same fields on the exact same
+  // shared document -- reported live ("in operations tab for new vendor
+  // also all terms and conditions, service charges, upi id, everything
+  // coming what i set for my vendor"). Moved here so each vendor has
+  // their own copy; see api/vendor/settings/route.ts.
+  inventorySerialized?: boolean;
+  defaultLabourCharge?: number;
+  customerLogoUrl?: string;
+  documentSignatureUrl?: string;
+  applyTaxOnB2CBilling?: boolean;
+  upiId?: string;
   rating:    number;
   status:    VendorStatus;
   isApproved: boolean;
@@ -386,6 +402,14 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     // own, per explicit direction ("Allow vendors to update terms and
     // conditionals of their own").
     termsAndConditions: { type: String, default: '' },
+    // Per-vendor operational settings -- see this schema's own interface
+    // comment above for why these moved off the shared Business document.
+    inventorySerialized: { type: Boolean, default: false },
+    defaultLabourCharge: { type: Number, default: 0, min: 0 },
+    customerLogoUrl: { type: String, default: '' },
+    documentSignatureUrl: { type: String, default: '' },
+    applyTaxOnB2CBilling: { type: Boolean, default: true },
+    upiId: { type: String, default: '' },
     rating:       { type: Number, min: 0, max: 5, default: 0 },
     status: {
       type:    String,

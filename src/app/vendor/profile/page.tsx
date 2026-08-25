@@ -125,6 +125,12 @@ export default function VendorProfilePage() {
   // section as the rest of Business Settings.
   const [defaultLabourCharge, setDefaultLabourCharge] = useState('0')
   const [savingLabourCharge, setSavingLabourCharge] = useState(false)
+  // UPI ID -- this vendor's own payment VPA for the QR shown on their
+  // invoices (see api/sales/invoices/[id]/upi-qr/route.ts). Per-vendor,
+  // not the shared platform Business's -- every self-signed-up vendor
+  // used to see/inherit whichever ONE UPI ID any vendor last saved.
+  const [upiId, setUpiId] = useState('')
+  const [savingUpiId, setSavingUpiId] = useState(false)
   // Customer Logo -- shown on the Intake Receipt/Workorder print in place
   // of the device brand's own logo/name, per explicit direction (that
   // document should never show the device manufacturer's branding).
@@ -173,6 +179,7 @@ export default function VendorProfilePage() {
       setDefaultLabourCharge(String(settingsData.defaultLabourCharge ?? 0))
       setCustomerLogoUrl(settingsData.customerLogoUrl || '')
       setDocumentSignatureUrl(settingsData.documentSignatureUrl || '')
+      setUpiId(settingsData.upiId || '')
     }
   }, [settingsData])
 
@@ -265,6 +272,24 @@ export default function VendorProfilePage() {
       setSettingsMessage('Failed to save.')
     } finally {
       setSavingLabourCharge(false)
+    }
+  }
+
+  async function saveUpiId() {
+    setSavingUpiId(true)
+    setSettingsMessage('')
+    try {
+      const res = await fetch('/api/vendor/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ upiId }),
+      })
+      const d = await res.json()
+      setSettingsMessage(d.success ? 'Saved.' : d.error || 'Failed to save.')
+    } catch {
+      setSettingsMessage('Failed to save.')
+    } finally {
+      setSavingUpiId(false)
     }
   }
 
@@ -808,6 +833,24 @@ export default function VendorProfilePage() {
               />
               <Button onClick={saveLabourCharge} disabled={savingLabourCharge}>
                 {savingLabourCharge ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-5 pt-5 border-t border-border">
+            <label className="block text-sm font-medium text-ink mb-1">UPI ID</label>
+            <p className="text-xs text-ink-3 mb-2">
+              Payment QR shown on your invoices. Leave blank to show no QR at all.
+            </p>
+            <div className="flex items-center gap-2">
+              <Input
+                value={upiId}
+                onChange={(e) => setUpiId(e.target.value)}
+                placeholder="yourname@upi"
+                className="w-64"
+              />
+              <Button onClick={saveUpiId} disabled={savingUpiId}>
+                {savingUpiId ? 'Saving…' : 'Save'}
               </Button>
             </div>
           </div>

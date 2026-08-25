@@ -1,8 +1,13 @@
 /**
  * GET /api/sales/invoices/[id]/upi-qr — returns a UPI payment QR code
- * (PNG data URL) for this invoice, if the issuing business has a UPI VPA
- * configured (Business.upiId, Settings > Operations). 404s cleanly when
- * no VPA is set, rather than a broken/blank QR -- the print page treats
+ * (PNG data URL) for this invoice, if a UPI VPA is configured -- the
+ * ISSUING VENDOR's own (VendorProfile.upiId, vendor Profile > Settings)
+ * when the invoice has a vendorId, the shared Business's otherwise
+ * (single-tenant business, no marketplace vendors). Every self-signed-up
+ * vendor shares one platform Business, so reading Business.upiId
+ * unconditionally meant every vendor's invoice showed whichever ONE UPI
+ * ID any vendor had last saved -- reported live. 404s cleanly when no
+ * VPA is set, rather than a broken/blank QR -- the print page treats
  * that as "no QR to show", not an error.
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -10,6 +15,7 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import SalesInvoice from "@/models/SalesInvoice";
 import Business from "@/models/Business";
+import VendorProfile from "@/models/VendorProfile";
 import { generateUpiQrDataUrl } from "@/core/payments/upiQr";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 
@@ -25,19 +31,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     await connectDB();
-    const invoice = await SalesInvoice.findById(id).select("invoiceNumber grandTotal businessId").lean<any>();
+    const invoice = await SalesInvoice.findById(id).select("invoiceNumber grandTotal businessId vendorId").lean<any>();
     if (!invoice) {
       return NextResponse.json({ success: false, message: "Invoice not found" }, { status: 404 });
     }
 
+    const vendor = invoice.vendorId
+      ? await VendorProfile.findById(invoice.vendorId).select("upiId companyName").lean<any>()
+      : null;
     const business = await Business.findById(invoice.businessId).select("upiId name legalName").lean<any>();
-    if (!business?.upiId?.trim()) {
+    const upiId = vendor ? vendor.upiId : business?.upiId;
+    if (!upiId?.trim()) {
       return NextResponse.json({ success: false, message: "No UPI ID configured for this business" }, { status: 404 });
     }
 
     const qrDataUrl = await generateUpiQrDataUrl({
-      vpa: business.upiId.trim(),
-      payeeName: business.legalName || business.name || "AN CRM",
+      vpa: upiId.trim(),
+      payeeName: (vendor?.companyName) || business?.legalName || business?.name || "AN CRM",
       amount: invoice.grandTotal || 0,
       invoiceNumber: invoice.invoiceNumber,
     });
