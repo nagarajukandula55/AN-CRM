@@ -125,6 +125,55 @@ async function sendToChat(chatId: number | string, text: string) {
   await sendTelegramMessage(text, { chatId: String(chatId), parseMode: "HTML" });
 }
 
+// A linking code minted by POST /api/vendor/telegram-link-code -- 6
+// characters from an alphabet that excludes visually-ambiguous characters
+// (0/O, 1/I/L), matching that route's CODE_ALPHABET.
+const LINK_CODE_RE = /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/i;
+
+// Shared by both linking paths (typed Vendor ID, and the newer QR/deep-
+// link code) -- links this chat (group or personal, detected from the
+// message itself) to `vendor`, turns on default daily reports if the
+// plan allows it, and sends the confirmation + first report. `label` is
+// just what the confirmation message calls the thing that was matched
+// ("Vendor ID VND0001" vs "code"), so the two paths read naturally.
+async function finishLinking(chatId: number | string, message: any, vendor: any, label: string) {
+  const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
+  const business = vendor.businessId ? await Business.findById(vendor.businessId).select("name operatingMode").lean<any>() : null;
+  if (!business) {
+    await sendToChat(chatId, `This vendor has no active business on file yet. Contact support.`);
+    return;
+  }
+
+  if (isGroup) {
+    vendor.telegramChatId = String(chatId);
+  } else {
+    vendor.telegramPersonalChatId = String(chatId);
+  }
+  const reportsAllowed = await hasTelegramReportsPlan(business);
+  if (reportsAllowed && (!vendor.telegramReportFrequency || vendor.telegramReportFrequency === "NONE")) {
+    vendor.telegramReportFrequency = "DAILY";
+  }
+  await vendor.save();
+
+  const greetName = vendor.companyName || business.name;
+  await sendToChat(
+    chatId,
+    reportsAllowed
+      ? `👋 Hi <b>${greetName}</b>! Confirmed -- ${label} is now linked, and this ${isGroup ? "group" : "personal chat"} will receive ${isGroup ? "team" : "your own"} automated reports (daily by default — change the schedule any time in Settings).\n\nSending your first report now…`
+      : `👋 Hi <b>${greetName}</b>! Confirmed -- ${label} is now linked, and this ${isGroup ? "group" : "personal chat"} can receive alerts, but automatic scheduled reports aren't included in your current plan. Upgrade from Plan &amp; Billing to turn those on.`
+  );
+
+  if (!reportsAllowed) return;
+
+  try {
+    const isSC = (business.operatingMode || "SC") === "SC";
+    const { text: reportText } = await buildReportMessage(greetName, vendor.telegramReportFrequency || "DAILY", isSC, String(business._id), new Date(), String(vendor._id), greetName);
+    await sendToChat(chatId, reportText);
+  } catch (err) {
+    console.error("[telegram-webhook] finishLinking first-report failed:", err);
+  }
+}
+
 async function runSendReports(chatId: number | string, targetQuery?: string) {
   await connectDB();
   const filter: Record<string, unknown> = {
@@ -202,14 +251,46 @@ export async function POST(req: NextRequest) {
     // plain-text message from this same chat that looks like a Vendor ID
     // (VND\d+, matched below regardless of any /link command) completes
     // the link.
+    // Newer, preferred path: a one-time code generated from the vendor's
+    // own Profile page (QR code / deep link, or typed/pasted manually into
+    // a group) -- see api/vendor/telegram-link-code and this file's top
+    // comment for why this replaced typing the real Vendor ID as the
+    // primary flow (that path is kept below for backward compatibility,
+    // e.g. an old QR/bookmark still floating around).
+    if (command === "/start" || LINK_CODE_RE.test(text.trim())) {
+      const arg = (command === "/start" ? text.trim().split(/\s+/)[1] : text.trim())?.trim().toUpperCase();
+      if (arg && LINK_CODE_RE.test(arg)) {
+        const vendor = await VendorProfile.findOne({
+          telegramLinkCode: arg,
+          telegramLinkCodeExpiresAt: { $gt: new Date() },
+          isDeleted: { $ne: true },
+        });
+        if (!vendor) {
+          await sendToChat(chatId, "This code has expired or was already used. Generate a fresh one from your Profile page and try again.");
+          return NextResponse.json({ success: true });
+        }
+        // Single-use: cleared before doing anything else, so a retried/
+        // duplicated webhook delivery can't link the same code twice.
+        vendor.telegramLinkCode = undefined;
+        vendor.telegramLinkCodeExpiresAt = undefined;
+        await finishLinking(chatId, message, vendor, "your account");
+        return NextResponse.json({ success: true });
+      }
+      if (command === "/start") {
+        // A bare /start with no payload (someone opened the bot directly,
+        // not via a deep link) -- falls through to the /tgid|start greeting
+        // handler below instead of erroring here.
+      } else {
+        return NextResponse.json({ success: true });
+      }
+    }
+
     if (command === "/link" || VENDOR_ID_RE.test(text.trim())) {
       const arg = (command === "/link" ? text.trim().split(/\s+/)[1] : text.trim())?.trim().toUpperCase();
       if (!arg || !VENDOR_ID_RE.test(arg)) {
-        await sendToChat(chatId, "Send your own Vendor ID to link this chat -- e.g. <code>VND0001</code> (found on your Profile page, or Settings &gt; Integrations). You can send it alone or as <code>/link VND0001</code>.");
+        await sendToChat(chatId, "Send your own Vendor ID to link this chat -- e.g. <code>VND0001</code> (found on your Profile page, or Settings &gt; Integrations). You can send it alone or as <code>/link VND0001</code>. Easier: generate a one-tap QR code from your Profile page instead.");
         return NextResponse.json({ success: true });
       }
-
-      const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
 
       // Send the SAME Vendor ID from two different chats to configure both
       // destinations independently -- send it from your team GROUP once
@@ -220,43 +301,7 @@ export async function POST(req: NextRequest) {
         await sendToChat(chatId, `No vendor found for <code>${arg}</code>. Double-check the Vendor ID on your Profile page and try again.`);
         return NextResponse.json({ success: true });
       }
-      const business = vendor.businessId ? await Business.findById(vendor.businessId).select("name operatingMode").lean<any>() : null;
-      if (!business) {
-        await sendToChat(chatId, `Vendor <code>${arg}</code> has no active business on file yet. Contact support.`);
-        return NextResponse.json({ success: true });
-      }
-
-      if (isGroup) {
-        vendor.telegramChatId = String(chatId);
-      } else {
-        vendor.telegramPersonalChatId = String(chatId);
-      }
-      const reportsAllowed = await hasTelegramReportsPlan(business);
-      if (reportsAllowed && (!vendor.telegramReportFrequency || vendor.telegramReportFrequency === "NONE")) {
-        vendor.telegramReportFrequency = "DAILY";
-      }
-      await vendor.save();
-
-      const greetName = vendor.companyName || business.name;
-      await sendToChat(
-        chatId,
-        reportsAllowed
-          ? `👋 Hi <b>${greetName}</b>! Confirmed -- Vendor ID ${arg} is now linked, and this ${isGroup ? "group" : "personal chat"} will receive ${isGroup ? "team" : "your own"} automated reports (daily by default — change the schedule any time in Settings).\n\nSending your first report now…`
-          : `👋 Hi <b>${greetName}</b>! Confirmed -- Vendor ID ${arg} is now linked, and this ${isGroup ? "group" : "personal chat"} can receive alerts, but automatic scheduled reports aren't included in your current plan. Upgrade from Plan &amp; Billing to turn those on.`
-      );
-
-      if (!reportsAllowed) {
-        return NextResponse.json({ success: true });
-      }
-
-      try {
-        const isSC = (business.operatingMode || "SC") === "SC";
-        const { text: reportText } = await buildReportMessage(greetName, vendor.telegramReportFrequency || "DAILY", isSC, String(business._id), new Date(), String(vendor._id), greetName);
-        await sendToChat(chatId, reportText);
-      } catch (err) {
-        console.error("[telegram-webhook] /link (vendor id) first-report failed:", err);
-      }
-
+      await finishLinking(chatId, message, vendor, `Vendor ID ${arg}`);
       return NextResponse.json({ success: true });
     }
 

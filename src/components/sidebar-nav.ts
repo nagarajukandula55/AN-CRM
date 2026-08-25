@@ -126,7 +126,6 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "adm-users", label: "Users & Access", items: [
       { key: "admin-users",  label: "User Management",      route: "/console/admin/users",  icon: "UserCog" },
       { key: "admin-access", label: "Access Control",       route: "/console/admin/access", icon: "Key" },
-      { key: "admin-roles",  label: "Roles & Permissions",  route: "/console/admin/roles",  icon: "Shield" },
       { key: "admin-an-group-staff", label: "Platform Staff", route: "/console/admin/an-group-staff", icon: "Shield" },
     ]},
     { key: "adm-vendors", label: "Vendors", items: [

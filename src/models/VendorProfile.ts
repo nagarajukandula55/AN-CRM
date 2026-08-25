@@ -102,6 +102,16 @@ export interface IVendorProfile extends Document {
    */
   telegramChatId?: string;
   telegramPersonalChatId?: string;
+  // Short-lived, single-use linking code -- see api/vendor/telegram-link-code
+  // (generates it) and api/telegram/webhook (consumes it). Replaces asking
+  // the vendor to type their own real Vendor ID into the bot: that id is
+  // visible all over the app/URLs, not a secret, so anyone who knew or
+  // guessed it could link THEIR OWN chat to receive (or worse, redirect)
+  // another vendor's reports. A random code that expires and can only be
+  // used once closes that gap and is also easier -- scan a QR/tap a deep
+  // link instead of typing anything.
+  telegramLinkCode?: string;
+  telegramLinkCodeExpiresAt?: Date | null;
   telegramReportFrequency?: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
   telegramReportLastSentAt?: Date;
   // "HH:mm" (24h, IST -- the only timezone this app operates in), the
@@ -288,6 +298,8 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
 
     telegramChatId: { type: String, trim: true, default: "" },
     telegramPersonalChatId: { type: String, trim: true, default: "" },
+    telegramLinkCode: { type: String, default: null },
+    telegramLinkCodeExpiresAt: { type: Date, default: null },
     telegramReportFrequency: { type: String, enum: ["NONE", "DAILY", "WEEKLY", "MONTHLY"], default: "NONE" },
     telegramReportLastSentAt: { type: Date },
     telegramReportTime: { type: String, trim: true, default: "09:00" },
