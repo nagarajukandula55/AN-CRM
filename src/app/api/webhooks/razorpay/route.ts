@@ -23,7 +23,9 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { connectDB } from "@/lib/mongodb";
 import Subscription from "@/models/Subscription";
+import VendorBillingInvoice from "@/models/VendorBillingInvoice";
 import { activateSubscription } from "@/core/subscriptions/activateSubscription";
+import { activateVendorInvoice } from "@/core/billing/activateVendorInvoice";
 import { logAction } from "@/lib/audit/logAction";
 
 export async function POST(req: NextRequest) {
@@ -66,28 +68,57 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
     const subscription = await Subscription.findOne({ razorpayOrderId }).select("_id status");
-    if (!subscription) {
-      // Not every Razorpay order in this account is a Subscription
-      // purchase (e.g. a storefront checkout order) -- ack, don't error.
-      return NextResponse.json({ success: true, ignored: "no matching subscription for this order" });
-    }
-    if (subscription.status === "ACTIVE") {
-      return NextResponse.json({ success: true, duplicate: true });
+    if (subscription) {
+      if (subscription.status === "ACTIVE") {
+        return NextResponse.json({ success: true, duplicate: true });
+      }
+      const result = await activateSubscription(subscription._id.toString(), razorpayPaymentId);
+      if ("activated" in result) {
+        logAction({
+          action: "VERIFY",
+          entity: "Subscription",
+          entityId: subscription._id.toString(),
+          after: { via: "razorpay-webhook", event: eventType, expiryDate: result.expiryDate, invoiceNumber: result.invoice.invoiceNumber },
+          req,
+          actor: { id: "razorpay-webhook", businessId: result.subscription.businessId.toString() },
+        });
+      }
+      return NextResponse.json({ success: true });
     }
 
-    const result = await activateSubscription(subscription._id.toString(), razorpayPaymentId);
-    if ("activated" in result) {
+    // Not a legacy business-level Subscription order -- check the vendor
+    // self-serve billing flow (VendorBillingInvoice.gatewayRef, see
+    // api/vendor/billing/subscribe/route.ts) before giving up. Without
+    // this, a vendor whose browser closed/crashed right after Razorpay
+    // Checkout succeeded (so api/vendor/billing/invoices/[id]/confirm --
+    // the only OTHER path that can mark an invoice paid -- never ran) had
+    // their invoice stuck PENDING and their plan never activated, even
+    // though Razorpay had already captured the money. Reported live as a
+    // request to verify "payment confirmations and subscription
+    // allocations thoroughly."
+    const vendorInvoice = await VendorBillingInvoice.findOne({ gatewayRef: razorpayOrderId }).select("_id status");
+    if (vendorInvoice) {
+      if (vendorInvoice.status === "PAID") {
+        return NextResponse.json({ success: true, duplicate: true });
+      }
+      const result = await activateVendorInvoice(vendorInvoice._id.toString(), razorpayPaymentId);
+      if ("reason" in result) {
+        return NextResponse.json({ success: false, message: result.reason }, { status: 500 });
+      }
       logAction({
         action: "VERIFY",
-        entity: "Subscription",
-        entityId: subscription._id.toString(),
-        after: { via: "razorpay-webhook", event: eventType, expiryDate: result.expiryDate, invoiceNumber: result.invoice.invoiceNumber },
+        entity: "VendorBillingInvoice",
+        entityId: vendorInvoice._id.toString(),
+        after: { via: "razorpay-webhook", event: eventType, invoiceNumber: result.invoice.invoiceNumber },
         req,
-        actor: { id: "razorpay-webhook", businessId: result.subscription.businessId.toString() },
+        actor: { id: "razorpay-webhook", businessId: String(result.invoice.businessId) },
       });
+      return NextResponse.json({ success: true });
     }
 
-    return NextResponse.json({ success: true });
+    // Not every Razorpay order in this account is a subscription purchase
+    // of either kind (e.g. a storefront checkout order) -- ack, don't error.
+    return NextResponse.json({ success: true, ignored: "no matching subscription/invoice for this order" });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     // Razorpay retries a non-2xx response -- 500 here is correct (transient
