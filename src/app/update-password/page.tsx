@@ -85,7 +85,14 @@ export default function UpdatePasswordPage() {
                     value={form[key]}
                     onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                     required
-                    minLength={6}
+                    // Only the NEW password needs a minimum length -- the
+                    // current one is whatever it already is (a temp
+                    // password like "admin" can be shorter than 6 and
+                    // still needs to be typeable here to authenticate the
+                    // change). Was applied to all three fields, which
+                    // blocked submitting the form entirely whenever the
+                    // current password was under 6 characters.
+                    minLength={key === 'current' ? undefined : 6}
                     className="w-full rounded-control border border-border bg-surface px-3 py-2.5 pr-10 text-sm text-ink outline-none focus:border-border-strong"
                   />
                   <button

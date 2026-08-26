@@ -5,7 +5,7 @@ import SalesDocument, { SALES_DOCUMENT_TYPES, type SalesDocumentType } from "@/m
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
-import { generateDocumentNumber } from "@/core/numbering/numberingService";
+import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
@@ -120,7 +120,13 @@ export async function POST(req: NextRequest) {
     const discount = discountAmount || 0;
     const grandTotal = subtotal + taxTotal - discount;
 
-    const { value: docNumber } = await generateDocumentNumber(businessId, docType);
+    // SECURITY/CORRECTNESS: was scoped by plain businessId -- every
+    // vendor sharing this platform's one Business shared ONE numbering
+    // sequence per doc type (Quotation/Delivery Challan/Credit Note/
+    // Debit Note/Proforma Invoice all collided across vendors). Scoped
+    // by the vendor's own id now, same pattern as invoice/workorder
+    // numbering.
+    const { value: docNumber } = await generateScopedDocumentNumber(createScope?.vendorId || businessId, docType, businessId);
 
     const doc = await SalesDocument.create({
       businessId,

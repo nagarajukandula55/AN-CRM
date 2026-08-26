@@ -11,7 +11,7 @@ import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
 import Brand from "@/models/Brand";
 import { validateGSTIN } from "@/lib/validation/gst";
-import { generateDocumentNumber } from "@/core/numbering/numberingService";
+import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
@@ -218,7 +218,13 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
-    const { value: jobSheetNumber } = await generateDocumentNumber(effectiveBizId, "JOB_SHEET");
+    // SECURITY/CORRECTNESS: was scoped by plain businessId -- every vendor
+    // sharing this platform's one Business shared ONE workorder-number
+    // sequence. Scoped by the vendor's own id now, same pattern as
+    // api/crm/jobsheets/[id]/close/route.ts's invoice numbering. Reported
+    // live ("every vendor must have their own numbering system and
+    // serials it should not collide in any way").
+    const { value: jobSheetNumber } = await generateScopedDocumentNumber(effectiveVendorId || effectiveBizId, "JOB_SHEET", effectiveBizId);
 
     const jobSheet = await CrmJobSheet.create({
       businessId: new mongoose.Types.ObjectId(effectiveBizId),

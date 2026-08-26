@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import { Types } from "mongoose";
 import StockTransfer from "@/models/StockTransfer";
-import { generateDocumentNumber } from "@/core/numbering/numberingService";
+import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
@@ -232,7 +232,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { value: transferNumber } = await generateDocumentNumber(businessId, "STOCK_TRANSFER");
+    // SECURITY/CORRECTNESS: was scoped by plain businessId -- every vendor
+    // sharing this Business shared one transfer-number sequence.
+    const { value: transferNumber } = await generateScopedDocumentNumber(createScope?.vendorId || businessId, "STOCK_TRANSFER", businessId);
 
     const transfer = await StockTransfer.create({
       transferNumber,

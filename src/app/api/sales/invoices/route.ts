@@ -4,7 +4,7 @@ import { connectDB } from "@/lib/mongodb";
 import mongoose from "mongoose";
 import { notify } from "@/lib/notify";
 import { round2 } from "@/core/gst/money";
-import { generateDocumentNumber } from "@/core/numbering/numberingService";
+import { generateDocumentNumber, generateScopedDocumentNumber } from "@/core/numbering/numberingService";
 // Was a locally-declared inline "GST-compliant" SalesInvoice schema —
 // its GST-specific fields (supplyType, placeOfSupply, per-item hsnCode/
 // cgstRate/cgstAmount/sgstRate/sgstAmount/igstRate/igstAmount, and
@@ -44,7 +44,7 @@ import { resolveAuthorizedBusinessId, resolveAuthorizedVendorScope } from "@/lib
  * couldn't be fully unified for that reason — flagged here and in
  * PROGRESS.md rather than silently forcing it through.
  */
-async function nextInvoiceNumber(key: string, businessId: string | undefined, isNonGst: boolean): Promise<string> {
+async function nextInvoiceNumber(key: string, businessId: string | undefined, isNonGst: boolean, vendorId?: string | null): Promise<string> {
   if (businessId) {
     // GST and Non-GST invoices get their own separate running series
     // (INV vs BILL) -- same distinction the CRM job-sheet close route
@@ -52,7 +52,25 @@ async function nextInvoiceNumber(key: string, businessId: string | undefined, is
     // comment. Reported live: this route ignored invoiceType entirely
     // and always used "INVOICE", so a Non-GST invoice landed on the same
     // series/sequence as GST ones.
-    const { value } = await generateDocumentNumber(businessId, isNonGst ? "NON_GST_INVOICE" : "INVOICE", { vendorId: "" });
+    //
+    // SECURITY/CORRECTNESS: was always scoped by plain businessId
+    // (generateDocumentNumber), with a `{ vendorId: "" }` context that
+    // does NOTHING for the actual counter scope (context only affects
+    // number FORMAT, not which counter document gets incremented -- see
+    // generateNumberInScope). Every vendor sharing this platform's one
+    // Business therefore shared ONE invoice-number sequence, and worse,
+    // this route never set vendorId on the created invoice at all (see
+    // the create() call below), making every invoice created here
+    // invisible to that vendor's own invoice list/statement (both filter
+    // by vendorId). Reported live ("every vendors their own bill and
+    // invoices sequence and their own system should be there, this
+    // should not miss in any way"). Scoped by the vendor's own id now,
+    // same pattern as api/crm/jobsheets/[id]/close/route.ts and BOM/
+    // material numbering -- falls back to plain businessId scoping only
+    // for a business-level caller with no vendor context (Brand/Sales
+    // staff creating an invoice not attributed to any one vendor).
+    const scopeKey = vendorId || businessId;
+    const { value } = await generateScopedDocumentNumber(scopeKey, isNonGst ? "NON_GST_INVOICE" : "INVOICE", businessId);
     return value;
   }
 
@@ -184,13 +202,24 @@ export async function POST(req: NextRequest) {
 
     // SECURITY: body.businessId used to win outright over the trusted
     // header -- see resolveAuthorizedBusinessId's own comment.
+    //
+    // SECURITY: was resolveAuthorizedBusinessId (business-only) -- meant
+    // this route never learned the caller's own vendorId at all, so every
+    // invoice it created had vendorId unset. Since GET (this route's own
+    // list) and the Financial Statement both filter by vendorId when the
+    // caller resolves to one, an invoice created here was invisible to
+    // the very vendor who created it. Switched to
+    // resolveAuthorizedVendorScope, same fix pattern already applied to
+    // GET above.
     const session = await getEnrichedSession()
-    const effectiveBizId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       userId,
       body.businessId || bizId,
       !!session?.isSuperAdmin,
       session?.business?.businessId || null
     )
+    const effectiveBizId = scope?.businessId || null
+    const effectiveVendorId = scope?.vendorId || null
 
     /* Compute GST-split per item */
     let subtotal = 0, cgstTotal = 0, sgstTotal = 0, igstTotal = 0
@@ -247,11 +276,12 @@ export async function POST(req: NextRequest) {
     const taxTotal   = round2(cgstTotal + sgstTotal + igstTotal)
     const grandTotal = round2(subtotal + taxTotal - discountAmount)
 
-    const invoiceNumber = await nextInvoiceNumber(effectiveBizId || userId, effectiveBizId || undefined, isNonGst)
+    const invoiceNumber = await nextInvoiceNumber(effectiveBizId || userId, effectiveBizId || undefined, isNonGst, effectiveVendorId)
 
     const invoice = await SalesInvoice.create({
       invoiceNumber,
       businessId: effectiveBizId ? new mongoose.Types.ObjectId(effectiveBizId) : undefined,
+      vendorId: effectiveVendorId ? new mongoose.Types.ObjectId(effectiveVendorId) : undefined,
       createdBy:  new mongoose.Types.ObjectId(userId),
       customer,
       supplyType,
@@ -284,6 +314,7 @@ export async function POST(req: NextRequest) {
 
     captureCustomer({
       businessId: effectiveBizId,
+      vendorId: effectiveVendorId,
       name: customer?.name,
       phone: customer?.phone,
       email: customer?.email,

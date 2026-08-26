@@ -4,7 +4,7 @@ import { connectDB } from "@/lib/mongodb";
 import { Types } from "mongoose";
 import StockAdjustment from "@/models/StockAdjustment";
 import InventoryItem from "@/models/InventoryItem";
-import { generateDocumentNumber } from "@/core/numbering/numberingService";
+import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
@@ -194,7 +194,11 @@ export async function POST(req: NextRequest) {
     // consolidation ("ensure whatever documents in the entire system that
     // numbering should be controlled") — now every adjustment gets one,
     // admin-configurable in Settings > Document Numbers like every other type.
-    const { value: adjustmentNumber } = await generateDocumentNumber(businessId, "STOCK_ADJUSTMENT", { vendorId: "" });
+    // SECURITY/CORRECTNESS: was scoped by plain businessId with a
+    // `{ vendorId: "" }` context that did nothing for the actual counter
+    // (context only affects number FORMAT) -- every vendor sharing this
+    // Business shared one adjustment-number sequence.
+    const { value: adjustmentNumber } = await generateScopedDocumentNumber(createScope?.vendorId || businessId, "STOCK_ADJUSTMENT", businessId);
 
     // Persist the adjustment record first
     const adjustment = await StockAdjustment.create({
