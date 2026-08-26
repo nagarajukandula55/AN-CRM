@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2, Plus, Trash2, Printer, FileText, Check, X } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus, Trash2, Printer, FileText, Check, X, Pencil } from 'lucide-react'
 import { validateGSTIN } from '@/lib/validation/gst'
 import { StateSelect, CitySelect, PincodeInput } from '@/components/shared/LocationSelect'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
@@ -387,6 +387,37 @@ export default function SCJobSheetScreen({
   const [solutionId, setSolutionId] = useState('')
   const [saving, setSaving] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  // The device-detail card below used to show IMEI as read-only text with
+  // no way to ever change it -- if it was entered blank/invalid at intake
+  // (or the device turned out to need a different one), "Start Repair"
+  // then permanently blocks on "Enter a valid 15-digit IMEI" with no way
+  // to actually enter one. Reported live. Editable any time the job isn't
+  // closed/cancelled yet (not gated behind the stricter `editable` used
+  // for parts/line-items, which only opens once repair has ALREADY
+  // started -- IMEI specifically needs to be fixable BEFORE that, since
+  // it's what blocks starting repair in the first place).
+  const [editingImei, setEditingImei] = useState(false)
+  const [imeiDraft, setImeiDraft] = useState('')
+  const [savingImei, setSavingImei] = useState(false)
+  async function saveImei() {
+    if (!jobId) return
+    setSavingImei(true); setActionError(null)
+    try {
+      const res = await fetch(`/api/crm/jobsheets/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imeiOrSerialNumber: imeiDraft.trim() }),
+      })
+      const d = await res.json()
+      if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to save')
+      setEditingImei(false)
+      fetchJob()
+    } catch (err: any) {
+      setActionError(err.message || 'Something went wrong')
+    } finally {
+      setSavingImei(false)
+    }
+  }
 
   // OTP-gated edit access for a CLOSED workorder -- see
   // api/crm/jobsheets/[id]/edit-access/{request,verify}. editAccessToken
@@ -1017,7 +1048,40 @@ export default function SCJobSheetScreen({
           <div><span className="text-ink-3 text-xs">Customer</span><p className="text-ink">{job.customerName}</p></div>
           <div><span className="text-ink-3 text-xs">Phone</span><p className="text-ink">{job.phone}</p></div>
           <div><span className="text-ink-3 text-xs">Device</span><p className="text-ink">{[job.product, typeof job.brandId === 'object' ? job.brandId?.name : undefined, job.deviceModel].filter(Boolean).join(' · ') || '—'}</p></div>
-          <div><span className="text-ink-3 text-xs">IMEI/Serial</span><p className="text-ink">{job.imeiOrSerialNumber || '—'}</p></div>
+          <div>
+            <span className="text-ink-3 text-xs">IMEI/Serial</span>
+            {editingImei ? (
+              <div className="flex items-center gap-1 mt-0.5">
+                <input
+                  autoFocus
+                  value={imeiDraft}
+                  onChange={(e) => setImeiDraft(e.target.value)}
+                  className={inputCls}
+                  placeholder="15-digit IMEI or serial number"
+                />
+                <button type="button" onClick={saveImei} disabled={savingImei} className="p-1 text-success hover:bg-success-soft rounded-control disabled:opacity-50">
+                  {savingImei ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                </button>
+                <button type="button" onClick={() => setEditingImei(false)} disabled={savingImei} className="p-1 text-ink-3 hover:bg-surface-2 rounded-control">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <p className="text-ink flex items-center gap-1.5">
+                {job.imeiOrSerialNumber || '—'}
+                {isOpen && (
+                  <button
+                    type="button"
+                    onClick={() => { setImeiDraft(job.imeiOrSerialNumber || ''); setEditingImei(true) }}
+                    className="text-ink-3 hover:text-accent"
+                    title="Edit IMEI / Serial Number"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                )}
+              </p>
+            )}
+          </div>
         </div>
         <div className="pt-3 border-t border-border">
           <span className="text-ink-3 text-xs">Fault Reported</span>

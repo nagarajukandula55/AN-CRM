@@ -33,7 +33,6 @@ import {
   Store,
   Send,
   LifeBuoy,
-  Activity,
 } from 'lucide-react'
 // Note: `Phone` icon import removed along with the Appointments nav entry below.
 
@@ -60,11 +59,10 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   // them on -- only /console/crm existed, which isn't theirs to navigate
   // into. This reuses the exact same /api/crm/jobsheets endpoint, just
   // scoped to this vendor's own team.
-  // /vendor/crm ("CRM Overview") already existed but had no nav entry at
-  // all -- it only ever opened via a login redirect for Engineer/CCO
-  // staff, never reachable by the Owner. Reported live ("CRM Overview
-  // should be the home page for SC category... that was missing").
-  { href: '/vendor/crm', label: 'CRM Overview', icon: Activity, modules: ['crm_jobsheets', 'crm'] },
+  // CRM Overview is the Dashboard itself now (/vendor, above) -- no
+  // separate nav entry, per explicit direction ("that should be the
+  // dashboard not a separate option"). /vendor/crm still redirects there
+  // for any existing link (e.g. the Engineer/CCO login redirect).
   { href: '/vendor/crm/jobsheets', label: 'Workorders', icon: ClipboardList, modules: ['crm_jobsheets', 'crm'] },
   { href: '/vendor/service-bom', label: 'Service Center BOM', icon: Wrench, modules: ['crm_jobsheets', 'crm'] },
   { href: '/vendor/stock-transfers', label: 'Stock Transfers', icon: ArrowLeftRight, modules: ['stock_transfers'] },
