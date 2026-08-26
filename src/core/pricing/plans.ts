@@ -134,7 +134,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // Plan.vendorModuleKeys comment. Never a tier differentiator; every
       // tier gets full operational access, same as moduleKeys above kept
       // already-in-use features on Basic.
-      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics"],
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics", "inventory"],
     },
     {
       key: "PRO",
@@ -163,7 +163,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // library" feature (the console-side half is gated by moduleKeys'
       // "report-builder" above, since the library is only useful paired
       // with the report builder that can slice by it).
-      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions"],
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
     },
     {
       key: "ULTIMATE",
@@ -191,7 +191,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // CONSOLE side (moduleKeys' "sub-accounts"/"telegram-reports"
       // above), not as vendor-portal nav items, so there's nothing more
       // to unlock here.
-      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions"],
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
       commsQuota: { whatsappPerMonth: 1000 },
     },
   ],

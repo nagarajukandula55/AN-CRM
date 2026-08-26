@@ -86,19 +86,22 @@ import { sendTelegramMessage, sendTelegramMessageWithId, sendTelegramPhoto } fro
 import { buildReportMessage, buildTrendChartUrl, periodStart, computePeriodNumbers, fmtINR, renderWorkorderBreakdown } from "@/lib/telegramReport";
 import { sendVendorBusinessReport } from "@/core/telegram/sendBusinessReport";
 import { runAllDueCronJobs } from "@/lib/cronRunner";
-import { getAllowedModuleKeys, getActivePlanKey } from "@/core/pricing/planAccess";
+import { vendorHasTelegramReportsPlan } from "@/core/pricing/planAccess";
 import { notifyUser } from "@/services/notification.service";
 
 // SECURITY/BILLING: "Automatic Telegram Business Report" is a paid,
 // plan-gated feature (see core/pricing/plans.ts's "telegram-reports"
 // moduleKey, ULTIMATE-tier only) -- checked the same way the cron job
 // already does, so a Basic/Pro vendor can't get the paid feature for free
-// just by messaging the bot.
-async function hasTelegramReportsPlan(business: { _id: unknown; operatingMode?: string }): Promise<boolean> {
-  const mode = (business.operatingMode || "SC") as "SC";
-  const plan = await getActivePlanKey(String(business._id));
-  const allowed = await getAllowedModuleKeys(mode, plan);
-  return !allowed || allowed.includes("telegram-reports");
+// just by messaging the bot. Was checking the shared platform Business's
+// legacy Subscription (getActivePlanKey) instead of the vendor's own
+// VendorSubscription -- a vendor given Ultimate the real, current way
+// (self-serve or admin vendor-billing) still failed this check, reported
+// live ("giving this VND0011 error that their plan is not included with
+// telegram but that is ultimate plan"). See planAccess.ts's
+// vendorHasTelegramReportsPlan for the fixed, per-vendor check.
+async function hasTelegramReportsPlan(vendorId: string): Promise<boolean> {
+  return vendorHasTelegramReportsPlan(vendorId);
 }
 
 function isAdminChat(chatId: number | string): boolean {
@@ -162,7 +165,7 @@ async function finishLinking(chatId: number | string, message: any, vendor: any,
   } else {
     vendor.telegramPersonalChatId = String(chatId);
   }
-  const reportsAllowed = await hasTelegramReportsPlan(business);
+  const reportsAllowed = await hasTelegramReportsPlan(String(vendor._id));
   if (reportsAllowed && (!vendor.telegramReportFrequency || vendor.telegramReportFrequency === "NONE")) {
     vendor.telegramReportFrequency = "DAILY";
   }
@@ -456,7 +459,7 @@ export async function POST(req: NextRequest) {
             // "Automatic Telegram Business Report" content the scheduled
             // trigger sends -- must be gated by the same plan check, not
             // just /today's free snapshot.
-            if (!(await hasTelegramReportsPlan(business))) {
+            if (!(await hasTelegramReportsPlan(String(vendor._id)))) {
               await sendToChat(chatId, `<b>${displayName}</b>: full reports aren't included in your current plan. Upgrade from Plan &amp; Billing to use ${command} -- /today's quick snapshot is still free.`);
               continue;
             }

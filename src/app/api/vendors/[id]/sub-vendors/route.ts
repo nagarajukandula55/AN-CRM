@@ -87,9 +87,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         { status: 403 }
       );
     }
-    if (parent.subVendorBilling?.subVendorPlan === "BLOCKED") {
+    // Allowlist, not blocklist: sub-vendor / multi-center hierarchy is an
+    // ULTIMATE-tier-only feature (see plans.ts), and subVendorPlan is now
+    // wired to actually reflect that on purchase/downgrade (see
+    // api/vendor/billing/invoices/[invoiceId]/confirm/route.ts) -- was
+    // previously only refused on the literal string "BLOCKED", which
+    // nothing ever set, so every vendor on every tier (including a fresh
+    // Basic signup) could create sub-vendors regardless of plan.
+    if (parent.subVendorBilling?.subVendorPlan !== "ALLOWED") {
       return NextResponse.json(
-        { success: false, message: "Sub-vendor creation is currently blocked for this account" },
+        { success: false, message: "Sub-vendor / multi-center hierarchy is an Ultimate-plan feature. Upgrade from Plan & Billing to unlock it." },
         { status: 403 }
       );
     }

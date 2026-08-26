@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import VendorBillingInvoice from "@/models/VendorBillingInvoice";
 import VendorSubscription from "@/models/VendorSubscription";
+import VendorProfile from "@/models/VendorProfile";
 import Business from "@/models/Business";
 import CommunicationQuota from "@/models/CommunicationQuota";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
@@ -131,6 +132,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ inv
     // self-serve vendor flow doesn't otherwise share code with. Email is
     // deliberately excluded here (out of scope, per direction).
     if (claimed.planKey) {
+      // Sub-vendor / multi-center hierarchy is an ULTIMATE-only feature
+      // (see plans.ts), but VendorProfile.subVendorBilling.subVendorPlan
+      // -- the field api/vendors/[id]/sub-vendors actually gates creation
+      // on -- was never written by any purchase flow, so it silently
+      // defaulted to "NONE" (not "BLOCKED") and every vendor on every
+      // tier could create sub-vendors regardless of plan. Wired here so
+      // paying for Ultimate is what actually turns it on, and paying for
+      // anything else turns it back off.
+      await VendorProfile.updateOne(
+        { _id: vendor._id },
+        { $set: { "subVendorBilling.subVendorPlan": claimed.planKey === "ULTIMATE" ? "ALLOWED" : "BLOCKED" } }
+      );
+
       const business = await Business.findById(vendor.businessId).select("operatingMode").lean();
       const mode = ((business as any)?.operatingMode || "SC") as OperatingMode;
       const planDef = findPlan(mode, claimed.planKey as any);

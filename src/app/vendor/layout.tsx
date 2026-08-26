@@ -127,7 +127,13 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   // api/analytics/* and api/reports/* are now all vendorId-scoped.
   { href: '/vendor/analytics', label: 'Analytics', icon: PieChart, modules: ['analytics'] },
   { href: '/vendor/reports', label: 'Reports', icon: FileBarChart, modules: ['reports'] },
-  { href: '/vendor/report-builder', label: 'Report Builder', icon: TrendingUp, modules: ['reports'] },
+  // Report Builder is a Pro+ differentiator (its own value -- slicing by
+  // fault/symptom code -- needs the Pro+ fault/symptom library to be
+  // worth anything anyway, see plans.ts's own comment) -- gated on
+  // 'fault_codes' rather than 'reports' (which every tier already has)
+  // since fault_codes is already the exact Basic-vs-Pro+ split line, with
+  // no new module-key plumbing needed.
+  { href: '/vendor/report-builder', label: 'Report Builder', icon: TrendingUp, modules: ['fault_codes'] },
   { href: '/vendor/help', label: 'Help & Tutorials', icon: LifeBuoy, modules: null },
 ]
 

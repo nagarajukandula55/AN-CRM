@@ -2,7 +2,7 @@ import VendorProfile from "@/models/VendorProfile";
 import Business from "@/models/Business";
 import { sendTelegramMessage, sendTelegramPhoto } from "@/lib/telegram";
 import { buildReportMessage, buildTrendChartUrl } from "@/lib/telegramReport";
-import { getAllowedModuleKeys, getActivePlanKey } from "@/core/pricing/planAccess";
+import { vendorHasTelegramReportsPlan } from "@/core/pricing/planAccess";
 import { resolveVendorChatConfig } from "./resolveVendorChatConfig";
 
 /**
@@ -19,9 +19,11 @@ import { resolveVendorChatConfig } from "./resolveVendorChatConfig";
  *    report sent to their own chat(s) immediately), and
  *  - api/telegram/webhook's /report command (a vendor pulling their own
  *    report on demand any time).
- * Still gated by the "telegram-reports" plan feature (checked against the
- * vendor's own Business, since plans are still sold at the Business
- * level today).
+ * Still gated by the "telegram-reports" plan feature -- checked against
+ * this vendor's OWN VendorSubscription (the real, current per-vendor
+ * billing mechanism), not the shared platform Business's legacy plan,
+ * which every vendor on the platform shares/never has set. See
+ * planAccess.ts's vendorHasTelegramReportsPlan.
  */
 export async function sendVendorBusinessReport(
   vendorObjectId: string,
@@ -35,9 +37,7 @@ export async function sendVendorBusinessReport(
   if (!business) return { sent: false, reason: "business not found" };
 
   const mode = (business.operatingMode || "SC") as "SC";
-  const plan = await getActivePlanKey(vendor.businessId);
-  const allowed = await getAllowedModuleKeys(mode, plan);
-  if (allowed && !allowed.includes("telegram-reports")) {
+  if (!(await vendorHasTelegramReportsPlan(vendorObjectId))) {
     return { sent: false, reason: "plan does not include telegram-reports" };
   }
 

@@ -75,6 +75,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ vend
       { upsert: true, new: true }
     );
 
+    // Sub-vendor / multi-center hierarchy (VendorProfile.subVendorBilling.
+    // subVendorPlan) is deliberately NOT auto-derived here -- this
+    // hand-picked-modules path has no explicit "plan tier" concept at all
+    // (see VendorSubscription.planKey's own comment), and Pro/Ultimate
+    // currently grant the identical vendorModuleKeys set, so there's no
+    // reliable signal to infer "this admin meant Ultimate" from a raw
+    // modules list. The self-serve tier-purchase confirm route (which DOES
+    // know the real planKey) is the one that wires this automatically --
+    // see api/vendor/billing/invoices/[invoiceId]/confirm/route.ts. An
+    // admin using this manual override screen should set subVendorPlan
+    // directly if they intend to grant/revoke it here (console/admin/
+    // vendors/[id] business profile fields).
     return NextResponse.json({ success: true, subscription, amount: totalAmount(modules) });
   } catch (err: any) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });

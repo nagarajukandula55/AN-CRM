@@ -10,6 +10,8 @@
  */
 import Subscription from "@/models/Subscription";
 import PlanFeatureConfig from "@/models/PlanFeatureConfig";
+import VendorSubscription from "@/models/VendorSubscription";
+import { computeStatus } from "@/core/billing/billing.service";
 import { findPlan, type OperatingMode, type PlanKey, type Plan } from "@/core/pricing/plans";
 
 export async function getActivePlanKey(businessId: string): Promise<PlanKey> {
@@ -66,4 +68,39 @@ export async function getEffectivePlan(mode: OperatingMode, plan: PlanKey): Prom
     freeTrialDays: override.freeTrialDays ?? def.freeTrialDays,
     moduleKeys: override.moduleKeys ?? def.moduleKeys,
   };
+}
+
+/**
+ * A VENDOR's own active plan tier -- distinct from getActivePlanKey above,
+ * which reads the shared platform Business's legacy Subscription record.
+ * Every self-signed-up vendor shares ONE platform Business (see
+ * VendorProfile's own comment on why telegram fields/terms moved off
+ * Business), so that Business-level plan is either unset or shared across
+ * every vendor on the platform -- checking it for a per-vendor feature gate
+ * meant a vendor given Ultimate via their own VendorSubscription (the real,
+ * current per-vendor billing mechanism -- see api/vendor/billing/subscribe)
+ * still failed every plan-gated check, since VendorSubscription was never
+ * consulted at all. Falls back to null (caller should treat as "no active
+ * plan known") when the vendor has no VendorSubscription row yet.
+ */
+export async function getVendorPlanKey(vendorId: string): Promise<PlanKey | null> {
+  const sub = await VendorSubscription.findOne({ vendorId }).select("planKey currentPeriodEnd modules").lean<any>();
+  if (!sub) return null;
+  if (computeStatus(sub) !== "ACTIVE") return null;
+  return (sub.planKey as PlanKey) || null;
+}
+
+/**
+ * Whether this specific vendor's own active subscription includes the
+ * Automatic Telegram Business Report feature (ULTIMATE-tier-only, see
+ * plans.ts). Checks the self-serve planKey first; falls back to an admin
+ * having hand-picked the "telegram-reports" module directly on
+ * console/admin/vendor-billing (that path sets no planKey at all -- see
+ * VendorSubscription.planKey's own comment) so both assignment paths work.
+ */
+export async function vendorHasTelegramReportsPlan(vendorId: string): Promise<boolean> {
+  const sub = await VendorSubscription.findOne({ vendorId }).select("planKey currentPeriodEnd modules").lean<any>();
+  if (!sub || computeStatus(sub) !== "ACTIVE") return false;
+  if (sub.planKey === "ULTIMATE") return true;
+  return (sub.modules || []).some((m: any) => m.key === "telegram-reports");
 }
