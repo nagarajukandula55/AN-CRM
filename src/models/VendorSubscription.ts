@@ -35,6 +35,10 @@ export interface IVendorSubscription extends Document {
   // already-active vendor's invoice/plan-page shows they bought.
   planKey: string | null;
   planName: string | null;
+  // Last time the daily "choose & purchase a plan" Telegram reminder was
+  // sent to this vendor (api/cron/trial-plan-reminders) -- unset once a
+  // PAID invoice exists, since that cron only targets never-paid vendors.
+  trialReminderLastSentAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,6 +59,7 @@ const VendorSubscriptionSchema = new Schema<IVendorSubscription>(
     currentPeriodEnd: { type: Date, default: null },
     planKey: { type: String, enum: ["BASIC", "PRO", "ULTIMATE", null], default: null },
     planName: { type: String, default: null },
+    trialReminderLastSentAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
