@@ -7,7 +7,7 @@ import { Types } from "mongoose";
 import { notify } from "@/lib/notify";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 /* =========================================================
  * GET INVENTORY ITEMS
@@ -30,24 +30,38 @@ export async function GET(req: NextRequest) {
     requirePermission(session as any, buildPermissionCode("inventory", "view"));
 
     const { searchParams } = new URL(req.url);
-    const businessId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       session.user.id,
       searchParams.get("businessId"),
       session.isSuperAdmin,
       session.business?.businessId || null
     );
 
-    if (!businessId) {
+    if (!scope?.businessId) {
       return NextResponse.json(
         { error: "businessId is required" },
         { status: 400 }
       );
     }
 
-    const items = await InventoryItem.find({
-      businessId: new Types.ObjectId(businessId),
-      isDeleted: false,
-    }).sort({ createdAt: -1 });
+    // Every onboarded vendor shares ONE platform Business -- filtering by
+    // businessId alone returned every vendor's stock to every other vendor
+    // sharing it. InventoryItem.vendorId (null = business-level/shared
+    // stock) already existed on the schema but nothing here ever filtered
+    // by it.
+    // The schema's actual soft-state field is `active` (see models/
+    // Inventory.js) -- this route previously filtered on `isDeleted`,
+    // a field that doesn't exist on this schema at all, which silently
+    // matched nothing (Mongo's `{isDeleted: false}` doesn't match documents
+    // where the field is simply absent) and made this route return an
+    // empty list for every request.
+    const filter: Record<string, unknown> = {
+      businessId: new Types.ObjectId(scope.businessId),
+      active: true,
+    };
+    if (scope.vendorId) filter.vendorId = new Types.ObjectId(scope.vendorId);
+
+    const items = await InventoryItem.find(filter).sort({ createdAt: -1 });
 
     return NextResponse.json({
       success: true,
@@ -91,14 +105,14 @@ export async function POST(req: NextRequest) {
     } = body;
 
     // SECURITY: body.businessId used to be trusted directly.
-    const businessId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       session.user.id,
       body.businessId,
       session.isSuperAdmin,
       session.business?.businessId || null
     );
 
-    if (!businessId || !materialId || !warehouseId) {
+    if (!scope?.businessId || !materialId || !warehouseId) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -106,9 +120,11 @@ export async function POST(req: NextRequest) {
     }
 
     const item = await InventoryItem.create({
-      businessId: new Types.ObjectId(businessId),
+      businessId: new Types.ObjectId(scope.businessId),
+      vendorId: scope.vendorId ? new Types.ObjectId(scope.vendorId) : null,
       materialId: new Types.ObjectId(materialId),
       warehouseId: new Types.ObjectId(warehouseId),
+      itemType: "MATERIAL",
       quantity: quantity || 0,
       unit,
       createdBy: session.user.id,
@@ -126,7 +142,7 @@ export async function POST(req: NextRequest) {
       entityId: item._id?.toString(),
       after: item,
       req,
-      actor: { id: session.user.id, businessId },
+      actor: { id: session.user.id, businessId: scope.businessId },
     });
 
     return NextResponse.json({

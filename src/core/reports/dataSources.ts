@@ -15,6 +15,13 @@ export interface DataSourceDef {
   label: string;
   dateField: string; // used for filtering/grouping by time
   fields: { key: string; label: string; type: "string" | "number" | "date" | "enum" }[];
+  /** Which field on this source's own schema isolates one vendor's rows
+   * from another's when a report is run as a vendor (not business-level
+   * staff) -- "vendorId" for the CRM-native sources, "_id" for VENDORS
+   * itself (a vendor may only ever see their own profile row, never list
+   * every vendor on the platform). Undefined means this source has no
+   * per-vendor concept and stays business-wide for everyone. */
+  vendorScopeField?: string;
 }
 
 export const DATA_SOURCES: Record<ReportDataSource, DataSourceDef> = {
@@ -44,6 +51,7 @@ export const DATA_SOURCES: Record<ReportDataSource, DataSourceDef> = {
       { key: "completedAt", label: "Completed At", type: "date" },
       { key: "handedOverAt", label: "Handed Over At", type: "date" },
     ],
+    vendorScopeField: "vendorId",
   },
   SALES_INVOICES: {
     model: SalesInvoice,
@@ -62,6 +70,7 @@ export const DATA_SOURCES: Record<ReportDataSource, DataSourceDef> = {
       { key: "dueDate", label: "Due Date", type: "date" },
       { key: "paidAt", label: "Payment Date", type: "date" },
     ],
+    vendorScopeField: "vendorId",
   },
   VENDORS: {
     model: VendorProfile,
@@ -77,6 +86,7 @@ export const DATA_SOURCES: Record<ReportDataSource, DataSourceDef> = {
       { key: "isApproved", label: "Approved", type: "string" },
       { key: "createdAt", label: "Created At", type: "date" },
     ],
+    vendorScopeField: "_id",
   },
   CUSTOMERS: {
     model: Customer,
@@ -93,6 +103,7 @@ export const DATA_SOURCES: Record<ReportDataSource, DataSourceDef> = {
       { key: "sourceModule", label: "Source Module", type: "string" },
       { key: "createdAt", label: "Created At", type: "date" },
     ],
+    vendorScopeField: "vendorId",
   },
 };
 

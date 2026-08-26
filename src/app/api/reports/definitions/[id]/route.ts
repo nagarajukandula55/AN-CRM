@@ -10,6 +10,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { isValidField } from "@/core/reports/dataSources";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -28,8 +29,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ success: false, message: "Invalid id" }, { status: 400 });
     }
 
+    const scope = await resolveAuthorizedVendorScope(
+      session.user.id,
+      req.nextUrl.searchParams.get("businessId"),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
+    if (!scope?.businessId) {
+      return NextResponse.json({ success: false, message: "No active business" }, { status: 400 });
+    }
+
     await connectDB();
-    const report = await ReportDefinition.findOne({ _id: id, businessId: session.business?.businessId });
+    // A vendor can only edit their OWN saved reports, never a business-
+    // level one (vendorId null) or another vendor's -- see this route's
+    // GET counterpart's own comment on the read-side sharing rule, which
+    // is deliberately one-way (read shared defaults, never edit them).
+    const ownershipFilter: Record<string, unknown> = { _id: id, businessId: scope.businessId };
+    if (scope.vendorId) ownershipFilter.vendorId = scope.vendorId;
+    const report = await ReportDefinition.findOne(ownershipFilter);
     if (!report) {
       return NextResponse.json({ success: false, message: "Report not found" }, { status: 404 });
     }
@@ -67,8 +84,20 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     const { id } = await params;
+    const scope = await resolveAuthorizedVendorScope(
+      session.user.id,
+      req.nextUrl.searchParams.get("businessId"),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
+    if (!scope?.businessId) {
+      return NextResponse.json({ success: false, message: "No active business" }, { status: 400 });
+    }
+
     await connectDB();
-    await ReportDefinition.deleteOne({ _id: id, businessId: session.business?.businessId });
+    const ownershipFilter: Record<string, unknown> = { _id: id, businessId: scope.businessId };
+    if (scope.vendorId) ownershipFilter.vendorId = scope.vendorId;
+    await ReportDefinition.deleteOne(ownershipFilter);
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

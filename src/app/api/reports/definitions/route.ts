@@ -10,6 +10,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { isValidField } from "@/core/reports/dataSources";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,12 +18,28 @@ export async function GET(req: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
-    if (!session.business?.businessId) {
+    // SECURITY: session.business?.businessId hard-required a BusinessMember
+    // row, which a vendor Owner never has -- blocked every vendor Owner
+    // outright. Also never scoped by vendorId, so any vendor sharing the
+    // platform Business saw (and could run) every other vendor's saved
+    // reports. resolveAuthorizedVendorScope covers both.
+    const scope = await resolveAuthorizedVendorScope(
+      session.user.id,
+      req.nextUrl.searchParams.get("businessId"),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
+    if (!scope?.businessId) {
       return NextResponse.json({ success: false, message: "No active business" }, { status: 400 });
     }
 
     await connectDB();
-    const reports = await ReportDefinition.find({ businessId: session.business.businessId })
+    const filter: Record<string, unknown> = { businessId: scope.businessId };
+    // A vendor sees their own saved reports plus any business-level ones
+    // (vendorId unset) -- same private-list-with-shared-default pattern as
+    // fault-codes/solutions.
+    if (scope.vendorId) filter.$or = [{ vendorId: scope.vendorId }, { vendorId: null }];
+    const reports = await ReportDefinition.find(filter)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -44,7 +61,13 @@ export async function POST(req: NextRequest) {
     } catch (err: any) {
       return NextResponse.json({ success: false, message: err.message }, { status: err.code === "FORBIDDEN" ? 403 : 401 });
     }
-    if (!session.business?.businessId) {
+    const scope = await resolveAuthorizedVendorScope(
+      session.user.id,
+      req.nextUrl.searchParams.get("businessId"),
+      session.isSuperAdmin,
+      session.business?.businessId || null
+    );
+    if (!scope?.businessId) {
       return NextResponse.json({ success: false, message: "No active business" }, { status: 400 });
     }
 
@@ -58,7 +81,8 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
     const report = await ReportDefinition.create({
-      businessId: session.business.businessId,
+      businessId: scope.businessId,
+      vendorId: scope.vendorId || null,
       name: name.trim(),
       dataSource,
       fields: safeFields,

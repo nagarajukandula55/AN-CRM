@@ -25,6 +25,13 @@ export interface IReportFilter {
 
 export interface IReportDefinition extends Document {
   businessId: Types.ObjectId;
+  /** Owning vendor (VendorProfile._id), null for a business-level/admin
+   * report -- every self-signed-up vendor shares ONE platform Business
+   * (see VendorProfile's own comment on why telegram fields/terms moved
+   * off Business, same reasoning applies here), so without this a vendor's
+   * saved reports -- and worse, another vendor's -- would be visible/
+   * runnable by every vendor sharing that Business. */
+  vendorId?: Types.ObjectId | null;
   name: string;
   dataSource: ReportDataSource;
   fields: string[]; // subset of the data source's allowed fields
@@ -58,6 +65,7 @@ const ReportFilterSchema = new Schema<IReportFilter>(
 const ReportDefinitionSchema = new Schema<IReportDefinition>(
   {
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true, index: true },
+    vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
     name: { type: String, required: true, trim: true },
     dataSource: { type: String, enum: ["CRM_JOBSHEETS", "SALES_INVOICES", "VENDORS", "CUSTOMERS"], required: true },
     fields: { type: [String], default: [] },

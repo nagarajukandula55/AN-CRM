@@ -39,7 +39,10 @@ export interface ReportResult {
   chartData?: { label: string; value: number }[];
 }
 
-export async function runReport(def: Pick<IReportDefinition, "businessId" | "dataSource" | "fields" | "filters" | "groupByField" | "chartType">): Promise<ReportResult> {
+export async function runReport(
+  def: Pick<IReportDefinition, "businessId" | "dataSource" | "fields" | "filters" | "groupByField" | "chartType">,
+  vendorId?: string | null
+): Promise<ReportResult> {
   const source = DATA_SOURCES[def.dataSource];
   if (!source) throw new Error("Unknown data source");
 
@@ -48,6 +51,13 @@ export async function runReport(def: Pick<IReportDefinition, "businessId" | "dat
 
   const mongoFilter = buildMongoFilter(def.filters, def.dataSource);
   mongoFilter.businessId = def.businessId;
+  // A vendor running a report only ever sees their own rows -- see
+  // DataSourceDef.vendorScopeField's own comment. Business-level staff
+  // (vendorId null/undefined here) keep seeing everything under the
+  // business, unchanged.
+  if (vendorId && source.vendorScopeField) {
+    mongoFilter[source.vendorScopeField] = vendorId;
+  }
 
   const rows = await source.model.find(mongoFilter).select(projection).sort({ [source.dateField]: -1 }).limit(1000).lean();
 

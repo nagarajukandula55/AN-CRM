@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import VendorLogoutButton from '@/components/vendor/VendorLogoutButton'
+import VendorSwitcher from '@/components/vendor/VendorSwitcher'
 import NotificationBell from '@/components/NotificationBell'
 import ContactWidget from '@/components/ContactWidget'
 import BrowserPushRegister from '@/components/shared/BrowserPushRegister'
@@ -40,6 +41,9 @@ import {
   Receipt,
   Tag,
   Smartphone,
+  TrendingUp,
+  FileBarChart,
+  PieChart,
 } from 'lucide-react'
 // Note: `Phone` icon import removed along with the Appointments nav entry below.
 
@@ -79,6 +83,11 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   { href: '/vendor/masters/brands', label: 'Brands & Models', icon: Tag, modules: ['crm_jobsheets', 'crm'] },
   { href: '/vendor/masters/solutions', label: 'Solutions', icon: Smartphone, modules: ['crm_jobsheets', 'crm'] },
   { href: '/vendor/stock-transfers', label: 'Stock Transfers', icon: ArrowLeftRight, modules: ['stock_transfers'] },
+  // Migrated from console/common/inventory -- distinct from Warehouses
+  // (locations only): this is actual stock quantities per material per
+  // warehouse. /api/inventory/items and /api/inventory/movements are now
+  // vendorId-scoped.
+  { href: '/vendor/inventory', label: 'Inventory', icon: Boxes, modules: ['inventory'] },
   { href: '/vendor/invoices', label: 'Invoices & Payments', icon: FileText, modules: ['finance'] },
   // Migrated from console/common/sales -- raising a GST/Non-GST sales
   // invoice directly to an end customer (distinct from "Invoices &
@@ -114,6 +123,11 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   { href: '/vendor/telegram', label: 'Telegram Alerts', icon: Send, modules: null },
   { href: '/vendor/profile', label: 'My Profile / Settings', icon: User, modules: null },
   { href: '/vendor/statement', label: 'Financial Statement', icon: BarChart3, modules: ['finance'] },
+  // Migrated from console/common/{analytics,reports,report-builder} --
+  // api/analytics/* and api/reports/* are now all vendorId-scoped.
+  { href: '/vendor/analytics', label: 'Analytics', icon: PieChart, modules: ['analytics'] },
+  { href: '/vendor/reports', label: 'Reports', icon: FileBarChart, modules: ['reports'] },
+  { href: '/vendor/report-builder', label: 'Report Builder', icon: TrendingUp, modules: ['reports'] },
   { href: '/vendor/help', label: 'Help & Tutorials', icon: LifeBuoy, modules: null },
 ]
 
@@ -285,6 +299,7 @@ export default async function VendorLayout({
               <p className="text-[10px] text-ink-3">Vendor Account</p>
             </div>
           </div>
+          <VendorSwitcher />
         </div>
 
         {/* Nav */}

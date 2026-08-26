@@ -8,7 +8,7 @@ import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 /* =========================================================
  * GET /api/reports/invoices-zip?from=&to=&businessId=
@@ -40,12 +40,16 @@ export async function GET(req: NextRequest) {
     // in a date range is exactly the kind of high-value export a
     // cross-tenant leak here would have exposed in full.
     const requestedBizId = h.get("x-active-business-id") || req.nextUrl.searchParams.get("businessId");
-    const bizId = await resolveAuthorizedBusinessId(
+    // SECURITY: also missing a vendorId scope -- every vendor sharing the
+    // platform Business could bulk-download every OTHER vendor's invoices
+    // in this ZIP, same bug class fixed elsewhere this session.
+    const scope = await resolveAuthorizedVendorScope(
       session.user.id,
       requestedBizId,
       session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const bizId = scope?.businessId || null;
 
     const from = req.nextUrl.searchParams.get("from");
     const to = req.nextUrl.searchParams.get("to");
@@ -61,6 +65,9 @@ export async function GET(req: NextRequest) {
       filter.businessId = new mongoose.Types.ObjectId(bizId);
     } else {
       filter.createdBy = new mongoose.Types.ObjectId(session.user.id);
+    }
+    if (scope?.vendorId && mongoose.Types.ObjectId.isValid(scope.vendorId)) {
+      filter.vendorId = new mongoose.Types.ObjectId(scope.vendorId);
     }
 
     const invoices = await SalesInvoice.find(filter).sort({ issueDate: 1 }).lean();

@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
       const wantsTelegram = !!report.schedule.sendToTelegram;
       if (!wantsEmail && !wantsTelegram) continue;
       try {
-        const result = await runReport(report);
+        const result = await runReport(report, (report as any).vendorId ? String((report as any).vendorId) : null);
 
         if (wantsEmail) {
           const html = `<h2>${report.name}</h2><p>${DATA_SOURCES[report.dataSource]?.label} — ${result.rows.length} rows</p>${rowsToHtmlTable(result.rows)}`;
