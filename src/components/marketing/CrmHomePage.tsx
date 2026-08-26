@@ -100,7 +100,6 @@ const FOOTER_COLUMNS: { heading: string; links: { label: string; href: string }[
       { label: 'Pricing', href: '/pricing' },
       { label: 'Sign up as Service Center', href: '/partner-signup' },
       { label: 'Track a Repair', href: '/track-workorder' },
-      { label: 'Book an Appointment', href: '/appointment-request' },
     ],
   },
   {
@@ -249,8 +248,8 @@ export default function CrmHomePage() {
             <a href="#signup-types" className={mbfButtonPrimary}>
               Become a Partner <ArrowRight className="h-4 w-4" />
             </a>
-            <Link href="/appointment-request" className={mbfButtonSecondary}>
-              <CheckCircle2 className="h-4 w-4" /> Book a Service
+            <Link href="/track-workorder" className={mbfButtonSecondary}>
+              <CheckCircle2 className="h-4 w-4" /> Track a Repair
             </Link>
           </div>
         </div>
@@ -331,7 +330,7 @@ export default function CrmHomePage() {
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-widest text-gray-500">Get in touch</h4>
             <ul className="mt-4 space-y-2.5 text-sm text-gray-400">
-              <li className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-cyan-300 shrink-0" /> support@angroup.in</li>
+              <li className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-cyan-300 shrink-0" /> connectwithangroup@gmail.com</li>
               <li className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-cyan-300 shrink-0" /> Contact us</li>
               <li className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-cyan-300 shrink-0" /> India</li>
             </ul>

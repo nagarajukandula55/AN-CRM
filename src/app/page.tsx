@@ -1,61 +1,46 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { connectDB } from '@/lib/mongodb'
+import { resolveLandingPath } from '@/core/access/vendorAccess.service'
 import HomePage from '@/components/marketing/CrmHomePage'
 
 /**
- * Root page — for an authenticated visitor this resolves the same
- * role/vendor-aware landing page the login form redirects to (see
- * /api/auth/landing) and sends them straight there, exactly as before.
- * "/" is now public in middleware (see src/middleware.ts), so an
- * unauthenticated visitor no longer bounces to /login before ever seeing
- * anything -- instead /api/auth/landing 401s (no an_token cookie / no
- * valid session), and we render the public marketing homepage in place
- * of a redirect.
+ * Root page — Server Component (was 'use client', a bare loading spinner
+ * on first paint while it fetched /api/auth/landing client-side to decide
+ * where to send an authenticated visitor). That meant search engines and
+ * AI answer engines (GEO) saw a blank spinner shell instead of the actual
+ * marketing content on "/", the single most important page for organic
+ * discovery. Reported live as part of a broader SEO pass.
+ *
+ * Now resolves the exact same landing rule (resolveLandingPath, the same
+ * function api/auth/landing already wrapped) directly from the verified
+ * x-user-id/x-is-super-admin headers middleware.ts sets -- no client
+ * round trip needed at all -- and redirects server-side BEFORE ever
+ * rendering the marketing page for a logged-in visitor. An anonymous
+ * visitor (or a crawler, which never carries an an_token cookie) gets the
+ * full marketing HTML on the very first response.
  */
-export default function RootPage() {
-  const router = useRouter()
-  const [status, setStatus] = useState<'checking' | 'anonymous'>('checking')
+export default async function RootPage() {
+  const h = await headers()
+  const userId = h.get('x-user-id')
 
-  useEffect(() => {
-    let cancelled = false
-
-    fetch('/api/auth/landing')
-      .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
-      .then(({ ok, d }) => {
-        if (cancelled) return
-        if (ok && d.success && d.landingPath) {
-          const path = d.landingPath as string
-          // landingPath can be an external URL (shopnative.in) -- router.replace
-          // only handles internal paths, so an external target needs a real
-          // navigation instead.
-          if (path.startsWith('http')) window.location.href = path
-          else router.replace(path)
-          return
-        }
-        // No valid session -- show the public marketing homepage instead
-        // of redirecting anywhere.
-        setStatus('anonymous')
-      })
-      .catch(() => {
-        if (!cancelled) setStatus('anonymous')
-      })
-
-    return () => {
-      cancelled = true
+  if (userId) {
+    let landingPath: string | null = null
+    try {
+      await connectDB()
+      const isSuperAdmin = h.get('x-is-super-admin') === 'true'
+      landingPath = await resolveLandingPath(userId, isSuperAdmin)
+    } catch {
+      // On any resolution error, fail open to the marketing page rather
+      // than leaving a logged-in visitor stuck -- same reasoning the old
+      // client-side version's catch block used.
+      landingPath = null
     }
-  }, [router])
-
-  if (status === 'anonymous') {
-    return <HomePage />
+    // redirect() throws internally (NEXT_REDIRECT) -- must stay OUTSIDE
+    // the try/catch above, or that throw gets silently swallowed and the
+    // redirect never actually happens.
+    if (landingPath) redirect(landingPath)
   }
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-bg">
-      <div className="text-center">
-        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-border border-t-accent" />
-      </div>
-    </div>
-  )
+  return <HomePage />
 }

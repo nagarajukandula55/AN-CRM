@@ -119,7 +119,7 @@ export default function ContactPage() {
             Contact <span className={neonGradientText}>Us</span>
           </h1>
           <p className="mx-auto mt-3 max-w-md text-sm text-ink-3">
-            Questions about AN-CRM, an existing account, or becoming a partner — send us a
+            Questions about My Biz Flow, an existing account, or becoming a partner — send us a
             message and our team will get back to you.
           </p>
         </div>
@@ -127,7 +127,7 @@ export default function ContactPage() {
         <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className={`${neonCard} flex items-center gap-3 p-4`}>
             <Mail className="h-4 w-4 flex-shrink-0 text-violet-600" />
-            <span className="text-xs text-ink-2">hello@angroup.in</span>
+            <span className="text-xs text-ink-2">connectwithangroup@gmail.com</span>
           </div>
           <div className={`${neonCard} flex items-center gap-3 p-4`}>
             <Phone className="h-4 w-4 flex-shrink-0 text-violet-600" />
