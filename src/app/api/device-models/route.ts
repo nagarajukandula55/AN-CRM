@@ -8,6 +8,7 @@ import { buildBusinessScopeQuery } from "@/core/catalog/businessScopeFilter";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveVendorContext } from "@/lib/auth/vendorContext";
 
 // GET /api/device-models?businessId=...&brandId=...&search=...
 export async function GET(req: NextRequest) {
@@ -37,7 +38,20 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const scopeQuery = buildBusinessScopeQuery(businessId);
-    const query: Record<string, unknown> = { ...scopeQuery, isActive: true };
+    const query: Record<string, unknown> = { isActive: true };
+    const andClauses: Record<string, unknown>[] = [{ $or: scopeQuery.$or }];
+
+    // Vendor isolation -- same private-list-with-shared-default pattern as
+    // /api/brands (a model's own vendorId is denormalized from its parent
+    // Brand, see DeviceModel.vendorId's own comment). Defensive even though
+    // brandId is already vendor-private, since brandId isn't a required
+    // filter on this route.
+    const vendorCtx = await resolveVendorContext(userId);
+    const ownVendorId = vendorCtx?.vendor?._id ? String(vendorCtx.vendor._id) : null;
+    if (ownVendorId) {
+      andClauses.push({ $or: [{ vendorId: ownVendorId }, { vendorId: null }, { vendorId: { $exists: false } }] });
+    }
+
     if (brandId && Types.ObjectId.isValid(brandId)) {
       query.brandId = brandId;
     }
@@ -45,14 +59,14 @@ export async function GET(req: NextRequest) {
       query.seriesId = seriesId;
     }
     if (search) {
-      query.$and = [{ $or: scopeQuery.$or }, { name: { $regex: search, $options: "i" } }];
-      delete query.$or;
+      andClauses.push({ name: { $regex: search, $options: "i" } });
     }
+    query.$and = andClauses;
 
     // Model dropdown only reads _id/name -- keep brandId/seriesId/isActive
     // too since callers filter/group on them.
     const models = await DeviceModel.find(query)
-      .select("name brandId seriesId isActive")
+      .select("name brandId seriesId isActive vendorId")
       .sort({ name: 1 })
       .lean();
     return NextResponse.json({ success: true, models });
@@ -95,11 +109,15 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
+    const vendorCtx = await resolveVendorContext(userId);
+    const vendorId = vendorCtx?.vendor?._id || null;
+
     const model = await DeviceModel.create({
       name: name.trim(),
       brandId: new Types.ObjectId(brandId),
       seriesId: seriesId ? new Types.ObjectId(seriesId) : null,
       businessId: new Types.ObjectId(businessId),
+      vendorId,
       businessScope: businessScope || "SINGLE",
       businessIds: Array.isArray(businessIds) ? businessIds : [],
     });

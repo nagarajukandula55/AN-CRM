@@ -9,6 +9,7 @@ import { buildBusinessScopeQuery } from "@/core/catalog/businessScopeFilter";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { resolveVendorContext } from "@/lib/auth/vendorContext";
 
 // GET /api/brands?businessId=...&search=...&isActive=...
 export async function GET(req: NextRequest) {
@@ -44,7 +45,21 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const scopeQuery = buildBusinessScopeQuery(businessId);
-    const query: Record<string, unknown> = { ...scopeQuery };
+    const query: Record<string, unknown> = {};
+    const andClauses: Record<string, unknown>[] = [{ $or: scopeQuery.$or }];
+
+    // Vendor isolation: every self-signed-up vendor shares ONE platform
+    // Business, so businessId scoping alone returned every vendor's own
+    // brands to every other vendor sharing it. A vendor sees their own
+    // brands plus any shared platform default (vendorId: null, added by
+    // business-wide staff) -- same private-list-with-shared-default
+    // pattern as Solutions/FaultCodes/BOM. Business-wide staff (no vendor
+    // context) keep seeing everything, unfiltered, same as before.
+    const vendorCtx = await resolveVendorContext(userId);
+    const ownVendorId = vendorCtx?.vendor?._id ? String(vendorCtx.vendor._id) : null;
+    if (ownVendorId) {
+      andClauses.push({ $or: [{ vendorId: ownVendorId }, { vendorId: null }, { vendorId: { $exists: false } }] });
+    }
 
     // Defaults to active-only, same as /api/product-categories -- pass an
     // explicit isActive=true/false to filter one way, or includeInactive=true
@@ -71,19 +86,17 @@ export async function GET(req: NextRequest) {
     }
 
     if (search) {
-      query.$and = [
-        { $or: scopeQuery.$or },
-        { $or: [{ name: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }] },
-      ];
-      delete query.$or;
+      andClauses.push({ $or: [{ name: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }] });
     }
+
+    query.$and = andClauses;
 
     // Dropdown/TreeSelect payload only ever reads _id/name/parentId/logoUrl
     // (see TreeSelectItem) plus isActive/category for masters-page display
     // -- restricting the projection cuts payload size now that the catalog
     // spans thousands of models across 45 categories.
     const brands = await Brand.find(query)
-      .select("name parentId logoUrl isActive category businessId")
+      .select("name parentId logoUrl isActive category businessId vendorId")
       .sort({ name: 1 })
       .lean();
 
@@ -121,6 +134,12 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
+    // Owns this brand privately when the caller is a vendor (Owner or
+    // staff) -- null (shared platform default) for business-wide staff
+    // with no vendor context, same as before this field existed.
+    const vendorCtx = await resolveVendorContext(userId);
+    const vendorId = vendorCtx?.vendor?._id || null;
+
     const brand = await Brand.create({
       name: name.trim(),
       description: description?.trim(),
@@ -128,6 +147,7 @@ export async function POST(req: NextRequest) {
       productCategoryId: productCategoryId ? new Types.ObjectId(productCategoryId) : null,
       parentId: parentId ? new Types.ObjectId(parentId) : null,
       businessId: new Types.ObjectId(businessId),
+      vendorId,
       logoUrl: logoUrl?.trim(),
       businessScope: businessScope || "SINGLE",
       businessIds: Array.isArray(businessIds) ? businessIds : [],

@@ -87,6 +87,7 @@ interface JobSheet {
   address?: string; city?: string; state?: string; pincode?: string
   title: string; product?: string; deviceModel?: string; imeiOrSerialNumber?: string
   brandId?: { name?: string } | string
+  deviceModelId?: { name?: string } | string
   status: string; createdAt: string; lineItems: LineItem[]; taxApplyEnabled?: boolean
   remark?: string; ccoName?: string; invoiceNumber?: string; invoiceId?: string; cancelReason?: string
   engineerAssignedAt?: string; repairInProgressAt?: string; partPendingAt?: string; repairResumedAt?: string
@@ -252,6 +253,58 @@ export default function SCJobSheetScreen({
     fetchBusiness()
   }
 
+  // Resolves the free-text brand/model the intake quick-add uses (fast, no
+  // approval gate -- see the comment on savedBrands above) against the
+  // REAL Brand/DeviceModel catalog Service Center BOM is organized under
+  // (/api/brands, /api/device-models), creating either one if it doesn't
+  // exist yet under an exact case-insensitive name match. Reported live:
+  // BOM parts filed under a Brand/Model in Service Center BOM never showed
+  // up as suggestions on a workorder for that same device, because the
+  // job sheet only ever carried pendingBrandName/deviceModel (free text)
+  // with brandId/deviceModelId left unset -- the part-picker below has no
+  // way to narrow down to "this device's" parts without them. Every SC
+  // role already holds the brands/device_models create permission (same
+  // one Service Center BOM's own Brand/Model dropdowns use), so this is
+  // silent and adds no extra step for the user -- same one "type a brand
+  // name" field as before, just now backed by the real catalog instead of
+  // a dead-end string.
+  async function resolveBrandAndModelIds(brandName: string, modelName: string): Promise<{ brandId?: string; deviceModelId?: string }> {
+    if (!businessId || !brandName.trim()) return {}
+    try {
+      const brandRes = await fetch(`/api/brands?businessId=${businessId}&search=${encodeURIComponent(brandName.trim())}`).then(r => r.json())
+      const brandList: { _id: string; name: string }[] = brandRes?.brands || brandRes?.data || []
+      let brandId = brandList.find(b => b.name.toLowerCase() === brandName.trim().toLowerCase())?._id
+      if (!brandId) {
+        const created = await fetch('/api/brands', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ businessId, name: brandName.trim() }),
+        }).then(r => r.json()).catch(() => null)
+        brandId = created?.brand?._id
+      }
+      if (!brandId || !modelName.trim()) return { brandId }
+
+      const modelRes = await fetch(`/api/device-models?businessId=${businessId}&brandId=${brandId}&search=${encodeURIComponent(modelName.trim())}`).then(r => r.json())
+      const modelList: { _id: string; name: string }[] = modelRes?.models || modelRes?.data || []
+      let deviceModelId = modelList.find(m => m.name.toLowerCase() === modelName.trim().toLowerCase())?._id
+      if (!deviceModelId) {
+        const created = await fetch('/api/device-models', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ businessId, brandId, name: modelName.trim() }),
+        }).then(r => r.json()).catch(() => null)
+        deviceModelId = created?.model?._id || created?.deviceModel?._id
+      }
+      return { brandId, deviceModelId }
+    } catch {
+      // Best-effort -- a failure here shouldn't block workorder creation
+      // over the free-text pendingBrandName/deviceModel fields, which are
+      // sent regardless. The workorder just won't have BOM parts narrowed
+      // to this device until it's re-saved successfully.
+      return {}
+    }
+  }
+
   // ---------- Intake (no job yet) ----------
   const [intake, setIntake] = useState({
     customerName: '', phone: '', company: '', gstin: '',
@@ -353,6 +406,7 @@ export default function SCJobSheetScreen({
     setCreating(true)
     setIntakeError(null)
     try {
+      const { brandId, deviceModelId } = await resolveBrandAndModelIds(intake.brandName, intake.deviceModel)
       const res = await fetch('/api/crm/jobsheets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -360,6 +414,7 @@ export default function SCJobSheetScreen({
           customerName: intake.customerName, phone: intake.phone, company: intake.company, gstin: intake.gstin,
           address: intake.address, city: intake.city, state: intake.state, pincode: intake.pincode,
           deviceCategory: intake.deviceCategory, pendingBrandName: intake.brandName, deviceModel: intake.deviceModel,
+          brandId, deviceModelId,
           imeiOrSerialNumber: intake.imeiOrSerialNumber, title: intake.title, remark: intake.remark, ccoName: intake.ccoName,
           deviceAppearance: intake.deviceAppearance || undefined, fileBackupDescription: intake.fileBackupDescription || undefined,
           businessId,
@@ -474,7 +529,16 @@ export default function SCJobSheetScreen({
     }
   }, [job?._id])
 
-  const { data: bomPartsData, mutate: fetchBomParts } = useSWR(job ? '/api/service-center-bom' : null)
+  // Narrowed to this job's own brand/model when set (see
+  // resolveBrandAndModelIds above) -- GET /api/service-center-bom already
+  // supports this filter (brand-agnostic and model-agnostic parts still
+  // included inclusively), it just never received these params before, so
+  // the picker always showed every active part across every brand mixed
+  // together regardless of which device the workorder was actually for.
+  const jobBrandId = job ? (typeof job.brandId === 'object' ? undefined : job.brandId) || (job.brandId as any)?._id : undefined
+  const jobDeviceModelId = job ? (typeof job.deviceModelId === 'object' ? undefined : job.deviceModelId) || (job.deviceModelId as any)?._id : undefined
+  const bomPartsQs = [jobBrandId && `brandId=${jobBrandId}`, jobDeviceModelId && `deviceModelId=${jobDeviceModelId}`].filter(Boolean).join('&')
+  const { data: bomPartsData, mutate: fetchBomParts } = useSWR(job ? `/api/service-center-bom${bomPartsQs ? `?${bomPartsQs}` : ''}` : null)
   const bomParts: BOMPart[] = bomPartsData?.success ? (bomPartsData.parts || []) : []
 
   const [addPartForLine, setAddPartForLine] = useState<number | null>(null)

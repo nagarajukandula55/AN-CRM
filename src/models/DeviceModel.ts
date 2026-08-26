@@ -19,6 +19,11 @@ export interface IDeviceModel extends Document {
   businessId: mongoose.Types.ObjectId;
   businessScope: BusinessScope;
   businessIds: mongoose.Types.ObjectId[];
+  // Denormalized from the parent Brand's own vendorId (a model always
+  // belongs to exactly one Brand, which is already vendor-private -- see
+  // Brand.vendorId's own comment) -- kept here too so this collection can
+  // be queried/filtered directly without a Brand lookup on every read.
+  vendorId?: mongoose.Types.ObjectId | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -32,6 +37,7 @@ const DeviceModelSchema = new Schema<IDeviceModel>(
     businessId: { type: Schema.Types.ObjectId, required: true },
     businessScope: { type: String, enum: BUSINESS_SCOPES, default: "SINGLE" },
     businessIds: [{ type: Schema.Types.ObjectId, ref: "Business" }],
+    vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

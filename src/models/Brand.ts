@@ -38,6 +38,15 @@ export interface IBrand extends Document {
   // See core/catalog/businessScopeFilter.ts for the query this backs.
   businessScope: BusinessScope;
   businessIds: mongoose.Types.ObjectId[];
+  // Owning vendor (VendorProfile._id), null for a shared platform default
+  // (added by business-wide staff, not any one vendor). Every self-signed-
+  // up vendor shares ONE platform Business (see VendorProfile's own
+  // comment on why telegram fields/terms moved off Business), so without
+  // this a Brand one vendor adds -- and every DeviceModel/BOM part filed
+  // under it -- would show up as a suggestion for every OTHER vendor
+  // sharing that Business too. Same private-list-with-shared-default
+  // pattern as Solutions/FaultCodes/BOM.
+  vendorId?: mongoose.Types.ObjectId | null;
   logoUrl?: string;
   isActive: boolean;
   createdAt: Date;
@@ -54,6 +63,7 @@ const BrandSchema = new Schema<IBrand>(
     businessId: { type: Schema.Types.ObjectId, required: true },
     businessScope: { type: String, enum: BUSINESS_SCOPES, default: "SINGLE" },
     businessIds: [{ type: Schema.Types.ObjectId, ref: "Business" }],
+    vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
     logoUrl: { type: String },
     isActive: { type: Boolean, default: true },
   },
@@ -67,12 +77,15 @@ BrandSchema.index({ businessId: 1, productCategoryId: 1 });
 // previously only { businessId, isActive } and { businessId,
 // productCategoryId } existed, neither of which covers a category filter.
 BrandSchema.index({ businessId: 1, category: 1, isActive: 1 });
-// A brand name is unique per (business, category) rather than per business
-// alone -- lets a genuinely multi-line brand (e.g. Samsung: Mobile, TV,
-// Refrigerator, ...) have one row per category it's classified under. Two
-// uncategorized ("category": null) brands with the same name are still
-// blocked, same as before this field existed.
-BrandSchema.index({ businessId: 1, category: 1, name: 1 }, { unique: true });
+// A brand name is unique per (business, vendor, category) -- vendor added
+// so two different vendors sharing one Business can each have their own
+// "Samsung" row (see vendorId's own comment above); previously per
+// (business, category) alone, which meant the SECOND vendor to ever add
+// a given brand name hit a duplicate-key error trying to create their own
+// private copy of a name another vendor already used. Two uncategorized
+// ("category": null) brands with the same name, from the same vendor
+// (or both shared defaults), are still blocked, same as before.
+BrandSchema.index({ businessId: 1, vendorId: 1, category: 1, name: 1 }, { unique: true });
 
 const Brand: Model<IBrand> =
   (mongoose.models.Brand as Model<IBrand>) ||
