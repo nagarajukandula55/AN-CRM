@@ -8,8 +8,11 @@
  * old signup-time plan picker. A floating collapsible tab pinned to the
  * right edge (not a top banner) so it never pushes page content down or
  * covers a header action -- collapses to a slim edge tab, expands to a
- * small card on click. Collapse state is per-browser only (localStorage),
- * not a real dismissal, since payment is still outstanding.
+ * small card on click. Collapse state is NOT a real dismissal (payment is
+ * still outstanding) -- it lives in sessionStorage, not localStorage, so
+ * collapsing it only lasts for that browser tab/session; it starts
+ * expanded again on every fresh visit rather than staying permanently
+ * closed once someone clicks it away.
  */
 
 import { useEffect, useState } from 'react'
@@ -20,13 +23,13 @@ const STORAGE_KEY = 'an_trial_banner_collapsed'
 
 export default function TrialPlanBanner() {
   const [state, setState] = useState<{ show: boolean; daysLeft: number | null; expired: boolean } | null>(null)
-  const [collapsed, setCollapsed] = useState(true)
+  const [collapsed, setCollapsed] = useState(false)
 
   useEffect(() => {
     try {
-      setCollapsed(localStorage.getItem(STORAGE_KEY) !== '0')
+      setCollapsed(sessionStorage.getItem(STORAGE_KEY) === '1')
     } catch {
-      // ignore -- default collapsed
+      // ignore -- default expanded
     }
     fetch('/api/vendor/billing')
       .then((r) => r.json())
@@ -46,7 +49,7 @@ export default function TrialPlanBanner() {
     setCollapsed((prev) => {
       const next = !prev
       try {
-        localStorage.setItem(STORAGE_KEY, next ? '1' : '0')
+        sessionStorage.setItem(STORAGE_KEY, next ? '1' : '0')
       } catch {
         // ignore
       }
