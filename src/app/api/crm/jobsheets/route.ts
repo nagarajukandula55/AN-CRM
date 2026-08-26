@@ -295,6 +295,12 @@ export async function POST(req: NextRequest) {
 
     captureCustomer({
       businessId: effectiveBizId,
+      // Was missing entirely -- every customer captured through the real
+      // workorder-intake flow got vendorId: null, which (once
+      // api/customers/route.ts's GET became vendor-scoped) would make a
+      // vendor's OWN customers invisible to their own search/autocomplete
+      // (e.g. picking a party while creating a Quotation).
+      vendorId: effectiveVendorId,
       name: jobSheet.customerName,
       phone: jobSheet.phone,
       email: jobSheet.email,

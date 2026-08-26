@@ -6,7 +6,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { logAction } from "@/lib/audit/logAction";
-import { resolveAuthorizedBusinessId } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
 
 function permissionErrorResponse(err: any) {
   return NextResponse.json(
@@ -43,12 +43,13 @@ export async function GET(req: NextRequest) {
     // super admin") was never actually enforced. Only a real super admin
     // gets the unscoped/aggregated view now; everyone else is locked to
     // their own verified business.
-    const businessId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       session.user.id,
       searchParams.get("businessId"),
       session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const businessId = scope?.businessId || null;
 
     // Reads from this app's own MongoDB, not central-api -- this is the
     // real write target for every capture path (captureCustomer(), the
@@ -62,6 +63,15 @@ export async function GET(req: NextRequest) {
     const filter: Record<string, any> = { isActive: true };
     if (businessId && Types.ObjectId.isValid(businessId)) {
       filter.businessId = businessId;
+      // SECURITY: a marketplace vendor's customers must never mix with
+      // every OTHER vendor's under the same shared platform Business --
+      // scope.vendorId is only set when the caller resolves to a vendor
+      // (Owner/Manager/staff), so this is a no-op for a genuine
+      // single-tenant business's own staff. Was previously business-only,
+      // meaning any vendor searching for a customer while creating a
+      // Quotation/Delivery Challan/etc. would see (and could select) every
+      // other vendor's customer PII too.
+      if (scope?.vendorId) filter.vendorId = scope.vendorId;
     } else if (!session.isSuperAdmin) {
       // No resolvable business for a non-super-admin caller -- return
       // nothing rather than every business's customer PII.
@@ -106,15 +116,22 @@ export async function POST(req: NextRequest) {
     // SECURITY: body.businessId used to be trusted directly -- any
     // authenticated user with customers.create could attribute a new
     // customer record to any other business.
-    const businessId = await resolveAuthorizedBusinessId(
+    const scope = await resolveAuthorizedVendorScope(
       session.user.id,
       body.businessId,
       session.isSuperAdmin,
       session.business?.businessId || null
     );
+    const businessId = scope?.businessId || null;
 
     const customer = await Customer.create({
       businessId: businessId && Types.ObjectId.isValid(businessId) ? new Types.ObjectId(businessId) : null,
+      // A vendor-created customer must carry the vendor's OWN id -- see
+      // GET's matching comment above -- otherwise it would be invisible
+      // to that vendor's own future searches (vendorId: null never
+      // matches a filter.vendorId = scope.vendorId query) while still
+      // sharing the same businessId as every other vendor.
+      vendorId: scope?.vendorId ? new Types.ObjectId(scope.vendorId) : null,
       name: name.trim(),
       phone: phone?.trim(),
       email: email?.trim(),

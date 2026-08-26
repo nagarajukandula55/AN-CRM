@@ -33,6 +33,11 @@ import {
   Store,
   Send,
   LifeBuoy,
+  FileSignature,
+  Truck,
+  FilePlus2,
+  FileMinus2,
+  Receipt,
 } from 'lucide-react'
 // Note: `Phone` icon import removed along with the Appointments nav entry below.
 
@@ -67,8 +72,25 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   { href: '/vendor/service-bom', label: 'Service Center BOM', icon: Wrench, modules: ['crm_jobsheets', 'crm'] },
   { href: '/vendor/stock-transfers', label: 'Stock Transfers', icon: ArrowLeftRight, modules: ['stock_transfers'] },
   { href: '/vendor/invoices', label: 'Invoices & Payments', icon: FileText, modules: ['finance'] },
+  // Migrated from console/common/documents/* -- SalesDocumentManager is
+  // already vendor-scoped (api/sales-documents), no console-only
+  // hardcoding, reused as-is. Grouped under the same 'finance' gate as
+  // Invoices & Payments -- these are all sales-document types.
+  { href: '/vendor/documents/quotations', label: 'Quotations', icon: FileSignature, modules: ['finance'] },
+  { href: '/vendor/documents/delivery-challans', label: 'Delivery Challans', icon: Truck, modules: ['finance'] },
+  { href: '/vendor/documents/credit-notes', label: 'Credit Notes', icon: FilePlus2, modules: ['finance'] },
+  { href: '/vendor/documents/debit-notes', label: 'Debit Notes', icon: FileMinus2, modules: ['finance'] },
+  { href: '/vendor/documents/proforma-invoices', label: 'Proforma Invoices', icon: Receipt, modules: ['finance'] },
   { href: '/vendor/credits', label: 'Credit Accounts', icon: HandCoins, modules: ['finance'] },
   { href: '/vendor/payouts', label: 'Payout Settings', icon: Wallet, modules: ['finance'], managerOnly: true },
+  // Migrated from console/common/sub-vendors -- already fully vendor-
+  // scoped (own component reads /api/vendor/type-context for the
+  // caller's vendorId), reused as-is, no vendor portal page existed for
+  // this before. Not module-gated -- the underlying feature is actually
+  // gated by an admin-set subVendorBilling.subVendorPlan toggle
+  // (api/vendors/[id]/sub-vendors), not a plan-tier module; the page
+  // itself already shows "Owner access required" for non-owners.
+  { href: '/vendor/sub-vendors', label: 'Sub-Vendors', icon: Store, modules: null, managerOnly: true },
   // Was labeled only "My Profile" -- this IS the vendor's settings page
   // (backed by /api/vendor/settings), already fully accessible to every
   // Owner/Manager (modules: null), but an Owner/Manager looking for

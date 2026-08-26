@@ -47,6 +47,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ success: false, message: "Job sheet not found" }, { status: 404 });
     }
     if (jobSheet.status !== "CREATED") {
+      // SC (single-login, no separate Engineer role) self-assigns to
+      // start repair -- see _JobSheetForm.tsx's proceedForRepair(), which
+      // calls this then immediately calls start-repair. A double-click or
+      // slow-network retry before the UI re-renders the new status would
+      // otherwise hard-error here even though the job is already
+      // correctly assigned to the SAME person -- nothing unsafe about
+      // that specific retry, unlike actually reassigning to a DIFFERENT
+      // engineer mid-repair, which still correctly blocks below.
+      if (String(jobSheet.assignedTo || "") === String(engineerId)) {
+        return NextResponse.json({ success: true, jobSheet });
+      }
       return NextResponse.json(
         { success: false, message: `Cannot assign an engineer while status is ${jobSheet.status}.` },
         { status: 409 }
