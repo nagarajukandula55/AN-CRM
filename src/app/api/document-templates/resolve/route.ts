@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
       Business.findById(businessId).select(LOCAL_ONLY_FIELDS + " upiId").lean(),
       warehouseId ? Warehouse.findById(warehouseId).lean() : Promise.resolve(null),
       vendorId
-        ? VendorProfile.findById(vendorId).select("companyName phone address gstNumber upiId " + LOCAL_ONLY_FIELDS).lean()
+        ? VendorProfile.findById(vendorId).select("companyName phone address gstNumber upiId logoUrl " + LOCAL_ONLY_FIELDS).lean()
         : Promise.resolve(null),
     ]);
 

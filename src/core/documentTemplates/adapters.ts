@@ -63,7 +63,7 @@ export function businessToCompany(business: any, warehouse: any, documentType?: 
     address,
     phone,
     gstin: vendor?.gstNumber || business?.gstNumber || undefined,
-    logoUrl: resolveCompanyLogo(business, warehouse),
+    logoUrl: vendor?.logoUrl || resolveCompanyLogo(business, warehouse),
     termsAndConditions: termsForDocType(business, documentType),
     signatureUrl: business?.documentSignatureUrl || undefined,
     upiId: vendor?.upiId || business?.upiId || undefined,

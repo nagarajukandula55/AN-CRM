@@ -276,6 +276,13 @@ export interface IVendorProfile extends Document {
   savedModelsByBrand?: Record<string, string[]>;
   savedPaymentCollectors?: string[];
   customerLogoUrl?: string;
+  // This vendor's own brand logo -- shown in their vendor-portal sidebar
+  // and, per businessToCompany's own vendor-identity-override pattern,
+  // preferred over the shared platform Business's logo on printed
+  // documents. Distinct from customerLogoUrl above (that one substitutes
+  // for the device BRAND's logo on an Intake Receipt/Workorder print, a
+  // completely different purpose).
+  logoUrl?: string;
   documentSignatureUrl?: string;
   applyTaxOnB2CBilling?: boolean;
   upiId?: string;
@@ -432,6 +439,7 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     inventorySerialized: { type: Boolean, default: false },
     defaultLabourCharge: { type: Number, default: 0, min: 0 },
     customerLogoUrl: { type: String, default: '' },
+    logoUrl: { type: String, default: '' },
     documentSignatureUrl: { type: String, default: '' },
     applyTaxOnB2CBilling: { type: Boolean, default: true },
     workorderTerms: { type: String, default: '' },

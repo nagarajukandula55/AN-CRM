@@ -16,6 +16,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingPanel } from '@/components/ui/Spinner'
+import { VendorTelegramChat } from '@/components/vendor/VendorTelegramChat'
 
 interface TutorialVideo {
   _id: string
@@ -41,6 +42,85 @@ function toEmbedSrc(url: string): string {
   const vimeo = url.match(/vimeo\.com\/(\d+)/)
   if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`
   return url
+}
+
+// Written walkthroughs standing in for tutorial videos until those are
+// recorded/uploaded (console/admin/tutorial-videos) -- per explicit
+// direction ("until we upload videos for now all our process and
+// information put in help"). Each entry mirrors a real nav item/workflow.
+const GUIDE_SECTIONS: { title: string; items: { q: string; a: string }[] }[] = [
+  {
+    title: 'Getting started',
+    items: [
+      { q: 'What do I need to do first?', a: 'Link your personal Telegram chat from Telegram Alerts -- it\'s how we send support replies, alerts, and (on Ultimate) automatic business reports until a mobile app exists. Generate a code there and scan it, or tap "Open in Telegram."' },
+      { q: 'Where do I start a repair job?', a: 'Dashboard or Workorders -- click "Create Workorder", enter the customer + device details (brand/model can be typed and added on the fly), and save. The job stays open on one screen through intake, repair, and closure.' },
+    ],
+  },
+  {
+    title: 'Workorders',
+    items: [
+      { q: 'How do I add parts/labour to a job?', a: 'On the workorder screen, use the line-item Description field -- it suggests parts from your Service Center BOM price list, or lets you add a brand-new part on the spot (auto-fills HSN/rate/tax).' },
+      { q: 'Why don\'t I see parts for a particular brand?', a: 'Service Center BOM parts filed under a Brand/Model only surface for a workorder on that same Brand/Model. Add the part under Service Center BOM with the matching Brand/Model, or leave it Universal/Any Model to show for every device.' },
+      { q: 'Can I edit the IMEI/Serial after intake?', a: 'Yes -- the pencil icon next to IMEI on the workorder detail screen, any time before the job is closed.' },
+      { q: 'How do I close a job and generate the invoice?', a: 'Once repair is complete, use Close Workorder -- it generates the customer invoice (GST or plain bill, based on whether a GSTIN is on file) automatically.' },
+    ],
+  },
+  {
+    title: 'Billing & Invoices',
+    items: [
+      { q: 'What\'s the difference between Sales Invoices and Financial Statement?', a: 'Sales Invoices is where you create/manage invoices (the form, list, mark-paid, print). Financial Statement is a read-only running ledger built FROM those invoices -- a chronological list with a running balance, for reconciliation, not editing.' },
+      { q: 'When would I use Quotations vs Proforma Invoice vs Credit/Debit Note?', a: 'Quotation: a price estimate before work is confirmed. Proforma Invoice: a formal pre-payment request (not a tax invoice). Credit Note: reduces what a customer owes (a return/refund/correction). Debit Note: increases what they owe (an additional charge after the fact).' },
+      { q: 'How do I get a UPI QR or bank details on my invoices?', a: 'Set your UPI ID and/or bank account in My Profile / Settings -- it then prints automatically on invoices (QR and bank details are mutually exclusive on one invoice; QR wins if both are set).' },
+    ],
+  },
+  {
+    title: 'Stock & Inventory',
+    items: [
+      { q: 'What\'s the difference between Warehouses, Inventory, and Stock Transfers?', a: 'Warehouses are your physical locations. Inventory is the actual stock quantity of each material at each warehouse. Stock Transfers moves quantity from one of your warehouses to another.' },
+    ],
+  },
+  {
+    title: 'Reports & Analytics',
+    items: [
+      { q: 'What\'s the difference between Reports, Analytics, and Report Builder?', a: 'Analytics is a fixed dashboard of charts (revenue, workorder trends). Reports is a hub of ready-made exports (CSV downloads with date filters). Report Builder (Pro and above) lets you build and save a fully custom report -- pick fields, filters, and a chart type yourself.' },
+      { q: 'Can reports be sent to me automatically?', a: 'Yes, on the Ultimate plan -- set a Daily/Weekly/Monthly/Yearly schedule (with a time of day) on Telegram Alerts, and you\'ll get the report text plus a trend-chart image sent to your linked Telegram chat automatically.' },
+    ],
+  },
+  {
+    title: 'Sub-Vendors (Ultimate plan)',
+    items: [
+      { q: 'How do multi-center / sub-vendors work?', a: 'On the Ultimate plan, create a sub-vendor from Sub-Vendors -- each gets its own full login and Vendor ID. Only YOU (the parent) can switch into a sub-vendor\'s view (via the switcher at the top of the sidebar); a sub-vendor logging in directly can never see you or any sibling sub-vendor.' },
+    ],
+  },
+]
+
+function GuideAccordion() {
+  const [openKey, setOpenKey] = useState<string | null>(null)
+  return (
+    <div className="space-y-8 mb-10">
+      {GUIDE_SECTIONS.map((section) => (
+        <div key={section.title}>
+          <h2 className="eyebrow mb-3">{section.title}</h2>
+          <Card className="divide-y divide-border overflow-hidden">
+            {section.items.map((item) => {
+              const key = `${section.title}::${item.q}`
+              const isOpen = openKey === key
+              return (
+                <button
+                  key={key}
+                  onClick={() => setOpenKey(isOpen ? null : key)}
+                  className="w-full text-left px-4 py-3 hover:bg-surface-2 transition-colors"
+                >
+                  <p className="text-sm font-medium text-ink">{item.q}</p>
+                  {isOpen && <p className="text-sm text-ink-2 mt-1.5 leading-relaxed">{item.a}</p>}
+                </button>
+              )
+            })}
+          </Card>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function VideoPlayer({ video, onClose }: { video: TutorialVideo; onClose: () => void }) {
@@ -96,10 +176,12 @@ function VendorHelpContent() {
     <div className="min-h-screen bg-bg text-ink p-6">
       <PageHeader eyebrow="Support" title="Help & Tutorials" description="Short videos walking through the most common tasks." />
 
+      <GuideAccordion />
+
       {isLoading ? (
         <LoadingPanel label="Loading…" />
       ) : videos.length === 0 ? (
-        <EmptyState kind="empty" title="No tutorials published yet" description="Check back soon -- videos are on the way." />
+        <EmptyState kind="empty" title="Video tutorials coming soon" description="Written guides above cover everything for now -- videos are on the way." />
       ) : (
         <div className="space-y-8">
           {Object.entries(byCategory).map(([category, items]) => (
@@ -134,6 +216,11 @@ function VendorHelpContent() {
       )}
 
       {playing && <VideoPlayer video={playing} onClose={() => setPlaying(null)} />}
+
+      <div className="mt-10">
+        <h2 className="eyebrow mb-3">Still stuck? Ask us directly</h2>
+        <VendorTelegramChat />
+      </div>
     </div>
   )
 }

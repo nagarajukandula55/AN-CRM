@@ -143,6 +143,12 @@ export default function VendorProfilePage() {
   // Blank = no logo prints at all.
   const [customerLogoUrl, setCustomerLogoUrl] = useState('')
   const [savingCustomerLogo, setSavingCustomerLogo] = useState(false)
+  // This vendor's own brand logo -- shown in the vendor-portal sidebar and
+  // preferred over the shared platform Business's logo on printed
+  // documents. Distinct from Customer Logo above.
+  const [logoUrl, setLogoUrl] = useState('')
+  const [savingLogo, setSavingLogo] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
   // Signature -- shown in the "Service Centre Signatory" slot on printed
   // Invoice/Workorder/Service Record documents. Blank = no signature
   // image prints; the document shows a digital-document notice instead.
@@ -188,6 +194,7 @@ export default function VendorProfilePage() {
       setInvoiceTerms(settingsData.invoiceTerms || '')
       setDefaultLabourCharge(String(settingsData.defaultLabourCharge ?? 0))
       setCustomerLogoUrl(settingsData.customerLogoUrl || '')
+      setLogoUrl(settingsData.logoUrl || '')
       setDocumentSignatureUrl(settingsData.documentSignatureUrl || '')
       setUpiId(settingsData.upiId || '')
     }
@@ -300,6 +307,45 @@ export default function VendorProfilePage() {
       setSettingsMessage('Failed to save.')
     } finally {
       setSavingUpiId(false)
+    }
+  }
+
+  async function saveLogo(url?: string) {
+    setSavingLogo(true)
+    setSettingsMessage('')
+    try {
+      const res = await fetch('/api/vendor/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logoUrl: url ?? logoUrl }),
+      })
+      const d = await res.json()
+      setSettingsMessage(d.success ? 'Saved.' : d.error || 'Failed to save.')
+    } catch {
+      setSettingsMessage('Failed to save.')
+    } finally {
+      setSavingLogo(false)
+    }
+  }
+
+  async function handleLogoUpload(file: File) {
+    setUploadingLogo(true)
+    setSettingsMessage('')
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('name', 'vendor-logo')
+      fd.append('category', 'logo')
+      const res = await fetch('/api/assets/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || data.message || 'Failed to upload logo')
+      const uploadedUrl = data.asset?.fileUrl || ''
+      setLogoUrl(uploadedUrl)
+      await saveLogo(uploadedUrl)
+    } catch (err: any) {
+      setSettingsMessage(err?.message || 'Failed to upload logo')
+    } finally {
+      setUploadingLogo(false)
     }
   }
 
@@ -863,6 +909,39 @@ export default function VendorProfilePage() {
               <Button onClick={saveUpiId} disabled={savingUpiId}>
                 {savingUpiId ? 'Saving…' : 'Save'}
               </Button>
+            </div>
+          </div>
+
+          <div className="mt-5 pt-5 border-t border-border">
+            <label className="block text-sm font-medium text-ink mb-1">Business Logo</label>
+            <p className="text-xs text-ink-3 mb-2">
+              Shown in your vendor-portal sidebar and on printed documents (invoices/workorders) in place of the
+              platform's own logo. Square image, at least 512×512px, PNG with a transparent background works best
+              -- it renders small (sidebar icon) and larger (document header), so avoid a wide/landscape logo.
+            </p>
+            <div className="flex items-center gap-3">
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt="Business logo preview" className="h-12 w-12 object-contain border border-border rounded-control bg-surface p-1" />
+              ) : (
+                <div className="h-12 w-12 rounded-control border border-dashed border-border bg-surface-2 flex items-center justify-center text-[10px] text-ink-3">None</div>
+              )}
+              <label className="inline-flex">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f) }}
+                />
+                <span className="text-xs px-3 py-2 rounded-control border border-border cursor-pointer hover:border-accent text-ink-2 inline-flex items-center gap-1.5">
+                  {uploadingLogo ? 'Uploading…' : logoUrl ? 'Replace image' : 'Upload image'}
+                </span>
+              </label>
+              {logoUrl && (
+                <button type="button" onClick={() => { setLogoUrl(''); saveLogo('') }} className="text-xs text-danger hover:underline">
+                  Remove
+                </button>
+              )}
             </div>
           </div>
 

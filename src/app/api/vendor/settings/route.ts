@@ -57,6 +57,7 @@ export async function GET() {
       invoiceTerms: v.invoiceTerms || "",
       defaultLabourCharge: Number(v.defaultLabourCharge) || 0,
       customerLogoUrl: v.customerLogoUrl || "",
+      logoUrl: v.logoUrl || "",
       documentSignatureUrl: v.documentSignatureUrl || "",
       applyTaxOnB2CBilling: v.applyTaxOnB2CBilling !== false,
       upiId: v.upiId || "",
@@ -91,6 +92,7 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.invoiceTerms === "string") update.invoiceTerms = body.invoiceTerms;
     if (typeof body.defaultLabourCharge === "number" && body.defaultLabourCharge >= 0) update.defaultLabourCharge = body.defaultLabourCharge;
     if (typeof body.customerLogoUrl === "string") update.customerLogoUrl = body.customerLogoUrl;
+    if (typeof body.logoUrl === "string") update.logoUrl = body.logoUrl;
     if (typeof body.documentSignatureUrl === "string") update.documentSignatureUrl = body.documentSignatureUrl;
     if (typeof body.applyTaxOnB2CBilling === "boolean") update.applyTaxOnB2CBilling = body.applyTaxOnB2CBilling;
     if (typeof body.upiId === "string") update.upiId = body.upiId;

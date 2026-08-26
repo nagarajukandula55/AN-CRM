@@ -14,6 +14,7 @@ import {
   Calendar,
   CalendarClock,
   XCircle,
+  Plus,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -217,6 +218,11 @@ export default function ScDashboard({
       <PageHeader
         title="CRM Overview"
         description="Workorders, revenue and analytics in one place"
+        actions={
+          <Button onClick={() => router.push(`${jobsheetsPath}/new`)} icon={<Plus className="w-4 h-4" />}>
+            Create Workorder
+          </Button>
+        }
       />
 
       {/* Workorder volume by period -- created-count rollups, not revenue.
