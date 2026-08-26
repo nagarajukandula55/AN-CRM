@@ -44,20 +44,28 @@ export async function getJobSheet(id: string): Promise<JobSheet> {
  * own dedicated route so it can enforce its own preconditions (see
  * api/crm/jobsheets/[id]/route.ts's ALLOWED_FIELDS comment: "status is
  * deliberately excluded -- milestone transitions go through the dedicated
- * routes"). This maps the current status to the one valid next-step route
- * a mobile user can trigger with a single tap; PART_PENDING/HANDOVER stay
- * web-admin only for this pass (see README).
+ * routes"). PART_PENDING/HANDOVER stay web-admin only for this pass (see
+ * README).
+ *
+ * CREATED needs a two-step call, matching the SC web app's own
+ * "proceedForRepair" (see console/sc/jobsheets/_JobSheetForm.tsx):
+ * assign-engineer (SC has no separate assignment step -- engineerId is
+ * just the logged-in caller's own user id) THEN start-repair, which is
+ * the only route that actually flips REPAIR_STARTED -> REPAIR_IN_PROGRESS.
+ * Calling start-repair alone against a fresh CREATED job sheet 409s, since
+ * that route requires REPAIR_STARTED already.
  */
-const NEXT_ACTION: Record<string, { path: string; label: string } | undefined> = {
-  CREATED: { path: "start-repair", label: "Start Repair" },
-};
-
-export function nextActionFor(status: string) {
-  return NEXT_ACTION[status];
+export function nextActionFor(status: string): { label: string } | undefined {
+  if (status === "CREATED") return { label: "Start Repair" };
+  return undefined;
 }
 
-export async function advanceJobSheet(id: string, path: string): Promise<JobSheet> {
-  const data = await crmFetch(`/api/crm/jobsheets/${id}/${path}`, { method: "POST", body: JSON.stringify({}) });
+export async function advanceJobSheet(id: string, currentUserId: string): Promise<JobSheet> {
+  await crmFetch(`/api/crm/jobsheets/${id}/assign-engineer`, {
+    method: "POST",
+    body: JSON.stringify({ engineerId: currentUserId }),
+  });
+  const data = await crmFetch(`/api/crm/jobsheets/${id}/start-repair`, { method: "POST", body: JSON.stringify({}) });
   return data.jobSheet || data.data;
 }
 

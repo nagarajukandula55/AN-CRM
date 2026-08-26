@@ -2,14 +2,14 @@ import { useCallback, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
-import { useSubscription } from "@/context/SubscriptionContext";
+import { useSubscription, daysRemaining } from "@/context/SubscriptionContext";
 import { listJobSheets, type JobSheet } from "@/api/crm";
 
 const ACCENT = "#5B3DF5";
 
 export default function DashboardScreen() {
   const { user } = useAuth();
-  const { sub } = useSubscription();
+  const { billing } = useSubscription();
   const [openJobs, setOpenJobs] = useState<JobSheet[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,51 +24,48 @@ export default function DashboardScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const isPos = sub?.mode === "POS";
+  const blocked = billing?.status === "EXPIRED" || billing?.status === "NOT_SET";
+  const planName = billing?.subscription?.planName || (billing?.subscription?.planKey === "ULTIMATE" ? "Ultimate" : billing?.subscription?.planKey === "BASIC" ? "Pro" : null);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: 20 }}>
       <Text style={styles.greeting}>Hi, {user?.name?.split(" ")[0] || "there"} 👋</Text>
-      <Text style={styles.sub}>{sub?.mode ? `${sub.mode} · ${sub.plan} plan` : "Loading your plan…"}</Text>
+      <Text style={styles.sub}>{planName ? `${planName} plan` : "Loading your plan…"}</Text>
 
-      {sub?.blocked && (
+      {blocked && (
         <TouchableOpacity style={styles.warnCard} onPress={() => router.push("/(app)/services")}>
-          <Text style={styles.warnText}>Your subscription has expired. Tap to renew and restore access.</Text>
+          <Text style={styles.warnText}>
+            {billing?.status === "NOT_SET" ? "No active plan yet. Tap to subscribe." : "Your subscription has expired. Tap to renew and restore access."}
+          </Text>
         </TouchableOpacity>
       )}
 
       <View style={styles.cardsRow}>
-        {!isPos && (
-          <TouchableOpacity style={styles.card} onPress={() => router.push("/(app)/workorders")}>
-            <Text style={styles.cardValue}>{openJobs.length}</Text>
-            <Text style={styles.cardLabel}>Open Workorders</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity style={styles.card} onPress={() => router.push(isPos ? "/(app)/pos" : "/(app)/calls")}>
-          <Text style={styles.cardValue}>{isPos ? "🧾" : "📞"}</Text>
-          <Text style={styles.cardLabel}>{isPos ? "New Sale" : "New Call"}</Text>
+        <TouchableOpacity style={styles.card} onPress={() => router.push("/(app)/workorders")}>
+          <Text style={styles.cardValue}>{openJobs.length}</Text>
+          <Text style={styles.cardLabel}>Open Workorders</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.card} onPress={() => router.push("/(app)/profit-loss")}>
+          <Text style={styles.cardValue}>📈</Text>
+          <Text style={styles.cardLabel}>Profit & Loss</Text>
         </TouchableOpacity>
       </View>
 
-      {!isPos && (
-        <>
-          <Text style={styles.sectionTitle}>Recent Workorders</Text>
-          {loading ? (
-            <ActivityIndicator color={ACCENT} style={{ marginTop: 20 }} />
-          ) : openJobs.length === 0 ? (
-            <Text style={styles.empty}>No open workorders right now.</Text>
-          ) : (
-            openJobs.map((j) => (
-              <TouchableOpacity key={j._id} style={styles.jobRow} onPress={() => router.push(`/(app)/workorders/${j._id}`)}>
-                <View>
-                  <Text style={styles.jobNumber}>{j.jobSheetNumber}</Text>
-                  <Text style={styles.jobMeta}>{j.customerName || "—"} · {j.product || ""}</Text>
-                </View>
-                <Text style={styles.jobStatus}>{j.status.replace(/_/g, " ")}</Text>
-              </TouchableOpacity>
-            ))
-          )}
-        </>
+      <Text style={styles.sectionTitle}>Recent Workorders</Text>
+      {loading ? (
+        <ActivityIndicator color={ACCENT} style={{ marginTop: 20 }} />
+      ) : openJobs.length === 0 ? (
+        <Text style={styles.empty}>No open workorders right now.</Text>
+      ) : (
+        openJobs.map((j) => (
+          <TouchableOpacity key={j._id} style={styles.jobRow} onPress={() => router.push(`/(app)/workorders/${j._id}`)}>
+            <View>
+              <Text style={styles.jobNumber}>{j.jobSheetNumber}</Text>
+              <Text style={styles.jobMeta}>{j.customerName || "—"} · {j.product || ""}</Text>
+            </View>
+            <Text style={styles.jobStatus}>{j.status.replace(/_/g, " ")}</Text>
+          </TouchableOpacity>
+        ))
       )}
 
       <TouchableOpacity style={styles.servicesCard} onPress={() => router.push("/(app)/services")}>

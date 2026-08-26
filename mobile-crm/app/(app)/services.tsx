@@ -1,22 +1,21 @@
 import { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, ActivityIndicator } from "react-native";
 import { useSubscription } from "@/context/SubscriptionContext";
-import { PLANS_BY_MODE, TIER_RANK, type PlanKey } from "@/data/plans";
+import { PLANS, TIER_RANK, type PlanKey } from "@/data/plans";
 import Constants from "expo-constants";
 
 const ACCENT = "#5B3DF5";
 const AN_CRM_API = (Constants.expoConfig?.extra?.anCrmApiUrl as string) || "";
 
 /**
- * "Services we are offering" — what AN-CRM sells, shown against what this
- * business already has, per explicit direction: "user should get ...
- * services they have taken and about to take and also services we are
- * offering there." Upgrading itself stays on the web app's Razorpay
- * Checkout (see README's native-checkout gap) — this screen deep-links to
- * /admin/plan rather than half-building payment UI natively.
+ * "Services we are offering" -- what AN-CRM sells (2-tier Pro/Ultimate,
+ * SC is the only operating mode now), shown against what this vendor
+ * already has. Upgrading itself stays on the web app's Razorpay Checkout
+ * (see README's native-checkout gap) -- this screen deep-links to
+ * /vendor/billing rather than half-building payment UI natively.
  */
 export default function ServicesScreen() {
-  const { sub, loading } = useSubscription();
+  const { billing, loading } = useSubscription();
   const [opening, setOpening] = useState(false);
 
   if (loading) {
@@ -27,15 +26,14 @@ export default function ServicesScreen() {
     );
   }
 
-  const mode = sub?.mode || "SC";
-  const plans = PLANS_BY_MODE[mode];
-  const currentTier = (sub?.plan as PlanKey) || "BASIC";
-  const currentRank = TIER_RANK[currentTier] ?? 0;
+  const blocked = billing?.status === "EXPIRED" || billing?.status === "NOT_SET";
+  const currentTier = (billing?.subscription?.planKey as PlanKey) || "BASIC";
+  const currentRank = TIER_RANK[currentTier] ?? -1;
 
   async function openWebPlanPage() {
     setOpening(true);
     try {
-      await Linking.openURL(`${AN_CRM_API}/admin/plan`);
+      await Linking.openURL(`${AN_CRM_API}/vendor/billing`);
     } finally {
       setOpening(false);
     }
@@ -44,20 +42,20 @@ export default function ServicesScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: 20 }}>
       <Text style={styles.title}>Services</Text>
-      <Text style={styles.sub}>
-        {mode === "SC" ? "Service Center" : mode === "BRAND" ? "Brand" : "POS"} plans — what you have and what you can add.
-      </Text>
+      <Text style={styles.sub}>Service Center plans -- what you have and what you can add.</Text>
 
-      {sub?.blocked && (
+      {blocked && (
         <View style={styles.warnCard}>
-          <Text style={styles.warnText}>Your subscription has expired — renew below to restore access.</Text>
+          <Text style={styles.warnText}>
+            {billing?.status === "NOT_SET" ? "You have no active plan yet -- subscribe below to unlock the portal." : "Your subscription has expired -- renew below to restore access."}
+          </Text>
         </View>
       )}
 
-      {plans.map((plan) => {
+      {PLANS.map((plan) => {
         const rank = TIER_RANK[plan.key];
-        const isCurrent = plan.key === currentTier && !sub?.blocked;
-        const isIncluded = rank <= currentRank && !sub?.blocked;
+        const isCurrent = plan.key === currentTier && !blocked;
+        const isIncluded = rank <= currentRank && !blocked;
         return (
           <View key={plan.key} style={[styles.card, isCurrent && styles.cardCurrent]}>
             <View style={styles.cardHeader}>
@@ -75,11 +73,11 @@ export default function ServicesScreen() {
               </View>
             ))}
             {plan.hasCommsQuota && (
-              <Text style={styles.commsNote}>Includes bundled Email + WhatsApp customer notifications</Text>
+              <Text style={styles.commsNote}>Includes bundled WhatsApp customer notifications</Text>
             )}
-            {!isCurrent && rank > currentRank && (
+            {(!isCurrent && (rank > currentRank || blocked)) && (
               <TouchableOpacity style={styles.upgradeButton} onPress={openWebPlanPage} disabled={opening}>
-                <Text style={styles.upgradeButtonText}>{opening ? "Opening…" : `Upgrade to ${plan.name}`}</Text>
+                <Text style={styles.upgradeButtonText}>{opening ? "Opening…" : `${blocked ? "Subscribe to" : "Upgrade to"} ${plan.name}`}</Text>
               </TouchableOpacity>
             )}
           </View>

@@ -1,7 +1,7 @@
 # AN-CRM Mobile (Expo / React Native)
 
-The native Android/iOS/iPad app for AN-CRM's Brand / Service Center / POS
-operators — a second, independent Expo app in this repo (`/mobile-crm`),
+The native Android/iOS/iPad app for AN-CRM's Service Center vendors — a
+second, independent Expo app in this repo (`/mobile-crm`),
 separate from `/mobile` (which is the **ecommerce storefront** app, ported
 from ANgroup's Native site — a different product). Has its own
 `package.json`/dependency tree; install and run it from inside this
@@ -39,61 +39,73 @@ comment) — zero backend changes were needed to support this client.
 
 ## What's built
 
+The backend now supports only ONE operating mode — Service Center (SC).
+Brand and POS were removed entirely (zero production usage), and this app
+has been brought back in sync with that: there is no more mode branching
+anywhere (nav, dashboard, services, profile, catalog) and no POS
+quick-sale screen — `/api/pos/invoices` and `/api/crm/calls` no longer
+exist on the backend, so the old Calls tab and POS tab were removed along
+with `src/api/calls.ts` and `src/api/pos.ts`.
+
 - **Login** (`app/login.tsx`) — email/username + password, same
-  `/api/auth/login` endpoint the web app uses.
-- **Subscription-driven navigation** — the tab bar itself changes per
-  business: Calls/Workorders show for Brand & SC, POS's quick-sale tab
-  shows for POS, driven live by `/api/subscriptions/status`'s `mode`
-  (see `context/SubscriptionContext.tsx`, loaded once at the app shell and
-  shared by every screen) rather than a fixed tab set — per explicit
-  direction: "based on subscription the options and menu should appear."
-- **Dashboard** (`app/(app)/index.tsx`) — greeting, plan/mode summary,
-  open-workorder count (hidden for POS), recent workorders list, and an
-  "Explore Services" card into the Services tab.
-- **Services** (`app/(app)/services.tsx`) — "services we are offering":
-  every tier (Basic/Pro/Ultimate) for this business's own operating mode,
-  with included features checked off against the current plan and
-  above-tier features shown greyed-out with an "Upgrade to X" button.
-  Upgrading itself deep-links to the web app's `/admin/plan` (Razorpay
-  Checkout stays there — see "What's NOT built yet").
+  `/api/auth/login` endpoint the web app uses (JWT in the JSON body).
+- **Billing-aware app shell** — `context/SubscriptionContext.tsx` (kept
+  its filename, now wraps `/api/vendor/billing` — VendorSubscription +
+  VendorBillingInvoice — instead of the removed `/api/subscriptions/status`)
+  loads the vendor's plan/status once at the app shell and shares it with
+  every screen (Dashboard's expired/no-plan banner, Services, Profile).
+- **Tab bar** (`app/(app)/_layout.tsx`) — Home, Workorders, Catalog,
+  Ledger, and a **More** tab (`app/(app)/more.tsx`) fanning out to
+  Expenses, Profit & Loss, Ledger, Services, and Profile — every tab is
+  now always visible (no more mode-driven show/hide).
+- **Dashboard** (`app/(app)/index.tsx`) — greeting, plan summary,
+  open-workorder count, recent workorders list, a Profit & Loss shortcut,
+  and an "Explore Services" card.
+- **Services** (`app/(app)/services.tsx`) — the current 2-tier ladder
+  from `src/data/plans.ts` (Pro / Ultimate — internal key `BASIC` is
+  displayed as **"Pro"**, matching `src/core/pricing/plans.ts`'s explicit
+  rename; POS/Brand ladders removed, SC is the only mode), included
+  features checked off against the current plan, "Upgrade"/"Subscribe"
+  for the rest. Upgrading itself deep-links to the web app's
+  `/vendor/billing` (Razorpay Checkout stays there — see "What's NOT
+  built yet").
 - **Profile** (`app/(app)/profile.tsx`) — name/email/role, current plan
   status (tap-through to Services), **Services Taken** (completed/closed
-  workorders) and **Services About to Take** (open/scheduled workorders)
-  — "user should get their profile, services they have taken and about
-  to take" — plus sign out.
-- **Calls** (`app/(app)/calls.tsx`) — list + quick intake form (customer
-  name/phone/subject), backed by `/api/crm/calls`, the same
-  call-entry-that-becomes-a-workorder lifecycle the Brand web admin uses.
+  workorders) and **Services About to Take** (open/scheduled workorders),
+  plus sign out.
 - **Workorders** (`app/(app)/workorders/index.tsx` +
   `app/(app)/workorders/[id]/index.tsx`) — list with status filter chips
   (backed by `/api/crm/jobsheets`), detail view, and a single-tap
-  "Start Repair" action for the one milestone transition
-  (`CREATED` → `REPAIR_IN_PROGRESS`) that needs no additional form input.
-  Once in progress, "Continue Repair" opens the engineer repair screen.
+  "Start Repair" action. Fixed to match the real backend: `CREATED` needs
+  a **two-step** call (`POST .../assign-engineer` with the logged-in
+  user's own id, matching the SC web app's own `proceedForRepair`, THEN
+  `POST .../start-repair`) since `start-repair` alone 409s against a
+  fresh `CREATED` job sheet (it requires `REPAIR_STARTED` already) — see
+  `src/api/crm.ts`'s `advanceJobSheet`. Once in progress, "Continue
+  Repair" opens the engineer repair screen.
 - **Engineer Repair screen** (`app/(app)/workorders/[id]/repair.tsx`) —
-  the piece previously only sketched as a design proposal, now built:
   parts added by searching the same Material/BOM catalog
-  `/api/service-center-bom` serves (never free-typed — `materialCode`/
-  `hsnCode`/`rate` come straight from the catalog record), a work-
-  performed note, and a typed customer-name confirmation. "Save Progress"
-  PATCHes the job sheet's `lineItems`/`workPerformed`/
-  `customerSignatureUrl` (plain field update, not a status transition —
-  see `ALLOWED_FIELDS`'s comment on why those are separate); "Mark Repair
-  Completed" saves once more then calls `POST .../close`, which generates
-  the SalesInvoice from those line items server-side, same as the web
-  admin's close flow. Part-pending and handover (separate dedicated
-  routes) stay web-admin only for this pass.
+  `/api/service-center-bom` serves, a work-performed note, and a typed
+  customer-name confirmation. "Save Progress" PATCHes the job sheet;
+  "Mark Repair Completed" saves once more then calls `POST .../close`,
+  which generates the SalesInvoice server-side.
 - **Catalog** (`app/(app)/catalog.tsx`) — the Material/BOM catalog,
   browsable read-only with search: part code, description, HSN, rate,
-  GST%, serial-tracked flag. Backed by the same `/api/service-center-bom`
-  the web Material Catalog page and the repair screen's part search both
-  use, so a part code means the same thing everywhere. Shown for Brand &
-  SC (same modes as Workorders), since POS billing doesn't go through the
-  BOM.
-- **POS quick sale** (`app/(app)/pos.tsx`) — customer + line items +
-  live totals, posts to `/api/pos/invoices` (the same endpoint the web
-  POS quick-sale screen uses), shows the generated invoice number/total on
-  success.
+  GST%, serial-tracked flag. Backed by `/api/service-center-bom`.
+- **Expenses** (`app/(app)/expenses.tsx`, `src/api/expenses.ts`) — NEW.
+  List + add-expense form (category picker populated from the API's own
+  `categories` list, amount, description, payment mode) + delete, backed
+  by `GET/POST /api/vendor/expenses` and `DELETE
+  /api/vendor/expenses/[id]`.
+- **Ledger Book** (`app/(app)/ledger.tsx` + `app/(app)/ledger/[key].tsx`,
+  `src/api/ledger.ts`) — NEW. Party-summary list (name/phone/outstanding
+  balance) from `GET /api/vendor/ledger`; tapping a party fetches that
+  party's full running-balance transaction history via
+  `?customer=<key>`.
+- **Profit & Loss** (`app/(app)/profit-loss.tsx`, `src/api/profitLoss.ts`)
+  — NEW. Date-range picker (This Month / Last 30 / Last 90 days),
+  revenue/COGS/gross profit/expenses (with a by-category breakdown)/net
+  profit laid out as a report, backed by `GET /api/vendor/profit-loss`.
 
 ## What's NOT built yet (next phases)
 
@@ -114,9 +126,9 @@ comment) — zero backend changes were needed to support this client.
   real needs an SMS gateway account and DLT-registered sender template
   (mandatory in India for transactional SMS) plus a backend send/verify
   endpoint — none of which exist yet.
-- **Appointment booking/calendar** — call intake is now covered (see
-  Calls above); the appointment scheduling calendar itself is web-admin
-  only for now.
+- **Appointment booking/calendar** — the backend no longer has a
+  `/api/crm/calls` intake step at all (removed along with Brand mode);
+  scheduling stays web-admin only for now.
 - **Native Razorpay checkout** for renewing/upgrading a plan from the
   phone — `/mobile`'s `app/checkout.tsx` is the exact pattern to port
   (native module, needs a dev client + `eas prebuild`, not plain Expo Go).

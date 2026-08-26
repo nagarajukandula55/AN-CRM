@@ -37,7 +37,7 @@ export default function LoginScreen() {
           <Text style={styles.logoText}>AN</Text>
         </View>
         <Text style={styles.appName}>AN-CRM</Text>
-        <Text style={styles.tagline}>Brand · Service Center · POS</Text>
+        <Text style={styles.tagline}>Service Center Portal</Text>
       </View>
 
       <View style={styles.form}>

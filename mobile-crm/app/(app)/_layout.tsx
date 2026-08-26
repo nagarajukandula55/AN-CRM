@@ -10,23 +10,14 @@ function TabIcon({ symbol, focused }: { symbol: string; focused: boolean }) {
 }
 
 /**
- * Which tabs a given operating mode sees is exactly the same rule the web
- * admin's sidebar already follows (see api/ui/sidebar/route.ts's
- * scAllowedKeys allow-list) -- Calls/Workorders belong to Brand & SC,
- * POS's quick-sale belongs to POS. Mirrored here per explicit direction:
- * "based on subscription the options and menu should appear."
+ * SC (Service Center) is the only operating mode the backend supports now
+ * -- Brand and POS were removed, so every tab below is always visible.
+ * (Previously this branched on a subscription "mode" field that no longer
+ * exists; see src/context/SubscriptionContext.tsx.)
  */
-function tabsForMode(mode: string | undefined) {
-  return {
-    showCalls: mode === "BRAND",
-    showWorkorders: mode === "BRAND" || mode === "SC",
-    showPos: mode === "POS",
-  };
-}
-
 export default function AppLayout() {
   const { user, loading: authLoading } = useAuth();
-  const { sub, loading: subLoading } = useSubscription();
+  const { loading: subLoading } = useSubscription();
 
   if (authLoading || subLoading) {
     return (
@@ -36,8 +27,6 @@ export default function AppLayout() {
     );
   }
   if (!user) return <Redirect href="/login" />;
-
-  const { showCalls, showWorkorders, showPos } = tabsForMode(sub?.mode);
 
   return (
     <Tabs
@@ -50,12 +39,15 @@ export default function AppLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: ({ focused }) => <TabIcon symbol="🏠" focused={focused} /> }} />
-      <Tabs.Screen name="calls" options={{ title: "Calls", href: showCalls ? undefined : null, tabBarIcon: ({ focused }) => <TabIcon symbol="📞" focused={focused} /> }} />
-      <Tabs.Screen name="workorders/index" options={{ title: "Workorders", href: showWorkorders ? undefined : null, tabBarIcon: ({ focused }) => <TabIcon symbol="🛠️" focused={focused} /> }} />
-      <Tabs.Screen name="pos" options={{ title: "POS", href: showPos ? undefined : null, tabBarIcon: ({ focused }) => <TabIcon symbol="🧾" focused={focused} /> }} />
-      <Tabs.Screen name="catalog" options={{ title: "Catalog", href: showWorkorders ? undefined : null, tabBarIcon: ({ focused }) => <TabIcon symbol="📦" focused={focused} /> }} />
-      <Tabs.Screen name="services" options={{ title: "Services", tabBarIcon: ({ focused }) => <TabIcon symbol="✨" focused={focused} /> }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ({ focused }) => <TabIcon symbol="👤" focused={focused} /> }} />
+      <Tabs.Screen name="workorders/index" options={{ title: "Workorders", tabBarIcon: ({ focused }) => <TabIcon symbol="🛠️" focused={focused} /> }} />
+      <Tabs.Screen name="catalog" options={{ title: "Catalog", tabBarIcon: ({ focused }) => <TabIcon symbol="📦" focused={focused} /> }} />
+      <Tabs.Screen name="ledger" options={{ title: "Ledger", tabBarIcon: ({ focused }) => <TabIcon symbol="📒" focused={focused} /> }} />
+      <Tabs.Screen name="more" options={{ title: "More", tabBarIcon: ({ focused }) => <TabIcon symbol="⋯" focused={focused} /> }} />
+      <Tabs.Screen name="services" options={{ href: null }} />
+      <Tabs.Screen name="profile" options={{ href: null }} />
+      <Tabs.Screen name="expenses" options={{ href: null }} />
+      <Tabs.Screen name="profit-loss" options={{ href: null }} />
+      <Tabs.Screen name="ledger/[key]" options={{ href: null }} />
       <Tabs.Screen name="workorders/[id]/index" options={{ href: null }} />
       <Tabs.Screen name="workorders/[id]/repair" options={{ href: null }} />
     </Tabs>

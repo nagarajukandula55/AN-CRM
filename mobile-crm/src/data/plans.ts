@@ -4,10 +4,15 @@
  * is a separate Expo project with its own dependency tree. Used only for
  * DISPLAY in the "Services" tab (marketing what's included per tier / what
  * upgrading unlocks); the actual entitlement truth always comes from
- * /api/subscriptions/status at runtime, never from this file.
+ * /api/vendor/billing at runtime, never from this file.
+ *
+ * SC (Service Center) is the only operating mode the backend supports now
+ * -- Brand and POS were removed. Only 2 tiers remain: the internal plan
+ * key stays "BASIC" (matches the PlanKey enum, avoids a data migration)
+ * but is DISPLAYED as "Pro" -- it's the entry tier of a 2-tier ladder
+ * (Pro / Ultimate), not a stripped-down option.
  */
-export type OperatingMode = "BRAND" | "SC" | "POS";
-export type PlanKey = "BASIC" | "PRO" | "ULTIMATE";
+export type PlanKey = "BASIC" | "ULTIMATE";
 
 export interface PlanSummary {
   key: PlanKey;
@@ -17,22 +22,36 @@ export interface PlanSummary {
   hasCommsQuota?: boolean;
 }
 
-export const PLANS_BY_MODE: Record<OperatingMode, PlanSummary[]> = {
-  SC: [
-    { key: "BASIC", name: "Basic", monthlyPriceINR: 799, features: ["Single-login workorder flow", "GST & non-GST billing", "Private Material/BOM list", "Invoice ZIP export for GST filing"] },
-    { key: "PRO", name: "Pro", monthlyPriceINR: 1999, features: ["Everything in Basic", "Custom report builder", "UPI payment QR on invoices", "Fault/symptom/solution library"] },
-    { key: "ULTIMATE", name: "Ultimate", monthlyPriceINR: 3999, features: ["Everything in Pro", "Sub-vendor / multi-center hierarchy", "Email + WhatsApp notifications", "Scheduled report delivery"], hasCommsQuota: true },
-  ],
-  BRAND: [
-    { key: "BASIC", name: "Basic", monthlyPriceINR: 1499, features: ["CCO/Manager/Engineer dashboards", "Call intake → job sheet → closure", "GST & non-GST billing", "Shared Material/BOM catalog"] },
-    { key: "PRO", name: "Pro", monthlyPriceINR: 4999, features: ["Everything in Basic", "Call center + appointment booking", "Brands/Modes/Series synced from ANgroup", "Custom report builder"] },
-    { key: "ULTIMATE", name: "Ultimate", monthlyPriceINR: 11999, features: ["Everything in Pro", "Sub-vendor hierarchy & management", "Email + WhatsApp notifications", "Multi-currency, AI-IVR routing, API access"], hasCommsQuota: true },
-  ],
-  POS: [
-    { key: "BASIC", name: "Basic", monthlyPriceINR: 699, features: ["Quick-sale POS billing", "GST & non-GST invoicing", "UPI payment QR", "Invoice ZIP export for GST filing"] },
-    { key: "PRO", name: "Pro", monthlyPriceINR: 1999, features: ["Everything in Basic", "Multi-till support", "Custom report builder", "Shared Material catalog"] },
-    { key: "ULTIMATE", name: "Ultimate", monthlyPriceINR: 6999, features: ["Everything in Pro", "Sub-vendor / multi-store hierarchy", "Email + WhatsApp notifications", "Scheduled report delivery"], hasCommsQuota: true },
-  ],
-};
+export const PLANS: PlanSummary[] = [
+  {
+    key: "BASIC",
+    name: "Pro",
+    monthlyPriceINR: 1199,
+    features: [
+      "Single-login workorder flow (CCO + engineer name, free text)",
+      "GST & non-GST billing",
+      "Private Material/BOM list",
+      "Customer workorder tracking page",
+      "Custom report builder (saved reports, charts)",
+      "UPI payment QR on invoices",
+      "Fault code / symptom code / solution library (private)",
+      "Invoice ZIP export for GST filing",
+      "Priority support",
+    ],
+  },
+  {
+    key: "ULTIMATE",
+    name: "Ultimate",
+    monthlyPriceINR: 2499,
+    features: [
+      "Everything in Pro",
+      "Sub-vendor / multi-center hierarchy",
+      "WhatsApp customer notifications (quota below)",
+      "Automated Telegram reports (daily/weekly/monthly/yearly, with charts)",
+      "Dedicated onboarding + SLA support",
+    ],
+    hasCommsQuota: true,
+  },
+];
 
-export const TIER_RANK: Record<PlanKey, number> = { BASIC: 0, PRO: 1, ULTIMATE: 2 };
+export const TIER_RANK: Record<PlanKey, number> = { BASIC: 0, ULTIMATE: 1 };

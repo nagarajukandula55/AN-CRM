@@ -3,12 +3,14 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { useLocalSearchParams, useFocusEffect, useRouter, Link } from "expo-router";
 import { getJobSheet, advanceJobSheet, nextActionFor, type JobSheet } from "@/api/crm";
 import { ApiError } from "@/api/client";
+import { useAuth } from "@/context/AuthContext";
 
 const ACCENT = "#5B3DF5";
 
 export default function WorkorderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const [job, setJob] = useState<JobSheet | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
@@ -26,12 +28,12 @@ export default function WorkorderDetailScreen() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   async function handleAdvance() {
-    if (!job) return;
+    if (!job || !user?.id) return;
     const action = nextActionFor(job.status);
     if (!action) return;
     setActing(true);
     try {
-      const updated = await advanceJobSheet(job._id, action.path);
+      const updated = await advanceJobSheet(job._id, user.id);
       setJob(updated);
     } catch (err) {
       Alert.alert("Couldn't update", err instanceof ApiError ? err.message : "Something went wrong");

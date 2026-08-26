@@ -2,14 +2,14 @@ import { useCallback, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
-import { useSubscription } from "@/context/SubscriptionContext";
+import { useSubscription, daysRemaining } from "@/context/SubscriptionContext";
 import { listJobSheets, type JobSheet } from "@/api/crm";
 
 const ACCENT = "#5B3DF5";
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
-  const { sub } = useSubscription();
+  const { billing } = useSubscription();
   const [taken, setTaken] = useState<JobSheet[]>([]);
   const [upcoming, setUpcoming] = useState<JobSheet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,17 +43,22 @@ export default function ProfileScreen() {
         <Text style={styles.role}>{user?.role}</Text>
       </View>
 
-      {sub && (
-        <TouchableOpacity style={styles.planCard} onPress={() => router.push("/(app)/services")}>
-          <View>
-            <Text style={styles.planTitle}>{sub.plan} — {sub.mode}</Text>
-            <Text style={[styles.planStatus, sub.blocked && styles.planStatusBlocked]}>
-              {sub.blocked ? "Expired — renew now" : `${sub.daysRemaining} day${sub.daysRemaining === 1 ? "" : "s"} remaining`}
-            </Text>
-          </View>
-          <Text style={styles.planArrow}>›</Text>
-        </TouchableOpacity>
-      )}
+      {billing?.subscription && (() => {
+        const blocked = billing.status === "EXPIRED" || billing.status === "NOT_SET";
+        const remaining = daysRemaining(billing.subscription);
+        const planName = billing.subscription.planName || (billing.subscription.planKey === "ULTIMATE" ? "Ultimate" : "Pro");
+        return (
+          <TouchableOpacity style={styles.planCard} onPress={() => router.push("/(app)/services")}>
+            <View>
+              <Text style={styles.planTitle}>{planName} plan</Text>
+              <Text style={[styles.planStatus, blocked && styles.planStatusBlocked]}>
+                {blocked ? "Expired — renew now" : remaining != null ? `${remaining} day${remaining === 1 ? "" : "s"} remaining` : "Active"}
+              </Text>
+            </View>
+            <Text style={styles.planArrow}>›</Text>
+          </TouchableOpacity>
+        );
+      })()}
 
       <Text style={styles.sectionTitle}>Services Taken</Text>
       {loading ? (
