@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import CrmJobSheet from "@/models/CrmJobSheet";
 import Business from "@/models/Business";
+import VendorProfile from "@/models/VendorProfile";
 
 export async function GET(req: NextRequest) {
   try {
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
 
     const jobSheet = await CrmJobSheet.findOne({ jobSheetNumber, isDeleted: false })
       .select(
-        "jobSheetNumber status product deviceModel imeiOrSerialNumber issueDescription createdAt completedAt assignedToName scheduledAt businessId"
+        "jobSheetNumber status product deviceModel imeiOrSerialNumber issueDescription createdAt completedAt assignedToName scheduledAt businessId vendorId"
       )
       .lean<any>();
 
@@ -46,9 +47,20 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const business = await Business.findById(jobSheet.businessId)
-      .select("name brandName phone logo city state")
-      .lean<any>();
+    // "Handled by" must be the ACTUAL vendor who did the repair, not the
+    // shared platform Business every vendor sits under -- same identity
+    // bug already fixed elsewhere (printed documents, dashboards): every
+    // self-signed-up vendor shares ONE Business record, so this used to
+    // show the same generic name/phone/logo on every single vendor's
+    // customer tracking page regardless of who actually repaired the
+    // device. Falls back to the Business only for whatever the vendor
+    // hasn't filled in themselves (e.g. no vendor logo set).
+    const [business, vendor] = await Promise.all([
+      Business.findById(jobSheet.businessId).select("name brandName phone logo city state").lean<any>(),
+      jobSheet.vendorId
+        ? VendorProfile.findById(jobSheet.vendorId).select("companyName phone logoUrl address").lean<any>()
+        : Promise.resolve(null),
+    ]);
 
     return NextResponse.json({
       success: true,
@@ -62,12 +74,14 @@ export async function GET(req: NextRequest) {
         loggedAt: jobSheet.createdAt,
         scheduledAt: jobSheet.scheduledAt || null,
         completedAt: jobSheet.completedAt || null,
-        serviceCenter: business
+        serviceCenter: (vendor || business)
           ? {
-              name: business.brandName || business.name || "",
-              phone: business.phone || "",
-              logo: business.logo || "",
-              location: [business.city, business.state].filter(Boolean).join(", "),
+              name: vendor?.companyName || business?.brandName || business?.name || "",
+              phone: vendor?.phone || business?.phone || "",
+              logo: vendor?.logoUrl || business?.logo || "",
+              location: vendor?.address
+                ? [vendor.address.city, vendor.address.state].filter(Boolean).join(", ")
+                : [business?.city, business?.state].filter(Boolean).join(", "),
             }
           : null,
       },
