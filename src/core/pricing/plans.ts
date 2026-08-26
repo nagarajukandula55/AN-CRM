@@ -151,7 +151,11 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       name: "Ultimate",
       tagline: "Multi-center groups that need scale and value-added services.",
       monthlyPriceINR: 2499,
-      launchPriceINR: 1799,
+      // Explicit direction: launch price set to ₹999 (down from ₹1,799)
+      // for the first 6 months, after flagging that the bundled WhatsApp
+      // quota (1,000 msgs/mo) alone runs ~₹350-900 in API cost -- ₹999
+      // still clears that with margin, unlike the ₹799 first floated.
+      launchPriceINR: 999,
       seatLimit: "1 login per center, unlimited centers",
       highlight: true,
       features: [
