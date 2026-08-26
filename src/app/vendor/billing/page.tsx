@@ -69,10 +69,69 @@ export default function VendorBillingPage() {
   const invoices: any[] = billingRes?.success ? billingRes.invoices || [] : [];
 
   const showPlanPicker = status === "NOT_SET" || status === "EXPIRED";
-  const { data: plansRes } = useSWR(showPlanPicker ? "/api/vendor/plans" : null);
+  // Also needed on an ACTIVE subscription to render the Upgrade section
+  // below -- fetched either way rather than duplicating the plan catalog.
+  const { data: plansRes } = useSWR(showPlanPicker || status === "ACTIVE" ? "/api/vendor/plans" : null);
   const plans: BillingPlanOption[] = plansRes?.success ? plansRes.plans || [] : [];
   const launchPricingActive: boolean = plansRes?.success ? !!plansRes.launchPricingActive : false;
   const periodOptions: PeriodPrice[] = plans[0]?.periods || [];
+
+  const PLAN_RANK: Record<string, number> = { BASIC: 0, PRO: 1, ULTIMATE: 2 };
+  const currentPlanKeys: string[] = (subscription?.modules || []).map((m: any) => m.key);
+  // planKey isn't always on the GET response shape -- infer the rank from
+  // whichever known plan's module set the current one most closely
+  // matches isn't reliable either, so this reads the same planKey field
+  // the subscription document actually stores.
+  const currentPlanKey: string = subscription?.planKey || "BASIC";
+  const upgradeOptions = status === "ACTIVE" ? plans.filter((p) => PLAN_RANK[p.key] > PLAN_RANK[currentPlanKey]) : [];
+  const [upgradingId, setUpgradingId] = useState<string | null>(null);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
+
+  async function upgradeToPlan(planKey: string) {
+    setUpgradeError(null);
+    setUpgradingId(planKey);
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error("Could not load payment gateway");
+
+      const res = await fetch("/api/vendor/billing/upgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planKey }),
+      });
+      const orderData = await res.json();
+      if (!orderData.success) throw new Error(orderData.message || "Failed to start upgrade");
+
+      const rzp = new window.Razorpay({
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        order_id: orderData.razorpayOrderId,
+        name: "AN Group",
+        description: `Upgrade to ${orderData.planName}`,
+        handler: async (response: any) => {
+          const confirmRes = await fetch(`/api/vendor/billing/invoices/${orderData.invoiceId}/confirm`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            }),
+          });
+          const confirmData = await confirmRes.json();
+          if (confirmData.success) reloadBilling();
+          else setUpgradeError(confirmData.message || "Payment verification failed");
+        },
+        theme: { color: "#B5541F" },
+      });
+      rzp.open();
+    } catch (err: any) {
+      setUpgradeError(err.message || "Something went wrong");
+    } finally {
+      setUpgradingId(null);
+    }
+  }
 
   async function payInvoice(invoiceId: string) {
     setPayingId(invoiceId);
@@ -173,6 +232,40 @@ export default function VendorBillingPage() {
           </>
         )}
       </Card>
+
+      {upgradeOptions.length > 0 && (
+        <Card className="p-4 space-y-3">
+          <h2 className="h-section">Upgrade Your Plan</h2>
+          <p className="text-xs text-ink-3">
+            Pay only the difference for the time left on your current plan -- your renewal date doesn't change. Downgrading isn't available here; contact AN Group support if you need a lower tier.
+          </p>
+          {upgradeError && <p className="text-sm text-danger bg-danger-soft rounded-control p-2">{upgradeError}</p>}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {upgradeOptions.map((plan) => (
+              <div key={plan.key} className={`border rounded-card p-3 space-y-2 ${plan.highlight ? 'border-accent' : 'border-border'}`}>
+                <div>
+                  <p className="font-medium text-ink">{plan.name}</p>
+                  {plan.tagline && <p className="text-xs text-ink-3">{plan.tagline}</p>}
+                </div>
+                <ul className="text-xs text-ink-2 space-y-0.5 list-disc list-inside">
+                  {plan.features.map((f) => (
+                    <li key={f}>{f}</li>
+                  ))}
+                </ul>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={() => upgradeToPlan(plan.key)}
+                  disabled={upgradingId === plan.key}
+                  loading={upgradingId === plan.key}
+                >
+                  Upgrade to {plan.name}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {showPlanPicker && (
         <Card className="p-4 space-y-3">
