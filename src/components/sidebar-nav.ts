@@ -133,6 +133,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "vendor-subscriptions", label: "Vendor Subscriptions", route: "/console/admin/vendor-subscriptions", icon: "CreditCard" },
       { key: "admin-vendor-billing", label: "Vendor Billing", route: "/console/admin/vendor-billing", icon: "Receipt" },
       { key: "admin-vendor-settlements", label: "Vendor Settlements", route: "/console/admin/vendor-settlements", icon: "Wallet" },
+      { key: "admin-vendor-chats", label: "Vendor Chats", route: "/console/admin/vendor-chats", icon: "MessageSquare" },
     ]},
     { key: "adm-system", label: "System", items: [
       { key: "admin-plan-features", label: "Plan Features", route: "/console/admin/plan-features", icon: "Sparkles" },
