@@ -40,6 +40,14 @@ export default function VendorTelegramPage() {
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
 
+  // Automatic Telegram business report -- how often, and at what time of
+  // day, DAILY/WEEKLY/MONTHLY/YEARLY (Ultimate-plan feature). Previously
+  // only ever set implicitly to DAILY on first link (api/telegram/webhook's
+  // finishLinking) with no way to change it, or turn it off, from the UI.
+  const [reportFrequency, setReportFrequency] = useState('NONE')
+  const [reportTime, setReportTime] = useState('09:00')
+  const [reportsPlanIncluded, setReportsPlanIncluded] = useState(true)
+
   const [testText, setTestText] = useState('This is a test message from your Telegram bot setup.')
   const [sending, setSending] = useState(false)
   const [sendResult, setSendResult] = useState('')
@@ -114,6 +122,9 @@ export default function VendorTelegramPage() {
         setGroupChatId(d.telegramChatId || '')
         setPersonalChatId(d.telegramPersonalChatId || '')
         setRouting(d.telegramMessageRouting || {})
+        setReportFrequency(d.telegramReportFrequency || 'NONE')
+        setReportTime(d.telegramReportTime || '09:00')
+        setReportsPlanIncluded(d.reportsPlanIncluded !== false)
       })
       .finally(() => { if (showLoading) setLoading(false) })
   }
@@ -150,6 +161,8 @@ export default function VendorTelegramPage() {
           telegramChatId: groupChatId,
           telegramPersonalChatId: personalChatId,
           telegramMessageRouting: routing,
+          telegramReportFrequency: reportFrequency,
+          telegramReportTime: reportTime,
         }),
       })
       const d = await res.json()
@@ -288,6 +301,44 @@ export default function VendorTelegramPage() {
           </CardBody>
         </Card>
       </div>
+
+      <Card className="mb-6 overflow-hidden">
+        <div className="px-5 py-4 border-b border-border">
+          <h2 className="h-section">Automatic Business Report</h2>
+          <p className="text-xs text-ink-3 mt-1">
+            A rich report (revenue, workorders, a trend chart) sent automatically to your linked chat(s) on the schedule below.
+            {!reportsPlanIncluded && ' Not included in your current plan -- upgrade to Ultimate from Plan & Billing to turn this on.'}
+          </p>
+        </div>
+        <div className="p-5 flex flex-wrap items-end gap-3">
+          <Field label="Frequency">
+            <select
+              value={reportFrequency}
+              onChange={(e) => setReportFrequency(e.target.value)}
+              disabled={!reportsPlanIncluded}
+              className="rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-border-strong disabled:opacity-50"
+            >
+              <option value="NONE">Off</option>
+              <option value="DAILY">Daily</option>
+              <option value="WEEKLY">Weekly</option>
+              <option value="MONTHLY">Monthly</option>
+              <option value="YEARLY">Yearly</option>
+            </select>
+          </Field>
+          {reportFrequency !== 'NONE' && (
+            <Field label="Time of day">
+              <input
+                type="time"
+                value={reportTime}
+                onChange={(e) => setReportTime(e.target.value)}
+                disabled={!reportsPlanIncluded}
+                className="rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-border-strong disabled:opacity-50"
+              />
+            </Field>
+          )}
+          <p className="text-xs text-ink-3 pb-2">Goes to whichever of your Group/Personal chats are linked below.</p>
+        </div>
+      </Card>
 
       <Card className="mb-6 overflow-hidden">
         <div className="px-5 py-4 border-b border-border">

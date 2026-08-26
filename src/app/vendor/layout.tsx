@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import VendorLogoutButton from '@/components/vendor/VendorLogoutButton'
 import VendorSwitcher from '@/components/vendor/VendorSwitcher'
+import TelegramRequiredBanner from '@/components/vendor/TelegramRequiredBanner'
 import NotificationBell from '@/components/NotificationBell'
 import ContactWidget from '@/components/ContactWidget'
 import BrowserPushRegister from '@/components/shared/BrowserPushRegister'
@@ -336,8 +337,9 @@ export default async function VendorLayout({
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-4 lg:p-6">{children}</div>
+      <main className="flex-1 overflow-y-auto flex flex-col">
+        <TelegramRequiredBanner />
+        <div className="p-4 lg:p-6 flex-1">{children}</div>
       </main>
       {/* ANu widget removed from the vendor portal per explicit direction --
           notifications now live in their own top-right bell (previously

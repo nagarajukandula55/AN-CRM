@@ -5,8 +5,7 @@ import { getVendorTelegramMessageTypes } from "@/core/telegram/vendorMessageType
 import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
-import Business from "@/models/Business";
-import { getActivePlanKey, getAllowedModuleKeys } from "@/core/pricing/planAccess";
+import { vendorHasTelegramReportsPlan } from "@/core/pricing/planAccess";
 
 /**
  * Vendor-facing Telegram chat/routing config -- resolved from the
@@ -37,9 +36,11 @@ export async function GET() {
     return NextResponse.json({ success: false, message: "Vendor profile not found" }, { status: 404 });
   }
   const messageTypes = await getVendorTelegramMessageTypes();
+  const reportsPlanIncluded = await vendorHasTelegramReportsPlan(String(vendor._id));
   return NextResponse.json({
     success: true,
     businessName: vendor.companyName,
+    reportsPlanIncluded,
     telegramChatId: vendor.telegramChatId || "",
     telegramPersonalChatId: vendor.telegramPersonalChatId || "",
     telegramMessageRouting: vendor.telegramMessageRouting || {},
@@ -69,14 +70,9 @@ export async function PUT(req: NextRequest) {
     // Server-side enforcement of the "telegram-reports" plan feature --
     // same check api/businesses/[id]/route.ts already does for the (dead)
     // Business-level field, now actually load-bearing here.
-    if (body.telegramReportFrequency !== "NONE" && vendor.businessId) {
-      const biz = await Business.findById(vendor.businessId).select("operatingMode").lean<any>();
-      if (biz?.operatingMode) {
-        const plan = await getActivePlanKey(String(vendor.businessId));
-        const allowed = await getAllowedModuleKeys(biz.operatingMode, plan);
-        if (allowed && !allowed.includes("telegram-reports")) {
-          return NextResponse.json({ success: false, message: "Automatic Telegram reports aren't included in your current plan" }, { status: 403 });
-        }
+    if (body.telegramReportFrequency !== "NONE") {
+      if (!(await vendorHasTelegramReportsPlan(String(vendor._id)))) {
+        return NextResponse.json({ success: false, message: "Automatic Telegram reports aren't included in your current plan. Upgrade to Ultimate from Plan & Billing." }, { status: 403 });
       }
     }
     vendor.telegramReportFrequency = body.telegramReportFrequency;
