@@ -326,12 +326,15 @@ export async function POST(req: NextRequest) {
         html: trialActivated
           ? renderEmailShell({
               heading: "Your application was approved",
-              previewText: `Request ${requestNumber} approved — your trial has started.`,
+              previewText: `Request ${requestNumber} approved — your Vendor Code is ${vendor.vendorId || requestNumber}.`,
               bodyHtml: `
                 <p>Hi ${String(contactPerson).trim()},</p>
-                <p>Thanks for applying to become a partner${business ? ` with ${business.brandName || business.name}` : ""}. Your application was approved instantly.</p>
-                ${emailInfoBox([{ label: "Request number", value: requestNumber }])}
-                <p style="font-size:13px;color:#8B8F94;">You should receive a separate email shortly with your partner agreement to sign, and another with your portal login details. Your 7-day trial has already started.</p>
+                <p>Thanks for applying to become a partner${business ? ` with ${business.brandName || business.name}` : ""}. Your application was approved instantly and your 7-day trial has already started.</p>
+                ${emailInfoBox([
+                  { label: "Request number", value: requestNumber },
+                  ...(vendor.vendorId ? [{ label: "Vendor Code", value: String(vendor.vendorId) }] : []),
+                ])}
+                <p style="font-size:13px;color:#8B8F94;">Sign in with your Vendor Code above and the password you set at signup.</p>
               `,
             })
           : renderEmailShell({
