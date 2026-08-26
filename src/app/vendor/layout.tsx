@@ -21,7 +21,6 @@ import {
   User,
   BarChart3,
   Building2,
-  Wallet,
   Warehouse,
   Boxes,
   Phone,
@@ -29,7 +28,6 @@ import {
   PackageCheck,
   ArrowLeftRight,
   Wrench,
-  Layers,
   CreditCard,
   HandCoins,
   Store,
@@ -63,7 +61,11 @@ import {
 // theirs regardless of module grants). null = visible to every team member.
 const navItems: { href: string; label: string; icon: any; modules: string[] | null; managerOnly?: boolean }[] = [
   { href: '/vendor', label: 'Dashboard', icon: LayoutDashboard, modules: null },
-  { href: '/vendor/materials', label: 'Materials', icon: Layers, modules: ['materials'] },
+  // Materials (a general raw-material master -- distinct from Service
+  // Center BOM's repair-parts price list and from Inventory's stock
+  // quantities) removed from nav per explicit direction -- not relevant
+  // to an SC-type vendor's workflow. Page/API left in place, just
+  // unreachable from the nav.
   { href: '/vendor/warehouses', label: 'Warehouses', icon: Warehouse, modules: ['warehouses'] },
   // Service-center staff (CCO/Engineer/Centre Manager) already get
   // crm_jobsheets permissions via MEMBER_TYPE_IMPLIED_MODULES
@@ -106,7 +108,10 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   { href: '/vendor/documents/debit-notes', label: 'Debit Notes', icon: FileMinus2, modules: ['finance'] },
   { href: '/vendor/documents/proforma-invoices', label: 'Proforma Invoices', icon: Receipt, modules: ['finance'] },
   { href: '/vendor/credits', label: 'Credit Accounts', icon: HandCoins, modules: ['finance'] },
-  { href: '/vendor/payouts', label: 'Payout Settings', icon: Wallet, modules: ['finance'], managerOnly: true },
+  // Payout Settings (Razorpay Route linked-account KYC) removed from nav
+  // per explicit direction -- no vendor payout option is actually offered
+  // yet, so this collected bank/KYC details for a feature that doesn't
+  // exist on our side. Page/API left in place for when it does.
   // Migrated from console/common/sub-vendors -- already fully vendor-
   // scoped (own component reads /api/vendor/type-context for the
   // caller's vendorId), reused as-is, no vendor portal page existed for
