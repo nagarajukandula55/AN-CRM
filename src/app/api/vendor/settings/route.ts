@@ -60,6 +60,10 @@ export async function GET() {
       documentSignatureUrl: v.documentSignatureUrl || "",
       applyTaxOnB2CBilling: v.applyTaxOnB2CBilling !== false,
       upiId: v.upiId || "",
+      bankAccountName: v.bankAccountName || "",
+      bankAccountNumber: v.bankAccountNumber || "",
+      bankIFSC: v.bankIFSC || "",
+      bankName: v.bankName || "",
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -90,6 +94,10 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.documentSignatureUrl === "string") update.documentSignatureUrl = body.documentSignatureUrl;
     if (typeof body.applyTaxOnB2CBilling === "boolean") update.applyTaxOnB2CBilling = body.applyTaxOnB2CBilling;
     if (typeof body.upiId === "string") update.upiId = body.upiId;
+    if (typeof body.bankAccountName === "string") update.bankAccountName = body.bankAccountName;
+    if (typeof body.bankAccountNumber === "string") update.bankAccountNumber = body.bankAccountNumber;
+    if (typeof body.bankIFSC === "string") update.bankIFSC = body.bankIFSC;
+    if (typeof body.bankName === "string") update.bankName = body.bankName;
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ success: false, error: "Nothing to update" }, { status: 400 });
     }

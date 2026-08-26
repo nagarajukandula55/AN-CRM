@@ -38,6 +38,8 @@ import {
   FilePlus2,
   FileMinus2,
   Receipt,
+  Tag,
+  Smartphone,
 } from 'lucide-react'
 // Note: `Phone` icon import removed along with the Appointments nav entry below.
 
@@ -70,8 +72,20 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   // for any existing link (e.g. the Engineer/CCO login redirect).
   { href: '/vendor/crm/jobsheets', label: 'Workorders', icon: ClipboardList, modules: ['crm_jobsheets', 'crm'] },
   { href: '/vendor/service-bom', label: 'Service Center BOM', icon: Wrench, modules: ['crm_jobsheets', 'crm'] },
+  // Migrated from console/sc/masters/{brands,solutions} -- brands/models
+  // via the same /api/vendor/saved-catalog the workorder form's quick-add
+  // already writes to; solutions via /api/solutions, already vendorId-
+  // isolated.
+  { href: '/vendor/masters/brands', label: 'Brands & Models', icon: Tag, modules: ['crm_jobsheets', 'crm'] },
+  { href: '/vendor/masters/solutions', label: 'Solutions', icon: Smartphone, modules: ['crm_jobsheets', 'crm'] },
   { href: '/vendor/stock-transfers', label: 'Stock Transfers', icon: ArrowLeftRight, modules: ['stock_transfers'] },
   { href: '/vendor/invoices', label: 'Invoices & Payments', icon: FileText, modules: ['finance'] },
+  // Migrated from console/common/sales -- raising a GST/Non-GST sales
+  // invoice directly to an end customer (distinct from "Invoices &
+  // Payments" above, which is the read-only B2B invoice AN Group bills
+  // the vendor for module fees). /api/sales/invoices and /api/customers
+  // are already vendor-scoped.
+  { href: '/vendor/documents/sales-invoices', label: 'Sales Invoices', icon: Receipt, modules: ['finance'] },
   // Migrated from console/common/documents/* -- SalesDocumentManager is
   // already vendor-scoped (api/sales-documents), no console-only
   // hardcoding, reused as-is. Grouped under the same 'finance' gate as

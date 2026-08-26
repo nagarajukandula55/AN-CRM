@@ -279,6 +279,10 @@ export interface IVendorProfile extends Document {
   documentSignatureUrl?: string;
   applyTaxOnB2CBilling?: boolean;
   upiId?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankIFSC?: string;
+  bankName?: string;
   rating:    number;
   status:    VendorStatus;
   isApproved: boolean;
@@ -438,6 +442,10 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     savedModelsByBrand: { type: Schema.Types.Mixed, default: {} },
     savedPaymentCollectors: [{ type: String }],
     upiId: { type: String, default: '' },
+    bankAccountName: { type: String, default: '' },
+    bankAccountNumber: { type: String, default: '' },
+    bankIFSC: { type: String, default: '' },
+    bankName: { type: String, default: '' },
     rating:       { type: Number, min: 0, max: 5, default: 0 },
     status: {
       type:    String,

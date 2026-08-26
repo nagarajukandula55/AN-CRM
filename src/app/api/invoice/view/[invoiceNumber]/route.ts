@@ -107,7 +107,9 @@ export async function GET(
     // set, falling back to Business for anything the vendor hasn't filled
     // in (VendorProfile has no separate logo field, for instance).
     const vendor = (invoice as any).vendorId
-      ? await VendorProfile.findById((invoice as any).vendorId).select("companyName phone address gstNumber").lean<any>()
+      ? await VendorProfile.findById((invoice as any).vendorId)
+          .select("companyName phone address gstNumber upiId bankAccountName bankAccountNumber bankIFSC bankName")
+          .lean<any>()
       : null;
 
     // Also pull this business's saved invoice-template branding (logo,
@@ -122,7 +124,14 @@ export async function GET(
     // showPaymentQr/showBankDetails/showSignature default true (unset on
     // any invoice created before this per-invoice opt-out existed), so
     // existing invoices keep printing these exactly as before.
-    const upiId = (business as any)?.upiId?.trim();
+    // A vendor's OWN UPI/bank details override the shared platform
+    // Business's -- every self-signed-up vendor points at the same
+    // Business record (see VendorProfile's own comment on why telegram*
+    // moved off Business, same reasoning applies here), so without this a
+    // vendor's saved payment details could never show on their own
+    // invoices, or worse, another vendor's saved details would show
+    // instead. Same overlay pattern as document-templates/resolve/route.ts.
+    const upiId = (vendor?.upiId?.trim() || (business as any)?.upiId?.trim());
     const paymentQrUrl = upiId && invoice.showPaymentQr !== false
       ? await generateUpiQrDataUrl({
           vpa: upiId,
@@ -232,12 +241,12 @@ export async function GET(
       // schema default of both flags true for every invoice that predates
       // this per-invoice choice, including every CRM-jobsheet invoice,
       // which never set these fields at all).
-      bankDetails: !paymentQrUrl && (business as any)?.bankAccountNumber && invoice.showBankDetails !== false
+      bankDetails: !paymentQrUrl && (vendor?.bankAccountNumber || (business as any)?.bankAccountNumber) && invoice.showBankDetails !== false
         ? {
-            accountName: (business as any)?.bankAccountName || "",
-            accountNumber: (business as any)?.bankAccountNumber || "",
-            ifsc: (business as any)?.bankIFSC || "",
-            bankName: (business as any)?.bankName || "",
+            accountName: vendor?.bankAccountName || (business as any)?.bankAccountName || "",
+            accountNumber: vendor?.bankAccountNumber || (business as any)?.bankAccountNumber || "",
+            ifsc: vendor?.bankIFSC || (business as any)?.bankIFSC || "",
+            bankName: vendor?.bankName || (business as any)?.bankName || "",
           }
         : undefined,
 
