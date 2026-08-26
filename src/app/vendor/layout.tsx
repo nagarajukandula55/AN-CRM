@@ -3,7 +3,9 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import VendorLogoutButton from '@/components/vendor/VendorLogoutButton'
 import VendorSwitcher from '@/components/vendor/VendorSwitcher'
+import VendorSidebarNav from '@/components/vendor/VendorSidebarNav'
 import TelegramRequiredBanner from '@/components/vendor/TelegramRequiredBanner'
+import TrialPlanBanner from '@/components/vendor/TrialPlanBanner'
 import NotificationToaster from '@/components/vendor/NotificationToaster'
 import ContactWidget from '@/components/ContactWidget'
 import BrowserPushRegister from '@/components/shared/BrowserPushRegister'
@@ -344,22 +346,7 @@ export default async function VendorLayout({
 
         {/* Nav */}
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {visibleItems.map((item, i) => (
-            <div key={item.href}>
-              {item.section && item.section !== visibleItems[i - 1]?.section && (
-                <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-3 first:pt-1.5">
-                  {item.section}
-                </p>
-              )}
-              <Link
-                href={item.href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-control text-ink-2 hover:bg-surface-2 hover:text-ink transition-all duration-150 text-sm group"
-              >
-                <item.icon className="h-4 w-4 flex-shrink-0 group-hover:text-accent transition-colors" />
-                {item.label}
-              </Link>
-            </div>
-          ))}
+          <VendorSidebarNav items={visibleItems} />
         </nav>
 
         {/* Footer */}
@@ -379,6 +366,7 @@ export default async function VendorLayout({
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto flex flex-col">
+        <TrialPlanBanner />
         <TelegramRequiredBanner />
         <div className="p-4 lg:p-6 flex-1">{children}</div>
       </main>

@@ -12,7 +12,7 @@ import Subscription from "@/models/Subscription";
 import PlanFeatureConfig from "@/models/PlanFeatureConfig";
 import VendorSubscription from "@/models/VendorSubscription";
 import { computeStatus } from "@/core/billing/billing.service";
-import { findPlan, type OperatingMode, type PlanKey, type Plan } from "@/core/pricing/plans";
+import { findPlan, isLaunchPricingActive, type OperatingMode, type PlanKey, type Plan } from "@/core/pricing/plans";
 
 export async function getActivePlanKey(businessId: string): Promise<PlanKey> {
   const latest = await Subscription.findOne({
@@ -103,10 +103,17 @@ export async function getVendorPlanKey(vendorId: string): Promise<PlanKey | null
  * having hand-picked the "telegram-reports" module directly on
  * console/admin/vendor-billing (that path sets no planKey at all -- see
  * VendorSubscription.planKey's own comment) so both assignment paths work.
+ *
+ * During the launch window (isLaunchPricingActive, first 6 months from
+ * LAUNCH_START -- same window that drives launch pricing), Telegram
+ * notifications/reports are given free to every plan tier ("just like
+ * pricing" per explicit direction) -- any vendor with an active
+ * subscription (trial or paid, any tier) qualifies, not just Ultimate.
  */
 export async function vendorHasTelegramReportsPlan(vendorId: string): Promise<boolean> {
   const sub = await VendorSubscription.findOne({ vendorId }).select("planKey currentPeriodEnd modules").lean<any>();
   if (!sub || computeStatus(sub) !== "ACTIVE") return false;
+  if (isLaunchPricingActive()) return true;
   if (sub.planKey === "ULTIMATE") return true;
   return (sub.modules || []).some((m: any) => m.key === "telegram-reports");
 }
