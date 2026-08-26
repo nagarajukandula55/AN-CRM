@@ -2,20 +2,35 @@
 
 /**
  * Floating "Contact us for help" button -- replaces the ANu assistant
- * widget in the vendor portal (removed per explicit direction). Expands
- * to WhatsApp/Telegram deep links (wa.me / t.me, no API/cost involved --
- * see api/vendor/support-contact's own comment on why an in-app WhatsApp
- * session would need the paid Business Platform API instead) plus a link
- * to the Help Center's tutorial videos. A button only renders when the
- * admin has actually configured that contact method (Settings > Business
- * Profile) -- never a placeholder/fake number.
+ * widget in the vendor portal (removed per explicit direction). Expands to
+ * WhatsApp (wa.me deep link, no API/cost involved -- see api/vendor/
+ * support-contact's own comment on why an in-app WhatsApp session would
+ * need the paid Business Platform API instead), an inline Telegram support
+ * chat popup, and a link to the Help Center's tutorial videos. A button
+ * only renders when the admin has actually configured that contact method
+ * (Settings > Business Profile) -- never a placeholder/fake number.
+ *
+ * "Chat on Telegram" opens VendorTelegramChat (the same component /vendor/
+ * telegram uses) as a floating popup right here, rather than navigating
+ * away to that page -- reported live that navigating away read as
+ * "opening the Telegram app/page" instead of a real assistant-style
+ * chat window.
  */
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MessageCircle, X, Send, PlayCircle } from "lucide-react";
+import { VendorTelegramChat } from "@/components/vendor/VendorTelegramChat";
 
 export default function ContactWidget() {
   const [open, setOpen] = useState(false);
+  // "Chat on Telegram" used to navigate to /vendor/telegram (a full page
+  // reload/away-from-where-you-were) -- reported live ("chat in telegram
+  // should be pop up only should not open the telegram page, pip popup
+  // should be there like actual assistance chatting window"). Now opens
+  // the same VendorTelegramChat component already used on that page, but
+  // as an inline overlay panel here instead, so you never leave whatever
+  // you were doing.
+  const [chatOpen, setChatOpen] = useState(false);
   const [whatsAppNumber, setWhatsAppNumber] = useState("");
   const [telegramUsername, setTelegramUsername] = useState("");
 
@@ -41,6 +56,18 @@ export default function ContactWidget() {
 
   return (
     <div style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", zIndex: 50 }}>
+      {chatOpen && (
+        <div className="mb-3 w-80 max-w-[calc(100vw-3rem)] shadow-card-lg rounded-card overflow-hidden relative">
+          <button
+            onClick={() => setChatOpen(false)}
+            aria-label="Close chat"
+            className="absolute top-3 right-4 z-10 text-ink-3 hover:text-ink"
+          >
+            <X size={16} />
+          </button>
+          <VendorTelegramChat />
+        </div>
+      )}
       {open && (
         <div className="mb-3 w-64 bg-surface border border-border rounded-card shadow-card-lg overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
@@ -54,9 +81,12 @@ export default function ContactWidget() {
               </a>
             )}
             {hasTelegram && (
-              <Link href="/vendor/telegram" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2 rounded-control text-sm text-ink-2 hover:bg-surface-2 transition-colors">
+              <button
+                onClick={() => { setOpen(false); setChatOpen(true) }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-control text-sm text-ink-2 hover:bg-surface-2 transition-colors text-left"
+              >
                 <Send size={16} className="text-accent" /> Chat on Telegram
-              </Link>
+              </button>
             )}
             {!waLink && !hasTelegram && (
               <p className="px-3 py-2 text-xs text-ink-3">Contact options aren't set up yet.</p>
