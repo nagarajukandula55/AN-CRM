@@ -47,7 +47,7 @@ hierarchy in violation of Section 8.
 
 ## 3. Subscription Plans, Fees, and Payment
 
-3.1 AN-CRM is offered on Basic / Pro / Ultimate tiers, billed Monthly,
+3.1 AN-CRM is offered on Pro / Ultimate tiers, billed Monthly,
 Quarterly, Half-Yearly, or Yearly, as displayed on the Pricing page at
 the time of purchase and in your account's Plan & Billing section.
 Prices are GST-inclusive unless stated otherwise.
@@ -69,8 +69,8 @@ renewed before its expiry date, access to the Service is automatically
 suspended (subject to Section 3.6) until renewed. Data is retained per
 Section 9 and is not deleted solely due to suspension.
 
-3.6 **Free trial.** New Basic-tier accounts receive a 7-day free trial
-from account creation. No payment is collected during the trial; the
+3.6 **Free trial.** Every new account receives a 7-day free trial with
+full Ultimate-tier access, from account creation. No payment is collected during the trial; the
 Service is suspended automatically at the end of the trial unless a paid
 plan is purchased.
 

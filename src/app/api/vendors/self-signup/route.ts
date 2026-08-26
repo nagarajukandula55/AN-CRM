@@ -17,7 +17,7 @@ import { sendWelcomeEmail } from "@/services/email/resend.service";
 import VendorSubscription from "@/models/VendorSubscription";
 import { findPlan, type PlanKey } from "@/core/pricing/plans";
 
-const VALID_PLAN_KEYS: PlanKey[] = ["BASIC", "PRO", "ULTIMATE"];
+const VALID_PLAN_KEYS: PlanKey[] = ["BASIC", "ULTIMATE"];
 
 const TRIAL_DAYS = 7;
 

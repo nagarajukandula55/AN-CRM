@@ -142,7 +142,7 @@ function PartnerSignupPageInner() {
   const [gstWarning, setGstWarning] = useState<string | null>(null);
   // Plan selection was removed from signup -- vendors now pick their tier
   // AFTER logging in (see /vendor/billing), not before they've even seen
-  // the product. The 7-day trial defaults to Basic-tier module access
+  // the product. The 7-day trial defaults to full Ultimate-tier module access
   // (see activateVendorWithTrial), and they can upgrade any time post-login.
 
   function validateStep1(): string | null {

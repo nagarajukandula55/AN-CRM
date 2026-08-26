@@ -14,7 +14,7 @@ import { getVendorOnboardingConfig, getPlatformBusinessId } from "@/lib/centralA
 import { sendTelegramMessage } from "@/lib/telegram";
 import type { PlanKey } from "@/core/pricing/plans";
 
-const VALID_PLAN_KEYS: PlanKey[] = ["BASIC", "PRO", "ULTIMATE"];
+const VALID_PLAN_KEYS: PlanKey[] = ["BASIC", "ULTIMATE"];
 
 /**
  * POST /api/vendors/apply — PUBLIC vendor signup request.

@@ -143,7 +143,7 @@ export default function PlanPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {PLANS.map((plan) => {
           const price = priceForPeriod(plan, period)
           const isCurrent = data?.plan === plan.key && !data?.blocked

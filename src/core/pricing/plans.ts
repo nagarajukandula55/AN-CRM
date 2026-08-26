@@ -100,56 +100,36 @@ export interface Plan {
 export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
   SC: [
     {
+      // Internal plan key stays "BASIC" (matches PlanKey/VendorSubscription
+      // enum, avoids a data migration) -- but per explicit direction the
+      // DISPLAYED name is "Pro", not "Basic": this is now the entry tier
+      // of a 2-tier ladder (Pro / Ultimate), not a stripped-down option.
       key: "BASIC",
       mode: "SC",
-      name: "Basic",
-      tagline: "One service center getting started with digital workorders.",
-      monthlyPriceINR: 499,
-      launchPriceINR: 349,
+      name: "Pro",
+      tagline: "Everything a service center needs to run day-to-day, at one low price.",
+      monthlyPriceINR: 799,
+      launchPriceINR: 549,
       freeTrialDays: 7,
       seatLimit: "1 login (single-screen)",
+      // Collapsed from a 3-tier ladder (Basic/Pro/Ultimate) to 2 tiers per
+      // explicit direction -- the old Pro tier's differentiators (report
+      // builder, fault/symptom/solution library, UPI QR) are folded into
+      // this tier rather than dropped, so nobody loses anything moving
+      // from 3 tiers to 2; only Ultimate's genuinely multi-center/
+      // automation features (sub-vendor hierarchy, WhatsApp, auto Telegram
+      // reports) stay as the paid-up differentiator. Price raised from the
+      // old Basic's ₹499/₹349 to reflect the added value, still well
+      // under half of Ultimate.
       features: [
         "Single-login workorder flow (CCO + engineer name, free text)",
         "GST & non-GST billing",
         "Private Material/BOM list",
         "Customer workorder tracking page",
-        "Basic reports + invoice ZIP export for GST filing",
-        "Email support",
-      ],
-      // analytics/reports are already-existing features every business has
-      // always had -- kept on Basic too so plan-gating (introduced after
-      // these were already in general use) never retroactively takes
-      // something away. Report Builder, however, is a genuine Pro+
-      // differentiator (per explicit direction) since its main value --
-      // slicing by fault/symptom code -- needs the Pro+ fault/symptom
-      // library to be worth anything anyway.
-      moduleKeys: [
-        "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
-        "stock-adjustments", "reports", "analytics",
-        "admin-settings", "admin-plan", "send-feedback",
-        "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
-      ],
-      // Core operational vendor-portal nav (Materials/Warehouses/
-      // Workorders/Stock Transfers/Invoices/Statement) -- see this file's
-      // Plan.vendorModuleKeys comment. Never a tier differentiator; every
-      // tier gets full operational access, same as moduleKeys above kept
-      // already-in-use features on Basic.
-      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics", "inventory"],
-    },
-    {
-      key: "PRO",
-      mode: "SC",
-      name: "Pro",
-      tagline: "A busier center that needs deeper reporting and faster billing.",
-      monthlyPriceINR: 1299,
-      launchPriceINR: 899,
-      seatLimit: "1 login (single-screen)",
-      highlight: true,
-      features: [
-        "Everything in Basic",
         "Custom report builder (saved reports, charts)",
         "UPI payment QR on invoices",
         "Fault code / symptom code / solution library (private)",
+        "Invoice ZIP export for GST filing",
         "Priority support",
       ],
       moduleKeys: [
@@ -158,11 +138,11 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
         "report-builder", "analytics",
       ],
-      // Adds fault_codes/solutions on top of Basic's operational set --
-      // the vendor-portal-visible half of Pro's "fault/symptom/solution
-      // library" feature (the console-side half is gated by moduleKeys'
-      // "report-builder" above, since the library is only useful paired
-      // with the report builder that can slice by it).
+      // Core operational vendor-portal nav (Materials/Warehouses/
+      // Workorders/Stock Transfers/Invoices/Statement) plus the former
+      // Pro-only fault_codes/solutions library -- see this file's
+      // Plan.vendorModuleKeys comment. Never a tier differentiator below
+      // Ultimate's real multi-center/automation set.
       vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
     },
     {
@@ -173,6 +153,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       monthlyPriceINR: 2499,
       launchPriceINR: 1799,
       seatLimit: "1 login per center, unlimited centers",
+      highlight: true,
       features: [
         "Everything in Pro",
         "Sub-vendor / multi-center hierarchy",

@@ -12,7 +12,8 @@ Act, 2019 and the Consumer Protection (E-Commerce) Rules, 2020.
 
 ## 1. Free Trial
 
-Every new account on the Basic tier receives a 7-day free trial. No
+Every new account receives a 7-day free trial with full Ultimate-tier
+access. No
 payment is collected during the trial and no refund question arises for
 it — simply do not upgrade to a paid plan if you do not wish to continue,
 and access will pause automatically at the end of the trial.
