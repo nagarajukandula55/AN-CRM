@@ -5,6 +5,8 @@ import Asset from "@/models/Asset";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { headers } from "next/headers";
+import { resolveVendorContext } from "@/lib/auth/vendorContext";
 
 export async function POST(req) {
   try {
@@ -12,16 +14,28 @@ export async function POST(req) {
     if (!session?.user) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
+
+    await connectDB();
+
+    // "assets" isn't part of VENDOR_MODULE_KEYS at all, so no vendor
+    // Owner/Manager role has ever been granted ASSETS.CREATE -- every
+    // vendor logo/document upload through this shared endpoint 403'd
+    // outright. Uploading a file scoped to your own account (a logo,
+    // a compliance document) is harmless regardless of the generic
+    // console permission, so a resolvable vendor context is accepted
+    // as an alternative to holding that admin-facing permission.
     try {
       requirePermission(session, buildPermissionCode("assets", "create"));
     } catch (err) {
-      return NextResponse.json(
-        { success: false, message: err.message },
-        { status: err.code === "FORBIDDEN" ? 403 : 401 }
-      );
+      const headersList = await headers();
+      const vendorCtx = await resolveVendorContext(headersList.get("x-user-id") || session.user.id);
+      if (!vendorCtx) {
+        return NextResponse.json(
+          { success: false, message: err.message },
+          { status: err.code === "FORBIDDEN" ? 403 : 401 }
+        );
+      }
     }
-
-    await connectDB();
 
     const formData = await req.formData();
 
