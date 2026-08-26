@@ -108,7 +108,12 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       mode: "SC",
       name: "Pro",
       tagline: "Everything a service center needs to run day-to-day, at one low price.",
-      monthlyPriceINR: 799,
+      // Standard (post-launch) price raised 799 -> 1,199 per explicit
+      // direction ("make it 1199 & 2499 so we can have better value")
+      // -- widens the post-launch Pro/Ultimate gap to 2,499/1,199 = 2.1x,
+      // still a real premium spread once launchPriceINR below stops
+      // applying at LAUNCH_PRICING_CUTOVER.
+      monthlyPriceINR: 1199,
       launchPriceINR: 549,
       freeTrialDays: 7,
       seatLimit: "1 login (single-screen)",
