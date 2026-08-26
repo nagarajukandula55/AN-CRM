@@ -347,9 +347,19 @@ export default async function VendorLayout({
           <VendorSwitcher />
         </div>
 
-        {/* Nav */}
+        {/* Nav -- icon rendered here (server-side) into a real element
+            before crossing into the client component below; the icon
+            COMPONENT reference itself can't cross that boundary (see
+            VendorSidebarNav's own comment on why this crashed before). */}
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          <VendorSidebarNav items={visibleItems} />
+          <VendorSidebarNav
+            items={visibleItems.map((item) => ({
+              href: item.href,
+              label: item.label,
+              section: item.section,
+              icon: <item.icon className="h-4 w-4 flex-shrink-0 group-hover:text-accent transition-colors" />,
+            }))}
+          />
         </nav>
 
         {/* Footer */}

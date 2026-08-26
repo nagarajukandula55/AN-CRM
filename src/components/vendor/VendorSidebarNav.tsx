@@ -9,14 +9,22 @@
  * memory). Un-sectioned items (Dashboard) always render, un-collapsible.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
 
 type NavItem = {
   href: string
   label: string
-  icon: any
+  // A pre-rendered icon ELEMENT, not the icon component itself -- a
+  // Server Component (vendor/layout.tsx) can't pass a component/function
+  // reference as a prop to a Client Component (this file) across the RSC
+  // boundary (React can't serialize a function), which crashed this page
+  // for every vendor with "Functions cannot be passed directly to Client
+  // Components". A rendered ReactNode (JSX), by contrast, IS serializable
+  // across that boundary, so the icon is instantiated server-side and
+  // handed down already-rendered.
+  icon: ReactNode
   section?: string
 }
 
@@ -68,7 +76,7 @@ export default function VendorSidebarNav({ items }: { items: NavItem[] }) {
                 href={item.href}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-control text-ink-2 hover:bg-surface-2 hover:text-ink transition-all duration-150 text-sm group"
               >
-                <item.icon className="h-4 w-4 flex-shrink-0 group-hover:text-accent transition-colors" />
+                {item.icon}
                 {item.label}
               </Link>
             )}
