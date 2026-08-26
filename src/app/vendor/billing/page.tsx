@@ -68,7 +68,17 @@ export default function VendorBillingPage() {
   const status = billingRes?.success ? billingRes.status : "NOT_SET";
   const invoices: any[] = billingRes?.success ? billingRes.invoices || [] : [];
 
-  const showPlanPicker = status === "NOT_SET" || status === "EXPIRED";
+  // A vendor on the free trial has status ACTIVE (a real currentPeriodEnd
+  // is set the moment the trial starts) with no PAID invoice yet -- if
+  // showPlanPicker only fired for NOT_SET/EXPIRED, a trial vendor (now
+  // defaulted to Ultimate, the top tier) had literally no way to actually
+  // purchase a plan until their trial expired: the picker was hidden
+  // (status isn't NOT_SET/EXPIRED) AND the Upgrade section was empty
+  // (nothing outranks Ultimate). Reported live ("all plans not showing
+  // here"). hasPaidInvoice is the same "never actually paid" signal
+  // TrialPlanBanner already uses.
+  const hasPaidInvoice = invoices.some((i) => i.status === "PAID");
+  const showPlanPicker = status === "NOT_SET" || status === "EXPIRED" || (status === "ACTIVE" && !hasPaidInvoice);
   // Also needed on an ACTIVE subscription to render the Upgrade section
   // below -- fetched either way rather than duplicating the plan catalog.
   const { data: plansRes } = useSWR(showPlanPicker || status === "ACTIVE" ? "/api/vendor/plans" : null);
@@ -83,7 +93,11 @@ export default function VendorBillingPage() {
   // matches isn't reliable either, so this reads the same planKey field
   // the subscription document actually stores.
   const currentPlanKey: string = subscription?.planKey || "BASIC";
-  const upgradeOptions = status === "ACTIVE" ? plans.filter((p) => PLAN_RANK[p.key] > PLAN_RANK[currentPlanKey]) : [];
+  // Only relevant once actually paid -- during the free trial (ACTIVE with
+  // no PAID invoice) showPlanPicker above already covers every plan
+  // including the current one, so this stays empty rather than showing an
+  // an empty/duplicate card.
+  const upgradeOptions = status === "ACTIVE" && hasPaidInvoice ? plans.filter((p) => PLAN_RANK[p.key] > PLAN_RANK[currentPlanKey]) : [];
   const [upgradingId, setUpgradingId] = useState<string | null>(null);
   const [upgradeError, setUpgradeError] = useState<string | null>(null);
 
