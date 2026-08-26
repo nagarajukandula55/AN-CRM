@@ -97,6 +97,10 @@ export interface ISalesInvoice extends Document {
   invoiceType?: "B2B" | "B2C" | "STANDARD";
   vendorId?: mongoose.Types.ObjectId;
   sourceOrderId?: string;
+  /** CrmJobSheet.jobSheetNumber this invoice was generated from at close
+   * time, if any -- printed as its own "WO:" field next to the invoice
+   * number instead of being buried in `notes` (see close/route.ts). */
+  linkedJobSheetNumber?: string;
   customer: {
     name: string;
     company?: string;
@@ -198,6 +202,7 @@ const InvoiceSchema = new Schema<ISalesInvoice>(
     },
     vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null },
     sourceOrderId: { type: String, default: null, index: true },
+    linkedJobSheetNumber: { type: String, default: "" },
 
     customer: {
       name: { type: String, required: true },

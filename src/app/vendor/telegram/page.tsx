@@ -56,6 +56,14 @@ export default function VendorTelegramPage() {
   const [linkError, setLinkError] = useState('')
   const [copied, setCopied] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(0)
+  const [telegramUsername, setTelegramUsername] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/telegram/bot-info')
+      .then((r) => r.json())
+      .then((d) => setTelegramUsername(d.success ? d.username : null))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!linkExpiresAt) return
@@ -206,9 +214,20 @@ export default function VendorTelegramPage() {
 
           {linkError && <p className="text-sm text-danger">{linkError}</p>}
 
-          {!linkCode || secondsLeft <= 0 ? (
+          {personalChatId && (
+            <div className="flex items-center gap-2 rounded-control border border-success/30 bg-success-soft px-3 py-2.5 text-sm text-ink">
+              <Check className="w-4 h-4 text-success flex-shrink-0" />
+              <span>
+                Your personal Telegram chat is connected -- support conversations happen right below, on this page,
+                so you won&apos;t need to open Telegram again for that. To reconnect a different account, ask AN
+                Group support to clear the current connection first.
+              </span>
+            </div>
+          )}
+
+          {personalChatId && groupChatId ? null : !linkCode || secondsLeft <= 0 ? (
             <Button onClick={generateLinkCode} disabled={generatingCode} icon={<QrCode className="w-4 h-4" />}>
-              {generatingCode ? 'Generating…' : linkCode ? 'Generate a new code' : 'Generate code'}
+              {generatingCode ? 'Generating…' : linkCode ? 'Generate a new code' : personalChatId ? 'Generate code (for your team group)' : 'Generate code'}
             </Button>
           ) : (
             <div className="flex flex-col sm:flex-row items-start gap-5">
@@ -231,7 +250,15 @@ export default function VendorTelegramPage() {
                     <Send className="w-3.5 h-3.5" /> Open in Telegram (personal chat)
                   </a>
                 )}
-                <p className="text-xs text-ink-3">For your team group: add the bot, then send <span className="font-mono font-semibold">{linkCode}</span> as a message there.</p>
+                <div className="text-xs text-ink-3 bg-surface-2 rounded-control border border-border px-3 py-2 space-y-1">
+                  <p className="font-medium text-ink-2">To link your team group instead:</p>
+                  <ol className="list-decimal list-inside space-y-0.5">
+                    <li>Open your team group in Telegram &gt; group name &gt; <b>Add Members</b>.</li>
+                    <li>Search for and add {telegramUsername ? <span className="font-mono">@{telegramUsername}</span> : 'the AN Group bot'}.</li>
+                    <li>In the group, send exactly this as a message: <span className="font-mono font-semibold">{linkCode}</span></li>
+                  </ol>
+                  <p>The bot must be a member of the group before it can read the code -- if the code expires first, generate a new one and repeat step 3.</p>
+                </div>
                 <Button variant="ghost" size="sm" onClick={generateLinkCode} disabled={generatingCode}>Generate a new code</Button>
               </div>
             </div>

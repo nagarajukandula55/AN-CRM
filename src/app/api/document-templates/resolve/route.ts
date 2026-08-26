@@ -65,10 +65,10 @@ export async function GET(req: NextRequest) {
     const [template, business, localBusiness, warehouse, vendor] = await Promise.all([
       getTemplateForBusiness(businessId, documentType),
       getBusinessBySourceId(businessId), // reads from central-api — see src/lib/centralApiRead.ts
-      Business.findById(businessId).select(LOCAL_ONLY_FIELDS).lean(),
+      Business.findById(businessId).select(LOCAL_ONLY_FIELDS + " upiId").lean(),
       warehouseId ? Warehouse.findById(warehouseId).lean() : Promise.resolve(null),
       vendorId
-        ? VendorProfile.findById(vendorId).select("companyName phone address gstNumber " + LOCAL_ONLY_FIELDS).lean()
+        ? VendorProfile.findById(vendorId).select("companyName phone address gstNumber upiId " + LOCAL_ONLY_FIELDS).lean()
         : Promise.resolve(null),
     ]);
 

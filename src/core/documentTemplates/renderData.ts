@@ -27,6 +27,13 @@ export interface DocumentRenderItem {
 export interface DocumentRenderData {
   docTypeLabel: string;
   docNumber: string;
+  /** CrmJobSheet.jobSheetNumber this invoice was generated from at close
+   * time (SalesInvoice.linkedJobSheetNumber) -- printed as its own "WO:"
+   * field next to the Invoice No, instead of being buried in `notes` as it
+   * used to be. Undefined for invoices with no linked workorder (POS
+   * sales, manually created invoices, older invoices from before this
+   * field existed). */
+  workOrderNumber?: string;
   date: string;
   status?: string;
   /** How payment was actually collected (CASH/UPI/CARD/BANK_TRANSFER/OTHER,
@@ -58,6 +65,12 @@ export interface DocumentRenderData {
      * blank title. Undefined leaves the signature block exactly as it was
      * for every document type that doesn't set this (invoices, POs, etc.). */
     signedByName?: string;
+    /** VendorProfile.upiId (falls back to Business.upiId) -- gates the
+     * payment QR block on RichInvoiceLayout, which now only ever renders a
+     * real UPI-payment QR (never a generic "reopen this page" one), and
+     * only on an actual invoice/bill, never Estimate/Workorder/Service
+     * Record -- see RichInvoiceLayout's own comment. */
+    upiId?: string;
   };
   party: {
     name: string;

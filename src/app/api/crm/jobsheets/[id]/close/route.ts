@@ -298,6 +298,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       createdBy: new mongoose.Types.ObjectId(userId),
       invoiceType: isB2B ? "B2B" : "B2C",
       sourceOrderId: `CRM_JOBSHEET:${jobSheet._id}`,
+      linkedJobSheetNumber: jobSheet.jobSheetNumber,
       customer: {
         name: jobSheet.customerName,
         company: (jobSheet as any).company,
@@ -316,7 +317,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       taxTotal,
       discountAmount,
       grandTotal,
-      notes: `Generated from Job Sheet ${jobSheet.jobSheetNumber}`,
       status: "SENT",
     });
 

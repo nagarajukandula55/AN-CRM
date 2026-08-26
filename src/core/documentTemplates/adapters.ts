@@ -66,6 +66,7 @@ export function businessToCompany(business: any, warehouse: any, documentType?: 
     logoUrl: resolveCompanyLogo(business, warehouse),
     termsAndConditions: termsForDocType(business, documentType),
     signatureUrl: business?.documentSignatureUrl || undefined,
+    upiId: vendor?.upiId || business?.upiId || undefined,
   };
 }
 
@@ -474,6 +475,7 @@ export function salesInvoiceToRenderData(
   return {
     docTypeLabel: "TAX INVOICE",
     docNumber: invoice.invoiceNumber,
+    workOrderNumber: invoice.linkedJobSheetNumber || undefined,
     date: fmtDate(invoice.issueDate || invoice.createdAt),
     status: invoice.status,
     paymentMethod: invoice.paymentMethod,

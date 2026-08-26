@@ -21,10 +21,14 @@ import type { DocumentRenderData } from "./renderData"
  * whole sections with plain-looking class names (.table, .box, .header)
  * that would otherwise be too easy to clash with.
  *
- * QR code encodes the CURRENT page URL (re-open/re-print this exact
- * document) rather than a "verify" link -- there's no public verification
- * endpoint for a SalesInvoice in this app, so pointing the QR at one
- * would be a dead link. This is a real, functional use of the QR instead.
+ * QR code: a real UPI payment QR (`upi://pay?pa=<upiId>&am=<amount>...`),
+ * shown ONLY on an actual invoice/bill (never Estimate/Workorder/Service
+ * Record -- those aren't payable documents) and ONLY when the issuing
+ * vendor/business has a UPI ID set in Settings. Per explicit direction:
+ * "QR only payment QR if they put UPI ID." This used to unconditionally
+ * encode the current page URL as a generic "reopen this document" QR with
+ * no gating at all, which is what was showing up on Estimates and Bills
+ * with no UPI ID configured.
  */
 export function RichInvoiceLayout({
   data,
@@ -36,14 +40,20 @@ export function RichInvoiceLayout({
   const [qr, setQr] = useState("")
   const accent = accentColor || "#111827"
 
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    QRCode.toDataURL(window.location.href).then(setQr).catch(() => {})
-  }, [])
-
   const isB2B = !!data.party.gstin
   const hasGstSplit = !!(data.totals.cgst || data.totals.sgst || data.totals.igst)
   const isPlainBill = !isB2B && !hasGstSplit && data.docTypeLabel !== "ESTIMATE"
+  // Payable document = a real invoice/bill, not Estimate/Workorder/Service
+  // Record -- those carry no payment obligation, so a payment QR on them
+  // makes no sense.
+  const isPayableDoc = data.docTypeLabel === "TAX INVOICE" || isPlainBill
+  const showPaymentQr = isPayableDoc && !!data.company.upiId
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !showPaymentQr) return
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(data.company.upiId!)}&pn=${encodeURIComponent(data.company.name || "")}&am=${data.totals.grandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent(data.docNumber)}`
+    QRCode.toDataURL(upiUrl).then(setQr).catch(() => {})
+  }, [showPaymentQr, data.company.upiId, data.company.name, data.totals.grandTotal, data.docNumber])
 
   // HSN summary -- taxable value grouped by HSN code, B2B only (matches
   // the reference's own B2B-only HSN summary block).
@@ -78,6 +88,7 @@ export function RichInvoiceLayout({
 
         <div className="ric-invoiceBox">
           <div><b>{isPlainBill ? "Bill No:" : data.docTypeLabel === "ESTIMATE" ? "Estimate No:" : "Invoice No:"}</b> {safe(data.docNumber)}</div>
+          {data.workOrderNumber && <div><b>WO:</b> {data.workOrderNumber}</div>}
           <div><b>Date:</b> {safe(data.date)}</div>
           {data.status && <div><b>Status:</b> {safe(data.status)}</div>}
           {data.docTypeLabel !== "ESTIMATE" && (
@@ -163,10 +174,14 @@ export function RichInvoiceLayout({
       )}
 
       <div className="ric-summaryRow">
-        <div className="ric-qrBlock">
-          {qr && <img src={qr} alt="QR" width={110} height={110} />}
-          <p className="ric-qrCaption">Scan to reopen this document</p>
-        </div>
+        {showPaymentQr ? (
+          <div className="ric-qrBlock">
+            {qr && <img src={qr} alt="Payment QR" width={110} height={110} />}
+            <p className="ric-qrCaption">Scan to pay via UPI</p>
+          </div>
+        ) : (
+          <div />
+        )}
 
         <div className="ric-summary">
           <div><span>Subtotal</span><span>{money(data.totals.subtotal)}</span></div>
