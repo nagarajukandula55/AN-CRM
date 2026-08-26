@@ -82,8 +82,8 @@ export default function TrialPlanBanner() {
           </div>
           <p className="mt-2 text-sm text-ink">
             {state.expired
-              ? 'Your free trial has ended — purchase a plan to keep using your portal.'
-              : `You're on a free trial${state.daysLeft !== null ? ` — ${state.daysLeft} day${state.daysLeft === 1 ? '' : 's'} left` : ''}.`}
+              ? 'Your free Ultimate-tier trial has ended — choose and purchase a plan to keep using your portal.'
+              : `You're on a free 7-day Ultimate-tier trial${state.daysLeft !== null ? ` — ${state.daysLeft} day${state.daysLeft === 1 ? '' : 's'} left` : ''}.`}
           </p>
           <Link
             href="/vendor/billing"

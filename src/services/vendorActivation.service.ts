@@ -357,7 +357,14 @@ By signing below, both parties agree to the terms above.`;
     // used to have is no longer a valid Subscription.mode value at all
     // (that schema's enum was narrowed to ["SC"] in the same cleanup),
     // so it would throw a Mongoose validation error if it were ever hit.
-    const planKey: PlanKey = opts?.planKey || "BASIC";
+    // Every new trial gets full Ultimate-tier access for the 7 days,
+    // regardless of plan choice (signup no longer collects one) -- per
+    // explicit direction: "first 7 days you just give off ultimate plan
+    // directly and after 7 days let user choose and make payment
+    // accordingly." opts?.planKey stays supported for the admin-driven
+    // "console/admin/vendor-billing" path, which still passes an explicit
+    // tier.
+    const planKey: PlanKey = opts?.planKey || "ULTIMATE";
     await (Subscription as any).create({
       businessId,
       subVendorOf: vendor._id,
