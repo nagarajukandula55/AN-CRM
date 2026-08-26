@@ -253,6 +253,32 @@ export default function VendorDetailPage() {
 
   const [savingCategories, setSavingCategories] = useState(false)
 
+  // Super-admin password reset for this vendor's login (VendorProfile.userId)
+  // -- reuses the same generic /api/admin/users/[id]/reset-password route
+  // console/admin/users/[id] already uses, just surfaced here too since an
+  // admin managing a vendor looks for this on the vendor's own page, not a
+  // separate generic user list. Per explicit direction ("allow me to reset
+  // passwords or edit details if required all thing i can do from my super
+  // admin login").
+  const [resettingPassword, setResettingPassword] = useState(false)
+  const [passwordResetMsg, setPasswordResetMsg] = useState<string | null>(null)
+  const [tempPassword, setTempPassword] = useState<string | null>(null)
+  const [manualPassword, setManualPassword] = useState('')
+  const [showManualPassword, setShowManualPassword] = useState(false)
+
+  // Inline edit for the core company-detail fields -- previously only
+  // Owner/Manager/business/product-categories were editable from this page;
+  // everything else required going straight to the database. The PUT route
+  // (/api/vendors/[id]) already accepts any VendorProfile field with no
+  // allowlist, so this only needed a UI.
+  const [editingDetails, setEditingDetails] = useState(false)
+  const [detailsForm, setDetailsForm] = useState({
+    companyName: '', contactPerson: '', email: '', phone: '', gstNumber: '', panNumber: '',
+    street: '', city: '', state: '', pincode: '',
+  })
+  const [savingDetails, setSavingDetails] = useState(false)
+  const [detailsError, setDetailsError] = useState<string | null>(null)
+
   async function toggleProductCategory(cat: DeviceCategory) {
     if (!vendor) return
     const current = vendor.productCategories || []
@@ -280,6 +306,107 @@ export default function VendorDetailPage() {
       /* rollback handled by SWR optimisticData/rollbackOnError */
     } finally {
       setSavingCategories(false)
+    }
+  }
+
+  async function generateTempPasswordForVendor() {
+    if (!vendor?.userId?._id) return
+    setResettingPassword(true)
+    setPasswordResetMsg(null)
+    setTempPassword(null)
+    try {
+      const res = await fetch(`/api/admin/users/${vendor.userId._id}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'generate' }),
+      })
+      const d = await res.json()
+      if (d.success) {
+        setTempPassword(d.temporaryPassword)
+        setPasswordResetMsg('Temporary password generated. Share it securely — it will not be shown again.')
+      } else {
+        setPasswordResetMsg(d.message || 'Failed to reset password')
+      }
+    } catch {
+      setPasswordResetMsg('Network error')
+    } finally {
+      setResettingPassword(false)
+    }
+  }
+
+  async function setManualPasswordForVendor() {
+    if (!vendor?.userId?._id) return
+    if (!manualPassword || manualPassword.length < 6) {
+      setPasswordResetMsg('Password must be at least 6 characters')
+      return
+    }
+    setResettingPassword(true)
+    setPasswordResetMsg(null)
+    setTempPassword(null)
+    try {
+      const res = await fetch(`/api/admin/users/${vendor.userId._id}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'set', newPassword: manualPassword }),
+      })
+      const d = await res.json()
+      if (d.success) {
+        setPasswordResetMsg('Password set. The vendor must change it on their next login.')
+        setManualPassword('')
+        setShowManualPassword(false)
+      } else {
+        setPasswordResetMsg(d.message || 'Failed to reset password')
+      }
+    } catch {
+      setPasswordResetMsg('Network error')
+    } finally {
+      setResettingPassword(false)
+    }
+  }
+
+  function openEditDetails() {
+    if (!vendor) return
+    setDetailsForm({
+      companyName: vendor.companyName || '',
+      contactPerson: vendor.contactPerson || '',
+      email: vendor.email || '',
+      phone: vendor.phone || '',
+      gstNumber: vendor.gstNumber || '',
+      panNumber: vendor.panNumber || '',
+      street: vendor.address?.street || '',
+      city: vendor.address?.city || '',
+      state: vendor.address?.state || '',
+      pincode: vendor.address?.pincode || '',
+    })
+    setDetailsError(null)
+    setEditingDetails(true)
+  }
+
+  async function saveDetails() {
+    setSavingDetails(true)
+    setDetailsError(null)
+    try {
+      const res = await fetch(`/api/vendors/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: detailsForm.companyName,
+          contactPerson: detailsForm.contactPerson,
+          email: detailsForm.email,
+          phone: detailsForm.phone,
+          gstNumber: detailsForm.gstNumber,
+          panNumber: detailsForm.panNumber,
+          address: { street: detailsForm.street, city: detailsForm.city, state: detailsForm.state, pincode: detailsForm.pincode },
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.message || data.error || 'Failed to save')
+      setEditingDetails(false)
+      refetchVendor()
+    } catch (err) {
+      setDetailsError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setSavingDetails(false)
     }
   }
 
@@ -615,6 +742,66 @@ export default function VendorDetailPage() {
           </div>
         </section>
 
+        {/* Login credentials -- super-admin-only ability to reset this
+            vendor's password (generate a random one, or set a specific
+            one), same underlying route console/admin/users/[id] already
+            uses for any account. Always forces mustChangePassword on the
+            vendor's next login. */}
+        {isSuperAdmin && vendor.userId && (
+          <section className="mb-8 rounded-card border border-border bg-surface p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-3 mb-2">Login Credentials</h2>
+            <p className="text-sm text-ink-3 mb-3">
+              Resetting a password never reveals the current one (it's a one-way hash) -- this sets a NEW password and forces the vendor to change it on their next login.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={generateTempPasswordForVendor}
+                disabled={resettingPassword}
+                className="px-3 py-1.5 rounded-control border border-border bg-surface text-xs font-medium text-ink-2 hover:bg-surface-2 disabled:opacity-50 transition"
+              >
+                {resettingPassword ? 'Working…' : 'Generate temporary password'}
+              </button>
+              {!showManualPassword ? (
+                <button
+                  onClick={() => { setShowManualPassword(true); setPasswordResetMsg(null); setTempPassword(null) }}
+                  className="px-3 py-1.5 rounded-control border border-border bg-surface text-xs font-medium text-ink-2 hover:bg-surface-2 transition"
+                >
+                  Set a specific password
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={manualPassword}
+                    onChange={(e) => setManualPassword(e.target.value)}
+                    placeholder="New password (min 6 chars)"
+                    className="rounded-control border border-border px-3 py-1.5 text-xs w-48"
+                  />
+                  <button
+                    onClick={setManualPasswordForVendor}
+                    disabled={resettingPassword}
+                    className="px-3 py-1.5 rounded-control bg-accent text-accent-fg text-xs font-medium hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => { setShowManualPassword(false); setManualPassword('') }}
+                    className="text-xs text-ink-3 hover:text-ink-2"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+            {tempPassword && (
+              <p className="mt-3 text-sm font-mono rounded-control bg-warning-soft text-warning px-3 py-2">
+                {tempPassword} <span className="font-sans text-xs">(shown once — share it securely now)</span>
+              </p>
+            )}
+            {passwordResetMsg && !tempPassword && <p className="mt-3 text-xs text-ink-2">{passwordResetMsg}</p>}
+          </section>
+        )}
+
         {/* Facility IDs — the headline ask: show where StoreFront/Warehouse
             were enabled and what real, generated ID each got. */}
         <section className="mb-8">
@@ -662,38 +849,103 @@ export default function VendorDetailPage() {
           {/* Left column — details */}
           <div className="lg:col-span-2 space-y-6">
             <section className="rounded-card border border-border bg-surface p-6">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-3 mb-3 flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5" /> Company Details
-              </h2>
-              <div className={rowCls}><span className={labelCls}>Contact Person</span><span className={valueCls}>{vendor.contactPerson || '—'}</span></div>
-              <div className={rowCls}><span className={labelCls}>Email</span><span className={valueCls}>{vendor.email || '—'}</span></div>
-              <div className={rowCls}><span className={labelCls}>Phone</span><span className={valueCls}>{vendor.phone || '—'}</span></div>
-              <div className={rowCls}><span className={labelCls}>Category</span><span className={valueCls}>{vendor.category || '—'}</span></div>
-              <div className={rowCls}><span className={labelCls}>Business Type</span><span className={valueCls}>{vendor.businessType || '—'}</span></div>
-              <div className={rowCls}><span className={labelCls}>Payment Terms</span><span className={valueCls}>{vendor.paymentTerms || '—'}</span></div>
-              <div className={rowCls}><span className={labelCls}>Credit Limit</span><span className={valueCls}>{vendor.creditLimit ? `₹${vendor.creditLimit.toLocaleString('en-IN')}` : '—'}</span></div>
-            </section>
-
-            <section className="rounded-card border border-border bg-surface p-6">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-3 mb-3 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5" /> Address
-              </h2>
-              {vendor.address && (vendor.address.street || vendor.address.city) ? (
-                <p className="text-sm text-ink">
-                  {[vendor.address.street, vendor.address.city, vendor.address.state, vendor.address.pincode].filter(Boolean).join(', ')}
-                </p>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-3 flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5" /> Company Details
+                </h2>
+                {isSuperAdmin && !editingDetails && (
+                  <button onClick={openEditDetails} className="text-[11px] font-medium text-accent hover:underline">Edit</button>
+                )}
+              </div>
+              {editingDetails ? (
+                <div className="space-y-3">
+                  {detailsError && <p className="text-xs text-danger">{detailsError}</p>}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="block">
+                      <span className={labelCls}>Company Name</span>
+                      <input value={detailsForm.companyName} onChange={(e) => setDetailsForm({ ...detailsForm, companyName: e.target.value })} className="mt-1 w-full rounded-control border border-border px-3 py-1.5 text-sm" />
+                    </label>
+                    <label className="block">
+                      <span className={labelCls}>Contact Person</span>
+                      <input value={detailsForm.contactPerson} onChange={(e) => setDetailsForm({ ...detailsForm, contactPerson: e.target.value })} className="mt-1 w-full rounded-control border border-border px-3 py-1.5 text-sm" />
+                    </label>
+                    <label className="block">
+                      <span className={labelCls}>Email</span>
+                      <input value={detailsForm.email} onChange={(e) => setDetailsForm({ ...detailsForm, email: e.target.value })} className="mt-1 w-full rounded-control border border-border px-3 py-1.5 text-sm" />
+                    </label>
+                    <label className="block">
+                      <span className={labelCls}>Phone</span>
+                      <input value={detailsForm.phone} onChange={(e) => setDetailsForm({ ...detailsForm, phone: e.target.value })} className="mt-1 w-full rounded-control border border-border px-3 py-1.5 text-sm" />
+                    </label>
+                    <label className="block">
+                      <span className={labelCls}>GSTIN</span>
+                      <input value={detailsForm.gstNumber} onChange={(e) => setDetailsForm({ ...detailsForm, gstNumber: e.target.value })} className="mt-1 w-full rounded-control border border-border px-3 py-1.5 text-sm font-mono" />
+                    </label>
+                    <label className="block">
+                      <span className={labelCls}>PAN</span>
+                      <input value={detailsForm.panNumber} onChange={(e) => setDetailsForm({ ...detailsForm, panNumber: e.target.value })} className="mt-1 w-full rounded-control border border-border px-3 py-1.5 text-sm font-mono" />
+                    </label>
+                    <label className="block">
+                      <span className={labelCls}>Street</span>
+                      <input value={detailsForm.street} onChange={(e) => setDetailsForm({ ...detailsForm, street: e.target.value })} className="mt-1 w-full rounded-control border border-border px-3 py-1.5 text-sm" />
+                    </label>
+                    <label className="block">
+                      <span className={labelCls}>City</span>
+                      <input value={detailsForm.city} onChange={(e) => setDetailsForm({ ...detailsForm, city: e.target.value })} className="mt-1 w-full rounded-control border border-border px-3 py-1.5 text-sm" />
+                    </label>
+                    <label className="block">
+                      <span className={labelCls}>State</span>
+                      <input value={detailsForm.state} onChange={(e) => setDetailsForm({ ...detailsForm, state: e.target.value })} className="mt-1 w-full rounded-control border border-border px-3 py-1.5 text-sm" />
+                    </label>
+                    <label className="block">
+                      <span className={labelCls}>Pincode</span>
+                      <input value={detailsForm.pincode} onChange={(e) => setDetailsForm({ ...detailsForm, pincode: e.target.value })} className="mt-1 w-full rounded-control border border-border px-3 py-1.5 text-sm" />
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={saveDetails} disabled={savingDetails} className="px-3 py-1.5 rounded-control bg-accent text-accent-fg text-xs font-medium hover:bg-accent-hover disabled:opacity-50">
+                      {savingDetails ? 'Saving…' : 'Save Changes'}
+                    </button>
+                    <button onClick={() => { setEditingDetails(false); setDetailsError(null) }} className="text-xs text-ink-3 hover:text-ink-2">Cancel</button>
+                  </div>
+                </div>
               ) : (
-                <p className="text-sm text-ink-3">No address on file</p>
+                <>
+                  <div className={rowCls}><span className={labelCls}>Contact Person</span><span className={valueCls}>{vendor.contactPerson || '—'}</span></div>
+                  <div className={rowCls}><span className={labelCls}>Email</span><span className={valueCls}>{vendor.email || '—'}</span></div>
+                  <div className={rowCls}><span className={labelCls}>Phone</span><span className={valueCls}>{vendor.phone || '—'}</span></div>
+                  <div className={rowCls}><span className={labelCls}>Category</span><span className={valueCls}>{vendor.category || '—'}</span></div>
+                  <div className={rowCls}><span className={labelCls}>Business Type</span><span className={valueCls}>{vendor.businessType || '—'}</span></div>
+                  <div className={rowCls}><span className={labelCls}>Payment Terms</span><span className={valueCls}>{vendor.paymentTerms || '—'}</span></div>
+                  <div className={rowCls}><span className={labelCls}>Credit Limit</span><span className={valueCls}>{vendor.creditLimit ? `₹${vendor.creditLimit.toLocaleString('en-IN')}` : '—'}</span></div>
+                </>
               )}
             </section>
 
-            <section className="rounded-card border border-border bg-surface p-6">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-3 mb-3 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5" /> Compliance
-              </h2>
-              <div className={rowCls}><span className={labelCls}>GSTIN</span><span className={`${valueCls} font-mono`}>{vendor.gstNumber || '—'}</span></div>
-              <div className={rowCls}><span className={labelCls}>PAN</span><span className={`${valueCls} font-mono`}>{vendor.panNumber || '—'}</span></div>
-            </section>
+            {!editingDetails && (
+              <section className="rounded-card border border-border bg-surface p-6">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-3 mb-3 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" /> Address
+                </h2>
+                {vendor.address && (vendor.address.street || vendor.address.city) ? (
+                  <p className="text-sm text-ink">
+                    {[vendor.address.street, vendor.address.city, vendor.address.state, vendor.address.pincode].filter(Boolean).join(', ')}
+                  </p>
+                ) : (
+                  <p className="text-sm text-ink-3">No address on file</p>
+                )}
+              </section>
+            )}
+
+            {!editingDetails && (
+              <section className="rounded-card border border-border bg-surface p-6">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-3 mb-3 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Compliance
+                </h2>
+                <div className={rowCls}><span className={labelCls}>GSTIN</span><span className={`${valueCls} font-mono`}>{vendor.gstNumber || '—'}</span></div>
+                <div className={rowCls}><span className={labelCls}>PAN</span><span className={`${valueCls} font-mono`}>{vendor.panNumber || '—'}</span></div>
+              </section>
+            )}
 
             <section className="rounded-card border border-border bg-surface p-6">
               <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-3 mb-3 flex items-center gap-1.5">
