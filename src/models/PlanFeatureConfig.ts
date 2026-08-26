@@ -14,6 +14,14 @@ export interface IPlanFeatureConfig extends Document {
   mode: OperatingMode;
   plan: PlanKey;
   moduleKeys: string[];
+  // Override of Plan.vendorModuleKeys (core/pricing/plans.ts) -- a
+  // DIFFERENT vocabulary from moduleKeys above, see that field's own
+  // comment: this is what actually gates the VENDOR PORTAL's own nav
+  // (vendorAccess.service.ts's getVendorAvailableModules, via a vendor's
+  // VendorSubscription.modules), not the console sidebar. Undefined means
+  // "use the static default from plans.ts", same fallback pattern as
+  // moduleKeys.
+  vendorModuleKeys?: string[];
   // Optional pricing/limit overrides -- undefined means "use the static
   // default from core/pricing/plans.ts", same override-or-fallback pattern
   // as moduleKeys. Lets Super Admin actually change what a tier costs/
@@ -33,6 +41,7 @@ const PlanFeatureConfigSchema = new Schema<IPlanFeatureConfig>(
     mode: { type: String, enum: ["SC"], required: true },
     plan: { type: String, enum: ["BASIC", "PRO", "ULTIMATE"], required: true },
     moduleKeys: { type: [String], default: [] },
+    vendorModuleKeys: { type: [String], default: undefined },
     monthlyPriceINR: { type: Number },
     seatLimit: { type: String },
     freeTrialDays: { type: Number },

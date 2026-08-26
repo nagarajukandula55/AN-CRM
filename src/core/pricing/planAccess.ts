@@ -51,7 +51,7 @@ export async function getEffectivePlan(mode: OperatingMode, plan: PlanKey): Prom
   const def = findPlan(mode, plan);
   if (!def) return undefined;
   const override = await PlanFeatureConfig.findOne({ mode, plan })
-    .select("monthlyPriceINR seatLimit freeTrialDays moduleKeys")
+    .select("monthlyPriceINR seatLimit freeTrialDays moduleKeys vendorModuleKeys")
     .lean<any>();
   if (!override) return def;
   return {
@@ -67,6 +67,12 @@ export async function getEffectivePlan(mode: OperatingMode, plan: PlanKey): Prom
     seatLimit: override.seatLimit ?? def.seatLimit,
     freeTrialDays: override.freeTrialDays ?? def.freeTrialDays,
     moduleKeys: override.moduleKeys ?? def.moduleKeys,
+    // vendorModuleKeys is what api/vendor/billing/subscribe actually reads
+    // to populate a paying vendor's VendorSubscription.modules -- without
+    // this, an admin's edit here would change the console sidebar but do
+    // nothing for the vendor portal, which is the vocabulary that matters
+    // for almost everything built this session.
+    vendorModuleKeys: override.vendorModuleKeys?.length ? override.vendorModuleKeys : def.vendorModuleKeys,
   };
 }
 

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import VendorLogoutButton from '@/components/vendor/VendorLogoutButton'
 import VendorSwitcher from '@/components/vendor/VendorSwitcher'
 import TelegramRequiredBanner from '@/components/vendor/TelegramRequiredBanner'
-import NotificationBell from '@/components/NotificationBell'
+import NotificationToaster from '@/components/vendor/NotificationToaster'
 import ContactWidget from '@/components/ContactWidget'
 import BrowserPushRegister from '@/components/shared/BrowserPushRegister'
 import { connectDB } from '@/lib/mongodb'
@@ -387,7 +387,7 @@ export default async function VendorLayout({
           folded into ANu's showNotifications prop), and human contact
           (WhatsApp/Telegram) replaces the AI assistant as the floating
           bottom-right affordance. */}
-      <NotificationBell />
+      <NotificationToaster />
       <ContactWidget />
       <BrowserPushRegister />
     </div>

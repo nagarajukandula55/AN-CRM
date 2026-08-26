@@ -15,6 +15,7 @@ import PlanFeatureConfig from "@/models/PlanFeatureConfig";
 import { ALL_PLANS, PLANS_BY_MODE, type OperatingMode, type PlanKey } from "@/core/pricing/plans";
 import { STATIC_MODULES } from "@/components/sidebar-nav";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
+import { VENDOR_MODULE_KEYS } from "@/core/access/vendorAccess.service";
 
 const SYNTHETIC_FEATURE_KEYS = [
   { key: "telegram-reports", label: "Automatic Telegram Business Report" },
@@ -38,6 +39,11 @@ export async function GET() {
         plan: p.key,
         name: p.name,
         moduleKeys: o?.moduleKeys ?? p.moduleKeys,
+        // vendorModuleKeys -- what api/vendor/billing/subscribe actually
+        // reads to populate a paying vendor's VendorSubscription.modules,
+        // a DIFFERENT vocabulary from moduleKeys above (see
+        // PlanFeatureConfig.vendorModuleKeys's own comment).
+        vendorModuleKeys: o?.vendorModuleKeys?.length ? o.vendorModuleKeys : p.vendorModuleKeys,
         monthlyPriceINR: o?.monthlyPriceINR ?? p.monthlyPriceINR,
         seatLimit: o?.seatLimit ?? p.seatLimit,
         freeTrialDays: o?.freeTrialDays ?? p.freeTrialDays ?? 0,
@@ -49,8 +55,12 @@ export async function GET() {
       ...STATIC_MODULES.map((m: any) => ({ key: m.key, label: m.label })),
       ...SYNTHETIC_FEATURE_KEYS,
     ];
+    // Vendor-portal-only catalog, labeled from the same STATIC_MODULES
+    // catalog where a matching entry exists, falling back to the raw key.
+    const staticLabelByKey = new Map(STATIC_MODULES.map((m: any) => [m.key, m.label]));
+    const vendorCatalog = VENDOR_MODULE_KEYS.map((key) => ({ key, label: staticLabelByKey.get(key) || key }));
 
-    return NextResponse.json({ success: true, plans, catalog, modesOrder: Object.keys(PLANS_BY_MODE) });
+    return NextResponse.json({ success: true, plans, catalog, vendorCatalog, modesOrder: Object.keys(PLANS_BY_MODE) });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ success: false, message }, { status: 500 });
@@ -65,10 +75,11 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { mode, plan, moduleKeys, monthlyPriceINR, seatLimit, freeTrialDays } = body as {
+    const { mode, plan, moduleKeys, vendorModuleKeys, monthlyPriceINR, seatLimit, freeTrialDays } = body as {
       mode: OperatingMode;
       plan: PlanKey;
       moduleKeys: string[];
+      vendorModuleKeys?: string[];
       monthlyPriceINR?: number;
       seatLimit?: string;
       freeTrialDays?: number;
@@ -79,6 +90,7 @@ export async function PUT(req: NextRequest) {
 
     await connectDB();
     const set: Record<string, unknown> = { moduleKeys, updatedBy: session.user?.id };
+    if (Array.isArray(vendorModuleKeys)) set.vendorModuleKeys = vendorModuleKeys;
     if (monthlyPriceINR !== undefined && monthlyPriceINR !== null && monthlyPriceINR !== ("" as unknown)) {
       set.monthlyPriceINR = Number(monthlyPriceINR);
     }

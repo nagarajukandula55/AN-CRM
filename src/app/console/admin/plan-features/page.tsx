@@ -24,6 +24,11 @@ interface PlanRow {
   plan: string
   name: string
   moduleKeys: string[]
+  // What a paying vendor's VendorSubscription.modules gets populated with
+  // (api/vendor/billing/subscribe) -- the vocabulary that actually gates
+  // the vendor portal's own nav, distinct from moduleKeys above (console
+  // sidebar only).
+  vendorModuleKeys: string[]
   monthlyPriceINR: number
   seatLimit: string
   freeTrialDays: number
@@ -42,10 +47,12 @@ export default function PlanFeaturesPage() {
   )
   const [saving, setSaving] = useState<string | null>(null)
   const [pending, setPending] = useState<Record<string, string[]>>({})
+  const [vendorPending, setVendorPending] = useState<Record<string, string[]>>({})
   const [pricingDrafts, setPricingDrafts] = useState<Record<string, PricingDraft>>({})
 
   const plans: PlanRow[] = data?.success ? data.plans : []
   const catalog: { key: string; label: string }[] = data?.success ? data.catalog : []
+  const vendorCatalog: { key: string; label: string }[] = data?.success ? data.vendorCatalog : []
   const modesOrder: string[] = data?.success ? data.modesOrder : []
 
   function rowKey(p: { mode: string; plan: string }) {
@@ -62,6 +69,18 @@ export default function PlanFeaturesPage() {
     if (keys.has(featureKey)) keys.delete(featureKey)
     else keys.add(featureKey)
     setPending((p) => ({ ...p, [key]: Array.from(keys) }))
+  }
+
+  function currentVendorKeys(row: PlanRow): string[] {
+    return vendorPending[rowKey(row)] ?? row.vendorModuleKeys
+  }
+
+  function toggleVendor(row: PlanRow, featureKey: string) {
+    const key = rowKey(row)
+    const keys = new Set(currentVendorKeys(row))
+    if (keys.has(featureKey)) keys.delete(featureKey)
+    else keys.add(featureKey)
+    setVendorPending((p) => ({ ...p, [key]: Array.from(keys) }))
   }
 
   function currentPricing(row: PlanRow): Required<PricingDraft> {
@@ -87,9 +106,10 @@ export default function PlanFeaturesPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ mode: row.mode, plan: row.plan, moduleKeys: currentKeys(row), ...pricing }),
+        body: JSON.stringify({ mode: row.mode, plan: row.plan, moduleKeys: currentKeys(row), vendorModuleKeys: currentVendorKeys(row), ...pricing }),
       })
       setPending((p) => { const n = { ...p }; delete n[key]; return n })
+      setVendorPending((p) => { const n = { ...p }; delete n[key]; return n })
       setPricingDrafts((p) => { const n = { ...p }; delete n[key]; return n })
       mutate()
     } finally {
@@ -114,8 +134,9 @@ export default function PlanFeaturesPage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {plans.filter((p) => p.mode === mode).map((row) => {
                   const keys = new Set(currentKeys(row))
+                  const vendorKeys = new Set(currentVendorKeys(row))
                   const pricing = currentPricing(row)
-                  const dirty = !!pending[rowKey(row)] || !!pricingDrafts[rowKey(row)]
+                  const dirty = !!pending[rowKey(row)] || !!vendorPending[rowKey(row)] || !!pricingDrafts[rowKey(row)]
                   return (
                     <Card key={rowKey(row)}>
                       <CardBody>
@@ -161,10 +182,20 @@ export default function PlanFeaturesPage() {
                             />
                           </label>
                         </div>
-                        <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3 mb-1">Console (admin sidebar)</p>
+                        <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 mb-3">
                           {catalog.map((f) => (
                             <label key={f.key} className="flex items-center gap-2 text-sm text-ink-2">
                               <input type="checkbox" checked={keys.has(f.key)} onChange={() => toggle(row, f.key)} />
+                              {f.label}
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3 mb-1">Vendor Portal (what a paying vendor actually gets)</p>
+                        <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                          {vendorCatalog.map((f) => (
+                            <label key={f.key} className="flex items-center gap-2 text-sm text-ink-2">
+                              <input type="checkbox" checked={vendorKeys.has(f.key)} onChange={() => toggleVendor(row, f.key)} />
                               {f.label}
                             </label>
                           ))}
