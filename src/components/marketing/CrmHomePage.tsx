@@ -297,7 +297,7 @@ export default function CrmHomePage() {
           <div className="col-span-2">
             <Logo className="!text-white" />
             <p className="mt-3 text-sm text-gray-400 max-w-xs">
-              One business platform for Brand, Service Center and Point-of-Sale operations — built for how you actually run.
+              The service center management platform — built for how you actually run repairs.
             </p>
             <div className="mt-5 flex items-center gap-3">
               {[Facebook, Twitter, Linkedin, Instagram].map((Icon, i) => (

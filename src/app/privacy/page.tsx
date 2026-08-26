@@ -29,7 +29,7 @@ Service, **AN-CRM is the Data Fiduciary**.
 
 ## 2. Personal Data We Collect
 
-- Account & business data: name, email, phone, business name, GSTIN, address, operating mode (Brand/SC/POS), role/designation.
+- Account & business data: name, email, phone, business name, GSTIN, address, role/designation.
 - Customer Data you input: your end-customers' names, phone numbers, addresses, purchase/service history, vehicle/device details, and payment status — processed strictly on your behalf.
 - Payment data: subscription payment references are stored (amount, Razorpay payment/order IDs, invoice records); we do not store full card or UPI credentials — these are handled directly by our PCI-DSS compliant payment gateway partner (Razorpay).
 - Usage & log data: login timestamps, IP address, device/browser information, audit logs of actions taken in the platform (for security and support purposes).

@@ -19,10 +19,49 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mon
 
 // Public-facing product name is "My Biz Flow" -- AN-CRM is this repo's
 // internal name only, never shown to an outside visitor (browser tab
-// title, search results, social share previews all read this).
+// title, search results, social share previews all read this). Brand and
+// POS vendor types were removed from the product entirely -- this
+// metadata (and every visible marketing string) previously still
+// mentioned both, reported live ("no where Brand and POS should be there
+// even in title and meta data"). Rewritten around the single real
+// vertical (service centers/repair shops) with actual search-intent
+// keywords instead of generic platform language, for organic + AI-answer
+// (GEO) discovery.
+const SITE_URL = "https://crm.angroup.in";
 export const metadata: Metadata = {
-  title: "My Biz Flow",
-  description: "The CRM/ERP platform for Brand, Service Center, and POS operations.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "My Biz Flow — Service Center & Repair Shop Management Software",
+    template: "%s | My Biz Flow",
+  },
+  description:
+    "Run your entire repair/service center on one screen: workorders, GST billing, inventory, staff, and customer repair tracking. Built for mobile, electronics, and appliance service centers in India.",
+  keywords: [
+    "service center management software",
+    "repair shop software India",
+    "workorder management system",
+    "mobile repair shop software",
+    "GST billing software for service centers",
+    "customer repair tracking",
+    "service center CRM",
+    "repair shop invoicing software",
+  ],
+  applicationName: "My Biz Flow",
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "My Biz Flow",
+    title: "My Biz Flow — Service Center & Repair Shop Management Software",
+    description:
+      "Run your entire repair/service center on one screen: workorders, GST billing, inventory, staff, and customer repair tracking.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "My Biz Flow — Service Center & Repair Shop Management Software",
+    description:
+      "Run your entire repair/service center on one screen: workorders, GST billing, inventory, staff, and customer repair tracking.",
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({

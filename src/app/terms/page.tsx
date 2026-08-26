@@ -23,12 +23,11 @@ clicking "I agree", or using AN-CRM, you accept these Terms.
 
 ## 1. The Service
 
-AN-CRM is a cloud-hosted, multi-tenant business software platform offered
-in three operating modes — **Brand**, **Service Center (SC)**, and
-**POS** — providing call/appointment management, workorder and job-sheet
-tracking, billing/invoicing (including GST-compliant invoicing), reporting,
-and related modules, delivered on a Software-as-a-Service (SaaS) basis
-("Service").
+AN-CRM is a cloud-hosted, multi-tenant business software platform for
+service centers and repair shops, providing workorder and job-sheet
+tracking, billing/invoicing (including GST-compliant invoicing), inventory,
+reporting, and related modules, delivered on a Software-as-a-Service
+(SaaS) basis ("Service").
 
 ## 2. Eligibility and Account Registration
 
@@ -48,11 +47,10 @@ hierarchy in violation of Section 8.
 
 ## 3. Subscription Plans, Fees, and Payment
 
-3.1 AN-CRM is offered on Basic / Pro / Ultimate tiers, priced separately
-per operating mode (Brand / SC / POS), billed Monthly, Quarterly,
-Half-Yearly, or Yearly, as displayed on the Pricing page at the time of
-purchase and in your account's Plan & Billing section. Prices are
-GST-inclusive unless stated otherwise.
+3.1 AN-CRM is offered on Basic / Pro / Ultimate tiers, billed Monthly,
+Quarterly, Half-Yearly, or Yearly, as displayed on the Pricing page at
+the time of purchase and in your account's Plan & Billing section.
+Prices are GST-inclusive unless stated otherwise.
 
 3.2 Fees are payable in advance via our payment gateway partner
 (Razorpay). All payments are non-refundable except as expressly set out
