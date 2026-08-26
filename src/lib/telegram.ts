@@ -13,6 +13,55 @@
  */
 import { getSharedIntegration } from "@/lib/centralApiRead";
 
+/**
+ * Same as sendTelegramMessage but returns the sent message's Telegram
+ * message_id (or null on failure) instead of a bare boolean -- needed to
+ * later recognize a REPLY to this specific message (see the admin-relay
+ * reply flow in api/telegram/webhook).
+ */
+export async function sendTelegramMessageWithId(
+  text: string,
+  options?: { parseMode?: "HTML" | "MarkdownV2"; chatId?: string; businessId?: string }
+): Promise<number | null> {
+  let token = process.env.ANOPS_TELEGRAM_BOT_TOKEN;
+  let chatId = options?.chatId || process.env.ANOPS_TELEGRAM_CHAT_ID;
+
+  if (!options?.chatId) {
+    const shared = await getSharedIntegration<{ botToken?: string; chatId?: string }>("TELEGRAM", options?.businessId);
+    if (shared?.botToken && shared?.chatId) {
+      token = shared.botToken;
+      chatId = shared.chatId;
+    }
+  }
+
+  if (!token || !chatId) {
+    console.warn("[telegram] No Telegram credentials configured -- skipping send.");
+    return null;
+  }
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: options?.parseMode ?? "HTML",
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[telegram] sendMessage failed: ${res.status} ${res.statusText} ${body}`);
+      return null;
+    }
+    const data = await res.json().catch(() => null);
+    return data?.result?.message_id ?? null;
+  } catch (err: any) {
+    console.error("[telegram] sendMessage threw:", err?.message || err);
+    return null;
+  }
+}
+
 export async function sendTelegramMessage(
   text: string,
   options?: { parseMode?: "HTML" | "MarkdownV2"; chatId?: string; businessId?: string }

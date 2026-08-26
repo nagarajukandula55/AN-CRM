@@ -18,6 +18,16 @@ export interface IVendorChatMessage extends Document {
   direction: "outbound" | "inbound";
   text: string;
   telegramMessageId: string;
+  // "<adminChatId>:<messageId>" for every admin chat (ANOPS_TELEGRAM_
+  // ADMIN_CHAT_IDS, see api/telegram/webhook) this inbound message was
+  // forwarded/tagged into -- set only on inbound messages that were
+  // successfully relayed. One admin can just hit "Reply" on that
+  // forwarded copy in their own Telegram app; the webhook matches the
+  // reply's "<chat.id>:<reply_to_message.message_id>" back to one of
+  // these entries to know which vendor to relay the reply to, instead of
+  // requiring a console visit for every single reply. An array (not a
+  // single id) because the admin allowlist can hold more than one chat.
+  adminRelayMessageIds?: string[];
   isRead: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -30,6 +40,7 @@ const VendorChatMessageSchema = new Schema<IVendorChatMessage>(
     direction: { type: String, enum: ["outbound", "inbound"], required: true },
     text: { type: String, required: true },
     telegramMessageId: { type: String, default: "" },
+    adminRelayMessageIds: { type: [String], default: [], index: true },
     isRead: { type: Boolean, default: false },
   },
   { timestamps: true }

@@ -82,7 +82,7 @@ import Business from "@/models/Business";
 import VendorProfile from "@/models/VendorProfile";
 import VendorChatMessage from "@/models/VendorChatMessage";
 import VendorSubscription from "@/models/VendorSubscription";
-import { sendTelegramMessage, sendTelegramPhoto } from "@/lib/telegram";
+import { sendTelegramMessage, sendTelegramMessageWithId, sendTelegramPhoto } from "@/lib/telegram";
 import { buildReportMessage, buildTrendChartUrl, periodStart, computePeriodNumbers, fmtINR, renderWorkorderBreakdown } from "@/lib/telegramReport";
 import { sendVendorBusinessReport } from "@/core/telegram/sendBusinessReport";
 import { runAllDueCronJobs } from "@/lib/cronRunner";
@@ -251,6 +251,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
     chatIdForErrorReply = chatId;
+
+    // Admin-relay reply: an admin (chat id in ANOPS_TELEGRAM_ADMIN_CHAT_IDS)
+    // hit "Reply" in their own Telegram app on a message this webhook
+    // forwarded from a vendor (see the inbound-message handler further
+    // below) -- relay the reply text straight back to that vendor's
+    // personal chat, no console visit required. Checked before any
+    // command/linking logic since a reply's text is arbitrary and must
+    // never be mistaken for a linking code or command.
+    const replyToId = message.reply_to_message?.message_id;
+    if (isAdminChat(chatId) && replyToId) {
+      const relayKey = `${chatId}:${replyToId}`;
+      const original = await VendorChatMessage.findOne({ adminRelayMessageIds: relayKey });
+      if (original) {
+        const relayVendor = await VendorProfile.findById(original.vendorId).select("telegramPersonalChatId businessId");
+        if (!relayVendor?.telegramPersonalChatId) {
+          await sendToChat(chatId, "⚠️ This vendor's personal chat is no longer linked -- can't deliver.");
+        } else {
+          const delivered = await sendTelegramMessage(text, { chatId: String(relayVendor.telegramPersonalChatId) });
+          if (delivered) {
+            await VendorChatMessage.create({
+              vendorId: original.vendorId,
+              businessId: relayVendor.businessId,
+              direction: "outbound",
+              text,
+              isRead: true,
+            });
+            await sendToChat(chatId, "✅ Sent.");
+          } else {
+            await sendToChat(chatId, "⚠️ Failed to deliver to the vendor.");
+          }
+        }
+        return NextResponse.json({ success: true });
+      }
+      // Not a reply to a relayed vendor message -- an admin replying to
+      // something else in their own chat, falls through to normal handling.
+    }
 
     // In a group/supergroup, Telegram appends "@YourBotUsername" to every
     // command (e.g. "/link@MyBizFlowBot ABC123") -- strip the "@..."
@@ -497,12 +533,29 @@ export async function POST(req: NextRequest) {
         isDeleted: { $ne: true },
       }).select("_id businessId userId");
       if (chatVendor) {
+        // Forward a tagged copy into every admin chat (ANOPS_TELEGRAM_
+        // ADMIN_CHAT_IDS) so a human can reply from their own Telegram app
+        // -- see the admin-relay-reply block near the top of this handler.
+        // Best-effort: no admin chats configured, or a send failing, just
+        // means no forward happened; the message is still fully visible
+        // in the console inbox (api/admin/vendor-chats) regardless.
+        const vendorForTag = await VendorProfile.findById(chatVendor._id).select("companyName vendorId").lean<any>();
+        const adminChatIds = (process.env.ANOPS_TELEGRAM_ADMIN_CHAT_IDS || "")
+          .split(",").map((s) => s.trim()).filter(Boolean);
+        const tag = `💬 <b>${vendorForTag?.companyName || "Vendor"}</b>${vendorForTag?.vendorId ? ` (${vendorForTag.vendorId})` : ""}\n${text.trim()}\n\n<i>Reply to this message to answer them directly.</i>`;
+        const relayIds: string[] = [];
+        for (const adminChatId of adminChatIds) {
+          const relayedMessageId = await sendTelegramMessageWithId(tag, { chatId: adminChatId });
+          if (relayedMessageId) relayIds.push(`${adminChatId}:${relayedMessageId}`);
+        }
+
         await VendorChatMessage.create({
           vendorId: chatVendor._id,
           businessId: chatVendor.businessId,
           direction: "inbound",
           text: text.trim(),
           telegramMessageId: message.message_id ? String(message.message_id) : "",
+          adminRelayMessageIds: relayIds,
         });
         if (chatVendor.userId) {
           notifyUser({
