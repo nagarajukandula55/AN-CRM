@@ -28,7 +28,7 @@ import CrmJobSheet from "@/models/CrmJobSheet";
 import VendorProfile from "@/models/VendorProfile";
 import PublicEmailVerification from "@/models/PublicEmailVerification";
 import { lookupPincode } from "@/lib/centralApiPincode";
-import { generateDocumentNumber } from "@/core/numbering/numberingService";
+import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { notify } from "@/lib/notify";
 import { captureCustomer } from "@/services/customer.service";
@@ -218,7 +218,12 @@ export async function POST(req: NextRequest) {
       needsAssignment = true;
     }
 
-    const { value: jobSheetNumber } = await generateDocumentNumber(businessId, "JOB_SHEET");
+    // SECURITY/CORRECTNESS: was scoped by plain businessId -- this creates
+    // the SAME "JOB_SHEET" document type api/crm/jobsheets/route.ts does,
+    // now scoped by the resolved vendor's own id there too, so this route
+    // must match or the two paths' counters interleave into a single
+    // shared sequence again.
+    const { value: jobSheetNumber } = await generateScopedDocumentNumber(routedVendorId || businessId, "JOB_SHEET", businessId);
 
     const jobSheet = await CrmJobSheet.create({
       businessId: new mongoose.Types.ObjectId(businessId),
