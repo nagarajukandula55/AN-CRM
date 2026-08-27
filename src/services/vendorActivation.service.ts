@@ -15,7 +15,7 @@ import { createDefaultVendorRoles } from "@/core/access/vendorDefaultRoles.servi
 import { generateUniqueUserId } from "@/lib/auth/generateUserId";
 import { logAction } from "@/lib/audit/logAction";
 import { sendAccountCredentialsEmail, sendAgreementOtpEmail } from "@/services/email/resend.service";
-import { sendTelegramMessage } from "@/lib/telegram";
+import { sendTelegramMessage, formatVendorOnboardedMessage } from "@/lib/telegram";
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -225,6 +225,11 @@ export async function activateVendorAfterAgreement(
   vendor.finalApprovedAt = new Date();
   await vendor.save();
 
+  // Only alert here for this (manually reviewed + agreement signed) path --
+  // the instant-trial path already sends its own structured message from
+  // activateVendorWithTrial below, right where activation actually happens.
+  sendTelegramMessage(formatVendorOnboardedMessage(vendor as any, { status: "✅ Approved (agreement signed)" })).catch(() => {});
+
   return { ok: true, vendor, tempPassword };
 }
 
@@ -404,7 +409,9 @@ By signing below, both parties agree to the terms above.`;
       planName: plan.name,
     });
 
-    sendTelegramMessage(`✅ <b>Vendor activated on 7-day trial</b>\n${vendor.companyName} (SC, ${plan.name} plan) — ${vendor.email}`).catch(() => {});
+    sendTelegramMessage(
+      formatVendorOnboardedMessage(vendor as any, { status: "✅ Auto-activated (7-day trial)", planName: plan.name })
+    ).catch(() => {});
     return { ok: true, vendor, tempPassword };
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Unknown error";

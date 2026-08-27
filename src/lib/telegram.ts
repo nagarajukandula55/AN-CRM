@@ -107,6 +107,41 @@ export async function sendTelegramMessage(
 }
 
 /**
+ * The single, structured format for every "a vendor was onboarded" admin
+ * alert -- replaces several ad-hoc one-line messages (apply/route.ts,
+ * vendorActivation.service.ts) that each showed different, incomplete
+ * fields. Per explicit direction ("i want to see structured way like
+ * important fields there like name, legal name, GST or No GST and
+ * location like state and city and vendor code we assigned to them...
+ * every message should be configured in structured way").
+ */
+export function formatVendorOnboardedMessage(vendor: {
+  companyName?: string;
+  contactPerson?: string;
+  gstRegistered?: boolean;
+  gstNumber?: string;
+  address?: { city?: string; state?: string };
+  vendorId?: string;
+  appliedAs?: string;
+}, opts: { status: string; requestNumber?: string; planName?: string }): string {
+  const location = [vendor.address?.city, vendor.address?.state].filter(Boolean).join(", ") || "Not set";
+  const gst = vendor.gstRegistered && vendor.gstNumber ? vendor.gstNumber : "Not GST registered";
+  const lines = [
+    `🆕 <b>Vendor Onboarded</b>`,
+    ``,
+    `Company: <b>${vendor.companyName || "—"}</b>`,
+    `Contact Person: ${vendor.contactPerson || "—"}`,
+    `GST: ${gst}`,
+    `Location: ${location}`,
+    `Vendor Code: <code>${vendor.vendorId || "not assigned yet"}</code>`,
+    `Status: ${opts.status}`,
+  ];
+  if (opts.planName) lines.push(`Plan: ${opts.planName}`);
+  if (opts.requestNumber) lines.push(`Request #: ${opts.requestNumber}`);
+  return lines.join("\n");
+}
+
+/**
  * Sends a photo by URL (Telegram fetches it server-side, so this app never
  * has to download/store the image itself) with an optional caption -- used
  * for the automatic Telegram business report's trend chart, generated via

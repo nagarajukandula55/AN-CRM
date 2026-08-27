@@ -11,7 +11,7 @@ import { activateVendorWithTrial } from "@/services/vendorActivation.service";
 import { sendGenericEmail } from "@/services/email/resend.service";
 import { renderEmailShell, emailInfoBox } from "@/services/email/emailShell";
 import { getVendorOnboardingConfig, getPlatformBusinessId } from "@/lib/centralApiRead";
-import { sendTelegramMessage } from "@/lib/telegram";
+import { sendTelegramMessage, formatVendorOnboardedMessage } from "@/lib/telegram";
 import type { PlanKey } from "@/core/pricing/plans";
 
 const VALID_PLAN_KEYS: PlanKey[] = ["BASIC", "ULTIMATE"];
@@ -366,11 +366,16 @@ export async function POST(req: NextRequest) {
       link: trialActivated ? "/console/admin/vendor-subscriptions" : "/console/admin/vendors",
     });
 
-    sendTelegramMessage(
-      `🆕 <b>Vendor application received</b>\n${String(companyName).trim()} (${appliedAs || "?"}) — ${requestNumber}${
-        business ? ` for ${business.brandName || business.name}` : ""
-      }`
-    ).catch(() => {});
+    // Only for the pending-review path -- when trialActivated is true,
+    // activateVendorWithTrial (services/vendorActivation.service.ts)
+    // already sent the structured "Vendor Onboarded" alert covering this
+    // exact signup; sending a second, differently-formatted message here
+    // too was pure noise for the common (instant-activation) case.
+    if (!trialActivated) {
+      sendTelegramMessage(
+        formatVendorOnboardedMessage(vendor as any, { status: "⏳ Pending review", requestNumber })
+      ).catch(() => {});
+    }
 
     return NextResponse.json(
       {
