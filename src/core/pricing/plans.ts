@@ -17,12 +17,18 @@ export const OPERATING_MODES: { key: OperatingMode; label: string; blurb: string
   { key: "SC", label: "Service Center", blurb: "Single-login, single-screen workorder shop." },
 ];
 
+// Collapsed from 5 billing periods down to 2 -- per explicit direction
+// ("remove monthly quarterly and half yearly plans you just show yearly
+// and 2 years plans only give good and safe discount in 2 year plans").
+// MONTHLY/QUARTERLY/HALF_YEARLY stay valid BillingPeriod values (existing
+// VendorBillingInvoice/Subscription records may still reference them) --
+// only removed from THIS array, which is what every self-serve UI/route
+// actually iterates to offer choices. TWO_YEARLY's discount widened from
+// 35% to 40% so the 2-year commitment reads as a meaningfully bigger win
+// than yearly, not just 5pp more for double the lock-in.
 export const BILLING_PERIODS: { key: BillingPeriod; label: string; months: number; discountPct: number }[] = [
-  { key: "MONTHLY", label: "Monthly", months: 1, discountPct: 0 },
-  { key: "QUARTERLY", label: "Quarterly", months: 3, discountPct: 10 },
-  { key: "HALF_YEARLY", label: "Half-Yearly", months: 6, discountPct: 20 },
   { key: "YEARLY", label: "Yearly", months: 12, discountPct: 30 },
-  { key: "TWO_YEARLY", label: "2 Years", months: 24, discountPct: 35 },
+  { key: "TWO_YEARLY", label: "2 Years", months: 24, discountPct: 45 },
 ];
 
 /**
@@ -126,15 +132,30 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // reports) stay as the paid-up differentiator. Price raised from the
       // old Basic's ₹499/₹349 to reflect the added value, still well
       // under half of Ultimate.
+      // Deliberately exhaustive -- per explicit direction to highlight
+      // every single thing included so the price reads as an obvious deal
+      // next to the comparison table. Kept in the same order a shop owner
+      // would actually use these day to day.
       features: [
-        "Single-login workorder flow (CCO + engineer name, free text)",
-        "GST & non-GST billing",
-        "Private Material/BOM list",
-        "Customer workorder tracking page",
-        "Custom report builder (saved reports, charts)",
-        "UPI payment QR on invoices",
-        "Fault code / symptom code / solution library (private)",
-        "Invoice ZIP export for GST filing",
+        "Single-login workorder flow, start to close",
+        "GST & non-GST invoicing",
+        "Quotations, Credit Notes, Debit Notes & Proforma Invoices",
+        "Private Material/BOM price list",
+        "Brands, device models & solution library",
+        "Fault code / symptom code library (private)",
+        "Customer-facing repair status tracking page",
+        "Warehouses, Inventory & Stock Transfers",
+        "Delivery Challans",
+        "Credit Accounts for repeat customers",
+        "Financial Statement — your full running account",
+        "Ledger Book — party-wise running balance",
+        "Profit & Loss reports",
+        "Expense tracking",
+        "Custom Report Builder (build your own reports & charts)",
+        "Analytics dashboard",
+        "UPI payment QR on every invoice",
+        "Invoice ZIP export, ready for GST filing",
+        "7-day free trial, full access, no card required",
         "Priority support",
       ],
       moduleKeys: [
@@ -163,12 +184,16 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       launchPriceINR: 999,
       seatLimit: "1 login per center, unlimited centers",
       highlight: true,
+      // WhatsApp deliberately not listed here -- per explicit direction
+      // ("currently don't show whatsapp") -- the quota is still granted
+      // on activation (see commsQuota below), just not advertised on
+      // public plan surfaces for now.
       features: [
         "Everything in Pro",
-        "Sub-vendor / multi-center hierarchy",
-        "WhatsApp customer notifications (quota below)",
-        "Automated Telegram reports (daily/weekly/monthly/yearly, with charts)",
-        "Dedicated onboarding + SLA support",
+        "Unlimited sub-vendor / multi-center hierarchy under one login",
+        "Automated Telegram business reports (daily/weekly/monthly/yearly, with charts)",
+        "Dedicated onboarding",
+        "SLA-backed priority support",
       ],
       moduleKeys: [
         "crm", "crm_jobsheets", "material-catalog", "customers", "sales",

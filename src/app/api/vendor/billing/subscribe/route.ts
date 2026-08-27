@@ -27,10 +27,12 @@ import { GST_RATE } from "@/app/api/invoice/view/[invoiceNumber]/vendorBillingVi
  * subscription+invoice+order for confirm to act on.
  *
  * Body: { planKey: "BASIC" | "PRO" | "ULTIMATE", period?: BillingPeriod }
- * period defaults to MONTHLY. Longer periods (QUARTERLY/HALF_YEARLY/
- * YEARLY/TWO_YEARLY) apply BILLING_PERIODS' discount on top of whichever
- * base rate (launch or standard) is currently active -- see
- * core/pricing/plans.ts's priceForPeriod/currentMonthlyRate.
+ * period defaults to YEARLY -- only YEARLY/TWO_YEARLY are self-serve
+ * choices now (see BILLING_PERIODS' own comment on why MONTHLY/QUARTERLY/
+ * HALF_YEARLY were removed from that array). Either period applies
+ * BILLING_PERIODS' discount on top of whichever base rate (launch or
+ * standard) is currently active -- see plans.ts's priceForPeriod/
+ * currentMonthlyRate.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
     if (!planKey || !["BASIC", "PRO", "ULTIMATE"].includes(planKey)) {
       return NextResponse.json({ success: false, message: "A valid planKey is required" }, { status: 400 });
     }
-    const periodKey = (body.period as BillingPeriod) || "MONTHLY";
+    const periodKey = (body.period as BillingPeriod) || "YEARLY";
     const periodDef = BILLING_PERIODS.find((p) => p.key === periodKey);
     if (!periodDef) {
       return NextResponse.json({ success: false, message: "Invalid billing period" }, { status: 400 });

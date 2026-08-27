@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "AN-CRM",
+    "name": "My Biz Flow",
     "slug": "an-crm-mobile",
     "scheme": "ancrm",
     "version": "1.0.0",
@@ -34,7 +34,7 @@
     },
     "plugins": ["expo-router"],
     "extra": {
-      "anCrmApiUrl": "https://YOUR-AN-CRM-DEPLOYMENT-URL",
+      "anCrmApiUrl": "https://crm.angroup.in",
       "eas": {
         "projectId": "YOUR-EAS-PROJECT-ID"
       }

@@ -61,7 +61,7 @@ export default function VendorBillingPage() {
   const [payingId, setPayingId] = useState<string | null>(null);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
-  const [period, setPeriod] = useState("MONTHLY");
+  const [period, setPeriod] = useState("YEARLY");
 
   const { data: billingRes, isLoading: loading, mutate: reloadBilling } = useSWR("/api/vendor/billing");
   const subscription = billingRes?.success ? billingRes.subscription : null;

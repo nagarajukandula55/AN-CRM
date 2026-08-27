@@ -178,7 +178,9 @@ const COMPARE_ROWS: { feature: string; us: CompareCell; vyapar: CompareCell; myb
   { feature: 'Fault / symptom / solution code library', us: true, vyapar: false, mybillbook: false, marg: false },
   { feature: 'Custom report builder (build-your-own reports)', us: true, vyapar: false, mybillbook: false, marg: 'partial' },
   { feature: 'Multi-center / sub-vendor hierarchy under one login', us: true, vyapar: false, mybillbook: false, marg: 'partial' },
-  { feature: 'Automated WhatsApp customer notifications', us: true, vyapar: 'partial', mybillbook: 'partial', marg: false },
+  { feature: 'Ledger Book (party-wise running balance)', us: true, vyapar: 'partial', mybillbook: 'partial', marg: true },
+  { feature: 'Profit & Loss reports', us: true, vyapar: false, mybillbook: false, marg: 'partial' },
+  { feature: 'Expense tracking', us: true, vyapar: false, mybillbook: false, marg: 'partial' },
   { feature: 'Automated Telegram business reports with charts', us: true, vyapar: false, mybillbook: false, marg: false },
   { feature: 'Starting price', us: '₹549/mo launch', vyapar: '₹999/yr', mybillbook: '₹799/yr', marg: '₹8,000+/yr' } as any,
 ]
