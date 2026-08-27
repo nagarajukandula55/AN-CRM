@@ -578,22 +578,13 @@ export default function Sidebar() {
         <div className="px-5 pt-5 pb-4 border-b border-border">
           {isCollapsed ? (
             <div className="flex justify-center">
-              <div
-                title={vendorWordmark}
-                className="h-8 w-8 rounded-control flex items-center justify-center text-[11px] font-bold text-accent-fg"
-                style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-hover))" }}
-              >
-                AN
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img title={vendorWordmark} src="/logo-mark.png" alt="My Biz Flow" className="h-8 w-8 object-contain" />
             </div>
           ) : (
             <div className="flex items-center gap-2.5">
-              <div
-                className="h-9 w-9 shrink-0 rounded-control flex items-center justify-center text-xs font-bold text-accent-fg"
-                style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-hover))" }}
-              >
-                AN
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-mark.png" alt="My Biz Flow" className="h-9 w-9 shrink-0 object-contain" />
               <div className="min-w-0">
                 <h2 className="text-base font-bold tracking-tight text-ink leading-tight truncate">{vendorWordmark}</h2>
                 <div className="mt-0.5 flex items-center gap-1.5">

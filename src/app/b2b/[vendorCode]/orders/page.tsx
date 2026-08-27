@@ -38,7 +38,7 @@ export default function B2BOrdersPage({ params }: { params: Promise<{ vendorCode
       <div className="max-w-2xl mx-auto space-y-3">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-semibold text-ink">My Orders</h1>
-          <Link href={`/b2b/${vendorCode}`} className="text-violet-600 text-sm">← Back to Catalog</Link>
+          <Link href={`/b2b/${vendorCode}`} className="text-blue-600 text-sm">← Back to Catalog</Link>
         </div>
         {loading ? (
           <p className="text-sm text-ink-3">Loading…</p>

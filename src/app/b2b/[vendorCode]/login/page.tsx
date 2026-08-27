@@ -53,7 +53,7 @@ export default function B2BLoginPage({ params }: { params: Promise<{ vendorCode:
           {loading ? "Signing in…" : "Sign In"}
         </button>
         <p className="text-xs text-ink-3 text-center">
-          New here? <Link href={`/b2b/${vendorCode}/signup`} className="text-violet-600">Sign up</Link>
+          New here? <Link href={`/b2b/${vendorCode}/signup`} className="text-blue-600">Sign up</Link>
         </p>
       </div>
     </div>

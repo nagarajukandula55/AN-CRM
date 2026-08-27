@@ -55,7 +55,7 @@ export default function B2BSignupPage({ params }: { params: Promise<{ vendorCode
           <p className="text-sm text-ink-3">
             {vendorName} will review your account and set your credit terms. You'll be able to log in once approved.
           </p>
-          <Link href={`/b2b/${vendorCode}/login`} className="text-violet-600 text-sm">Go to login</Link>
+          <Link href={`/b2b/${vendorCode}/login`} className="text-blue-600 text-sm">Go to login</Link>
         </div>
       </div>
     );
@@ -80,7 +80,7 @@ export default function B2BSignupPage({ params }: { params: Promise<{ vendorCode
           {loading ? "Submitting…" : "Sign Up"}
         </button>
         <p className="text-xs text-ink-3 text-center">
-          Already approved? <Link href={`/b2b/${vendorCode}/login`} className="text-violet-600">Log in</Link>
+          Already approved? <Link href={`/b2b/${vendorCode}/login`} className="text-blue-600">Log in</Link>
         </p>
       </div>
     </div>

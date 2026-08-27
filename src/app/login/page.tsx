@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, Loader2, Clock, ShieldCheck, Smartphone, KeyRound } from 'lucide-react'
+import Image from 'next/image'
+import { Eye, EyeOff, Loader2, Clock } from 'lucide-react'
 
 // Shared by both login paths (password and phone OTP) -- identical rule
 // either way, so a vendor logging in with OTP lands in exactly the same
@@ -221,17 +222,11 @@ function LoginForm() {
 
       <div className="relative w-full max-w-md">
         <div className="rounded-card border border-border bg-surface shadow-card p-8 md:p-10">
-          {/* AN-CRM is its own standalone product -- this used to carry
-              over ANgroup's "shared identity across every AN Group app"
-              SSO framing verbatim, which made AN-CRM's own login page
-              read as ANgroup's. Branded as AN-CRM's own sign-in instead. */}
+          {/* Real logo -- this page had no brand mark at all before, just a
+              text badge, per explicit direction ("hope you have put logo
+              on vendor login pages also that makes our brand"). */}
           <div className="mb-8">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent-soft px-3 py-1">
-              <ShieldCheck className="h-3.5 w-3.5 text-accent" />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
-                My Biz Flow
-              </span>
-            </div>
+            <Image src="/logo-mark.png" alt="My Biz Flow" width={64} height={64} className="h-16 w-16 object-contain" priority />
             <h1 className="mt-4 text-3xl font-semibold text-ink tracking-tight">Sign in</h1>
             <p className="mt-2 text-sm text-ink-3">
               Run your service center from one account.

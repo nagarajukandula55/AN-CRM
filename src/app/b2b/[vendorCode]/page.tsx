@@ -102,7 +102,7 @@ export default function B2BCatalogPage({ params }: { params: Promise<{ vendorCod
           <p className="text-xs text-ink-3">{me.account.name} ({me.account.type})</p>
         </div>
         <div className="flex items-center gap-3 text-sm">
-          <Link href={`/b2b/${vendorCode}/orders`} className="text-violet-600">My Orders</Link>
+          <Link href={`/b2b/${vendorCode}/orders`} className="text-blue-600">My Orders</Link>
           <button onClick={logout} className="text-ink-3">Logout</button>
         </div>
       </header>

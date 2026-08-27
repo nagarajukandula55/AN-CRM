@@ -17,9 +17,9 @@ export default function Logo({ className = "" }: { className?: string }) {
     <Image
       src="/logo-mark.png"
       alt="My Biz Flow"
-      width={36}
-      height={36}
-      className={`h-9 w-9 object-contain ${className}`}
+      width={56}
+      height={56}
+      className={`h-14 w-14 object-contain ${className}`}
       priority
     />
   );
