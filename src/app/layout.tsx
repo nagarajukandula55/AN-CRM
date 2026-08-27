@@ -54,12 +54,14 @@ export const metadata: Metadata = {
     title: "My Biz Flow — Service Center & Repair Shop Management Software",
     description:
       "Run your entire repair/service center on one screen: workorders, GST billing, inventory, staff, and customer repair tracking.",
+    images: [{ url: "/og-image.png", width: 800, height: 300, alt: "My Biz Flow" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "My Biz Flow — Service Center & Repair Shop Management Software",
     description:
       "Run your entire repair/service center on one screen: workorders, GST billing, inventory, staff, and customer repair tracking.",
+    images: ["/og-image.png"],
   },
   robots: { index: true, follow: true },
   // Google Search Console domain-ownership verification -- needed before
