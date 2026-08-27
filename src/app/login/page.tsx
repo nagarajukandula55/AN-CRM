@@ -137,12 +137,12 @@ function LoginForm() {
           <form onSubmit={handleLogin} className="space-y-5">
             {/* Email / Username */}
             <div>
-              <label className="block text-xs font-medium text-ink-3 mb-2">Email</label>
+              <label className="block text-xs font-medium text-ink-3 mb-2">Email or Vendor ID</label>
               <input
                 type="text"
                 value={form.identifier}
                 onChange={(e) => setForm({ ...form, identifier: e.target.value })}
-                placeholder="you@company.com"
+                placeholder="you@company.com or VND0001"
                 required
                 autoFocus
                 className="w-full rounded-control border border-border-strong bg-surface px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft transition-all"
