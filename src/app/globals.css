@@ -36,14 +36,18 @@
   --radius-control: 10px;  /* buttons, inputs, badges, chips */
   --radius-card: 16px;     /* cards, panels, modals */
 
-  /* Ground */
-  --bg: #FAF9F6;
+  /* Ground -- shifted from the old warm cream/brown-tinted neutrals to a
+     cool slate family so the content area reads as one deliberate
+     palette with the new dark-navy sidebar (.chrome-dark below) instead
+     of clashing against it. Reported live ("page is not feeling okay
+     now" right after the navy sidebar shipped). */
+  --bg: #F8FAFC;
   --surface: #ffffff;
-  --surface-2: #F4F2ED;
-  --surface-3: #EDEAE3;
+  --surface-2: #F1F5F9;
+  --surface-3: #E2E8F0;
 
-  --border: rgba(30, 27, 20, 0.10);
-  --border-strong: rgba(30, 27, 20, 0.18);
+  --border: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.16);
 
   --text: #16181C;
   --text-2: #52565C;
