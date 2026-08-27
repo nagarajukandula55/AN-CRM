@@ -180,6 +180,9 @@ export interface ISalesInvoice extends Document {
   ackDate?: Date;
   signedQrCode?: string;
   einvoiceStatus?: "NOT_FILED" | "PENDING" | "FILED" | "FAILED" | "CANCELLED";
+  // Admin/vendor-defined extra fields (see models/CustomFieldDefinition.ts,
+  // formKey "SALES_INVOICE").
+  customFields?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -265,6 +268,7 @@ const InvoiceSchema = new Schema<ISalesInvoice>(
     isLocked: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     pdfUrl: { type: String },
+    customFields: { type: Schema.Types.Mixed, default: {} },
 
     shareToken: { type: String, index: true, sparse: true },
     shareExpiry: { type: Date },

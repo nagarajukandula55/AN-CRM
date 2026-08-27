@@ -138,6 +138,7 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "adm-system", label: "System", items: [
       { key: "admin-plan-features", label: "Plan Features", route: "/console/admin/plan-features", icon: "Sparkles" },
       { key: "admin-page-columns", label: "Page Columns & Cards", route: "/console/admin/page-columns", icon: "SlidersHorizontal" },
+      { key: "admin-custom-fields", label: "Custom Fields", route: "/console/admin/custom-fields", icon: "Layers" },
       { key: "admin-option-lists", label: "Option Lists", route: "/console/admin/option-lists", icon: "ListChecks" },
       { key: "admin-settings", label: "Settings", route: "/console/admin/settings", icon: "Settings" },
       { key: "admin-plan", label: "Plan & Billing", route: "/console/admin/plan", icon: "Receipt" },

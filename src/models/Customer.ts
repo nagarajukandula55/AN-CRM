@@ -42,6 +42,9 @@ export interface ICustomer extends Document {
   // core/customers/searchCustomers.ts).
   imeiOrSerialNumbers?: string[];
   notes?: string;
+  // Admin/vendor-defined extra fields (see models/CustomFieldDefinition.ts,
+  // formKey "CUSTOMER").
+  customFields?: Record<string, any>;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -63,6 +66,7 @@ const CustomerSchema = new Schema<ICustomer>(
     vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null },
     imeiOrSerialNumbers: { type: [String], default: [] },
     notes: { type: String, trim: true },
+    customFields: { type: Schema.Types.Mixed, default: {} },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

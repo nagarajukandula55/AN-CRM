@@ -239,6 +239,12 @@ export interface ICrmJobSheet extends Document {
   editAccessToken?: string;
   editAccessTokenExpiresAt?: Date;
 
+  // Admin/vendor-defined extra fields (see models/CustomFieldDefinition.ts,
+  // formKey "JOBSHEET") -- plain key/value, keys are whatever fieldKey
+  // each active CustomFieldDefinition assigns. Not a fixed schema shape
+  // deliberately, so fields can be added/removed without a migration.
+  customFields?: Record<string, any>;
+
   isDeleted: boolean;
   createdBy: Types.ObjectId;
   // Snapshot of the CCO's name -- copied from the originating CrmCall's
@@ -359,6 +365,8 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
     editAccessOtpExpiresAt: { type: Date, select: false },
     editAccessToken: { type: String, select: false },
     editAccessTokenExpiresAt: { type: Date, select: false },
+
+    customFields: { type: Schema.Types.Mixed, default: {} },
 
     isDeleted: { type: Boolean, default: false, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },

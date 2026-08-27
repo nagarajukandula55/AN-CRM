@@ -66,6 +66,10 @@ export interface ISalesDocument extends Document {
   notes?: string;
   createdBy: string;
   isDeleted: boolean;
+  // Admin/vendor-defined extra fields (see models/CustomFieldDefinition.ts,
+  // formKey matches this document's own docType: QUOTATION/CREDIT_NOTE/
+  // DEBIT_NOTE/PROFORMA_INVOICE).
+  customFields?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -109,6 +113,7 @@ const SalesDocumentSchema = new Schema<ISalesDocument>(
     notes: { type: String },
     createdBy: { type: String, required: true },
     isDeleted: { type: Boolean, default: false },
+    customFields: { type: Schema.Types.Mixed, default: {} },
   },
   { timestamps: true }
 );
