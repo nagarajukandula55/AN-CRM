@@ -3,7 +3,22 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, Loader2, Clock, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Clock, ShieldCheck, Smartphone, KeyRound } from 'lucide-react'
+
+// Shared by both login paths (password and phone OTP) -- identical rule
+// either way, so a vendor logging in with OTP lands in exactly the same
+// place a password login would have sent them.
+function resolveLandingPage(user: any): string {
+  return user?.mustChangePassword
+    ? '/update-password'
+    : user?.pendingVendorApplication ? '/vendor-application-status'
+    : user?.isMinimalOnly ? 'https://shopnative.in'
+    : user?.hasVendorAccess && user?.vendorAppliedAs === 'SC' && !user?.isEngineerOrCco
+    ? '/console'
+    : user?.hasVendorAccess ? (user?.isEngineerOrCco ? '/vendor/crm' : '/vendor')
+    : user?.homeRoute ? user.homeRoute
+    : user?.role === 'VENDOR' ? '/vendor' : '/console'
+}
 
 export default function LoginPage() {
   return (
@@ -55,55 +70,78 @@ function LoginForm() {
       localStorage.setItem('an_token', data.token)
       localStorage.setItem('an_user', JSON.stringify(data.user))
 
-      // Was always '/console' regardless of role -- a vendor login (User.role
-      // === 'VENDOR') has no business being dropped onto the internal admin
-      // shell; their actual portal (product wizard, orders, staff, payouts)
-      // lives under /vendor. Every other role keeps landing on /console.
-      // A super-admin reset/temp password forces this gate first --
-      // middleware itself blocks everything else until it's cleared, so
-      // landing anywhere else would just bounce right back here.
-      // Minimal-floor-only accounts (shopnative/angroup self-registrations
-      // with no AN staff/vendor role) have no admin-panel business at all --
-      // send them to their actual storefront instead.
-      const landingPage = data.user?.mustChangePassword
-        ? '/update-password'
-        // Applied as a vendor but no BusinessMember yet (review pending, or
-        // instant-trial activation hasn't landed) -- show them their
-        // application status here instead of bouncing to shopnative.in.
-        : data.user?.pendingVendorApplication ? '/vendor-application-status'
-        : data.user?.isMinimalOnly ? 'https://shopnative.in'
-        // A vendor's own Owner/Manager belongs on /vendor regardless of
-        // homeRoute -- they can ALSO hold an unrelated business-wide role
-        // (e.g. a generic "Manager" role granted just to get vendor-
-        // Manager-equivalent access) whose own homeRoute was configured
-        // for a totally different use case, and was winning here instead.
-        // Engineer/CCO are vendor-team members too (same hasVendorAccess
-        // gate), but /vendor's own root page is a generic Owner/Manager
-        // sales dashboard -- irrelevant to their role. Send them to the
-        // CRM-specific overview instead; Owner/Manager keep landing on
-        // plain /vendor exactly as before.
-        // SC vendors have no vendor-portal experience -- they work in the
-        // console app instead, landing on its Dashboard same as any other
-        // console user (NOT jumping straight to the workorder screen --
-        // that's reached via the sidebar's Workorders link, which is
-        // itself pointed at the SC-specific page for these users, see
-        // sidebar-nav.ts/sidebar.tsx). Only for the Owner/Manager landing
-        // fresh in (isEngineerOrCco already goes to /vendor/crm, unaffected).
-        : data.user?.hasVendorAccess && data.user?.vendorAppliedAs === 'SC' && !data.user?.isEngineerOrCco
-        ? '/console'
-        : data.user?.hasVendorAccess ? (data.user?.isEngineerOrCco ? '/vendor/crm' : '/vendor')
-        // Per-role configurable home page (Roles & Permissions > Home Page)
-        // wins over the generic role/account-type default below when set.
-        : data.user?.homeRoute ? data.user.homeRoute
-        : data.user?.role === 'VENDOR' ? '/vendor' : '/console'
-
       // Hard redirect so the browser commits the httpOnly cookie before the next request.
       // router.push() triggers an RSC fetch that races with cookie propagation → 307 loop.
-      window.location.href = landingPage
+      window.location.href = resolveLandingPage(data.user)
     } catch {
       setError('Network error. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Phone-OTP login -- alternative to password, per explicit direction
+  // ("confirm me the possibility of logging with other ways and means
+  // also instead of just vendor id... work on that phone and OTP").
+  // Fully wired end to end; every send will fail with a clear
+  // "not configured" message until a real SMS gateway is set up in env
+  // (see services/sms/smsClient.service.ts's own comment) -- that's a
+  // real business step (SMS gateway account + a DLT-registered OTP
+  // template, mandatory in India), not something this UI can complete
+  // on its own.
+  const [mode, setMode] = useState<'password' | 'otp'>('password')
+  const [otpPhone, setOtpPhone] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [otpStep, setOtpStep] = useState<'phone' | 'code'>('phone')
+  const [otpSending, setOtpSending] = useState(false)
+  const [otpVerifying, setOtpVerifying] = useState(false)
+  const [otpError, setOtpError] = useState('')
+
+  async function handleSendOtp(e: React.FormEvent) {
+    e.preventDefault()
+    setOtpError('')
+    setOtpSending(true)
+    try {
+      const res = await fetch('/api/auth/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: otpPhone }),
+      })
+      const data = await res.json()
+      if (!data.success) {
+        setOtpError(data.message || 'Failed to send OTP')
+        return
+      }
+      setOtpStep('code')
+    } catch {
+      setOtpError('Network error. Please try again.')
+    } finally {
+      setOtpSending(false)
+    }
+  }
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault()
+    setOtpError('')
+    setOtpVerifying(true)
+    try {
+      const res = await fetch('/api/auth/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: otpPhone, otp: otpCode }),
+      })
+      const data = await res.json()
+      if (!data.success) {
+        setOtpError(data.message || 'Incorrect OTP')
+        return
+      }
+      localStorage.setItem('an_token', data.token)
+      localStorage.setItem('an_user', JSON.stringify(data.user))
+      window.location.href = resolveLandingPage(data.user)
+    } catch {
+      setOtpError('Network error. Please try again.')
+    } finally {
+      setOtpVerifying(false)
     }
   }
 
@@ -130,10 +168,96 @@ function LoginForm() {
             </div>
             <h1 className="mt-4 text-3xl font-semibold text-ink tracking-tight">Sign in</h1>
             <p className="mt-2 text-sm text-ink-3">
-              Brand · Service Center · POS, in one account.
+              Run your service center from one account.
             </p>
           </div>
 
+          <div className="mb-6 inline-flex rounded-control border border-border bg-surface-2 p-1 gap-1">
+            <button
+              type="button"
+              onClick={() => setMode('password')}
+              className={`flex items-center gap-1.5 rounded-control px-3 py-1.5 text-xs font-medium transition-colors ${
+                mode === 'password' ? 'bg-accent text-accent-fg' : 'text-ink-3 hover:text-ink-2'
+              }`}
+            >
+              <KeyRound size={13} /> Password
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('otp')}
+              className={`flex items-center gap-1.5 rounded-control px-3 py-1.5 text-xs font-medium transition-colors ${
+                mode === 'otp' ? 'bg-accent text-accent-fg' : 'text-ink-3 hover:text-ink-2'
+              }`}
+            >
+              <Smartphone size={13} /> Phone OTP
+            </button>
+          </div>
+
+          {mode === 'otp' ? (
+            <form onSubmit={otpStep === 'phone' ? handleSendOtp : handleVerifyOtp} className="space-y-5">
+              <div>
+                <label className="block text-xs font-medium text-ink-3 mb-2">Mobile Number</label>
+                <input
+                  type="tel"
+                  value={otpPhone}
+                  onChange={(e) => setOtpPhone(e.target.value)}
+                  placeholder="98765 43210"
+                  required
+                  disabled={otpStep === 'code'}
+                  autoFocus
+                  className="w-full rounded-control border border-border-strong bg-surface px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft transition-all disabled:opacity-60"
+                />
+              </div>
+
+              {otpStep === 'code' && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-medium text-ink-3">6-digit code</label>
+                    <button
+                      type="button"
+                      onClick={() => { setOtpStep('phone'); setOtpCode(''); setOtpError('') }}
+                      className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+                    >
+                      Change number
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    required
+                    autoFocus
+                    className="w-full rounded-control border border-border-strong bg-surface px-4 py-3 text-sm text-ink placeholder:text-ink-3 tracking-[0.3em] focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft transition-all"
+                  />
+                </div>
+              )}
+
+              {otpError && (
+                <div className="rounded-control border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">
+                  {otpError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={otpSending || otpVerifying}
+                className="w-full rounded-control bg-accent px-4 py-3 text-sm font-semibold text-accent-fg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              >
+                {otpSending || otpVerifying ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    {otpStep === 'phone' ? 'Sending…' : 'Verifying…'}
+                  </>
+                ) : otpStep === 'phone' ? (
+                  'Send OTP'
+                ) : (
+                  'Verify & Sign In'
+                )}
+              </button>
+            </form>
+          ) : (
           <form onSubmit={handleLogin} className="space-y-5">
             {/* Email / Username */}
             <div>
@@ -210,6 +334,7 @@ function LoginForm() {
               )}
             </button>
           </form>
+          )}
 
           <div className="mt-6 pt-6 border-t border-border">
             <p className="text-xs text-ink-3 text-center">
