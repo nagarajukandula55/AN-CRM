@@ -85,6 +85,32 @@
   --shadow-lg: 0 8px 40px rgba(22, 24, 28, 0.10);
 }
 
+/* Scoped dark "chrome" (sidebar/header navigation only, never content) --
+   redefines the same ground/text/border tokens above to dark-navy
+   equivalents WITHIN this class's subtree. Every existing component
+   already built against bg-surface/text-ink/border-border etc. (the
+   nav, VendorSwitcher, logout button, footer card) renders correctly
+   here automatically, with no per-component edits needed -- CSS custom
+   properties cascade to descendants unless a component sets its own.
+   Per explicit direction: dark sidebar/header reads as more premium,
+   while every actual page/form/table a user acts on stays exactly the
+   white it already is. accent-soft is boosted (higher opacity, lighter
+   blue) since the light-theme version was tuned for a white background
+   and reads as barely-visible on navy. */
+.chrome-dark {
+  --bg: #0F172A;
+  --surface: #0F172A;
+  --surface-2: #1E293B;
+  --surface-3: #334155;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --text: #F1F5F9;
+  --text-2: #CBD5E1;
+  --text-3: #94A3B8;
+  --muted: #94A3B8;
+  --accent-soft: rgba(96, 165, 250, 0.18);
+}
+
 /* ==========================================
    BASE
 ========================================== */

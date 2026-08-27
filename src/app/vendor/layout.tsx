@@ -323,8 +323,11 @@ export default async function VendorLayout({
   // capped to the screen with its own independent scroll.
   return (
     <div className="flex h-screen bg-bg text-ink overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 bg-surface border-r border-border flex flex-col h-full">
+      {/* Sidebar -- chrome-dark scopes bg-surface/text-ink/border-border
+          etc. to dark-navy equivalents for this subtree only (see that
+          class's own comment in globals.css); every child component
+          below already reads those same tokens, so this Just Works. */}
+      <aside className="chrome-dark w-64 flex-shrink-0 bg-surface border-r border-border flex flex-col h-full">
         {/* Brand -- this vendor's own identity (name/code/logo), not a
             generic "Vendor Portal" label. */}
         <div className="p-5 border-b border-border">

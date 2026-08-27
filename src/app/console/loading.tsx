@@ -7,7 +7,7 @@
 export default function ConsoleLoading() {
   return (
     <div className="flex h-screen bg-bg overflow-hidden animate-pulse">
-      <aside className="w-64 flex-shrink-0 bg-surface border-r border-border flex flex-col h-full">
+      <aside className="chrome-dark w-64 flex-shrink-0 bg-surface border-r border-border flex flex-col h-full">
         <div className="p-5 border-b border-border">
           <div className="h-6 w-32 rounded bg-surface-2" />
         </div>

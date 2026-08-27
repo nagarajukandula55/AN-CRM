@@ -548,7 +548,7 @@ export default function Sidebar() {
       <aside
         onMouseEnter={() => collapsed && setHoverExpanded(true)}
         onMouseLeave={() => setHoverExpanded(false)}
-        className={`fixed lg:sticky lg:top-0 z-50 h-screen w-60 shrink-0 flex flex-col relative
+        className={`chrome-dark fixed lg:sticky lg:top-0 z-50 h-screen w-60 shrink-0 flex flex-col relative
           border-r border-border bg-surface transform transition-all duration-300
           ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           ${isCollapsed ? "lg:w-16" : "lg:w-60"}

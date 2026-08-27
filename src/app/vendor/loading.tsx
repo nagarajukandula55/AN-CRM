@@ -10,7 +10,7 @@
 export default function VendorLoading() {
   return (
     <div className="flex h-screen bg-bg overflow-hidden animate-pulse">
-      <aside className="w-64 flex-shrink-0 bg-surface border-r border-border flex flex-col h-full">
+      <aside className="chrome-dark w-64 flex-shrink-0 bg-surface border-r border-border flex flex-col h-full">
         <div className="p-5 border-b border-border">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-control bg-surface-2" />
