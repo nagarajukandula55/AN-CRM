@@ -62,6 +62,12 @@ export const metadata: Metadata = {
       "Run your entire repair/service center on one screen: workorders, GST billing, inventory, staff, and customer repair tracking.",
   },
   robots: { index: true, follow: true },
+  // Google Search Console domain-ownership verification -- needed before
+  // crm.angroup.in can be used as an authorized domain for Google OAuth
+  // (sign-in with Google) client registration.
+  verification: {
+    google: "UV1RTeTE0gXYUciDC9LtjLmSSBcStdZHGPzZwRsSYe0",
+  },
 };
 
 export default function RootLayout({
