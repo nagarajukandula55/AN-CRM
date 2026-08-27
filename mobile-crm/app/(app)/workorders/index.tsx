@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, 
 import { useFocusEffect, router } from "expo-router";
 import { listJobSheets, type JobSheet } from "@/api/crm";
 
-const ACCENT = "#5B3DF5";
+const ACCENT = "#2563EB";
 const FILTERS = ["ALL", "CREATED", "REPAIR_IN_PROGRESS", "PART_PENDING", "REPAIR_COMPLETED", "CLOSED"];
 
 export default function WorkordersScreen() {

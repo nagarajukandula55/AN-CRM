@@ -27,7 +27,7 @@ function Field({
   return (
     <div>
       <label className={neonLabelCls}>
-        {label} {required && <span className="text-pink-500">*</span>}
+        {label} {required && <span className="text-orange-500">*</span>}
       </label>
       {children}
     </div>
@@ -98,15 +98,15 @@ export default function ContactPage() {
 
   return (
     <div className={`${neonPageBg} relative overflow-hidden`}>
-      <div aria-hidden className={`${neonGlow("violet")} -right-32 -top-32 h-96 w-96`} />
-      <div aria-hidden className={`${neonGlow("cyan")} -left-40 top-72 h-80 w-80 opacity-70`} />
+      <div aria-hidden className={`${neonGlow("blue")} -right-32 -top-32 h-96 w-96`} />
+      <div aria-hidden className={`${neonGlow("green")} -left-40 top-72 h-80 w-80 opacity-70`} />
 
       <header className="relative z-10 px-6 py-6">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <Link href="/">
             <Logo />
           </Link>
-          <Link href="/" className="text-sm font-medium text-violet-700 transition-colors hover:text-cyan-600">
+          <Link href="/" className="text-sm font-medium text-blue-700 transition-colors hover:text-green-600">
             ← Back to Home
           </Link>
         </div>
@@ -114,7 +114,7 @@ export default function ContactPage() {
 
       <main className="relative z-10 mx-auto max-w-2xl px-6 pb-20">
         <div className="mb-8 text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-violet-500">Get In Touch</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-blue-500">Get In Touch</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink md:text-4xl">
             Contact <span className={neonGradientText}>Us</span>
           </h1>
@@ -126,15 +126,15 @@ export default function ContactPage() {
 
         <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className={`${neonCard} flex items-center gap-3 p-4`}>
-            <Mail className="h-4 w-4 flex-shrink-0 text-violet-600" />
+            <Mail className="h-4 w-4 flex-shrink-0 text-blue-600" />
             <span className="text-xs text-ink-2">connectwithangroup@gmail.com</span>
           </div>
           <div className={`${neonCard} flex items-center gap-3 p-4`}>
-            <Phone className="h-4 w-4 flex-shrink-0 text-violet-600" />
+            <Phone className="h-4 w-4 flex-shrink-0 text-blue-600" />
             <span className="text-xs text-ink-2">Mon–Sat, 10am–7pm IST</span>
           </div>
           <div className={`${neonCard} flex items-center gap-3 p-4`}>
-            <MapPin className="h-4 w-4 flex-shrink-0 text-violet-600" />
+            <MapPin className="h-4 w-4 flex-shrink-0 text-blue-600" />
             <span className="text-xs text-ink-2">India</span>
           </div>
         </div>
@@ -150,7 +150,7 @@ export default function ContactPage() {
               <button onClick={resetForm} className={neonButtonPrimary}>
                 Send Another Message
               </button>
-              <Link href="/" className="text-sm font-medium text-violet-700 hover:text-cyan-600">
+              <Link href="/" className="text-sm font-medium text-blue-700 hover:text-green-600">
                 Back to Home
               </Link>
             </div>
@@ -232,7 +232,7 @@ export default function ContactPage() {
 
         <p className="mt-6 text-center text-sm text-ink-3">
           Looking to partner with us instead?{" "}
-          <Link href="/partner-signup" className="font-medium text-violet-700 hover:text-cyan-600">
+          <Link href="/partner-signup" className="font-medium text-blue-700 hover:text-green-600">
             Become a Partner
           </Link>
         </p>

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, 
 import { useFocusEffect, router } from "expo-router";
 import { listLedgerParties, type LedgerParty } from "@/api/ledger";
 
-const ACCENT = "#5B3DF5";
+const ACCENT = "#2563EB";
 
 export default function LedgerScreen() {
   const [parties, setParties] = useState<LedgerParty[]>([]);

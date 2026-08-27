@@ -4,7 +4,7 @@ import { useFocusEffect, router } from "expo-router";
 import { listExpenses, createExpense, deleteExpense, type Expense } from "@/api/expenses";
 import { ApiError } from "@/api/client";
 
-const ACCENT = "#5B3DF5";
+const ACCENT = "#2563EB";
 const PAYMENT_MODES = ["CASH", "UPI", "BANK_TRANSFER", "CARD", "OTHER"];
 
 export default function ExpensesScreen() {

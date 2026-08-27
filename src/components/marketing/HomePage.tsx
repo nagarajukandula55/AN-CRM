@@ -176,13 +176,13 @@ export default function HomePage() {
         {/* Subtle ambient shapes for dynamism */}
         <motion.div
           aria-hidden
-          className={`${neonGlow("violet")} -right-32 -top-32 h-96 w-96`}
+          className={`${neonGlow("blue")} -right-32 -top-32 h-96 w-96`}
           animate={{ scale: [1, 1.08, 1] }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div
           aria-hidden
-          className={`${neonGlow("cyan")} -left-40 top-40 h-72 w-72 opacity-70`}
+          className={`${neonGlow("green")} -left-40 top-40 h-72 w-72 opacity-70`}
           animate={{ scale: [1, 1.12, 1] }}
           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 1 }}
         />

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import { getLedgerParty, type LedgerPartyDetail } from "@/api/ledger";
 
-const ACCENT = "#5B3DF5";
+const ACCENT = "#2563EB";
 
 export default function LedgerPartyScreen() {
   const { key } = useLocalSearchParams<{ key: string }>();

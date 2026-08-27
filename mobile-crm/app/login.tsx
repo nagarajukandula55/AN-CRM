@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { ApiError } from "@/api/client";
 
-const ACCENT = "#5B3DF5";
+const ACCENT = "#2563EB";
 
 export default function LoginScreen() {
   const { signIn } = useAuth();

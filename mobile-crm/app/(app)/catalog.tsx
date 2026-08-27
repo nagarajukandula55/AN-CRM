@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, TextInput, Refresh
 import { useFocusEffect } from "expo-router";
 import { listMaterials, type Material } from "@/api/materials";
 
-const ACCENT = "#5B3DF5";
+const ACCENT = "#2563EB";
 
 const PART_TYPE_LABEL: Record<string, string> = {
   SPARE_PART: "Spare Part",

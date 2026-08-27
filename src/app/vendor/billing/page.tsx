@@ -137,7 +137,7 @@ export default function VendorBillingPage() {
           if (confirmData.success) reloadBilling();
           else setUpgradeError(confirmData.message || "Payment verification failed");
         },
-        theme: { color: "#B5541F" },
+        theme: { color: "#2563EB" },
       });
       rzp.open();
     } catch (err: any) {
@@ -199,7 +199,7 @@ export default function VendorBillingPage() {
           if (confirmData.success) reloadBilling();
           else setPlanError(confirmData.message || "Payment verification failed");
         },
-        theme: { color: "#B5541F" },
+        theme: { color: "#2563EB" },
       });
       rzp.open();
     } catch (err: any) {

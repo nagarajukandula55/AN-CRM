@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSubscription, daysRemaining } from "@/context/SubscriptionContext";
 import { listJobSheets, type JobSheet } from "@/api/crm";
 
-const ACCENT = "#5B3DF5";
+const ACCENT = "#2563EB";
 
 export default function DashboardScreen() {
   const { user } = useAuth();

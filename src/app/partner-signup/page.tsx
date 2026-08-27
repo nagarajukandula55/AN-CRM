@@ -64,7 +64,7 @@ function Field({
   return (
     <div>
       <label className={neonLabelCls}>
-        {label} {required && <span className="text-pink-500">*</span>}
+        {label} {required && <span className="text-orange-500">*</span>}
       </label>
       {children}
       {hint && <p className="mt-1 text-[10px] text-ink-3">{hint}</p>}
@@ -94,7 +94,7 @@ function PasswordInput({
       <button
         type="button"
         onClick={() => setShow((s) => !s)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-violet-600 transition-colors"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-blue-600 transition-colors"
       >
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
@@ -338,8 +338,8 @@ function PartnerSignupPageInner() {
 
   return (
     <div className={`${neonPageBg} relative overflow-hidden`}>
-      <div aria-hidden className={`${neonGlow("violet")} -right-32 -top-32 h-96 w-96`} />
-      <div aria-hidden className={`${neonGlow("cyan")} -left-40 top-72 h-80 w-80 opacity-70`} />
+      <div aria-hidden className={`${neonGlow("blue")} -right-32 -top-32 h-96 w-96`} />
+      <div aria-hidden className={`${neonGlow("green")} -left-40 top-72 h-80 w-80 opacity-70`} />
 
       {/* Header */}
       <header className="relative z-10 px-6 py-6">
@@ -349,7 +349,7 @@ function PartnerSignupPageInner() {
           </Link>
           <Link
             href="/"
-            className="text-sm font-medium text-violet-700 transition-colors hover:text-cyan-600"
+            className="text-sm font-medium text-blue-700 transition-colors hover:text-green-600"
           >
             ← Back to Home
           </Link>
@@ -358,7 +358,7 @@ function PartnerSignupPageInner() {
 
       <main className="relative z-10 mx-auto max-w-2xl px-6 pb-20">
         <div className="mb-8 text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-violet-500">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-blue-500">
             Partner With Us
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink md:text-4xl">
@@ -382,7 +382,7 @@ function PartnerSignupPageInner() {
                   ✅ Your account has been created
                 </span>{" "}
                 — your login ID is{" "}
-                <span className="font-mono font-semibold text-violet-700">
+                <span className="font-mono font-semibold text-blue-700">
                   {state.username}
                 </span>
                 {" "}(not your email — email is only used for updates and notifications), with the password you set.
@@ -403,7 +403,7 @@ function PartnerSignupPageInner() {
                     <>
                       {" "}
                       — request number{" "}
-                      <span className="font-mono font-semibold text-violet-700">
+                      <span className="font-mono font-semibold text-blue-700">
                         {state.requestNumber}
                       </span>
                     </>
@@ -440,7 +440,7 @@ function PartnerSignupPageInner() {
               Your account was created — but the business application didn&apos;t go through
             </h2>
             <p className="mt-2 text-sm text-ink-3">
-              Good news: your login <span className="font-mono font-semibold text-violet-700">{email}</span> exists
+              Good news: your login <span className="font-mono font-semibold text-blue-700">{email}</span> exists
               and works right now. However, we couldn&apos;t submit your
               business application: {state.message}
             </p>
@@ -462,9 +462,9 @@ function PartnerSignupPageInner() {
                   <div
                     className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
                       step === n
-                        ? "bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-[0_4px_16px_-4px_rgba(139,92,246,0.6)]"
+                        ? "bg-gradient-to-r from-blue-600 to-green-500 text-white shadow-[0_4px_16px_-4px_rgba(139,92,246,0.6)]"
                         : step > n
-                        ? "bg-violet-100 text-violet-600"
+                        ? "bg-blue-100 text-blue-600"
                         : "bg-surface-2 text-ink-3"
                     }`}
                   >
@@ -574,7 +574,7 @@ function PartnerSignupPageInner() {
                       </select>
                     </Field>
                     <Field label="What are you applying as?">
-                      <div className={`${neonInputCls} flex items-center bg-violet-50/60 text-ink-2`}>
+                      <div className={`${neonInputCls} flex items-center bg-blue-50/60 text-ink-2`}>
                         <span>Service Center (single login, workorder flow)</span>
                       </div>
                     </Field>
@@ -586,7 +586,7 @@ function PartnerSignupPageInner() {
 
                   <div>
                     <p className="mb-2 text-xs font-medium text-ink-2">
-                      GST Registration<span className="text-pink-500">*</span>
+                      GST Registration<span className="text-orange-500">*</span>
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -594,8 +594,8 @@ function PartnerSignupPageInner() {
                         onClick={() => setGstRegistered(true)}
                         className={`rounded-card border py-2.5 text-sm font-medium transition-all ${
                           gstRegistered
-                            ? "border-transparent bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-[0_4px_16px_-4px_rgba(139,92,246,0.5)]"
-                            : "border-violet-100 bg-surface text-ink-2 hover:border-violet-300"
+                            ? "border-transparent bg-gradient-to-r from-blue-600 to-green-500 text-white shadow-[0_4px_16px_-4px_rgba(139,92,246,0.5)]"
+                            : "border-blue-100 bg-surface text-ink-2 hover:border-blue-300"
                         }`}
                       >
                         With GST
@@ -605,8 +605,8 @@ function PartnerSignupPageInner() {
                         onClick={() => setGstRegistered(false)}
                         className={`rounded-card border py-2.5 text-sm font-medium transition-all ${
                           !gstRegistered
-                            ? "border-transparent bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-[0_4px_16px_-4px_rgba(139,92,246,0.5)]"
-                            : "border-violet-100 bg-surface text-ink-2 hover:border-violet-300"
+                            ? "border-transparent bg-gradient-to-r from-blue-600 to-green-500 text-white shadow-[0_4px_16px_-4px_rgba(139,92,246,0.5)]"
+                            : "border-blue-100 bg-surface text-ink-2 hover:border-blue-300"
                         }`}
                       >
                         Without GST
@@ -705,7 +705,7 @@ function PartnerSignupPageInner() {
                       type="button"
                       onClick={() => setStep(1)}
                       disabled={submitting}
-                      className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-surface px-6 py-3 text-sm font-semibold text-violet-700 transition-all hover:border-cyan-300 disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-surface px-6 py-3 text-sm font-semibold text-blue-700 transition-all hover:border-green-300 disabled:opacity-50"
                     >
                       <ArrowLeft size={16} />
                       Back
@@ -734,11 +734,11 @@ function PartnerSignupPageInner() {
 
             <p className="mt-6 text-center text-sm text-ink-3">
               Already have an account?{" "}
-              <Link href="/vendor-apply" className="font-medium text-violet-700 hover:text-cyan-600">
+              <Link href="/vendor-apply" className="font-medium text-blue-700 hover:text-green-600">
                 Apply as a vendor here
               </Link>{" "}
               or{" "}
-              <Link href="/login" className="font-medium text-violet-700 hover:text-cyan-600">
+              <Link href="/login" className="font-medium text-blue-700 hover:text-green-600">
                 sign in
               </Link>
             </p>

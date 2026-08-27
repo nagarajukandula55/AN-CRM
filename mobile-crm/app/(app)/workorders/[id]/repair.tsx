@@ -11,7 +11,7 @@ import {
 import { listMaterials, type Material } from "@/api/materials";
 import { ApiError } from "@/api/client";
 
-const ACCENT = "#5B3DF5";
+const ACCENT = "#2563EB";
 
 /**
  * The engineer-facing repair screen -- REPAIR_IN_PROGRESS's own form,

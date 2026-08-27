@@ -5,7 +5,7 @@ import { getJobSheet, advanceJobSheet, nextActionFor, type JobSheet } from "@/ap
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/context/AuthContext";
 
-const ACCENT = "#5B3DF5";
+const ACCENT = "#2563EB";
 
 export default function WorkorderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

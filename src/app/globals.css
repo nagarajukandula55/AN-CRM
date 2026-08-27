@@ -50,11 +50,12 @@
   --text-3: #8B8F94;
   --muted: #6B6F75;
 
-  /* Brand accent -- burnt copper, AN-CRM's own identity (distinct from
-     both ANgroup's petrol teal AND this app's own round-1 violet) */
-  --accent: #B5541F;
-  --accent-hover: #963F14;
-  --accent-soft: rgba(181, 84, 31, 0.10);
+  /* Brand accent -- pulled from the real My Biz Flow logo (brand-assets/)
+     once it existed, replacing the earlier burnt-copper placeholder
+     chosen before a real logo was available. */
+  --accent: #2563EB;
+  --accent-hover: #1D4ED8;
+  --accent-soft: rgba(37, 99, 235, 0.10);
   --accent-fg: #ffffff;
 
   /* Kept for existing call sites during migration -- primary now maps to
@@ -73,8 +74,12 @@
      there -- warning needs its own hue family, same reasoning as always. */
   --warning: #8A7413;
   --warning-soft: rgba(138, 116, 19, 0.10);
-  --info: #1D4ED8;
-  --info-soft: rgba(29, 78, 216, 0.10);
+  /* Shifted off blue now that the accent itself lives there (was
+     identical to --accent-hover, making Info badges/buttons visually
+     indistinguishable from primary accent ones) -- info needs its own
+     hue family, same reasoning as warning above. */
+  --info: #0891B2;
+  --info-soft: rgba(8, 145, 178, 0.10);
 
   --shadow: 0 4px 24px rgba(22, 24, 28, 0.06);
   --shadow-lg: 0 8px 40px rgba(22, 24, 28, 0.10);

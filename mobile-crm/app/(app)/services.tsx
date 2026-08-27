@@ -4,7 +4,7 @@ import { useSubscription } from "@/context/SubscriptionContext";
 import { PLANS, TIER_RANK, type PlanKey } from "@/data/plans";
 import Constants from "expo-constants";
 
-const ACCENT = "#5B3DF5";
+const ACCENT = "#2563EB";
 const AN_CRM_API = (Constants.expoConfig?.extra?.anCrmApiUrl as string) || "";
 
 /**

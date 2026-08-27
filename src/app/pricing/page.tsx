@@ -34,8 +34,8 @@ export default function PricingPage() {
 
   return (
     <div className={mbfPageBg}>
-      <div aria-hidden className={`${mbfGlow('cyan')} -right-40 -top-40 h-[36rem] w-[36rem]`} />
-      <div aria-hidden className={`${mbfGlow('magenta')} -left-40 top-52 h-[28rem] w-[28rem]`} />
+      <div aria-hidden className={`${mbfGlow('blue')} -right-40 -top-40 h-[36rem] w-[36rem]`} />
+      <div aria-hidden className={`${mbfGlow('orange')} -left-40 top-52 h-[28rem] w-[28rem]`} />
 
       <nav className="relative z-10 w-full flex items-center justify-between px-6 sm:px-12 py-6">
         <Link href="/"><Logo className="!text-white" /></Link>
@@ -51,7 +51,7 @@ export default function PricingPage() {
 
       <div className="relative z-10 max-w-6xl mx-auto px-6 pt-10 pb-24">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/30 bg-white/5 backdrop-blur px-3.5 py-1.5 text-xs font-medium text-cyan-300 mb-4">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-white/5 backdrop-blur px-3.5 py-1.5 text-xs font-medium text-sky-300 mb-4">
             <Sparkles className="h-3.5 w-3.5" /> Simple, transparent pricing
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white">Pick the plan that fits your shop</h1>
@@ -59,7 +59,7 @@ export default function PricingPage() {
             Single-login, single-screen workorder shop — pick a billing period below.
           </p>
           {isLaunchPricingActive() && (
-            <div className="inline-flex items-center gap-1.5 mt-4 rounded-full border border-lime-400/30 bg-white/5 text-lime-300 text-xs font-medium px-3.5 py-1.5">
+            <div className="inline-flex items-center gap-1.5 mt-4 rounded-full border border-green-400/30 bg-white/5 text-green-300 text-xs font-medium px-3.5 py-1.5">
               <Sparkles className="h-3.5 w-3.5" /> Launch pricing — limited time, prices will rise soon
             </div>
           )}
@@ -74,13 +74,13 @@ export default function PricingPage() {
                 onClick={() => setPeriod(p.key)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   period === p.key
-                    ? 'bg-gradient-to-r from-cyan-400 to-fuchsia-400 text-[#05060d]'
+                    ? 'bg-gradient-to-r from-sky-400 to-orange-400 text-[#05060d]'
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
                 {p.label}
                 {p.discountPct > 0 && (
-                  <span className={`ml-1.5 text-xs ${period === p.key ? 'text-[#05060d]/70' : 'text-lime-300'}`}>
+                  <span className={`ml-1.5 text-xs ${period === p.key ? 'text-[#05060d]/70' : 'text-green-300'}`}>
                     −{p.discountPct}%
                   </span>
                 )}
@@ -97,10 +97,10 @@ export default function PricingPage() {
             return (
               <div
                 key={plan.key}
-                className={`${mbfCard} p-7 flex flex-col relative ${plan.highlight ? '!border-cyan-400/40 scale-[1.02]' : ''}`}
+                className={`${mbfCard} p-7 flex flex-col relative ${plan.highlight ? '!border-sky-400/40 scale-[1.02]' : ''}`}
               >
                 {plan.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-cyan-400 to-fuchsia-400 text-[#05060d] text-xs font-semibold px-3 py-1">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-sky-400 to-orange-400 text-[#05060d] text-xs font-semibold px-3 py-1">
                     Most Popular
                   </div>
                 )}
@@ -118,7 +118,7 @@ export default function PricingPage() {
                     </p>
                   )}
                   {plan.freeTrialDays && (
-                    <p className="text-xs text-lime-300 mt-1 font-medium">{plan.freeTrialDays}-day free trial</p>
+                    <p className="text-xs text-green-300 mt-1 font-medium">{plan.freeTrialDays}-day free trial</p>
                   )}
                 </div>
 
@@ -127,7 +127,7 @@ export default function PricingPage() {
                 <ul className="space-y-2.5 mt-4 flex-1">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
-                      <Check className="h-4 w-4 text-cyan-300 shrink-0 mt-0.5" />
+                      <Check className="h-4 w-4 text-sky-300 shrink-0 mt-0.5" />
                       {f}
                     </li>
                   ))}
@@ -138,7 +138,7 @@ export default function PricingPage() {
                   className={
                     plan.highlight
                       ? `${mbfButtonPrimary} mt-6 !py-2.5 !text-sm`
-                      : 'mt-6 rounded-full px-4 py-2.5 text-sm font-medium text-center transition-colors flex items-center justify-center gap-2 border border-white/15 text-gray-200 hover:border-cyan-400/40 hover:text-cyan-300'
+                      : 'mt-6 rounded-full px-4 py-2.5 text-sm font-medium text-center transition-colors flex items-center justify-center gap-2 border border-white/15 text-gray-200 hover:border-sky-400/40 hover:text-sky-300'
                   }
                 >
                   {plan.freeTrialDays ? 'Start Free Trial' : 'Get Started'} <ArrowRight className="h-3.5 w-3.5" />
@@ -186,7 +186,7 @@ const COMPARE_ROWS: { feature: string; us: CompareCell; vyapar: CompareCell; myb
 ]
 
 function CompareIcon({ value }: { value: CompareCell }) {
-  if (value === true) return <Check className="h-4 w-4 text-lime-300 mx-auto" />
+  if (value === true) return <Check className="h-4 w-4 text-green-300 mx-auto" />
   if (value === 'partial') return <span className="block text-center text-amber-300 text-xs font-medium">Partial</span>
   return <span className="block text-center text-gray-600 text-xs">—</span>
 }
@@ -195,7 +195,7 @@ function ComparisonSection() {
   return (
     <div className="mt-24">
       <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-fuchsia-400/30 bg-white/5 backdrop-blur px-3.5 py-1.5 text-xs font-medium text-fuchsia-300 mb-4">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-orange-400/30 bg-white/5 backdrop-blur px-3.5 py-1.5 text-xs font-medium text-orange-300 mb-4">
           <Sparkles className="h-3.5 w-3.5" /> How we compare
         </div>
         <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
@@ -220,7 +220,7 @@ function ComparisonSection() {
                     col.key === 'us' ? 'text-white' : 'text-gray-400'
                   }`}
                 >
-                  <span className={`text-sm font-semibold ${col.key === 'us' ? 'text-cyan-300' : ''}`}>{col.label}</span>
+                  <span className={`text-sm font-semibold ${col.key === 'us' ? 'text-sky-300' : ''}`}>{col.label}</span>
                 </th>
               ))}
             </tr>
@@ -234,12 +234,12 @@ function ComparisonSection() {
                   return (
                     <td
                       key={col.key}
-                      className={`py-3 px-3 text-center ${col.key === 'us' ? 'bg-cyan-400/[0.06]' : ''} ${
+                      className={`py-3 px-3 text-center ${col.key === 'us' ? 'bg-sky-400/[0.06]' : ''} ${
                         col.key === 'us' && i === COMPARE_ROWS.length - 1 ? 'rounded-r-lg' : ''
                       }`}
                     >
                       {typeof val === 'string' ? (
-                        <span className={`text-sm font-medium ${col.key === 'us' ? 'text-lime-300' : 'text-gray-400'}`}>{val}</span>
+                        <span className={`text-sm font-medium ${col.key === 'us' ? 'text-green-300' : 'text-gray-400'}`}>{val}</span>
                       ) : (
                         <CompareIcon value={val} />
                       )}

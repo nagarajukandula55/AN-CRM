@@ -14,7 +14,7 @@
  * rather than read from the token system.
  */
 
-const ACCENT = "#B5541F";
+const ACCENT = "#2563EB";
 const ACCENT_SOFT = "#F6EBE3";
 const INK = "#16181C";
 const INK_2 = "#52565C";

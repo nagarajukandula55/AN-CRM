@@ -77,15 +77,15 @@ const FEATURES = [
 export default function CrmSolutionPage() {
   return (
     <div className={`${neonPageBg} relative overflow-hidden`}>
-      <div aria-hidden className={`${neonGlow("violet")} -right-32 -top-32 h-96 w-96`} />
-      <div aria-hidden className={`${neonGlow("cyan")} -left-40 top-72 h-80 w-80 opacity-70`} />
+      <div aria-hidden className={`${neonGlow("blue")} -right-32 -top-32 h-96 w-96`} />
+      <div aria-hidden className={`${neonGlow("green")} -left-40 top-72 h-80 w-80 opacity-70`} />
 
       <header className="relative z-10 px-6 py-6">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <Link href="/">
             <Logo />
           </Link>
-          <Link href="/" className="text-sm font-medium text-violet-700 transition-colors hover:text-cyan-600">
+          <Link href="/" className="text-sm font-medium text-blue-700 transition-colors hover:text-green-600">
             ← Back to Home
           </Link>
         </div>
@@ -94,7 +94,7 @@ export default function CrmSolutionPage() {
       {/* Hero */}
       <section className="relative z-10 px-6 pb-16 pt-8 text-center">
         <div className="mx-auto max-w-3xl">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-violet-500">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-blue-500">
             Repair & Service Centers
           </p>
           <h1 className="mt-3 text-4xl font-bold leading-tight tracking-tight text-ink md:text-5xl">
@@ -125,8 +125,8 @@ export default function CrmSolutionPage() {
               const Icon = f.icon;
               return (
                 <div key={f.title} className={`${neonCard} p-7`}>
-                  <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-card bg-violet-50">
-                    <Icon size={22} strokeWidth={1.75} className="text-violet-600" />
+                  <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-card bg-blue-50">
+                    <Icon size={22} strokeWidth={1.75} className="text-blue-600" />
                   </div>
                   <h3 className="text-lg font-semibold text-ink">{f.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-ink-3">{f.description}</p>
@@ -138,14 +138,14 @@ export default function CrmSolutionPage() {
       </section>
 
       {/* Lifecycle strip */}
-      <section className="relative z-10 border-y border-violet-100 bg-surface/60 px-6 py-14 backdrop-blur-sm">
+      <section className="relative z-10 border-y border-blue-100 bg-surface/60 px-6 py-14 backdrop-blur-sm">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-2xl font-bold tracking-tight text-ink">Lead to Closed Job — All in One Flow</h2>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm text-ink-2">
             {["Lead Captured", "Qualified", "Job Sheet Created", "Technician Assigned", "Repair Completed", "Invoiced & Closed"].map((step, i, arr) => (
               <span key={step} className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-surface px-3 py-1.5 font-medium">
-                  <CheckCircle2 size={14} className="text-violet-600" />
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-surface px-3 py-1.5 font-medium">
+                  <CheckCircle2 size={14} className="text-blue-600" />
                   {step}
                 </span>
                 {i < arr.length - 1 && <ArrowRight size={14} className="text-ink-3" />}
@@ -157,7 +157,7 @@ export default function CrmSolutionPage() {
 
       {/* CTA */}
       <section className="relative z-10 px-6 py-24">
-        <div className="mx-auto max-w-3xl overflow-hidden rounded-[28px] bg-gradient-to-br from-violet-600 via-violet-500 to-cyan-500 px-8 py-14 text-center text-white shadow-[0_20px_60px_-15px_rgba(139,92,246,0.5)]">
+        <div className="mx-auto max-w-3xl overflow-hidden rounded-[28px] bg-gradient-to-br from-blue-600 via-blue-500 to-green-500 px-8 py-14 text-center text-white shadow-[0_20px_60px_-15px_rgba(139,92,246,0.5)]">
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
             Ready to run your service business on AN Group?
           </h2>
@@ -168,7 +168,7 @@ export default function CrmSolutionPage() {
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
               href="/appointment-request"
-              className="inline-flex items-center gap-2 rounded-full bg-surface px-7 py-3.5 text-base font-semibold text-violet-700 shadow-sm transition-transform hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 rounded-full bg-surface px-7 py-3.5 text-base font-semibold text-blue-700 shadow-sm transition-transform hover:-translate-y-0.5"
             >
               Book a Service
               <ArrowRight size={18} />

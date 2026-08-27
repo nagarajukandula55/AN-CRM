@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { useFocusEffect, router } from "expo-router";
 import { getProfitLoss, type ProfitLossReport } from "@/api/profitLoss";
 
-const ACCENT = "#5B3DF5";
+const ACCENT = "#2563EB";
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);

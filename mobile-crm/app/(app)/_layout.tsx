@@ -3,7 +3,7 @@ import { View, Text, ActivityIndicator } from "react-native";
 import { useAuth } from "@/context/AuthContext";
 import { useSubscription } from "@/context/SubscriptionContext";
 
-const ACCENT = "#5B3DF5";
+const ACCENT = "#2563EB";
 
 function TabIcon({ symbol, focused }: { symbol: string; focused: boolean }) {
   return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{symbol}</Text>;
