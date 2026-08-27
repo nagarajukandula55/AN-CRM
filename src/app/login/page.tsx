@@ -36,10 +36,23 @@ function LoginForm() {
   const [error, setError] = useState('')
   const [inactivityNotice, setInactivityNotice] = useState(false)
 
+  const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
+    google_not_configured: 'Sign in with Google isn\'t set up yet. Use your password instead.',
+    google_no_account: 'No My Biz Flow account found for that Google account. Sign up first, or use your Vendor ID/password.',
+    google_invalid_state: 'That sign-in link expired or was invalid. Please try again.',
+    google_token_exchange_failed: 'Google sign-in failed. Please try again.',
+    google_profile_failed: 'Could not read your Google profile. Please try again.',
+    google_login_failed: 'Something went wrong signing in with Google. Please try again.',
+    account_deactivated: 'This account has been deactivated. Contact your administrator.',
+  }
+
   useEffect(() => {
     if (searchParams?.get('reason') === 'inactivity') setInactivityNotice(true)
-    if (searchParams?.get('error') === 'admin_only') {
+    const errParam = searchParams?.get('error')
+    if (errParam === 'admin_only') {
       setError('This domain is reserved for platform administrators. Use the regular login if you\'re a vendor.')
+    } else if (errParam && GOOGLE_ERROR_MESSAGES[errParam]) {
+      setError(GOOGLE_ERROR_MESSAGES[errParam])
     }
   }, [searchParams])
 
@@ -335,6 +348,25 @@ function LoginForm() {
             </button>
           </form>
           )}
+
+          <div className="mt-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-[11px] text-ink-3">or</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <a
+            href="/api/auth/google/start"
+            className="mt-4 w-full flex items-center justify-center gap-2 rounded-control border border-border-strong bg-surface px-4 py-3 text-sm font-medium text-ink hover:bg-surface-2 transition-all"
+          >
+            <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/>
+              <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.6 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/>
+              <path fill="#4CAF50" d="M24 44c5.4 0 10.2-1.8 13.9-5.1l-6.4-5.4C29.4 35.4 26.8 36 24 36c-5.2 0-9.7-3.1-11.3-7.4l-6.5 5C9.6 39.6 16.2 44 24 44z"/>
+              <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.5l6.4 5.4C40.4 36.4 44 30.8 44 24c0-1.3-.1-2.7-.4-3.5z"/>
+            </svg>
+            Sign in with Google
+          </a>
 
           <div className="mt-6 pt-6 border-t border-border">
             <p className="text-xs text-ink-3 text-center">
