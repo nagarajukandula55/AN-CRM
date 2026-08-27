@@ -95,6 +95,13 @@ const PUBLIC_PREFIXES = [
   // Both /request and the token-confirm route are public by design -- the
   // reset token itself is the auth mechanism, not the session cookie.
   "/api/auth/reset-password",
+  // Phone-OTP login (send/verify) and Sign in with Google (start/callback)
+  // -- both are alternative LOGIN entry points, called before any session
+  // exists, same as /api/auth/login itself. Missing here meant every
+  // request 401'd before ever reaching the route handler, regardless of
+  // anything those routes' own code checked.
+  "/api/auth/otp",
+  "/api/auth/google",
   "/api/health",
   "/api/ping",
   "/api/vendors/apply",          // public vendor application submission
