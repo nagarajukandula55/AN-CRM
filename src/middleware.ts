@@ -67,6 +67,12 @@ const PUBLIC_EXACT = new Set([
   "/forgot-password",
   "/reset-password",
   "/favicon.ico",
+  // Search-engine crawl surfaces (src/app/sitemap.ts, src/app/robots.ts) --
+  // missing here meant Googlebot itself got redirected to /login instead
+  // of ever seeing either file, silently defeating the whole point of
+  // having them.
+  "/sitemap.xml",
+  "/robots.txt",
   "/api/reviews",
   "/api/newsletter/subscribe",
   "/api/auth/reset-password",
