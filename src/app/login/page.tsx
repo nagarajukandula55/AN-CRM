@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Loader2, Clock, ShieldCheck, Smartphone, KeyRound } from 'lucide-react'
@@ -35,6 +35,59 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [inactivityNotice, setInactivityNotice] = useState(false)
+
+  // Login with Telegram (official Telegram Login Widget) -- only rendered
+  // once we've confirmed the bot is actually configured; otherwise a
+  // disabled/broken button would just confuse anyone who hasn't connected
+  // Telegram yet. Per explicit direction ("if telegram bot is subscribed
+  // then go ahead for telegram login if not then ask user to login with
+  // email or vendor code and connect telegram").
+  const [telegramBotUsername, setTelegramBotUsername] = useState<string | null>(null)
+  const [telegramWidgetLoaded, setTelegramWidgetLoaded] = useState(false)
+  const telegramContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    fetch('/api/auth/telegram/bot-username')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.success && d.configured && d.username) setTelegramBotUsername(d.username)
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!telegramBotUsername || telegramWidgetLoaded || !telegramContainerRef.current) return
+    ;(window as any).onTelegramAuth = async (telegramUser: Record<string, any>) => {
+      setError('')
+      try {
+        const res = await fetch('/api/auth/telegram/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(telegramUser),
+        })
+        const data = await res.json()
+        if (!data.success) {
+          setError(data.message || 'Telegram login failed')
+          return
+        }
+        localStorage.setItem('an_token', data.token)
+        localStorage.setItem('an_user', JSON.stringify(data.user))
+        window.location.href = data.landingPath || resolveLandingPage(data.user)
+      } catch {
+        setError('Network error. Please try again.')
+      }
+    }
+    const script = document.createElement('script')
+    script.src = 'https://telegram.org/js/telegram-widget.js?22'
+    script.async = true
+    script.setAttribute('data-telegram-login', telegramBotUsername)
+    script.setAttribute('data-size', 'large')
+    script.setAttribute('data-radius', '8')
+    script.setAttribute('data-onauth', 'onTelegramAuth(user)')
+    script.setAttribute('data-request-access', 'write')
+    telegramContainerRef.current.appendChild(script)
+    setTelegramWidgetLoaded(true)
+  }, [telegramBotUsername, telegramWidgetLoaded])
 
   const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
     google_not_configured: 'Sign in with Google isn\'t set up yet. Use your password instead.',
@@ -185,26 +238,11 @@ function LoginForm() {
             </p>
           </div>
 
-          <div className="mb-6 inline-flex rounded-control border border-border bg-surface-2 p-1 gap-1">
-            <button
-              type="button"
-              onClick={() => setMode('password')}
-              className={`flex items-center gap-1.5 rounded-control px-3 py-1.5 text-xs font-medium transition-colors ${
-                mode === 'password' ? 'bg-accent text-accent-fg' : 'text-ink-3 hover:text-ink-2'
-              }`}
-            >
-              <KeyRound size={13} /> Password
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('otp')}
-              className={`flex items-center gap-1.5 rounded-control px-3 py-1.5 text-xs font-medium transition-colors ${
-                mode === 'otp' ? 'bg-accent text-accent-fg' : 'text-ink-3 hover:text-ink-2'
-              }`}
-            >
-              <Smartphone size={13} /> Phone OTP
-            </button>
-          </div>
+          {/* Phone-OTP tab hidden for now -- per explicit direction, until
+              a real SMS gateway + DLT-registered template is set up
+              (see services/sms/smsClient.service.ts). `mode` stays fixed
+              at 'password'; the OTP form/handlers below are untouched so
+              this is a one-line revert once SMS is ready. */}
 
           {mode === 'otp' ? (
             <form onSubmit={otpStep === 'phone' ? handleSendOtp : handleVerifyOtp} className="space-y-5">
@@ -367,6 +405,14 @@ function LoginForm() {
             </svg>
             Sign in with Google
           </a>
+
+          {telegramBotUsername ? (
+            <div className="mt-3 flex justify-center" ref={telegramContainerRef} />
+          ) : (
+            <p className="mt-4 text-center text-[11px] text-ink-3">
+              Sign in with your email or Vendor ID, then connect Telegram from your portal to enable one-tap Telegram sign-in next time.
+            </p>
+          )}
 
           <div className="mt-6 pt-6 border-t border-border">
             <p className="text-xs text-ink-3 text-center">

@@ -102,6 +102,7 @@ const PUBLIC_PREFIXES = [
   // anything those routes' own code checked.
   "/api/auth/otp",
   "/api/auth/google",
+  "/api/auth/telegram",
   "/api/health",
   "/api/ping",
   "/api/vendors/apply",          // public vendor application submission
