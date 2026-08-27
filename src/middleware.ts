@@ -394,6 +394,20 @@ export async function middleware(req: NextRequest) {
   return applyCors(NextResponse.next({ request: { headers: requestHeaders } }), origin);
 }
 
+// The old matcher only excluded `public/` as a literal URL PREFIX -- but
+// Next.js serves everything under the public/ directory at the ROOT url
+// (public/logo-mark.png -> /logo-mark.png), so that exclusion never
+// matched a single real request. Every static asset dropped straight
+// into public/ (images, brand assets, etc.) hit middleware like any other
+// page route and got redirected to /login -- reported live as "logo on
+// website seems broken" (the <img> tag's request for /logo-mark.png came
+// back as the login page's HTML, not image bytes). Same root cause as
+// the earlier /sitemap.xml and /robots.txt fix, just for the general
+// case instead of one path at a time -- excluding common static file
+// extensions here means any FUTURE asset dropped into public/ is
+// automatically public too, no allowlist edit required.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|public/).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon\\.ico|public/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|woff|woff2|ttf|eot|mp4|webm|pdf|txt|xml|json)$).*)",
+  ],
 };
