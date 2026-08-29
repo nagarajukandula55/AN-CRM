@@ -378,7 +378,18 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
 CrmJobSheetSchema.index({ businessId: 1, vendorId: 1, createdAt: -1 });
 CrmJobSheetSchema.index({ businessId: 1, createdAt: -1 });
 CrmJobSheetSchema.index({ businessId: 1, status: 1 });
-CrmJobSheetSchema.index({ businessId: 1, jobSheetNumber: 1 }, { unique: true });
+// Uniqueness scoped by vendorId, not just businessId: jobSheetNumber's
+// counter (see api/crm/jobsheets/route.ts's generateScopedDocumentNumber
+// call) is scoped per-vendor, since "every vendor must have their own
+// numbering system ... it should not collide in any way". Most onboarded
+// vendors share one default public Business (see vendorId's field
+// comment above), so two different vendors' independent per-vendor
+// counters can legitimately produce the same formatted number on the
+// same day -- a businessId-only unique index rejected the second one as
+// a duplicate (E11000 on businessId_1_jobSheetNumber_1) even though the
+// two numbers only collide within a shared Business, not within either
+// vendor's own series.
+CrmJobSheetSchema.index({ businessId: 1, vendorId: 1, jobSheetNumber: 1 }, { unique: true });
 
 const CrmJobSheet: Model<ICrmJobSheet> =
   (mongoose.models.CrmJobSheet as Model<ICrmJobSheet>) ||

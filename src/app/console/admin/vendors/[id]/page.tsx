@@ -253,6 +253,19 @@ export default function VendorDetailPage() {
 
   const [savingCategories, setSavingCategories] = useState(false)
 
+  // Editing the CURRENT owner's own login email directly -- distinct from
+  // ownerPicker above, which only REASSIGNS ownership to a different,
+  // already-existing user found via search. Per explicit direction ("i
+  // should change owner mail id as well which is currently can't it is
+  // searching for list but whatever mail id i given that should be the
+  // login id and it should allow them") -- whatever email is typed here
+  // becomes that user's login identifier immediately, since /api/auth/
+  // login already matches by email OR username.
+  const [editingOwnerEmail, setEditingOwnerEmail] = useState(false)
+  const [ownerEmailInput, setOwnerEmailInput] = useState('')
+  const [savingOwnerEmail, setSavingOwnerEmail] = useState(false)
+  const [ownerEmailError, setOwnerEmailError] = useState<string | null>(null)
+
   // Super-admin password reset for this vendor's login (VendorProfile.userId)
   // -- reuses the same generic /api/admin/users/[id]/reset-password route
   // console/admin/users/[id] already uses, just surfaced here too since an
@@ -470,6 +483,32 @@ export default function VendorDetailPage() {
     }
   }
 
+  async function saveOwnerEmail() {
+    if (!vendor?.userId?._id) return
+    const trimmed = ownerEmailInput.trim().toLowerCase()
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setOwnerEmailError('Enter a valid email address')
+      return
+    }
+    setSavingOwnerEmail(true)
+    setOwnerEmailError(null)
+    try {
+      const res = await fetch(`/api/admin/users/${vendor.userId._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || data.message || 'Failed to update email')
+      setEditingOwnerEmail(false)
+      refetchVendor()
+    } catch (err) {
+      setOwnerEmailError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setSavingOwnerEmail(false)
+    }
+  }
+
   async function assignOwner(user: UserSearchResult) {
     setOwnerSaving(true)
     setOwnerError(null)
@@ -680,16 +719,55 @@ export default function VendorDetailPage() {
           <div className="rounded-card border border-border bg-surface p-5">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-3">Owner</h2>
-              {isSuperAdmin && !ownerPicker && (
-                <button
-                  onClick={() => { setOwnerPicker(true); setOwnerError(null) }}
-                  className="text-[11px] font-medium text-accent hover:underline"
-                >
-                  {vendor.userId ? 'Change' : 'Assign'}
-                </button>
+              {isSuperAdmin && !ownerPicker && !editingOwnerEmail && (
+                <div className="flex items-center gap-3">
+                  {vendor.userId && (
+                    <button
+                      onClick={() => { setOwnerEmailInput(vendor.userId!.email || ''); setEditingOwnerEmail(true); setOwnerEmailError(null) }}
+                      className="text-[11px] font-medium text-accent hover:underline"
+                    >
+                      Edit Email
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setOwnerPicker(true); setOwnerError(null) }}
+                    className="text-[11px] font-medium text-accent hover:underline"
+                  >
+                    {vendor.userId ? 'Change' : 'Assign'}
+                  </button>
+                </div>
               )}
             </div>
-            {vendor.userId ? (
+            {editingOwnerEmail ? (
+              <div className="space-y-2">
+                <p className="text-xs text-ink-3">
+                  This becomes the owner&apos;s login email immediately -- sign-in already accepts email or Vendor ID.
+                </p>
+                {ownerEmailError && <p className="text-xs text-danger">{ownerEmailError}</p>}
+                <input
+                  type="email"
+                  value={ownerEmailInput}
+                  onChange={(e) => setOwnerEmailInput(e.target.value)}
+                  className="w-full rounded-control border border-border px-3 py-1.5 text-sm"
+                  placeholder="owner@company.com"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={saveOwnerEmail}
+                    disabled={savingOwnerEmail}
+                    className="px-3 py-1.5 rounded-control bg-accent text-accent-fg text-xs font-medium hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {savingOwnerEmail ? 'Saving…' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => { setEditingOwnerEmail(false); setOwnerEmailError(null) }}
+                    className="text-xs text-ink-3 hover:text-ink-2"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : vendor.userId ? (
               <>
                 <p className="text-sm font-medium text-ink truncate">{vendor.userId.name || vendor.userId.username || 'Unknown'}</p>
                 <p className="text-xs text-ink-3 truncate">{vendor.userId.email}</p>

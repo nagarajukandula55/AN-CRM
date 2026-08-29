@@ -172,7 +172,18 @@ export async function PUT(
 
     const updateData: Record<string, unknown> = {};
     if (name)     updateData.name = name;
-    if (email)    updateData.email = email;
+    if (email) {
+      const normalizedEmail = String(email).toLowerCase().trim();
+      // A clean 409 instead of falling through to the generic catch-all's
+      // "Internal server error" when the unique index on User.email
+      // rejects a duplicate -- e.g. an admin retyping the vendor Owner's
+      // login email to one already used by a different account.
+      const conflict = await User.findOne({ email: normalizedEmail, _id: { $ne: id }, isDeleted: { $ne: true } }).select('_id').lean();
+      if (conflict) {
+        return NextResponse.json({ error: 'Another account already uses that email address' }, { status: 409 });
+      }
+      updateData.email = normalizedEmail;
+    }
     if (password) updateData.password = await bcrypt.hash(password, 12);
     // The flat legacy User.role field is what actually drives
     // x-is-super-admin at login (see api/admin/users/route.ts's own
