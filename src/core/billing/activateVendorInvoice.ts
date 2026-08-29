@@ -62,16 +62,29 @@ export async function activateVendorInvoice(
   if (claimed.planKey) subscription.planKey = claimed.planKey;
   if (claimed.planName) subscription.planName = claimed.planName;
 
+  // Whether this vendor has ever actually paid before -- every new signup
+  // now gets a real currentPeriodEnd immediately from the free Ultimate
+  // trial, so the old "!subscription.currentPeriodEnd" branch below never
+  // actually fires in practice; a vendor's FIRST real purchase was
+  // silently extending from the trial's own end date instead of from
+  // today, stacking the leftover trial days on top of what they paid
+  // for. Per explicit direction ("consider trial start date and plan
+  // start date once purchased... change that to from purchase date...
+  // plan start date and accordingly expiry date") -- a first purchase now
+  // always starts fresh from today, discarding any unused trial time.
+  // validityDays === 0 is the upgrade-proration case (see api/vendor/
+  // billing/upgrade's own comment) -- that must NEVER reset the period,
+  // it's explicitly meant to leave currentPeriodEnd untouched while only
+  // swapping the tier, so it always uses the normal extend logic
+  // regardless of prior-payment history.
+  const hasPriorPaidInvoice =
+    validityDays > 0 &&
+    !!(await VendorBillingInvoice.exists({ vendorId: vendor._id, status: "PAID", _id: { $ne: claimed._id } }));
+
   let start: Date, end: Date;
-  if (!subscription.currentPeriodEnd) {
-    const signupBase = vendor.earlyAccessAnchor || vendor.createdAt;
-    const signupBasedEnd = new Date(signupBase.getTime() + validityDays * 24 * 60 * 60 * 1000);
-    if (signupBasedEnd.getTime() > Date.now()) {
-      start = new Date();
-      end = signupBasedEnd;
-    } else {
-      ({ start, end } = extendPeriod(subscription.currentPeriodEnd, validityDays));
-    }
+  if (validityDays > 0 && !hasPriorPaidInvoice) {
+    start = new Date();
+    end = new Date(start.getTime() + validityDays * 24 * 60 * 60 * 1000);
   } else {
     ({ start, end } = extendPeriod(subscription.currentPeriodEnd, validityDays));
   }
