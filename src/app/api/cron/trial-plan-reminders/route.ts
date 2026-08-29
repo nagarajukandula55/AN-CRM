@@ -62,11 +62,17 @@ export async function GET(req: NextRequest) {
         const status = computeStatus(sub as any);
         const end = (sub as any).currentPeriodEnd ? new Date((sub as any).currentPeriodEnd) : null;
         const daysLeft = end ? Math.max(0, Math.ceil((end.getTime() - now.getTime()) / 86400000)) : null;
+        // Exact expiry date+time, not just a day count -- per explicit
+        // direction ("ensure to have those alerts show with their expiry
+        // time also").
+        const expiryLabel = end
+          ? end.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })
+          : null;
 
         const text =
           status === "EXPIRED" || status === "NOT_SET"
             ? `⏰ <b>Your free trial has ended</b>\n${vendor.companyName || ""}\n\nChoose and purchase a plan to keep using your portal: Billing &amp; Plan in your sidebar.`
-            : `⏰ <b>Free trial reminder</b>\n${vendor.companyName || ""}\n\nYou're on a free trial${daysLeft !== null ? ` — ${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : ""}. Choose and purchase a plan anytime from Billing &amp; Plan in your sidebar to keep uninterrupted access.`;
+            : `⏰ <b>Free trial reminder</b>\n${vendor.companyName || ""}\n\nYou're on a free trial${daysLeft !== null ? ` — ${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : ""}${expiryLabel ? ` (expires ${expiryLabel})` : ""}. Choose and purchase a plan anytime from Billing &amp; Plan in your sidebar to keep uninterrupted access.`;
 
         const ok = await sendTelegramMessage(text, { chatId: vendor.telegramPersonalChatId });
         if (ok) {

@@ -42,10 +42,10 @@ export default function TelegramRequiredBanner() {
 
   const message =
     missingPersonal && missingGroup
-      ? "Link your personal Telegram chat and your shop's group chat -- it's how we reach you (and your team) for support, alerts, and reports until the mobile app is ready."
+      ? "Link your personal Telegram chat and your shop's group chat -- it's how we reach you (and your team) for support, alerts, and your daily business report (included in your plan)."
       : missingPersonal
-      ? "Link your personal Telegram chat -- it's how we reach you for support, alerts, and reports until the mobile app is ready."
-      : "Link your shop's Telegram group too -- so your whole team gets alerts, not just you."
+      ? "Link your personal Telegram chat -- it's how we reach you for support, alerts, and your daily business report (included in your plan)."
+      : "Link your shop's Telegram group too -- so your whole team gets alerts and daily reports, not just you."
 
   return (
     <div className="flex items-center gap-3 bg-warning-soft border-b border-warning/30 px-4 py-2 text-sm text-ink">

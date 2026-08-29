@@ -21,8 +21,12 @@ import { CreditCard, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const STORAGE_KEY = 'an_trial_banner_collapsed'
 
+function formatExpiry(d: Date): string {
+  return d.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
 export default function TrialPlanBanner() {
-  const [state, setState] = useState<{ show: boolean; daysLeft: number | null; expired: boolean } | null>(null)
+  const [state, setState] = useState<{ show: boolean; daysLeft: number | null; expiresAt: string | null; expired: boolean } | null>(null)
   const [collapsed, setCollapsed] = useState(false)
 
   useEffect(() => {
@@ -36,11 +40,11 @@ export default function TrialPlanBanner() {
       .then((d) => {
         if (!d.success) return setState(null)
         const hasPaid = (d.invoices || []).some((inv: any) => inv.status === 'PAID')
-        if (hasPaid) return setState({ show: false, daysLeft: null, expired: false })
+        if (hasPaid) return setState({ show: false, daysLeft: null, expiresAt: null, expired: false })
         const end = d.subscription?.currentPeriodEnd ? new Date(d.subscription.currentPeriodEnd) : null
         const expired = d.status === 'EXPIRED' || d.status === 'NOT_SET' || (end ? end.getTime() < Date.now() : true)
         const daysLeft = end ? Math.max(0, Math.ceil((end.getTime() - Date.now()) / (24 * 60 * 60 * 1000))) : null
-        setState({ show: true, daysLeft: expired ? null : daysLeft, expired })
+        setState({ show: true, daysLeft: expired ? null : daysLeft, expiresAt: end && !expired ? formatExpiry(end) : null, expired })
       })
       .catch(() => setState(null))
   }, [])
@@ -88,6 +92,9 @@ export default function TrialPlanBanner() {
               ? 'Your free Ultimate-tier trial has ended — choose and purchase a plan to keep using your portal.'
               : `You're on a free 7-day Ultimate-tier trial${state.daysLeft !== null ? ` — ${state.daysLeft} day${state.daysLeft === 1 ? '' : 's'} left` : ''}.`}
           </p>
+          {state.expiresAt && (
+            <p className="mt-1 text-xs text-ink-3">Expires {state.expiresAt}</p>
+          )}
           <Link
             href="/vendor/billing"
             className="mt-3 inline-block rounded-control bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover"

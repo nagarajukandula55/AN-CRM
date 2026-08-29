@@ -239,7 +239,7 @@ export default function VendorBillingPage() {
               <span>Billing cycle: {subscription.validityDays} days</span>
               <span>
                 {subscription.currentPeriodEnd
-                  ? `Valid until ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
+                  ? `Valid until ${new Date(subscription.currentPeriodEnd).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}`
                   : "Not yet paid"}
               </span>
             </div>

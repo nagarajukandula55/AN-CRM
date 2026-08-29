@@ -80,9 +80,9 @@ export async function POST(_req: NextRequest) {
             previewText: "One tap to link your account — support, alerts, and business reports all in one place.",
             bodyHtml: `
               <p>Hi ${vendor.contactPerson || vendor.companyName},</p>
-              <p>Telegram is how we reach you for support, account alerts, and your automated business reports — and it only takes one tap to connect.</p>
+              <p>Telegram is how we reach you for support, account alerts, and your <strong>daily business report</strong> (included in your plan) — and it only takes one tap to connect.</p>
               <div style="text-align:center;margin:24px 0;">${emailButton("Connect Telegram", deepLink)}</div>
-              <p style="font-size:13px;color:#8B8F94;">This link is valid for 15 minutes. Once connected, you can also link your shop's own Telegram group from Telegram Alerts in your portal, so your whole team gets alerts too.</p>
+              <p style="font-size:13px;color:#8B8F94;">This link is valid for 15 minutes. Once connected, also link your shop's own Telegram group from Telegram Alerts in your portal, so your whole team gets alerts and reports too.</p>
               <p style="font-size:13px;color:#8B8F94;">Link not working? Log in and open Telegram Alerts in your portal to connect manually: <a href="${baseUrl}/vendor/telegram">${baseUrl}/vendor/telegram</a></p>
             `,
           }),
