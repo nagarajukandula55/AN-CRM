@@ -97,7 +97,7 @@ export default function IntakeReceiptPage() {
               )}
               <div>
                 <h2 className="text-lg font-semibold">Service Handover Report</h2>
-                <p className="text-xs text-gray-500">RO No.: {jobSheet.jobSheetNumber}</p>
+                <p className="text-xs text-gray-700 font-semibold">RO No.: {jobSheet.jobSheetNumber}</p>
               </div>
             </div>
             <p className="text-xs text-gray-400">Receive Date: {fmtDate(jobSheet.createdAt)}</p>

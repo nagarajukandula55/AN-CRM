@@ -58,7 +58,7 @@ function renderBlock(
             <h1 className="text-xl font-bold tracking-tight" style={{ color: accent }}>
               {(block.config?.title as string) || data.docTypeLabel}
             </h1>
-            <p className="text-gray-400 font-mono text-xs mt-1">{data.docNumber}</p>
+            <p className="text-gray-700 font-mono text-xs font-semibold mt-1">{data.docNumber}</p>
           </div>
           <div className="text-right text-xs text-gray-500">
             <p>Date: {data.date}</p>
