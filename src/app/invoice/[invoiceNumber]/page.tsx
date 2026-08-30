@@ -247,14 +247,14 @@ export default function InvoicePage() {
         <td>{safe(i?.name)}</td>
         <td>{safe(i?.hsn)}</td>
         <td>{safe(i?.qty)}</td>
-        <td>₹{safe(i?.rate || i?.price)}</td>
-        <td>₹{safe(i?.discount || 0)}</td>
-        <td>₹{safe(i?.taxable || i?.taxableValue)}</td>
+        <td>₹{safe(i?.rate ?? i?.price)}</td>
+        <td>₹{safe(i?.discount ?? 0)}</td>
+        <td>₹{safe(i?.taxable ?? i?.taxableValue)}</td>
         <td>{safe(i?.gstPercent)}%</td>
         <td>₹{safe(i?.cgst)}</td>
         <td>₹{safe(i?.sgst)}</td>
         <td>₹{safe(i?.igst)}</td>
-        <td>₹{safe(i?.total || i?.lineTotal)}</td>
+        <td>₹{safe(i?.total ?? i?.lineTotal)}</td>
       </tr>
     ))}
 

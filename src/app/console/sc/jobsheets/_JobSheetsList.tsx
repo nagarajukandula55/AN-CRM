@@ -3,7 +3,7 @@
 import { useState, useMemo, Suspense } from 'react'
 import useSWR from 'swr'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Plus, Search, Download, Eye, Printer, FileText, Receipt } from 'lucide-react'
+import { Plus, Search, Download, Eye, Printer, FileText, FilePlus2, Receipt } from 'lucide-react'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 import { useColumnConfig } from '@/lib/hooks/useColumnConfig'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -26,6 +26,7 @@ interface JobSheetRow {
   handedOverAt?: string
   invoiceNumber?: string
   lineItems?: unknown[]
+  estimateGenerated?: boolean
 }
 
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
@@ -154,7 +155,22 @@ function JobSheetsListPageInner({ basePath }: { basePath: string }) {
   if (search.trim()) params.set('search', search.trim())
   params.set('limit', '100')
 
-  const { data, isLoading } = useSWR(businessId ? `/api/crm/jobsheets?${params.toString()}` : null)
+  const { data, isLoading, mutate } = useSWR(businessId ? `/api/crm/jobsheets?${params.toString()}` : null)
+
+  async function handleGenerateEstimate(job: JobSheetRow) {
+    if ((job.lineItems?.length ?? 0) === 0) {
+      alert('Add Parts & Service Lines to this workorder before raising an estimate.')
+      return
+    }
+    const res = await fetch(`/api/crm/jobsheets/${job._id}/generate-estimate`, { method: 'POST' })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok || !body?.success) {
+      alert(body?.message || 'Failed to generate estimate')
+      return
+    }
+    await mutate()
+    openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)
+  }
   const jobSheets: JobSheetRow[] = data?.jobSheets || data?.data || []
 
   const kpis = useMemo(() => {
@@ -340,25 +356,29 @@ function JobSheetsListPageInner({ basePath }: { basePath: string }) {
                               >
                                 <Printer className="w-4 h-4" />
                               </button>
-                              <button
-                                title={(job.lineItems?.length ?? 0) > 0 ? "Print Estimate" : "Add Parts & Service Lines before raising an estimate"}
-                                className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                                disabled={(job.lineItems?.length ?? 0) === 0}
-                                onClick={() => {
-                                  if ((job.lineItems?.length ?? 0) === 0) {
-                                    alert('Add Parts & Service Lines to this workorder before raising an estimate.')
-                                    return
-                                  }
-                                  openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)
-                                }}
-                              >
-                                <FileText className="w-4 h-4" />
-                              </button>
+                              {job.estimateGenerated ? (
+                                <button
+                                  title="Print Estimate"
+                                  className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2"
+                                  onClick={() => openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)}
+                                >
+                                  <FileText className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <button
+                                  title={(job.lineItems?.length ?? 0) > 0 ? "Generate Estimate" : "Add Parts & Service Lines before raising an estimate"}
+                                  className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                                  disabled={(job.lineItems?.length ?? 0) === 0}
+                                  onClick={() => handleGenerateEstimate(job)}
+                                >
+                                  <FilePlus2 className="w-4 h-4" />
+                                </button>
+                              )}
                               {job.invoiceNumber && (
                                 <button
                                   title="Print Invoice"
                                   className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2"
-                                  onClick={() => window.open(`/invoice/${job.invoiceNumber}`, '_blank')}
+                                  onClick={() => openPrintPopup(`/invoice/${job.invoiceNumber}`)}
                                 >
                                   <Receipt className="w-4 h-4" />
                                 </button>

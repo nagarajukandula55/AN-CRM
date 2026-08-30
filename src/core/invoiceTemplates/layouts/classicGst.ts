@@ -139,7 +139,6 @@ function render(data: InvoiceRenderData): string {
 <table class="table">
 <thead><tr><th>#</th><th>Product</th><th>HSN</th><th>Qty</th><th>Rate</th><th>Discount</th><th>Taxable</th><th>GST%</th><th>CGST</th><th>SGST</th><th>IGST</th><th>Total</th></tr></thead>
 <tbody>${itemsRows}
-<tr><td colspan="6" style="text-align:center;font-weight:700;">Total</td><td style="text-align:center;font-weight:700;">₹${t.taxable}</td><td></td><td style="text-align:center;">₹${t.cgst}</td><td style="text-align:center;">₹${t.sgst}</td><td style="text-align:center;">₹${t.igst}</td><td style="text-align:center;font-weight:700;">₹${t.grandTotal}</td></tr>
 </tbody></table>
 ${hsnSummaryHtml}
 <div class="summaryRow">

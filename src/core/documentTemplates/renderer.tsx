@@ -308,12 +308,13 @@ function renderBlock(
       );
       // Footer strip borrowed from the reference service-report layout --
       // shown below the signature line(s) on Workorder/Service Record
-      // prints only, using whatever address/phone/hours/hotline this
-      // document actually has (footerBand for hours/hotline, company for
-      // address/phone -- see adapters.ts).
+      // prints only. Deliberately does NOT repeat address/phone -- the
+      // "company-details" block earlier in the same default block list
+      // already shows both, so including them again here printed the
+      // service center's address twice on every Workorder/Service Record
+      // ("in workorder and service order print why address 2 times").
+      // Only hours/hotline (not shown anywhere else) belong here.
       const footerBandItems = [
-        data.company.address,
-        data.company.phone && `Phone: ${data.company.phone}`,
         data.footerBand?.hours && `Service Hours: ${data.footerBand.hours}`,
         data.footerBand?.hotline && `Hotline: ${data.footerBand.hotline}`,
       ].filter(Boolean) as string[];

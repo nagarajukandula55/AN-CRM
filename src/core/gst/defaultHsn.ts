@@ -11,3 +11,13 @@
  * different HSN) can change it per part exactly as before.
  */
 export const DEFAULT_SPARE_PART_HSN = "8517";
+
+/**
+ * SAC (Services Accounting Code) for a flat "Service Charge"/repair-labour
+ * invoice line -- these aren't goods so an HSN doesn't apply; 9987 covers
+ * "Maintenance, repair and installation (except construction) services".
+ * Same "always editable, never enforced" spirit as DEFAULT_SPARE_PART_HSN
+ * above -- just means the printed invoice line no longer shows a blank
+ * HSN/SAC column for the Service Charge row.
+ */
+export const DEFAULT_SERVICE_CHARGE_HSN = "9987";

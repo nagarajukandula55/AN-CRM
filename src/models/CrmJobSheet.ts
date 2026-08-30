@@ -228,6 +228,14 @@ export interface ICrmJobSheet extends Document {
   invoiceId?: Types.ObjectId; // SalesInvoice created at closure
   invoiceNumber?: string;
 
+  // Set only once staff explicitly click "Generate Estimate" (never
+  // implicitly) AND the job sheet has at least one Parts & Service line
+  // item -- gates the "Print Estimate" action so it isn't offered/usable
+  // for every workorder by default. See
+  // api/crm/jobsheets/[id]/generate-estimate/route.ts.
+  estimateGenerated?: boolean;
+  estimateGeneratedAt?: Date;
+
   // Editing a CLOSED workorder's line items is gated by an OTP sent to
   // the vendor's PERSONAL Telegram chat only (never the group) -- see
   // api/crm/jobsheets/[id]/edit-access/{request,verify}/route.ts. Both
@@ -360,6 +368,9 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
 
     invoiceId: { type: Schema.Types.ObjectId, ref: "SalesInvoice" },
     invoiceNumber: { type: String },
+
+    estimateGenerated: { type: Boolean, default: false },
+    estimateGeneratedAt: { type: Date },
 
     editAccessOtp: { type: String, select: false },
     editAccessOtpExpiresAt: { type: Date, select: false },

@@ -31,6 +31,7 @@ import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
 import { sendVendorAlert } from "@/core/telegram/sendVendorAlert";
 import { categoryRequiresImei, isValidImei } from "@/core/catalog/deviceCategory";
 import { round2 } from "@/core/gst/money";
+import { DEFAULT_SERVICE_CHARGE_HSN } from "@/core/gst/defaultHsn";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -217,11 +218,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       return {
         description: item.description || "",
+        hsnCode: item.hsnCode || "",
         quantity: item.quantity || 1,
         unit: item.unit || "pcs",
         unitPrice: item.unitPrice || 0,
         taxRate: effectiveTaxRate,
         taxAmount: totalGST,
+        assessableValue: lineAmt,
         cgstRate, cgstAmount,
         sgstRate, sgstAmount,
         igstRate, igstAmount,
@@ -238,11 +241,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (serviceCharge > 0) {
       invoiceItems.push({
         description: "Service Charge",
+        hsnCode: DEFAULT_SERVICE_CHARGE_HSN,
         quantity: 1,
         unit: "pcs",
         unitPrice: serviceCharge,
         taxRate: 0,
         taxAmount: 0,
+        assessableValue: serviceCharge,
         cgstRate: 0, cgstAmount: 0,
         sgstRate: 0, sgstAmount: 0,
         igstRate: 0, igstAmount: 0,

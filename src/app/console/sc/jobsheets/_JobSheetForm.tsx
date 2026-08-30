@@ -90,6 +90,7 @@ interface JobSheet {
   deviceModelId?: { name?: string } | string
   status: string; createdAt: string; lineItems: LineItem[]; taxApplyEnabled?: boolean
   remark?: string; ccoName?: string; invoiceNumber?: string; invoiceId?: string; cancelReason?: string
+  estimateGenerated?: boolean
   engineerAssignedAt?: string; repairInProgressAt?: string; partPendingAt?: string; repairResumedAt?: string
   completedAt?: string; handedOverAt?: string
   paymentCollected?: number; paymentMode?: string; paymentCollectedByName?: string
@@ -1084,14 +1085,37 @@ export default function SCJobSheetScreen({
           <>
             <Button variant="secondary" size="sm" onClick={() => router.push(basePath)} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
             <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/print/jobsheets/${job._id}`)} icon={<Printer className="w-4 h-4" />}>Print Workorder</Button>
-            {inRepair && (
+            {inRepair && (job.estimateGenerated ? (
               <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)} icon={<FileText className="w-4 h-4" />}>Print Estimate</Button>
-            )}
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={(job.lineItems?.length ?? 0) === 0}
+                onClick={async () => {
+                  if ((job.lineItems?.length ?? 0) === 0) {
+                    alert('Add Parts & Service Lines to this workorder before raising an estimate.')
+                    return
+                  }
+                  const res = await fetch(`/api/crm/jobsheets/${job._id}/generate-estimate`, { method: 'POST' })
+                  const body = await res.json().catch(() => ({}))
+                  if (!res.ok || !body?.success) {
+                    alert(body?.message || 'Failed to generate estimate')
+                    return
+                  }
+                  await fetchJob()
+                  openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)
+                }}
+                icon={<FileText className="w-4 h-4" />}
+              >
+                Generate Estimate
+              </Button>
+            ))}
             {(job.status === 'REPAIR_COMPLETED' || job.status === 'CLOSED') && (
               <>
                 <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/print/jobsheets/${job._id}/service-record`)} icon={<FileText className="w-4 h-4" />}>Service Order</Button>
-                {job.invoiceId && (
-                  <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/print/invoices/${job.invoiceId}`)} icon={<FileText className="w-4 h-4" />}>Invoice</Button>
+                {job.invoiceNumber && (
+                  <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/invoice/${job.invoiceNumber}`)} icon={<FileText className="w-4 h-4" />}>Invoice</Button>
                 )}
               </>
             )}
