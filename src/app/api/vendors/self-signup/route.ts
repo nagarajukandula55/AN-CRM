@@ -19,7 +19,7 @@ import { findPlan, type PlanKey } from "@/core/pricing/plans";
 
 const VALID_PLAN_KEYS: PlanKey[] = ["BASIC", "ULTIMATE"];
 
-const TRIAL_DAYS = 7;
+const TRIAL_DAYS = 15;
 
 // ONE-TIME pre-launch goodwill window (see VendorProfile.earlyAccessAnchor's
 // own comment): anyone signing up before this cutoff gets both their trial

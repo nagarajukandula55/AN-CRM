@@ -17,6 +17,7 @@ import {
   mbfGradientText,
   mbfCard,
 } from './mbfTheme'
+import { PLANS_BY_MODE, currentMonthlyRate, isLaunchPricingActive } from '@/core/pricing/plans'
 
 /**
  * My Biz Flow (public product name -- AN-CRM is this repo's internal name
@@ -232,6 +233,41 @@ export default function CrmHomePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── Pricing snapshot -- a quick glance at rates, "Know more" links
+          through to the full /pricing page for the actual comparison
+          table/billing-period toggle. Reads from the same core/pricing/
+          plans.ts source of truth as /pricing, so it can never drift. ── */}
+      <section className="w-full px-6 sm:px-12 py-20 border-t border-white/5">
+        <div className="text-center mb-10">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-orange-300">Pricing</p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-white">Simple, transparent rates</h2>
+          {isLaunchPricingActive() && (
+            <div className="inline-flex items-center gap-1.5 mt-4 rounded-full border border-green-400/30 bg-white/5 text-green-300 text-xs font-medium px-3.5 py-1.5">
+              <Sparkles className="h-3.5 w-3.5" /> Launch pricing — limited time
+            </div>
+          )}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          {PLANS_BY_MODE.SC.map((plan) => (
+            <div key={plan.key} className={`${mbfCard} p-6 text-center ${plan.highlight ? '!border-sky-400/40' : ''}`}>
+              <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
+              <div className="mt-3 flex items-baseline justify-center gap-1">
+                <span className="text-3xl font-semibold tabular-nums text-white">₹{currentMonthlyRate(plan).toLocaleString('en-IN')}</span>
+                <span className="text-gray-500 text-sm">/month + GST</span>
+              </div>
+              {plan.freeTrialDays && (
+                <p className="text-xs text-green-300 mt-2 font-medium">{plan.freeTrialDays}-day free trial</p>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="text-center mt-10">
+          <Link href="/pricing" className={mbfButtonSecondary}>
+            Know more <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 

@@ -51,6 +51,10 @@ export const VENDOR_MODULE_KEYS = [
   "vendor_products",
   "logistics",
   "finance",
+  // Ledger Book/P&L/Expenses only -- split out of "finance" (which stays
+  // Pro-tier for invoicing/documents/statement) so these three can be
+  // gated to Ultimate only. See core/pricing/plans.ts vendorModuleKeys.
+  "finance-advanced",
   "gst",
   "crm",
   "crm_jobsheets",

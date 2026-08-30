@@ -83,9 +83,9 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   { href: '/vendor/masters/solutions', label: 'Solutions', icon: Smartphone, modules: ['crm_jobsheets', 'crm'], section: 'Workorders' },
 
   { href: '/vendor/statement', label: 'Financial Statement', icon: BarChart3, modules: ['finance'], section: 'Billing' },
-  { href: '/vendor/ledger', label: 'Ledger Book', icon: FileBarChart, modules: ['finance'], section: 'Billing' },
-  { href: '/vendor/profit-loss', label: 'Profit & Loss', icon: PieChart, modules: ['finance'], section: 'Billing' },
-  { href: '/vendor/expenses', label: 'Expenses', icon: HandCoins, modules: ['finance'], section: 'Billing' },
+  { href: '/vendor/ledger', label: 'Ledger Book', icon: FileBarChart, modules: ['finance-advanced'], section: 'Billing' },
+  { href: '/vendor/profit-loss', label: 'Profit & Loss', icon: PieChart, modules: ['finance-advanced'], section: 'Billing' },
+  { href: '/vendor/expenses', label: 'Expenses', icon: HandCoins, modules: ['finance-advanced'], section: 'Billing' },
   // Migrated from console/common/sales -- raising a GST/Non-GST sales
   // invoice directly to an end customer.
   { href: '/vendor/documents/sales-invoices', label: 'Sales Invoices', icon: Receipt, modules: ['finance'], section: 'Billing' },

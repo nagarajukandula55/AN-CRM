@@ -343,7 +343,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       sendVendorAlert(
         jobSheet.vendorId.toString(),
         "WORKORDER_CLOSED",
-        `Workorder ${jobSheet.jobSheetNumber} closed and invoiced (${invoice.invoiceNumber}) for ${jobSheet.customerName}.`,
+        `Workorder ${jobSheet.jobSheetNumber} closed and invoiced (${invoice.invoiceNumber}) for ${jobSheet.customerName}. Engineer: ${jobSheet.assignedToName || "N/A"}. Collected by: ${(jobSheet as any).paymentCollectedByName || "N/A"} via ${(jobSheet as any).paymentMode || "N/A"}, amount ₹${invoice.grandTotal ?? 0}.`,
         {
           workorderNumber: jobSheet.jobSheetNumber || "",
           customerName: jobSheet.customerName || "",
@@ -355,9 +355,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           deviceModel: jobSheet.deviceModel || "",
           imei: jobSheet.imeiOrSerialNumber || "",
           issueDescription: jobSheet.issueDescription || "",
+          faultReported: jobSheet.title || "",
           engineerName: jobSheet.assignedToName || "",
           registeredByName: (jobSheet as any).ccoName || "",
           cashCollectedByName: (jobSheet as any).paymentCollectedByName || "",
+          paymentMode: (jobSheet as any).paymentMode || "",
+          paymentValue: String(invoice.grandTotal ?? ""),
         }
       ).catch(() => {});
     }

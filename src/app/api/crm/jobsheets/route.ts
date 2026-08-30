@@ -325,7 +325,7 @@ export async function POST(req: NextRequest) {
       sendVendorAlert(
         String(effectiveVendorId),
         "NEW_WORKORDER",
-        `New workorder ${jobSheet.jobSheetNumber} created for ${jobSheet.customerName} (${jobSheet.phone}).`,
+        `New workorder ${jobSheet.jobSheetNumber} created for ${jobSheet.customerName} (${jobSheet.phone}). Logged by: ${(jobSheet as any).ccoName || "N/A"}.`,
         {
           workorderNumber: jobSheet.jobSheetNumber || "",
           customerName: jobSheet.customerName || "",
@@ -339,9 +339,12 @@ export async function POST(req: NextRequest) {
           deviceModel: jobSheet.deviceModel || "",
           imei: jobSheet.imeiOrSerialNumber || "",
           issueDescription: jobSheet.issueDescription || "",
+          faultReported: jobSheet.title || "",
           engineerName: jobSheet.assignedToName || "",
           registeredByName: (jobSheet as any).ccoName || "",
           cashCollectedByName: (jobSheet as any).paymentCollectedByName || "",
+          paymentMode: (jobSheet as any).paymentMode || "",
+          paymentValue: "",
         }
       ).catch(() => {});
     }

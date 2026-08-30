@@ -13,7 +13,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { PLANS_BY_MODE, type OperatingMode } from "@/core/pricing/plans";
 import { getAllowedModuleKeys } from "@/core/pricing/planAccess";
 
-const TRIAL_DAYS_DEFAULT = 7;
+const TRIAL_DAYS_DEFAULT = 15;
 
 export async function GET(req: NextRequest) {
   try {

@@ -355,7 +355,7 @@ By signing below, both parties agree to the terms above.`;
     await vendor.save();
 
     const now = new Date();
-    const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const trialEnd = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
     // SC is the only mode this platform supports now (Brand/POS removed,
     // confirmed zero production usage before deletion) -- vendor.appliedAs
     // is always "SC" in practice, but the "BRAND" fallback literal this

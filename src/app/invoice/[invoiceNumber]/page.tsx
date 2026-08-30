@@ -43,7 +43,7 @@ export default function InvoicePage() {
     fetch(`/api/invoice/view/${invoiceNumber}`)
       .then((r) => r.json())
       .then((res) => {
-        setData(res);
+        setData(res && res.success !== false ? res : null);
         setLoading(false);
       })
       .catch(() => setLoading(false));

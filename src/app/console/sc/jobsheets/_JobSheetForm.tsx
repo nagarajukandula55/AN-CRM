@@ -314,7 +314,29 @@ export default function SCJobSheetScreen({
     fileBackupDescription: '' as 'YES' | 'NO' | '',
     title: '', remark: '', ccoName: '',
   })
-  useEffect(() => { if (currentUserName && !intake.ccoName) setIntake(p => ({ ...p, ccoName: currentUserName })) }, [currentUserName])
+  // "Logged by" is deliberately NOT auto-filled with the signed-in user's
+  // name anymore -- per explicit direction, the person actually taking
+  // intake (front-desk staff) often isn't the logged-in account, so
+  // defaulting it silently was recording the wrong name. Instead this is a
+  // pick-from-recent-names-or-type-a-new-one combobox (datalist), backed
+  // by a small per-browser recent-names list in localStorage.
+  const LOGGED_BY_STORAGE_KEY = 'an-crm-logged-by-names'
+  const [loggedByOptions, setLoggedByOptions] = useState<string[]>([])
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LOGGED_BY_STORAGE_KEY)
+      if (raw) setLoggedByOptions(JSON.parse(raw))
+    } catch { /* ignore */ }
+  }, [])
+  function rememberLoggedByName(name: string) {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    setLoggedByOptions(prev => {
+      const next = [trimmed, ...prev.filter(n => n !== trimmed)].slice(0, 20)
+      try { localStorage.setItem(LOGGED_BY_STORAGE_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }
 
   // Customer lookup by contact number -- typing a phone number searches
   // existing customers for this business; picking a match autofills the
@@ -405,6 +427,7 @@ export default function SCJobSheetScreen({
     }
     setCreating(true)
     setIntakeError(null)
+    rememberLoggedByName(intake.ccoName)
     try {
       const { brandId, deviceModelId } = await resolveBrandAndModelIds(intake.brandName, intake.deviceModel)
       const res = await fetch('/api/crm/jobsheets', {
@@ -978,8 +1001,18 @@ export default function SCJobSheetScreen({
                     <input value={intake.remark} onChange={e => setIntake(p => ({ ...p, remark: e.target.value }))} className={inputCls} />
                   </div>
                   <div>
-                    <label className={labelCls}>CCO Name</label>
-                    <input value={intake.ccoName} onChange={e => setIntake(p => ({ ...p, ccoName: e.target.value }))} className={inputCls} />
+                    <label className={labelCls}>Logged By (CCO Name) *</label>
+                    <input
+                      required
+                      list="cco-name-options"
+                      placeholder="Select recent name or type a new one"
+                      value={intake.ccoName}
+                      onChange={e => setIntake(p => ({ ...p, ccoName: e.target.value }))}
+                      className={inputCls}
+                    />
+                    <datalist id="cco-name-options">
+                      {loggedByOptions.map(name => <option key={name} value={name} />)}
+                    </datalist>
                   </div>
                 </div>
               </Card>

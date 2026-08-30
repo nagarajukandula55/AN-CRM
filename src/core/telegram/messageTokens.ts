@@ -14,12 +14,16 @@
 // [id]/close/route.ts on close). Per explicit direction ("we are taking
 // brand model IMEI etc bit nothing is available for tokens").
 const JOBSHEET_TOKENS = [
-  "product", "brand", "deviceModel", "imei", "issueDescription", "engineerName", "email", "address", "city", "state",
+  "product", "brand", "deviceModel", "imei", "issueDescription", "faultReported", "engineerName", "email", "address", "city", "state",
   // Who registered/took intake for this workorder (CrmJobSheet.ccoName)
   // and who collected payment at handover (paymentCollectedByName) --
   // per explicit direction ("tokens of workorder registered person name
   // and cash collected by name and engineer name").
   "registeredByName", "cashCollectedByName",
+  // Payment mode/value collected at handover (CrmJobSheet.paymentMode /
+  // invoice grandTotal) -- per explicit direction to surface these in the
+  // closed-workorder notification alongside who collected it.
+  "paymentMode", "paymentValue",
 ];
 
 const REPORT_TOKENS = [

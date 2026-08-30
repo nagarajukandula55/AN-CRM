@@ -113,9 +113,10 @@ export default function PricingPage() {
                     <span className="text-gray-500 text-sm">/month + GST</span>
                   </div>
                   {periodLabel.months > 1 && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      {fmt(price.total)} + GST billed every {periodLabel.months} months
-                    </p>
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-green-400/30 bg-green-400/10 px-3 py-1">
+                      <span className="text-sm font-semibold text-green-300">{fmt(price.total)} + GST</span>
+                      <span className="text-[11px] text-green-300/70">total for {periodLabel.label.toLowerCase()} ({periodLabel.months} months)</span>
+                    </div>
                   )}
                   {plan.freeTrialDays && (
                     <p className="text-xs text-green-300 mt-1 font-medium">{plan.freeTrialDays}-day free trial</p>

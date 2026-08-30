@@ -26,9 +26,14 @@ export const OPERATING_MODES: { key: OperatingMode; label: string; blurb: string
 // actually iterates to offer choices. TWO_YEARLY's discount widened from
 // 35% to 40% so the 2-year commitment reads as a meaningfully bigger win
 // than yearly, not just 5pp more for double the lock-in.
+// Discounts widened again (30/45 -> 35/55) per explicit direction --
+// early-stage priority is customer acquisition/getting shops onto the
+// platform first, revenue optimization comes after; 2-year still reads as
+// a meaningfully bigger commitment discount than yearly (20pp spread,
+// same as before).
 export const BILLING_PERIODS: { key: BillingPeriod; label: string; months: number; discountPct: number }[] = [
-  { key: "YEARLY", label: "Yearly", months: 12, discountPct: 30 },
-  { key: "TWO_YEARLY", label: "2 Years", months: 24, discountPct: 45 },
+  { key: "YEARLY", label: "Yearly", months: 12, discountPct: 35 },
+  { key: "TWO_YEARLY", label: "2 Years", months: 24, discountPct: 55 },
 ];
 
 /**
@@ -121,7 +126,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // applying at LAUNCH_PRICING_CUTOVER.
       monthlyPriceINR: 1199,
       launchPriceINR: 549,
-      freeTrialDays: 7,
+      freeTrialDays: 15,
       seatLimit: "1 login (single-screen)",
       // Collapsed from a 3-tier ladder (Basic/Pro/Ultimate) to 2 tiers per
       // explicit direction -- the old Pro tier's differentiators (report
@@ -148,14 +153,11 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Delivery Challans",
         "Credit Accounts for repeat customers",
         "Financial Statement — your full running account",
-        "Ledger Book — party-wise running balance",
-        "Profit & Loss reports",
-        "Expense tracking",
         "Custom Report Builder (build your own reports & charts)",
         "Analytics dashboard",
         "UPI payment QR on every invoice",
         "Invoice ZIP export, ready for GST filing",
-        "7-day free trial, full access, no card required",
+        "15-day free trial, full access, no card required",
         "Priority support",
       ],
       moduleKeys: [
@@ -167,8 +169,10 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // Core operational vendor-portal nav (Materials/Warehouses/
       // Workorders/Stock Transfers/Invoices/Statement) plus the former
       // Pro-only fault_codes/solutions library -- see this file's
-      // Plan.vendorModuleKeys comment. Never a tier differentiator below
-      // Ultimate's real multi-center/automation set.
+      // Plan.vendorModuleKeys comment. Deliberately does NOT include
+      // "finance-advanced" (Ledger Book/P&L/Expenses) -- those moved to
+      // Ultimate-only per explicit direction; Pro keeps plain "finance"
+      // (invoicing/documents/statement).
       vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
     },
     {
@@ -190,6 +194,9 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // public plan surfaces for now.
       features: [
         "Everything in Pro",
+        "Ledger Book — party-wise running balance",
+        "Profit & Loss reports",
+        "Expense tracking",
         "Unlimited sub-vendor / multi-center hierarchy under one login",
         "Automated Telegram business reports (daily/weekly/monthly/yearly, with charts)",
         "Dedicated onboarding",
@@ -201,12 +208,14 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "quotations", "delivery-challans", "credit-notes", "debit-notes", "proforma-invoices",
         "report-builder", "analytics", "sub-accounts", "telegram-reports",
       ],
-      // Same operational set as Pro -- Ultimate's real differentiators
-      // (sub-vendor hierarchy, Telegram automated reports) live on the
-      // CONSOLE side (moduleKeys' "sub-accounts"/"telegram-reports"
-      // above), not as vendor-portal nav items, so there's nothing more
-      // to unlock here.
-      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
+      // Same operational set as Pro plus "finance-advanced" -- the one
+      // real vendor-portal differentiator below the console-side
+      // sub-vendor/Telegram set above: Ledger Book/P&L/Expenses moved
+      // here from Pro per explicit direction ("those supposed to be in
+      // ultimate like ledger book, P&L report, expenses"), since they'd
+      // been sharing Pro's "finance" key with plain invoicing (which stays
+      // on Pro) -- see vendorAccess.service.ts's VENDOR_MODULE_KEYS.
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "finance-advanced", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
       commsQuota: { whatsappPerMonth: 1000 },
     },
   ],

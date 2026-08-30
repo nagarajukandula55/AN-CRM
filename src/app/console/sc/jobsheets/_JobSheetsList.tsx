@@ -3,7 +3,7 @@
 import { useState, useMemo, Suspense } from 'react'
 import useSWR from 'swr'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Plus, Search, Download, Eye, Printer, FileText } from 'lucide-react'
+import { Plus, Search, Download, Eye, Printer, FileText, Receipt } from 'lucide-react'
 import { useActiveBusinessId } from '@/hooks/useActiveBusinessId'
 import { useColumnConfig } from '@/lib/hooks/useColumnConfig'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -24,6 +24,8 @@ interface JobSheetRow {
   status: string
   createdAt: string
   handedOverAt?: string
+  invoiceNumber?: string
+  lineItems?: unknown[]
 }
 
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
@@ -339,12 +341,28 @@ function JobSheetsListPageInner({ basePath }: { basePath: string }) {
                                 <Printer className="w-4 h-4" />
                               </button>
                               <button
-                                title="Print Estimate"
-                                className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2"
-                                onClick={() => openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)}
+                                title={(job.lineItems?.length ?? 0) > 0 ? "Print Estimate" : "Add Parts & Service Lines before raising an estimate"}
+                                className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                                disabled={(job.lineItems?.length ?? 0) === 0}
+                                onClick={() => {
+                                  if ((job.lineItems?.length ?? 0) === 0) {
+                                    alert('Add Parts & Service Lines to this workorder before raising an estimate.')
+                                    return
+                                  }
+                                  openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)
+                                }}
                               >
                                 <FileText className="w-4 h-4" />
                               </button>
+                              {job.invoiceNumber && (
+                                <button
+                                  title="Print Invoice"
+                                  className="p-1.5 rounded-control hover:bg-surface-3 text-ink-2"
+                                  onClick={() => window.open(`/invoice/${job.invoiceNumber}`, '_blank')}
+                                >
+                                  <Receipt className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         )

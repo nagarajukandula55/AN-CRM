@@ -33,8 +33,29 @@ export function DocumentRenderer({
   const accent = accentColor || "#111827";
   const resolvedLogo = logoUrl || data.company.logoUrl;
 
+  // The workorder/document number only ever renders as part of a "header"
+  // block below -- if a business's saved template for this doc type has no
+  // header block at all (deleted/reordered in the template builder, or a
+  // fallback template that never had one), the number silently never
+  // appeared anywhere on the printed page ("workorder number is not at all
+  // there in the print"). Guarantee it always shows by rendering a minimal
+  // fallback header whenever the configured blocks don't already include one.
+  const hasHeaderBlock = blocks.some((b) => b.type === "header");
+
   return (
     <div className="text-sm text-gray-900">
+      {!hasHeaderBlock && (
+        <div className="mb-6 flex items-start justify-between border-b pb-4" style={{ borderColor: accent }}>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight" style={{ color: accent }}>{data.docTypeLabel}</h1>
+            <p className="text-gray-700 font-mono text-xs font-semibold mt-1">{data.docNumber}</p>
+          </div>
+          <div className="text-right text-xs text-gray-500">
+            <p>Date: {data.date}</p>
+            {data.status && <p>Status: {data.status}</p>}
+          </div>
+        </div>
+      )}
       {blocks.map((block) => (
         <div key={block.id} className="mb-6 last:mb-0">
           {renderBlock(block, data, accent, resolvedLogo)}
