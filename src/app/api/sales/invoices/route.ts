@@ -262,6 +262,12 @@ export async function POST(req: NextRequest) {
         unitPrice:   item.unitPrice   || item.price || 0,
         taxRate:     rawTaxRate,
         taxAmount:   totalGST,
+        // e-Invoice (INV-01) "Assessable Value" -- taxable value for this
+        // line after discount, before tax. Was never set here (only
+        // schema default 0), which fed the invoice view's "Taxable" column
+        // showing N/A/0 for every manually-created sales invoice and would
+        // have under-reported the taxable value on real GST filings.
+        assessableValue: lineAmt,
         cgstRate, cgstAmount,
         sgstRate, sgstAmount,
         igstRate, igstAmount,

@@ -214,19 +214,24 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center p-4">
-      {/* Background glow */}
+      {/* Background glow -- sky/orange to match the logo's own brand
+          gradient (see marketing/mbfTheme.ts), not the generic app accent
+          colors this used to borrow. */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute left-1/4 top-1/4 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-soft blur-[120px]" />
-        <div className="absolute right-1/4 bottom-1/4 h-80 w-80 rounded-full bg-info-soft blur-[100px]" />
+        <div className="absolute left-1/4 top-1/4 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-400/20 blur-[120px]" />
+        <div className="absolute right-1/4 bottom-1/4 h-80 w-80 rounded-full bg-orange-400/20 blur-[100px]" />
       </div>
 
       <div className="relative w-full max-w-md">
         <div className="rounded-card border border-border bg-surface shadow-card p-8 md:p-10">
           {/* Real logo -- this page had no brand mark at all before, just a
               text badge, per explicit direction ("hope you have put logo
-              on vendor login pages also that makes our brand"). */}
-          <div className="mb-8">
-            <Image src="/logo-mark.png" alt="My Biz Flow" width={64} height={64} className="h-16 w-16 object-contain" priority />
+              on vendor login pages also that makes our brand"). Centered
+              and enlarged (was left-aligned at 64px) per explicit
+              direction ("logo on login page should be center aligned...
+              increase size a bit"). */}
+          <div className="mb-8 flex flex-col items-center text-center">
+            <Image src="/logo-mark.png" alt="My Biz Flow" width={80} height={80} className="h-20 w-20 object-contain" priority />
             <h1 className="mt-4 text-3xl font-semibold text-ink tracking-tight">Sign in</h1>
             <p className="mt-2 text-sm text-ink-3">
               Run your service center from one account.

@@ -154,6 +154,15 @@ export default function VendorProfilePage() {
   // image prints; the document shows a digital-document notice instead.
   const [documentSignatureUrl, setDocumentSignatureUrl] = useState('')
   const [savingSignature, setSavingSignature] = useState(false)
+  // Whether/where the Customer Logo above prints on documents, whether the
+  // "digital document, no signature required" placeholder shows when no
+  // signature image is set, and whether the workorder print shows who
+  // logged the intake -- all default OFF, per explicit direction.
+  const [documentLogoEnabled, setDocumentLogoEnabled] = useState(false)
+  const [documentLogoPosition, setDocumentLogoPosition] = useState<'LEFT' | 'CENTER' | 'RIGHT'>('LEFT')
+  const [showDigitalDocumentNotice, setShowDigitalDocumentNotice] = useState(false)
+  const [showCcoNameOnPrint, setShowCcoNameOnPrint] = useState(false)
+  const [savingDocDisplay, setSavingDocDisplay] = useState(false)
   // Service Record settings -- printed on the document generated after
   // closing a job sheet (see /vendor/crm/jobsheets/[id]/service-record).
   // Owner/Manager only, same as the rest of this section.
@@ -196,6 +205,10 @@ export default function VendorProfilePage() {
       setCustomerLogoUrl(settingsData.customerLogoUrl || '')
       setLogoUrl(settingsData.logoUrl || '')
       setDocumentSignatureUrl(settingsData.documentSignatureUrl || '')
+      setDocumentLogoEnabled(Boolean(settingsData.documentLogoEnabled))
+      setDocumentLogoPosition(settingsData.documentLogoPosition || 'LEFT')
+      setShowDigitalDocumentNotice(Boolean(settingsData.showDigitalDocumentNotice))
+      setShowCcoNameOnPrint(Boolean(settingsData.showCcoNameOnPrint))
       setUpiId(settingsData.upiId || '')
     }
   }, [settingsData])
@@ -364,6 +377,24 @@ export default function VendorProfilePage() {
       setSettingsMessage('Failed to save.')
     } finally {
       setSavingCustomerLogo(false)
+    }
+  }
+
+  async function saveDocDisplaySettings(next: { documentLogoEnabled?: boolean; documentLogoPosition?: 'LEFT' | 'CENTER' | 'RIGHT'; showDigitalDocumentNotice?: boolean; showCcoNameOnPrint?: boolean }) {
+    setSavingDocDisplay(true)
+    setSettingsMessage('')
+    try {
+      const res = await fetch('/api/vendor/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(next),
+      })
+      const d = await res.json()
+      setSettingsMessage(d.success ? 'Saved.' : d.error || 'Failed to save.')
+    } catch {
+      setSettingsMessage('Failed to save.')
+    } finally {
+      setSavingDocDisplay(false)
     }
   }
 
@@ -969,6 +1000,28 @@ export default function VendorProfilePage() {
                 {savingCustomerLogo ? 'Saving…' : 'Save'}
               </Button>
             </div>
+            <div className="mt-3 flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={documentLogoEnabled}
+                  onChange={(e) => { setDocumentLogoEnabled(e.target.checked); saveDocDisplaySettings({ documentLogoEnabled: e.target.checked }) }}
+                />
+                Print this logo on Workorder / Estimate / Invoice / Service Record
+              </label>
+              {documentLogoEnabled && (
+                <select
+                  className="rounded-control border border-border bg-surface px-2 py-1 text-sm text-ink"
+                  value={documentLogoPosition}
+                  onChange={(e) => { const v = e.target.value as 'LEFT' | 'CENTER' | 'RIGHT'; setDocumentLogoPosition(v); saveDocDisplaySettings({ documentLogoPosition: v }) }}
+                >
+                  <option value="LEFT">Left</option>
+                  <option value="CENTER">Center</option>
+                  <option value="RIGHT">Right</option>
+                </select>
+              )}
+            </div>
+            <p className="text-xs text-ink-3 mt-1">Off by default -- documents print without a logo until enabled.</p>
           </div>
 
           <div className="mt-5 pt-5 border-t border-border">
@@ -995,6 +1048,26 @@ export default function VendorProfilePage() {
               <Button onClick={saveDocumentSignature} disabled={savingSignature}>
                 {savingSignature ? 'Saving…' : 'Save'}
               </Button>
+            </div>
+            <div className="mt-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={showDigitalDocumentNotice}
+                  onChange={(e) => { setShowDigitalDocumentNotice(e.target.checked); saveDocDisplaySettings({ showDigitalDocumentNotice: e.target.checked }) }}
+                />
+                Show &quot;Digital document — no physical signature required&quot; when no signature image is set
+              </label>
+              <p className="text-xs text-ink-3">Off by default -- an unsigned document just shows a blank signature line instead.</p>
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={showCcoNameOnPrint}
+                  onChange={(e) => { setShowCcoNameOnPrint(e.target.checked); saveDocDisplaySettings({ showCcoNameOnPrint: e.target.checked }) }}
+                />
+                Show &quot;Logged By&quot; (CCO name) on the printed Workorder
+              </label>
+              <p className="text-xs text-ink-3">Off by default.</p>
             </div>
           </div>
 

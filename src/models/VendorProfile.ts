@@ -284,6 +284,17 @@ export interface IVendorProfile extends Document {
   // completely different purpose).
   logoUrl?: string;
   documentSignatureUrl?: string;
+  // Whether logoUrl above prints on Workorder/Estimate/Invoice/Service
+  // Record documents, and where -- default off (see api/vendor/settings
+  // route's own comment on why these live per-vendor here, not Business).
+  documentLogoEnabled?: boolean;
+  documentLogoPosition?: "LEFT" | "CENTER" | "RIGHT";
+  // "Digital document — no physical signature required" placeholder text
+  // shown when documentSignatureUrl is blank -- default off.
+  showDigitalDocumentNotice?: boolean;
+  // Whether the workorder print shows who logged the intake (CCO name) --
+  // default off.
+  showCcoNameOnPrint?: boolean;
   applyTaxOnB2CBilling?: boolean;
   upiId?: string;
   bankAccountName?: string;
@@ -441,6 +452,10 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     customerLogoUrl: { type: String, default: '' },
     logoUrl: { type: String, default: '' },
     documentSignatureUrl: { type: String, default: '' },
+    documentLogoEnabled: { type: Boolean, default: false },
+    documentLogoPosition: { type: String, enum: ["LEFT", "CENTER", "RIGHT"], default: "LEFT" },
+    showDigitalDocumentNotice: { type: Boolean, default: false },
+    showCcoNameOnPrint: { type: Boolean, default: false },
     applyTaxOnB2CBilling: { type: Boolean, default: true },
     workorderTerms: { type: String, default: '' },
     serviceOrderTerms: { type: String, default: '' },

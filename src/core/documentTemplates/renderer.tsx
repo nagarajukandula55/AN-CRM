@@ -31,7 +31,17 @@ export function DocumentRenderer({
   data: DocumentRenderData;
 }) {
   const accent = accentColor || "#111827";
-  const resolvedLogo = logoUrl || data.company.logoUrl;
+  // A template-configured logo (admin's own template builder setting)
+  // always takes precedence and always shows. A vendor's own uploaded logo
+  // (data.company.logoUrl, Business.customerLogoUrl) only shows when that
+  // vendor has explicitly enabled it -- per explicit direction ("give
+  // option... enable to disable"), default off so no business suddenly
+  // gets an unconfigured logo on live documents.
+  const resolvedLogo = logoUrl || (data.company.logoEnabled ? data.company.logoUrl : undefined);
+  // A template-configured logo (admin's own setting) always keeps the
+  // original right-aligned layout; only a vendor's own logo respects their
+  // configured position.
+  const resolvedLogoPosition = logoUrl ? "RIGHT" : (data.company.logoPosition || "LEFT");
 
   // The workorder/document number only ever renders as part of a "header"
   // block below -- if a business's saved template for this doc type has no
@@ -58,7 +68,7 @@ export function DocumentRenderer({
       )}
       {blocks.map((block) => (
         <div key={block.id} className="mb-6 last:mb-0">
-          {renderBlock(block, data, accent, resolvedLogo)}
+          {renderBlock(block, data, accent, resolvedLogo, resolvedLogoPosition)}
         </div>
       ))}
     </div>
@@ -69,7 +79,8 @@ function renderBlock(
   block: RenderableBlock,
   data: DocumentRenderData,
   accent: string,
-  logoUrl?: string
+  logoUrl?: string,
+  logoPosition: "LEFT" | "CENTER" | "RIGHT" = "RIGHT"
 ) {
   switch (block.type) {
     case "header":
@@ -88,22 +99,47 @@ function renderBlock(
         </div>
       );
 
-    case "company-details":
-      return (
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">From</p>
-            <p className="font-semibold">{data.company.name}</p>
-            {data.company.address && <p className="text-xs text-gray-500">{data.company.address}</p>}
-            {data.company.phone && <p className="text-xs text-gray-500">{data.company.phone}</p>}
-            {data.company.gstin && <p className="text-xs text-gray-500">GSTIN: {data.company.gstin}</p>}
-          </div>
-          {logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt="" className="h-14 max-w-[160px] object-contain" />
-          )}
+    case "company-details": {
+      // Adaptive layout for the logo position (LEFT/CENTER/RIGHT) -- per
+      // explicit direction ("logo position as well so that you just align
+      // adaptive layout of documents").
+      const textBlock = (
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">From</p>
+          <p className="font-semibold">{data.company.name}</p>
+          {data.company.address && <p className="text-xs text-gray-500">{data.company.address}</p>}
+          {data.company.phone && <p className="text-xs text-gray-500">{data.company.phone}</p>}
+          {data.company.gstin && <p className="text-xs text-gray-500">GSTIN: {data.company.gstin}</p>}
         </div>
       );
+      const logoImg = logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logoUrl} alt="" className="h-14 max-w-[160px] object-contain" />
+      ) : null;
+      if (!logoImg) return <div className="flex items-start justify-between">{textBlock}</div>;
+      if (logoPosition === "CENTER") {
+        return (
+          <div className="flex flex-col items-center text-center gap-2">
+            {logoImg}
+            {textBlock}
+          </div>
+        );
+      }
+      if (logoPosition === "LEFT") {
+        return (
+          <div className="flex items-start gap-3">
+            {logoImg}
+            {textBlock}
+          </div>
+        );
+      }
+      return (
+        <div className="flex items-start justify-between">
+          {textBlock}
+          {logoImg}
+        </div>
+      );
+    }
 
     case "party-details": {
       // Workorder/Service Record borrow the reference service-report
@@ -278,31 +314,30 @@ function renderBlock(
     }
 
     case "signature": {
-      // When signedByName is set (currently: CrmJobSheet's ccoName on a
-      // Workorder print), the issuer's signatory sits on the LEFT with
-      // their actual name and the customer's on the right -- per explicit
-      // direction. Every other document type leaves this field unset and
-      // keeps the original customer-left/issuer-right arrangement.
+      // Only "Authorized Signatory" prints now -- per explicit direction
+      // ("Authorised signature and customer signature keep them aligned
+      // and... only authorized signatory is fine other that that nothing
+      // required for now"), the separate blank "Customer Signature" line
+      // is dropped entirely rather than kept as a second, now-unaligned
+      // block. The "digital document, no signature required" placeholder
+      // only shows when the vendor has opted into it (default off, see
+      // Business.showDigitalDocumentNotice) -- otherwise a blank signature
+      // slot with no image just shows nothing.
       const issuerBlock = (
         <div className="text-center text-xs text-gray-500">
           {data.company.signatureUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={data.company.signatureUrl} alt="" className="h-10 w-40 object-contain mx-auto" />
-          ) : (
+          ) : data.company.showDigitalDocumentNotice ? (
             <div className="h-10 w-40 flex items-end justify-center italic text-[10px]">
               Digital document — no physical signature required
             </div>
+          ) : (
+            <div className="h-10 w-40" />
           )}
-          <div className="w-40 border-t border-gray-300 pt-1">
+          <div className="w-40 border-t border-gray-300 pt-1 mx-auto">
             {(block.config?.label as string) || "Authorized Signatory (Service Centre)"}
             {data.company.signedByName && <span className="block text-gray-400">{data.company.signedByName}</span>}
-          </div>
-        </div>
-      );
-      const customerBlock = (
-        <div className="text-center text-xs text-gray-500">
-          <div className="w-40 border-t border-gray-300 pt-1">
-            Customer Signature
           </div>
         </div>
       );
@@ -327,10 +362,7 @@ function renderBlock(
         return (
           <div>
             <p className="text-[11px] font-medium text-gray-700 mb-4">Signature constitutes agreement to the above terms.</p>
-            <div className="flex justify-between">
-              {data.company.signedByName ? issuerBlock : customerBlock}
-              {data.company.signedByName ? customerBlock : issuerBlock}
-            </div>
+            <div className="flex justify-center">{issuerBlock}</div>
             {footerBand}
           </div>
         );
@@ -344,9 +376,8 @@ function renderBlock(
         );
       }
       return (
-        <div className="flex justify-between pt-8">
-          {data.company.signedByName ? issuerBlock : customerBlock}
-          {data.company.signedByName ? customerBlock : issuerBlock}
+        <div className="flex justify-center pt-8">
+          {issuerBlock}
         </div>
       );
     }

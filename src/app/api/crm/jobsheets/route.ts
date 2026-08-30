@@ -23,6 +23,8 @@ import { sendVendorAlert } from "@/core/telegram/sendVendorAlert";
 // Required for .populate(...) below -- model must be registered before populate can resolve it.
 import "@/models/User";
 import "@/models/Brand";
+import "@/models/SalesInvoice";
+import "@/models/Solution";
 
 export async function GET(req: NextRequest) {
   try {
@@ -105,6 +107,8 @@ export async function GET(req: NextRequest) {
         .limit(limit)
         .populate("assignedTo", "name email")
         .populate("brandId", "name logoUrl")
+        .populate("invoiceId", "grandTotal paymentStatus")
+        .populate("solutionId", "code description")
         .lean(),
       CrmJobSheet.countDocuments(filter),
     ]);
@@ -205,6 +209,21 @@ export async function POST(req: NextRequest) {
     }
     if (!title?.trim()) {
       return NextResponse.json({ success: false, message: "Job title is required" }, { status: 400 });
+    }
+    // Address/city/state/pincode -- per explicit direction ("make city,
+    // state, pincode and address mandatory should not skip"), enforced
+    // server-side too, not just the intake form's client-side check.
+    if (!address?.trim()) {
+      return NextResponse.json({ success: false, message: "Address is required" }, { status: 400 });
+    }
+    if (!city?.trim()) {
+      return NextResponse.json({ success: false, message: "City is required" }, { status: 400 });
+    }
+    if (!state?.trim()) {
+      return NextResponse.json({ success: false, message: "State is required" }, { status: 400 });
+    }
+    if (!pincode?.trim()) {
+      return NextResponse.json({ success: false, message: "Pincode is required" }, { status: 400 });
     }
     if (gstin?.trim()) {
       const gstResult = validateGSTIN(gstin);

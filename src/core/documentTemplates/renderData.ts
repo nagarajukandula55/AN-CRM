@@ -71,6 +71,19 @@ export interface DocumentRenderData {
      * only on an actual invoice/bill, never Estimate/Workorder/Service
      * Record -- see RichInvoiceLayout's own comment. */
     upiId?: string;
+    /** Business.documentLogoEnabled -- whether logoUrl should print at all
+     * on this document (default off, see Business model comment). */
+    logoEnabled?: boolean;
+    /** Business.documentLogoPosition -- LEFT/CENTER/RIGHT alignment for
+     * the logo within the company-details block. */
+    logoPosition?: "LEFT" | "CENTER" | "RIGHT";
+    /** Business.showDigitalDocumentNotice -- whether the signature block
+     * falls back to a "digital document, no signature required" notice
+     * when signatureUrl is blank (default off: shows nothing instead). */
+    showDigitalDocumentNotice?: boolean;
+    /** Business.showCcoNameOnPrint -- whether the workorder signature
+     * block shows who logged the intake (default off). */
+    showCcoNameOnPrint?: boolean;
   };
   party: {
     name: string;

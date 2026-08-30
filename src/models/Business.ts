@@ -834,6 +834,25 @@ const BusinessSchema = new mongoose.Schema(
       default: "",
     },
 
+    // Whether/where customerLogoUrl above prints on Workorder/Estimate/
+    // Invoice/Service Record documents -- per explicit direction ("per
+    // vendor give option to upload their own logo... include that in the
+    // document prints... enable to disable and logo position as well").
+    // Off by default: a blank logo slot is safer than every existing
+    // business suddenly getting an unconfigured logo on live documents.
+    documentLogoEnabled: { type: Boolean, default: false },
+    documentLogoPosition: { type: String, enum: ["LEFT", "CENTER", "RIGHT"], default: "LEFT" },
+
+    // "Digital document — no physical signature required" placeholder text
+    // shown when documentSignatureUrl is blank -- per explicit direction
+    // ("give in setting if it shown or not by default keep it as no").
+    showDigitalDocumentNotice: { type: Boolean, default: false },
+
+    // Whether the workorder print shows who logged the intake (CCO name)
+    // -- per explicit direction ("give option in settings whether to add
+    // CCO name to workorder print or not... by default disabled").
+    showCcoNameOnPrint: { type: Boolean, default: false },
+
     // Bank account details shown on printed invoices alongside (or
     // instead of) the UPI QR above -- display-only, same "workaround, no
     // gateway" reasoning as upiId: the customer transfers manually and

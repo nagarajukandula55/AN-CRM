@@ -422,6 +422,10 @@ export default function SCJobSheetScreen({
     e.preventDefault()
     if (!businessId) { setIntakeError('Select a business first (top-right business switcher).'); return }
     if (!intake.imeiOrSerialNumber.trim()) { setIntakeError('IMEI / Serial Number is required.'); return }
+    if (!intake.address.trim()) { setIntakeError('Address is required.'); return }
+    if (!intake.city.trim()) { setIntakeError('City is required.'); return }
+    if (!intake.state.trim()) { setIntakeError('State is required.'); return }
+    if (!intake.pincode.trim()) { setIntakeError('Pincode is required.'); return }
     if (intake.gstin.trim()) {
       const result = validateGSTIN(intake.gstin)
       if (!result.valid) { setIntakeError(`GSTIN: ${result.reason}`); return }
@@ -890,12 +894,12 @@ export default function SCJobSheetScreen({
               <Card className="p-4 space-y-2.5">
                 <h3 className="text-xs font-semibold text-ink">Address</h3>
                 <div>
-                  <label className={labelCls}>Address</label>
-                  <input value={intake.address} onChange={e => setIntake(p => ({ ...p, address: e.target.value }))} className={inputCls} />
+                  <label className={labelCls}>Address *</label>
+                  <input required value={intake.address} onChange={e => setIntake(p => ({ ...p, address: e.target.value }))} className={inputCls} />
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <label className={labelCls}>Pincode</label>
+                    <label className={labelCls}>Pincode *</label>
                     <PincodeInput
                       value={intake.pincode}
                       onChange={(value) => setIntake(p => ({ ...p, pincode: value }))}
@@ -905,11 +909,11 @@ export default function SCJobSheetScreen({
                     />
                   </div>
                   <div>
-                    <label className={labelCls}>State</label>
+                    <label className={labelCls}>State *</label>
                     <StateSelect value={intake.state} onChange={(value) => setIntake(p => ({ ...p, state: value, city: '' }))} className={`${inputCls} appearance-none`} />
                   </div>
                   <div>
-                    <label className={labelCls}>City</label>
+                    <label className={labelCls}>City *</label>
                     <CitySelect value={intake.city} state={intake.state} onChange={(value) => setIntake(p => ({ ...p, city: value }))} className={inputCls} />
                   </div>
                 </div>

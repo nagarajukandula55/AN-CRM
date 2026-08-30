@@ -65,8 +65,12 @@ export function businessToCompany(business: any, warehouse: any, documentType?: 
     gstin: vendor?.gstNumber || business?.gstNumber || undefined,
     logoUrl: vendor?.logoUrl || resolveCompanyLogo(business, warehouse),
     termsAndConditions: termsForDocType(business, documentType),
-    signatureUrl: business?.documentSignatureUrl || undefined,
+    signatureUrl: vendor?.documentSignatureUrl || business?.documentSignatureUrl || undefined,
     upiId: vendor?.upiId || business?.upiId || undefined,
+    logoEnabled: vendor?.documentLogoEnabled ?? !!business?.documentLogoEnabled,
+    logoPosition: vendor?.documentLogoPosition || business?.documentLogoPosition || "LEFT",
+    showDigitalDocumentNotice: vendor?.showDigitalDocumentNotice ?? !!business?.showDigitalDocumentNotice,
+    showCcoNameOnPrint: vendor?.showCcoNameOnPrint ?? !!business?.showCcoNameOnPrint,
   };
 }
 
@@ -106,7 +110,7 @@ export function jobSheetToRenderData(
     docNumber: jobSheet.jobSheetNumber,
     date: fmtDate(jobSheet.createdAt),
     status: jobSheet.status?.replace(/_/g, " "),
-    company: { ...company, signedByName: docType === "WORK_ORDER" ? jobSheet.ccoName : undefined },
+    company: { ...company, signedByName: docType === "WORK_ORDER" && company.showCcoNameOnPrint ? jobSheet.ccoName : undefined },
     party: {
       name: jobSheet.customerName,
       address: [jobSheet.address, jobSheet.city, jobSheet.state, jobSheet.pincode].filter(Boolean).join(", "),

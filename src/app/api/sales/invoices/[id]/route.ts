@@ -95,7 +95,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         const tax = lineTotal * ((item.taxRate || 0) / 100);
         subtotal += lineTotal;
         taxTotal += tax;
-        return { ...item, taxAmount: tax, total: lineTotal + tax };
+        return { ...item, taxAmount: tax, assessableValue: lineTotal, total: lineTotal + tax };
       });
       body.subtotal = subtotal;
       body.taxTotal = taxTotal;

@@ -27,6 +27,11 @@ interface JobSheetRow {
   invoiceNumber?: string
   lineItems?: unknown[]
   estimateGenerated?: boolean
+  deviceModel?: string
+  ccoName?: string
+  assignedToName?: string
+  solutionId?: { code?: string; description?: string } | string
+  invoiceId?: { grandTotal?: number; paymentStatus?: string } | string
 }
 
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
@@ -50,8 +55,13 @@ const JOBSHEETS_DEFAULT_COLUMNS = [
   { key: 'customerName', label: 'Customer' },
   { key: 'phone', label: 'Phone' },
   { key: 'title', label: 'Title' },
+  { key: 'deviceModel', label: 'Model' },
+  { key: 'ccoName', label: 'Logged By' },
+  { key: 'assignedToName', label: 'Engineer' },
+  { key: 'solution', label: 'Solution' },
   { key: 'status', label: 'Status' },
   { key: 'tat', label: 'TAT' },
+  { key: 'paidAmount', label: 'Paid Amount' },
   { key: 'createdAt', label: 'Created' },
   { key: 'actions', label: 'Actions' },
 ]
@@ -328,6 +338,16 @@ function JobSheetsListPageInner({ basePath }: { basePath: string }) {
                         return <td key={key} className="px-4 py-3 tabular text-ink-2">{job.phone}</td>
                       case 'title':
                         return <td key={key} className="px-4 py-3 text-ink-2">{job.title || '—'}</td>
+                      case 'deviceModel':
+                        return <td key={key} className="px-4 py-3 text-ink-2">{job.deviceModel || '—'}</td>
+                      case 'ccoName':
+                        return <td key={key} className="px-4 py-3 text-ink-2">{job.ccoName || '—'}</td>
+                      case 'assignedToName':
+                        return <td key={key} className="px-4 py-3 text-ink-2">{job.assignedToName || '—'}</td>
+                      case 'solution':
+                        return <td key={key} className="px-4 py-3 text-ink-2">{typeof job.solutionId === 'object' ? (job.solutionId?.description || job.solutionId?.code || '—') : '—'}</td>
+                      case 'paidAmount':
+                        return <td key={key} className="px-4 py-3 tabular text-ink-2">{typeof job.invoiceId === 'object' && job.invoiceId?.grandTotal != null ? `₹${job.invoiceId.grandTotal.toLocaleString('en-IN')}` : '—'}</td>
                       case 'status':
                         return (
                           <td key={key} className="px-4 py-3">

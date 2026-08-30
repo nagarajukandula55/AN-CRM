@@ -59,6 +59,10 @@ export async function GET() {
       customerLogoUrl: v.customerLogoUrl || "",
       logoUrl: v.logoUrl || "",
       documentSignatureUrl: v.documentSignatureUrl || "",
+      documentLogoEnabled: Boolean(v.documentLogoEnabled),
+      documentLogoPosition: v.documentLogoPosition || "LEFT",
+      showDigitalDocumentNotice: Boolean(v.showDigitalDocumentNotice),
+      showCcoNameOnPrint: Boolean(v.showCcoNameOnPrint),
       applyTaxOnB2CBilling: v.applyTaxOnB2CBilling !== false,
       upiId: v.upiId || "",
       bankAccountName: v.bankAccountName || "",
@@ -94,6 +98,10 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.customerLogoUrl === "string") update.customerLogoUrl = body.customerLogoUrl;
     if (typeof body.logoUrl === "string") update.logoUrl = body.logoUrl;
     if (typeof body.documentSignatureUrl === "string") update.documentSignatureUrl = body.documentSignatureUrl;
+    if (typeof body.documentLogoEnabled === "boolean") update.documentLogoEnabled = body.documentLogoEnabled;
+    if (typeof body.documentLogoPosition === "string" && ["LEFT", "CENTER", "RIGHT"].includes(body.documentLogoPosition)) update.documentLogoPosition = body.documentLogoPosition;
+    if (typeof body.showDigitalDocumentNotice === "boolean") update.showDigitalDocumentNotice = body.showDigitalDocumentNotice;
+    if (typeof body.showCcoNameOnPrint === "boolean") update.showCcoNameOnPrint = body.showCcoNameOnPrint;
     if (typeof body.applyTaxOnB2CBilling === "boolean") update.applyTaxOnB2CBilling = body.applyTaxOnB2CBilling;
     if (typeof body.upiId === "string") update.upiId = body.upiId;
     if (typeof body.bankAccountName === "string") update.bankAccountName = body.bankAccountName;
