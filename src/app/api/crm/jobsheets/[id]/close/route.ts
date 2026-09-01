@@ -32,6 +32,7 @@ import { sendVendorAlert } from "@/core/telegram/sendVendorAlert";
 import { categoryRequiresImei, isValidImei } from "@/core/catalog/deviceCategory";
 import { round2 } from "@/core/gst/money";
 import { DEFAULT_SERVICE_CHARGE_HSN } from "@/core/gst/defaultHsn";
+import { isNonChargeableWarranty } from "@/core/catalog/warranty";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -92,6 +93,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         { status: 400 }
       );
     }
+
+    // IW / 90-day-warranty jobs are non-chargeable, per explicit direction:
+    // no Estimate/Invoice may ever be generated and the payable amount is
+    // forced to 0 -- only the workorder/Service Record documents exist.
+    // OOW is unaffected and keeps the full invoicing flow below unchanged.
+    const isNonChargeable = isNonChargeableWarranty((jobSheet as any).warrantyStatus);
 
     // Same phone-like-only IMEI gate as start-repair -- a job can slip
     // through to close without ever hitting start-repair (e.g. reopened
@@ -160,6 +167,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
+    // IW / 90-day-warranty jobs skip GST/invoice generation entirely --
+    // `invoice` stays null and the job closes as a non-chargeable
+    // workorder/Service Record only. OOW (and jobs with no warrantyStatus
+    // set) fall through to the exact invoicing logic as before.
+    let invoice: any = null;
+    let issuerGstOk = false;
+    let grandTotal = 0;
+    if (!isNonChargeable) {
     // GST vs Non-GST is no longer a manual choice or an automatic B2C
     // default -- it's driven ENTIRELY by whether the customer's GSTIN is
     // on file. A GSTIN present means a real B2B GST customer: always
@@ -178,7 +193,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // checked the customer's GSTIN, so a vendor with no gstNumber of
     // their own could still generate fully-formed GST invoices --
     // reported live as an illegal-invoice risk.
-    const issuerGstOk = vendorSettings
+    issuerGstOk = vendorSettings
       ? Boolean((vendorSettings as any).gstRegistered && (vendorSettings as any).gstNumber)
       : Boolean((business as any)?.compliance?.gstNumber);
     const isB2B = Boolean((jobSheet as any).gstin?.trim()) && issuerGstOk;
@@ -261,7 +276,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     sgstTotal = round2(sgstTotal);
     igstTotal = round2(igstTotal);
     const taxTotal = round2(cgstTotal + sgstTotal + igstTotal);
-    const grandTotal = round2(subtotal + taxTotal - (discountAmount || 0));
+    grandTotal = round2(subtotal + taxTotal - (discountAmount || 0));
 
     // Exactly two series now, decided purely by isB2B (customer GSTIN on
     // file): the "INV" series (numbering type "INVOICE") for a real B2B
@@ -289,7 +304,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       jobSheet.businessId.toString()
     );
 
-    const invoice = await SalesInvoice.create({
+    invoice = await SalesInvoice.create({
       invoiceNumber,
       businessId: jobSheet.businessId,
       // Never set before -- every per-vendor Telegram report/notification
@@ -324,11 +339,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       grandTotal,
       status: "SENT",
     });
+    }
 
     jobSheet.status = "REPAIR_COMPLETED";
     jobSheet.completedAt = jobSheet.completedAt || new Date();
-    jobSheet.invoiceId = invoice._id as any;
-    jobSheet.invoiceNumber = invoice.invoiceNumber;
+    if (invoice) {
+      jobSheet.invoiceId = invoice._id as any;
+      jobSheet.invoiceNumber = invoice.invoiceNumber;
+    }
     if (workPerformed !== undefined) jobSheet.workPerformed = workPerformed;
     if (materialsUsed !== undefined) jobSheet.materialsUsed = materialsUsed;
     // SC's single-login flow has no formal "assign engineer" step (that's
@@ -343,7 +361,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     notifyJobSheetStatusChange(jobSheet.businessId.toString(), jobSheet.phone, jobSheet.jobSheetNumber, jobSheet.status);
 
-    if (jobSheet.vendorId) {
+    if (jobSheet.vendorId && invoice) {
       const closedBrandName = jobSheet.brandId ? (await Brand.findById(jobSheet.brandId).select("name").lean<any>())?.name : jobSheet.pendingBrandName;
       sendVendorAlert(
         jobSheet.vendorId.toString(),
@@ -414,22 +432,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       action: "CLOSE",
       entity: "CrmJobSheet",
       entityId: id,
-      after: { invoiceId: invoice._id, invoiceNumber: invoice.invoiceNumber },
+      after: invoice ? { invoiceId: invoice._id, invoiceNumber: invoice.invoiceNumber } : { nonChargeableWarranty: (jobSheet as any).warrantyStatus },
       req,
       actor: { id: userId, businessId: jobSheet.businessId.toString() },
     });
-    logAction({
-      action: "CREATE",
-      entity: "SalesInvoice",
-      entityId: invoice._id?.toString(),
-      after: invoice,
-      req,
-      actor: { id: userId, businessId: jobSheet.businessId.toString() },
-    });
+    if (invoice) {
+      logAction({
+        action: "CREATE",
+        entity: "SalesInvoice",
+        entityId: invoice._id?.toString(),
+        after: invoice,
+        req,
+        actor: { id: userId, businessId: jobSheet.businessId.toString() },
+      });
+    }
 
     notify({
       event: "CRM_JOB_CLOSED",
-      message: `✅ Job ${jobSheet.jobSheetNumber} closed. Invoice ${invoice.invoiceNumber} generated for ${jobSheet.customerName} (₹${grandTotal.toLocaleString("en-IN")})`,
+      message: invoice
+        ? `✅ Job ${jobSheet.jobSheetNumber} closed. Invoice ${invoice.invoiceNumber} generated for ${jobSheet.customerName} (₹${grandTotal.toLocaleString("en-IN")})`
+        : `✅ Job ${jobSheet.jobSheetNumber} closed -- no charge (${(jobSheet as any).warrantyStatus} warranty) for ${jobSheet.customerName}.`,
     }).catch(() => {});
 
     return NextResponse.json(
@@ -442,7 +464,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         // GST number on file -- so the Owner/Manager understands WHY
         // (and knows to add their GSTIN in Profile/Settings) rather than
         // just seeing an unexpectedly non-GST invoice.
-        warning: Boolean((jobSheet as any).gstin?.trim()) && !issuerGstOk
+        warning: invoice && Boolean((jobSheet as any).gstin?.trim()) && !issuerGstOk
           ? "This customer has a GSTIN, but no GST number is on file for your own business/vendor account, so this was issued as a non-GST bill instead of a GST invoice. Add your GST number in Profile to issue GST invoices."
           : undefined,
       },

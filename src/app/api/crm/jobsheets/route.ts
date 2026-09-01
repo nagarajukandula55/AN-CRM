@@ -289,7 +289,7 @@ export async function POST(req: NextRequest) {
           ? new mongoose.Types.ObjectId(symptomCodeId)
           : undefined,
       remark,
-      warrantyStatus: ["IW", "OOW"].includes(warrantyStatus) ? warrantyStatus : undefined,
+      warrantyStatus: ["IW", "OOW", "90_DAYS"].includes(warrantyStatus) ? warrantyStatus : undefined,
       deviceAppearance: ["GOOD", "USED", "DENTS", "BROKEN"].includes(deviceAppearance) ? deviceAppearance : undefined,
       fileBackupDescription: ["YES", "NO"].includes(fileBackupDescription) ? fileBackupDescription : undefined,
       standardAccessories,

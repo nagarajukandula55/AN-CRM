@@ -13,7 +13,7 @@ interface JobSheet {
   faultCodeId?: { code?: string; description?: string }
   deviceModel?: string
   imeiOrSerialNumber?: string
-  warrantyStatus?: 'IW' | 'OOW'
+  warrantyStatus?: 'IW' | 'OOW' | '90_DAYS'
   deviceAppearance?: 'GOOD' | 'USED' | 'DENTS' | 'BROKEN'
   fileBackupDescription?: 'YES' | 'NO'
   createdBy?: { name?: string; email?: string }
@@ -115,7 +115,7 @@ export default function IntakeReceiptPage() {
               <span className="text-gray-500">Model:</span>{' '}
               {[jobSheet.product, jobSheet.brandId?.name, jobSheet.deviceModel].filter(Boolean).join(' · ') || '—'}
             </div>
-            <div><span className="text-gray-500">Warranty Status:</span> {jobSheet.warrantyStatus || '—'}</div>
+            <div><span className="text-gray-500">Warranty Status:</span> {jobSheet.warrantyStatus === '90_DAYS' ? '90 Days Warranty' : jobSheet.warrantyStatus || '—'}</div>
             <div><span className="text-gray-500">SN/IMEI:</span> {jobSheet.imeiOrSerialNumber || '—'}</div>
           </div>
 

@@ -13,6 +13,7 @@ import CrmJobSheet from "@/models/CrmJobSheet";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
+import { isNonChargeableWarranty } from "@/core/catalog/warranty";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -35,6 +36,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const jobSheet = await CrmJobSheet.findById(id);
     if (!jobSheet) {
       return NextResponse.json({ success: false, message: "Job sheet not found" }, { status: 404 });
+    }
+
+    if (isNonChargeableWarranty((jobSheet as any).warrantyStatus)) {
+      return NextResponse.json(
+        { success: false, message: "Estimates cannot be generated for in-warranty / 90-day-warranty workorders -- this job is non-chargeable." },
+        { status: 400 }
+      );
     }
 
     const hasLineItems = Array.isArray(jobSheet.lineItems) && jobSheet.lineItems.some((li: any) => (li.description || "").trim());

@@ -95,6 +95,9 @@ interface JobSheet {
   completedAt?: string; handedOverAt?: string
   paymentCollected?: number; paymentMode?: string; paymentCollectedByName?: string
   solutionId?: { code?: string; description?: string } | string
+  warrantyStatus?: 'IW' | 'OOW' | '90_DAYS' | ''
+  startedBySuperAdmin?: boolean
+  assignedToName?: string
 }
 
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
@@ -313,6 +316,7 @@ export default function SCJobSheetScreen({
     deviceCategory: '' as DeviceCategory | '', brandName: '', deviceModel: '', imeiOrSerialNumber: '',
     deviceAppearance: '' as 'GOOD' | 'USED' | 'DENTS' | 'BROKEN' | '',
     fileBackupDescription: '' as 'YES' | 'NO' | '',
+    warrantyStatus: '' as 'IW' | 'OOW' | '90_DAYS' | '',
     title: '', remark: '', ccoName: '',
   })
   // "Logged by" is deliberately NOT auto-filled with the signed-in user's
@@ -445,6 +449,7 @@ export default function SCJobSheetScreen({
           brandId, deviceModelId,
           imeiOrSerialNumber: intake.imeiOrSerialNumber, title: intake.title, remark: intake.remark, ccoName: intake.ccoName,
           deviceAppearance: intake.deviceAppearance || undefined, fileBackupDescription: intake.fileBackupDescription || undefined,
+          warrantyStatus: intake.warrantyStatus || undefined,
           businessId,
         }),
       })
@@ -678,6 +683,21 @@ export default function SCJobSheetScreen({
     }
   }
 
+  async function claimJobSheet() {
+    if (!jobId) return
+    setSaving(true); setActionError(null)
+    try {
+      const res = await fetch(`/api/crm/jobsheets/${jobId}/claim`, { method: 'POST' })
+      const d = await res.json()
+      if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to claim job sheet')
+      fetchJob()
+    } catch (err: any) {
+      setActionError(err.message || 'Something went wrong')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function proceedForRepair() {
     if (!jobId || !currentUserId) return
     setSaving(true); setActionError(null)
@@ -803,7 +823,7 @@ export default function SCJobSheetScreen({
       const res = await fetch(`/api/crm/jobsheets/${jobId}/handover`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentCollected: total, paymentMode, paymentCollectedByName }),
+        body: JSON.stringify({ paymentCollected: nonChargeable ? 0 : total, paymentMode, paymentCollectedByName }),
       })
       const d = await res.json()
       if (!res.ok || d.success === false) throw new Error(d.message || 'Failed to hand over')
@@ -991,6 +1011,15 @@ export default function SCJobSheetScreen({
                       <option value="NO">No</option>
                     </select>
                   </div>
+                  <div>
+                    <label className={labelCls}>Warranty Type</label>
+                    <select value={intake.warrantyStatus} onChange={e => setIntake(p => ({ ...p, warrantyStatus: e.target.value as typeof intake.warrantyStatus }))} className={inputCls}>
+                      <option value="">Select…</option>
+                      <option value="IW">In Warranty (IW)</option>
+                      <option value="OOW">Out of Warranty (OOW)</option>
+                      <option value="90_DAYS">90 Days Warranty</option>
+                    </select>
+                  </div>
                 </div>
               </Card>
 
@@ -1069,6 +1098,11 @@ export default function SCJobSheetScreen({
   const taxAmountTotal = total - taxSubtotal
   const cgstAmount = taxApplyEnabled ? taxAmountTotal / 2 : 0
   const sgstAmount = cgstAmount
+  // IW/90-day-warranty jobs are non-chargeable -- no Estimate/Invoice may
+  // ever be generated and the payable amount is forced to 0 server-side
+  // (see close/handover routes' isNonChargeableWarranty check). OOW keeps
+  // the normal chargeable flow unchanged.
+  const nonChargeable = job.warrantyStatus === 'IW' || job.warrantyStatus === '90_DAYS'
   const isOpen = job.status !== 'CLOSED' && job.status !== 'CANCELLED'
   const inRepair = job.status === 'REPAIR_STARTED' || job.status === 'REPAIR_IN_PROGRESS'
   // Parts/lines are only editable while repair is actually underway --
@@ -1089,7 +1123,7 @@ export default function SCJobSheetScreen({
           <>
             <Button variant="secondary" size="sm" onClick={() => router.push(basePath)} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
             <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/print/jobsheets/${job._id}`)} icon={<Printer className="w-4 h-4" />}>Print Workorder</Button>
-            {inRepair && (job.estimateGenerated ? (
+            {inRepair && !nonChargeable && (job.estimateGenerated ? (
               <Button variant="secondary" size="sm" onClick={() => openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)} icon={<FileText className="w-4 h-4" />}>Print Estimate</Button>
             ) : (
               <Button
@@ -1139,7 +1173,9 @@ export default function SCJobSheetScreen({
               <Button variant="secondary" size="sm" onClick={() => { setBrandJobNo(''); setShowPartPendingModal(true) }} disabled={saving}>Mark Part Pending</Button>
             )}
             {inRepair && (
-              <Button size="sm" onClick={completeAndInvoice} disabled={saving} icon={saving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>Complete Repair &amp; Invoice</Button>
+              <Button size="sm" onClick={completeAndInvoice} disabled={saving} icon={saving ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}>
+                {nonChargeable ? 'Complete Repair (No Charge)' : 'Complete Repair & Invoice'}
+              </Button>
             )}
             {job.status === 'CREATED' && (
               <Button size="sm" onClick={proceedForRepair} disabled={saving}>Proceed for Repair</Button>
@@ -1155,16 +1191,30 @@ export default function SCJobSheetScreen({
 
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <MilestoneStepper job={job} />
-        {tat && (
-          <Badge tone={job.completedAt ? 'success' : 'warning'}>
-            TAT: {tat}{!job.completedAt && ' (running)'}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {job.warrantyStatus && (
+            <Badge tone={nonChargeable ? 'info' : 'neutral'}>
+              {job.warrantyStatus === '90_DAYS' ? '90 Days Warranty' : job.warrantyStatus === 'IW' ? 'In Warranty (IW)' : 'Out of Warranty (OOW)'}
+              {nonChargeable && ' · No Charge'}
+            </Badge>
+          )}
+          {tat && (
+            <Badge tone={job.completedAt ? 'success' : 'warning'}>
+              TAT: {tat}{!job.completedAt && ' (running)'}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {actionError && <div className="mb-6 text-sm text-danger bg-danger-soft border border-danger/20 rounded-control px-4 py-3">{actionError}</div>}
       {job.status === 'CANCELLED' && job.cancelReason && (
         <div className="mb-6 text-sm text-ink-2 bg-surface-2 border border-border rounded-control px-4 py-3">Cancelled: {job.cancelReason}</div>
+      )}
+      {job.startedBySuperAdmin && !typeContext?.isSuperAdmin && (
+        <div className="mb-6 flex items-center justify-between gap-3 text-sm text-ink-2 bg-accent-soft border border-accent/20 rounded-control px-4 py-3">
+          <span>This repair was started by a Super Admin{job.assignedToName ? ` (${job.assignedToName})` : ''}. Claim it to continue the repair yourself.</span>
+          <Button size="sm" onClick={claimJobSheet} disabled={saving}>Claim &amp; Continue</Button>
+        </div>
       )}
 
       <Card className="p-5 mb-6">
@@ -1372,9 +1422,14 @@ export default function SCJobSheetScreen({
               </>
             )}
             <div className="flex items-center justify-between pt-1 border-t border-border">
-              <span className="text-sm text-ink-2">Total {!taxApplyEnabled && <span className="text-ink-3">(tax not applied)</span>}</span>
-              <span className="text-sm font-semibold text-ink tabular">₹{total.toFixed(2)}</span>
+              <span className="text-sm text-ink-2">
+                {nonChargeable ? 'Payable' : 'Total'} {!nonChargeable && !taxApplyEnabled && <span className="text-ink-3">(tax not applied)</span>}
+              </span>
+              <span className="text-sm font-semibold text-ink tabular">₹{nonChargeable ? '0.00' : total.toFixed(2)}</span>
             </div>
+            {nonChargeable && (
+              <p className="text-[11px] text-ink-3">Costs above are for internal tracking only -- this job is non-chargeable ({job.warrantyStatus === '90_DAYS' ? '90 Days Warranty' : 'In Warranty'}), no invoice/estimate will be generated.</p>
+            )}
           </div>
         </Card>
       )}

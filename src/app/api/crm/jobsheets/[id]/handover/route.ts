@@ -16,6 +16,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { notifyJobSheetStatusChange } from "@/lib/customerNotify";
+import { isNonChargeableWarranty } from "@/core/catalog/warranty";
 
 const PAYMENT_MODES = new Set(["CASH", "UPI", "CARD", "BANK_TRANSFER", "OTHER"]);
 
@@ -62,7 +63,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       );
     }
 
-    jobSheet.paymentCollected = Number(paymentCollected);
+    // IW / 90-day-warranty jobs are non-chargeable -- the payable amount is
+    // always 0, regardless of what the client sends, so a stale/tampered
+    // request can never collect money on a warranty job.
+    jobSheet.paymentCollected = isNonChargeableWarranty((jobSheet as any).warrantyStatus) ? 0 : Number(paymentCollected);
     jobSheet.paymentMode = paymentMode;
     if (paymentCollectedByName?.trim()) jobSheet.paymentCollectedByName = paymentCollectedByName.trim();
     jobSheet.handedOverAt = new Date();

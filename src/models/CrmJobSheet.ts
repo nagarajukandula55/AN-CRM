@@ -140,7 +140,12 @@ export interface ICrmJobSheet extends Document {
   // before the call is closed (see api/crm/jobsheets/[id]/intake-receipt).
   // warrantyStatus also feeds the materials table's "Type of charge" on
   // the post-close Service Record.
-  warrantyStatus?: "IW" | "OOW";
+  // "90_DAYS" (out-of-box 90-day goodwill warranty) added alongside IW/OOW
+  // -- like IW, it is a non-chargeable job: see
+  // core/catalog/warranty.ts's isNonChargeableWarranty(), consumed by
+  // generate-estimate/close/handover to block Estimate/Invoice generation
+  // and force the payable amount to 0.
+  warrantyStatus?: "IW" | "OOW" | "90_DAYS";
   deviceAppearance?: "GOOD" | "USED" | "DENTS" | "BROKEN";
   fileBackupDescription?: "YES" | "NO"; // did the customer back up their data before drop-off
   standardAccessories?: string; // e.g. "Card tray, Charger"
@@ -169,6 +174,18 @@ export interface ICrmJobSheet extends Document {
   assignedToName?: string;
   assignedBy?: Types.ObjectId; // CCO who made the assignment
   engineerAssignedAt?: Date;
+  // Set true whenever a Super Admin (overseeing on a vendor's behalf, see
+  // _JobSheetForm.tsx) is the one who assigned/started this job sheet's
+  // repair -- lets the originating vendor's own UI offer a "Claim &
+  // Continue" action (see api/crm/jobsheets/[id]/claim) instead of being
+  // silently locked out of a job that's rightfully theirs. Cleared back to
+  // false the moment the vendor claims it.
+  startedBySuperAdmin?: boolean;
+  // Claim audit trail -- who last reclaimed this job sheet from a
+  // Super-Admin-started repair, and when.
+  claimedBy?: Types.ObjectId;
+  claimedByName?: string;
+  claimedAt?: Date;
   status: CrmJobSheetStatus;
 
   // Milestone timestamps -- one per status transition, for the milestone
@@ -314,7 +331,7 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
     issueDescription: { type: String, default: "" },
     faultCodeId: { type: Schema.Types.ObjectId, ref: "FaultCode" },
     remark: { type: String, default: "" },
-    warrantyStatus: { type: String, enum: ["IW", "OOW"] },
+    warrantyStatus: { type: String, enum: ["IW", "OOW", "90_DAYS"] },
     deviceAppearance: { type: String, enum: ["GOOD", "USED", "DENTS", "BROKEN"] },
     fileBackupDescription: { type: String, enum: ["YES", "NO"] },
     standardAccessories: { type: String, default: "" },
@@ -333,6 +350,10 @@ const CrmJobSheetSchema = new Schema<ICrmJobSheet>(
     assignedToName: { type: String, trim: true, default: "" },
     assignedBy: { type: Schema.Types.ObjectId, ref: "User" },
     engineerAssignedAt: { type: Date },
+    startedBySuperAdmin: { type: Boolean, default: false },
+    claimedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    claimedByName: { type: String, trim: true },
+    claimedAt: { type: Date },
     repairInProgressAt: { type: Date },
     partPendingAt: { type: Date },
     repairResumedAt: { type: Date },

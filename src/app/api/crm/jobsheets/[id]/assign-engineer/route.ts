@@ -71,6 +71,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     jobSheet.assignedToName = engineer?.name || "";
     jobSheet.assignedBy = new mongoose.Types.ObjectId(userId) as any;
     jobSheet.engineerAssignedAt = new Date();
+    // Stamp whether a Super Admin (overseeing on the vendor's behalf) is
+    // the one starting this repair -- lets the originating vendor claim it
+    // back later. See api/crm/jobsheets/[id]/claim/route.ts.
+    (jobSheet as any).startedBySuperAdmin = Boolean((session as any).isSuperAdmin);
     jobSheet.status = "REPAIR_STARTED";
     await jobSheet.save();
 
