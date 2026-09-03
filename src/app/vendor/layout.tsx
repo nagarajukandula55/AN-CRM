@@ -150,6 +150,18 @@ export default async function VendorLayout({
   const userId = headersList.get('x-user-id')
   const userName = headersList.get('x-user-name') || 'Vendor'
 
+  // Was previously only ever called inside the role !== 'VENDOR' staff
+  // branch below and the trial-block section that sat after it -- removing
+  // that trial-block section (see its own comment further down) left the
+  // Owner login path (role === 'VENDOR', by far the common case) with NO
+  // connectDB() call at all before every other query in this layout
+  // (vendor identity, nav module filtering, etc.), which is exactly what
+  // broke live right after that change deployed: those queries silently
+  // failed and fell back to their own empty/degraded defaults instead of
+  // throwing loudly, showing "No active plan" and a stripped-down nav for
+  // vendors whose subscription was actually fine.
+  await connectDB()
+
   // role !== 'VENDOR' used to be the ONLY check here -- but that's
   // User.role, the old flat single-role field set at signup/login. It has
   // nothing to do with the newer vendor-team system (BusinessMember +
