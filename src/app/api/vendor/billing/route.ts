@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import VendorSubscription from "@/models/VendorSubscription";
 import VendorBillingInvoice from "@/models/VendorBillingInvoice";
+import Subscription from "@/models/Subscription";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
 import { computeStatus } from "@/core/billing/billing.service";
 
@@ -18,13 +19,29 @@ export async function GET(_req: NextRequest) {
     if (!ctx) return NextResponse.json({ success: false, message: "Vendor profile not found" }, { status: 404 });
 
     const vendor = ctx.vendor as any;
-    const subscription = await VendorSubscription.findOne({ vendorId: vendor._id }).lean();
+    const subscription = await VendorSubscription.findOne({ vendorId: vendor._id }).lean<any>();
+
+    // See api/admin/vendor-billing/route.ts's own comment: the instant-trial
+    // mechanism's legacy Subscription row is what actually gates portal
+    // access (lib/vendor/checkTrialAccess.ts), and VendorSubscription.
+    // currentPeriodEnd can drift stale behind it -- fall back to the later
+    // date so this vendor's OWN billing page/trial banner never claims
+    // "expired" while they can still use the portal.
+    const legacyTrial = await Subscription.findOne({ subVendorOf: vendor._id, status: "TRIAL" })
+      .sort({ createdAt: -1 })
+      .select("trialEndsAt expiryDate")
+      .lean<any>();
+    const legacyEnd = legacyTrial?.trialEndsAt || legacyTrial?.expiryDate;
+    const effectiveSubscription = subscription && legacyEnd && (!subscription.currentPeriodEnd || new Date(legacyEnd).getTime() > new Date(subscription.currentPeriodEnd).getTime())
+      ? { ...subscription, currentPeriodEnd: legacyEnd }
+      : subscription;
+
     const invoices = await VendorBillingInvoice.find({ vendorId: vendor._id }).sort({ createdAt: -1 }).lean();
 
     return NextResponse.json({
       success: true,
-      subscription,
-      status: computeStatus(subscription as any),
+      subscription: effectiveSubscription,
+      status: computeStatus(effectiveSubscription as any),
       invoices,
     });
   } catch (err: any) {
