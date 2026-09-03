@@ -153,6 +153,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Delivery Challans",
         "Credit Accounts for repeat customers",
         "Financial Statement — your full running account",
+        "Telegram alerts for every new/closed workorder",
         "Custom Report Builder (build your own reports & charts)",
         "Analytics dashboard",
         "UPI payment QR on every invoice",
