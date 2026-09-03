@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Subscription from "@/models/Subscription";
 import Business from "@/models/Business";
+import VendorProfile from "@/models/VendorProfile";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { PLANS_BY_MODE, type OperatingMode } from "@/core/pricing/plans";
 import { getAllowedModuleKeys } from "@/core/pricing/planAccess";
@@ -58,13 +59,20 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // A shared multi-vendor business (see core/subscriptions/checkAccess.ts's
+    // matching fix/comment) is not itself the paying entity -- don't apply
+    // this business-age fallback to it at all, or its OWN creation date
+    // (potentially long before any vendor on it existed) blocks every
+    // vendor sharing it regardless of their real per-vendor trial status.
+    const hasVendors = await VendorProfile.exists({ businessId: session.business.businessId, isDeleted: { $ne: true } });
+
     // No paid subscription ever -- implicit trial from business creation.
     const createdAt = business?.createdAt ? new Date(business.createdAt) : new Date();
     const trialEndsAt = new Date(createdAt);
     trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
     const now = new Date();
     const daysRemaining = Math.max(0, Math.ceil((trialEndsAt.getTime() - now.getTime()) / 86400000));
-    const blocked = trialEndsAt.getTime() < now.getTime();
+    const blocked = !hasVendors && trialEndsAt.getTime() < now.getTime();
 
     return NextResponse.json({
       success: true,
