@@ -102,6 +102,7 @@ function render(data: InvoiceRenderData): string {
   </div>
   <div class="invoiceBox">
     <div><b>Invoice No:</b> ${safeStr(data.invoiceNumber)}</div>
+    ${data.workOrderNumber ? `<div><b>Workorder No:</b> ${safeStr(data.workOrderNumber)}</div>` : ""}
     <div><b>Invoice Date:</b> ${fmtDate(data.invoiceDate)}</div>
     <div><b>Order Date:</b> ${fmtDate(data.orderDate)}</div>
     <div><b>Order ID:</b> ${safeStr(data.orderId)}</div>

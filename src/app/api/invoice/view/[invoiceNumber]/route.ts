@@ -147,6 +147,15 @@ export async function GET(
       invoiceNumber:
         invoice.invoiceNumber,
 
+      // Set only when this invoice was raised by closing a workorder
+      // (api/crm/jobsheets/[id]/close/route.ts) -- an invoice raised
+      // directly from Sales has no workorder behind it and this simply
+      // stays undefined, so the page shows just the invoice number with
+      // nothing extra, per explicit direction ("if invoice raised directly
+      // from sales then go ahead with invoice number directly").
+      workOrderNumber:
+        (invoice as any).linkedJobSheetNumber || undefined,
+
       invoiceDate:
         invoice.createdAt,
 

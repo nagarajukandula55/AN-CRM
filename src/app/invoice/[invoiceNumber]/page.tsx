@@ -130,6 +130,14 @@ export default function InvoicePage() {
       {safe(data?.invoiceNumber)}
     </div>
 
+    {data?.workOrderNumber && (
+      <div>
+        <b>Workorder No:</b>
+        {" "}
+        {safe(data?.workOrderNumber)}
+      </div>
+    )}
+
     <div>
       <b>{isPlainBill ? "Bill Date:" : "Invoice Date:"}</b>
       {" "}

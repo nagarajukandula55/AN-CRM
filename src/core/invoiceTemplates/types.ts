@@ -11,6 +11,8 @@
 
 export interface InvoiceRenderData {
   invoiceNumber: string;
+  /** Set only when raised by closing a workorder (SalesInvoice.linkedJobSheetNumber) -- undefined for an invoice raised directly from Sales. */
+  workOrderNumber?: string;
   invoiceDate: string | Date;
   orderDate?: string | Date;
   orderId?: string;

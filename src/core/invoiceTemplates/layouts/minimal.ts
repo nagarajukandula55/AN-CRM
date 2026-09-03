@@ -75,6 +75,7 @@ tbody td{padding:10px 6px;border-bottom:1px solid #f3f4f6;font-size:11px;vertica
   </div>
   <div class="invoiceMeta">
     <div class="num">${safeStr(data.invoiceNumber)}</div>
+    ${data.workOrderNumber ? `<div>WO: ${safeStr(data.workOrderNumber)}</div>` : ""}
     <div>${fmtDate(data.invoiceDate)}</div>
     <div>${isB2B ? "B2B" : "B2C"} · ${safeStr(data.payment?.status)}</div>
   </div>

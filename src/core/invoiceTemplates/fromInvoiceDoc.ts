@@ -60,6 +60,7 @@ export function buildRenderDataFromInvoice(
 
   return {
     invoiceNumber: invoice.invoiceNumber,
+    workOrderNumber: (invoice as any).linkedJobSheetNumber || undefined,
     invoiceDate: invoice.createdAt || new Date(),
     orderDate: order?.createdAt,
     orderId: order?.orderId,

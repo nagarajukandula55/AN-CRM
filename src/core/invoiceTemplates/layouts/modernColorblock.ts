@@ -76,6 +76,7 @@ tbody td:nth-child(1),tbody td:nth-child(4),tbody td:nth-child(5),tbody td:nth-c
   </div>
   <div class="meta">
     <div class="num">${safeStr(data.invoiceNumber)}</div>
+    ${data.workOrderNumber ? `<div>WO: ${safeStr(data.workOrderNumber)}</div>` : ""}
     <div>${fmtDate(data.invoiceDate)}</div>
     <div>${isB2B ? "B2B" : "B2C"}</div>
   </div>
