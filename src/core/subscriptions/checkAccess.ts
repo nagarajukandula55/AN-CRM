@@ -8,9 +8,12 @@
 import Subscription from "@/models/Subscription";
 import Business from "@/models/Business";
 
-// Every mode's Basic tier gives the same 7-day free trial (see
-// core/pricing/plans.ts) -- a fixed constant here since this check runs
-// before a business necessarily has an operatingMode set.
+// Deliberately left at 30 (more generous than the 15-day trial elsewhere
+// in core/pricing/plans.ts) rather than tightened to match -- lowering
+// this would immediately flip any business between day 15 and day 30 of
+// its trial from "fine" to "blocked" the moment this deployed, which is
+// the opposite of what's wanted here. A fixed constant since this check
+// runs before a business necessarily has an operatingMode set.
 const TRIAL_DAYS = 30;
 
 export async function isSubscriptionBlocked(businessId: string): Promise<boolean> {

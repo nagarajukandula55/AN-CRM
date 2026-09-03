@@ -208,7 +208,7 @@ export default async function VendorLayout({
             <p className="eyebrow text-warning">Trial ended</p>
             <h1 className="h-page">Your free trial has ended</h1>
             <p className="text-sm text-ink-2">
-              Your 7-day trial period is over and the vendor portal is now locked. Please
+              Your free trial period is over and the vendor portal is now locked. Please
               contact the business you're partnered with to choose a paid plan and
               restore access.
             </p>

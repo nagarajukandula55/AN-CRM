@@ -90,7 +90,7 @@ export default function TrialPlanBanner() {
           <p className="mt-2 text-sm text-ink">
             {state.expired
               ? 'Your free Ultimate-tier trial has ended — choose and purchase a plan to keep using your portal.'
-              : `You're on a free 7-day Ultimate-tier trial${state.daysLeft !== null ? ` — ${state.daysLeft} day${state.daysLeft === 1 ? '' : 's'} left` : ''}.`}
+              : `You're on a free Ultimate-tier trial${state.daysLeft !== null ? ` — ${state.daysLeft} day${state.daysLeft === 1 ? '' : 's'} left` : ''}.`}
           </p>
           {state.expiresAt && (
             <p className="mt-1 text-xs text-ink-3">Expires {state.expiresAt}</p>

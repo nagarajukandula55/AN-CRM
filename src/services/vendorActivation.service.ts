@@ -283,7 +283,7 @@ export async function activateVendorWithTrial(
 
 This Vendor Partner Agreement ("Agreement") is entered into between the Company and ${vendorDisplay} ("the Vendor").
 
-The Vendor has been onboarded under this Business's instant-trial vendor program: portal access begins immediately, with a 7-day trial period during which no payment is due. Continued access after the trial requires selecting a paid plan.
+The Vendor has been onboarded under this Business's instant-trial vendor program: portal access begins immediately, with a 15-day trial period during which no payment is due. Continued access after the trial requires selecting a paid plan.
 
 1. SCOPE — The Vendor shall supply products/services to the Company and may list approved products on the Company's sales channels, subject to the Company's review and approval.
 
@@ -402,7 +402,7 @@ By signing below, both parties agree to the terms above.`;
       vendorId: vendor._id,
       businessId,
       modules: plan.vendorModuleKeys.map((key) => ({ key, rate: 0 })),
-      validityDays: 7,
+      validityDays: 15,
       currentPeriodStart: now,
       currentPeriodEnd: trialEnd,
       planKey: plan.key,
@@ -410,7 +410,7 @@ By signing below, both parties agree to the terms above.`;
     });
 
     sendTelegramMessage(
-      formatVendorOnboardedMessage(vendor as any, { status: "✅ Auto-activated (7-day trial)", planName: plan.name })
+      formatVendorOnboardedMessage(vendor as any, { status: "✅ Auto-activated (15-day trial)", planName: plan.name })
     ).catch(() => {});
     return { ok: true, vendor, tempPassword };
   } catch (error: unknown) {
