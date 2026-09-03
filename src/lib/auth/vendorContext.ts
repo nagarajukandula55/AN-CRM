@@ -24,7 +24,8 @@ import { isVendorBlockedByExpiredTrial } from "@/lib/vendor/checkTrialAccess";
  * to their existing business-scoped behavior (unchanged).
  */
 export async function resolveVendorContext(
-  userId: string | null | undefined
+  userId: string | null | undefined,
+  opts?: { allowExpiredForRead?: boolean }
 ): Promise<{ vendor: IVendorProfile; role: "OWNER" | "STAFF"; vendorRole: string | null } | null> {
   if (!userId) return null;
 
@@ -75,13 +76,20 @@ export async function resolveVendorContext(
 
   // Instant-trial vendors (see Business.ts's marketplace.skipVendorApproval
   // and services/vendorActivation.service.ts's activateVendorWithTrial) get
-  // full portal access for exactly 7 days -- past that, with no paid
+  // full portal access for their trial window -- past that, with no paid
   // subscription, they're blocked the same as "not a vendor" here (every
   // existing caller of resolveVendorContext already handles null with a
   // 403/empty response). src/app/vendor/layout.tsx does the same check
   // separately to show a clear "trial expired" page instead of a bare
   // redirect, since it can't rely on this generic null.
-  if (await isVendorBlockedByExpiredTrial(result.vendor._id.toString())) {
+  //
+  // opts.allowExpiredForRead skips this block entirely -- for READ-only
+  // callers (viewing existing workorders/invoices/etc.) that must keep
+  // working regardless of plan status, per explicit direction
+  // ("irrespective of plan historic data should be available"). Never pass
+  // this from a route that creates/edits/deletes anything -- those must
+  // keep blocking normally.
+  if (!opts?.allowExpiredForRead && (await isVendorBlockedByExpiredTrial(result.vendor._id.toString()))) {
     return null;
   }
 

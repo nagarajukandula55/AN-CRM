@@ -52,11 +52,17 @@ export async function GET(req: NextRequest) {
     // x-active-business-id header (stale JWT) used to fall through to
     // trusting a raw ?businessId= from the client with no ownership
     // check at all.
+    // allowExpiredForRead: viewing existing workorders must keep working
+    // regardless of trial/plan status ("irrespective of plan historic data
+    // should be available") -- creating/editing (POST/PATCH below) still
+    // goes through the normal blocking resolveVendorContext call.
     const scope = await resolveAuthorizedVendorScope(
       userId,
       requestedBizId,
       session.isSuperAdmin,
-      session.business?.businessId || null
+      session.business?.businessId || null,
+      undefined,
+      true
     );
     const bizId = scope?.businessId || null;
 

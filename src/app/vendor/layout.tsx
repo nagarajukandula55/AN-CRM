@@ -14,7 +14,6 @@ import BusinessMember from '@/models/BusinessMember'
 import VendorProfile from '@/models/VendorProfile'
 import VendorSubscription from '@/models/VendorSubscription'
 import { resolveOwnerOrManagerVendor, getVendorStaffAccessMap, getVendorAvailableModules } from '@/core/access/vendorAccess.service'
-import { isVendorBlockedByExpiredTrial } from '@/lib/vendor/checkTrialAccess'
 import {
   LayoutDashboard,
   Package,
@@ -186,43 +185,18 @@ export default async function VendorLayout({
 
   // Instant-trial vendors (Business.ts's marketplace.skipVendorApproval ->
   // services/vendorActivation.service.ts's activateVendorWithTrial) get a
-  // 7-day Subscription with no admin approval step. Once that trial runs
-  // out with no paid plan behind it, block the WHOLE portal here -- this
-  // layout wraps every /vendor/* page, so this is the one place that
-  // covers all of them at once, same reasoning as the nav-filtering below.
-  // Deliberately checked AFTER the login redirect above (a logged-out/non-
-  // vendor caller should just hit /login, not a "trial expired" page).
-  try {
-    await connectDB()
-    let vendorIdForTrialCheck: string | null = null
-    if (role === 'VENDOR' && userId) {
-      const owned = await VendorProfile.findOne({ userId, isDeleted: { $ne: true } }).select('_id').lean()
-      vendorIdForTrialCheck = owned ? String((owned as any)._id) : null
-    } else if (membership?.vendorId) {
-      vendorIdForTrialCheck = String(membership.vendorId)
-    }
-    if (vendorIdForTrialCheck && (await isVendorBlockedByExpiredTrial(vendorIdForTrialCheck))) {
-      return (
-        <div className="min-h-screen bg-bg text-ink flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-surface border border-border rounded-card shadow-card p-8 text-center space-y-3">
-            <p className="eyebrow text-warning">Trial ended</p>
-            <h1 className="h-page">Your free trial has ended</h1>
-            <p className="text-sm text-ink-2">
-              Your free trial period is over and the vendor portal is now locked. Please
-              contact the business you're partnered with to choose a paid plan and
-              restore access.
-            </p>
-            <VendorLogoutButton />
-          </div>
-        </div>
-      )
-    }
-  } catch {
-    // On any resolution error, fail OPEN for this check specifically -- an
-    // outage here must not lock out every vendor whose trial hasn't
-    // actually expired; the existing per-route guards (resolveVendorContext)
-    // still apply the same check on the API side regardless.
-  }
+  // trial Subscription with no admin approval step. This used to hard-wall
+  // the ENTIRE portal here the moment that trial ran out -- but that meant
+  // an expired vendor couldn't even VIEW their own past workorders/
+  // invoices, which is wrong: per explicit direction ("irrespective of
+  // plan historic data should be available"), viewing existing records
+  // must keep working regardless of plan status. Mutating actions (create/
+  // edit/close a workorder, etc.) are unaffected by this change -- their
+  // own API routes still call the normal, blocking resolveVendorContext
+  // (no allowExpiredForRead), so they continue to fail for an expired
+  // vendor exactly as before. This block no longer renders a full-page
+  // wall; TrialPlanBanner (rendered below, unconditionally) is the nudge
+  // to upgrade instead.
 
   // Vendor identity for the sidebar header -- their own company name/code/
   // logo, and current plan, instead of a generic "Vendor Portal" label

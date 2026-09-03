@@ -43,13 +43,14 @@ export async function resolveAuthorizedBusinessId(
   userId: string | null | undefined,
   requestedBusinessId: string | null | undefined,
   isSuperAdmin: boolean,
-  sessionBusinessId?: string | null
+  sessionBusinessId?: string | null,
+  allowExpiredForRead?: boolean
 ): Promise<string | null> {
   if (isSuperAdmin) {
     return requestedBusinessId || null;
   }
 
-  const ctx = await resolveVendorContext(userId);
+  const ctx = await resolveVendorContext(userId, { allowExpiredForRead });
   const ownBusinessId = ctx?.vendor?.businessId ? String(ctx.vendor.businessId) : null;
 
   // A legitimately multi-business staff member switching which business
@@ -96,13 +97,15 @@ export async function resolveAuthorizedVendorScope(
   requestedBusinessId: string | null | undefined,
   isSuperAdmin: boolean,
   sessionBusinessId?: string | null,
-  requestedVendorId?: string | null
+  requestedVendorId?: string | null,
+  allowExpiredForRead?: boolean
 ): Promise<{ businessId: string; vendorId: string | null } | null> {
   const businessId = await resolveAuthorizedBusinessId(
     userId,
     requestedBusinessId,
     isSuperAdmin,
-    sessionBusinessId
+    sessionBusinessId,
+    allowExpiredForRead
   );
   if (!businessId) return null;
 
@@ -110,7 +113,7 @@ export async function resolveAuthorizedVendorScope(
     return { businessId, vendorId: requestedVendorId || null };
   }
 
-  const ctx = await resolveVendorContext(userId);
+  const ctx = await resolveVendorContext(userId, { allowExpiredForRead });
   const ownVendorId = ctx?.vendor?._id ? String(ctx.vendor._id) : null;
 
   // A parent vendor Owner who switched into one of their own sub-vendors
