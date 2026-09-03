@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import Expense, { EXPENSE_CATEGORIES } from "@/models/Expense";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
+import { vendorHasModule } from "@/core/access/vendorAccess.service";
 
 // GET /api/vendor/expenses?from=&to= — the logged-in vendor's own expenses,
 // newest first, optionally scoped to a date range (feeds both the Expenses
@@ -16,6 +17,11 @@ export async function GET(req: NextRequest) {
     await connectDB();
     const ctx = await resolveVendorContext(userId);
     if (!ctx) return NextResponse.json({ success: false, message: "Vendor profile not found" }, { status: 404 });
+
+    const allowed = await vendorHasModule(String((ctx.vendor as any).businessId), String((ctx.vendor as any)._id), "finance-advanced", (ctx.vendor as any).appliedAs);
+    if (!allowed) {
+      return NextResponse.json({ success: false, message: "Expenses is available on the Ultimate plan." }, { status: 403 });
+    }
 
     const { searchParams } = new URL(req.url);
     const fromStr = searchParams.get("from");
@@ -51,6 +57,11 @@ export async function POST(req: NextRequest) {
     await connectDB();
     const ctx = await resolveVendorContext(userId);
     if (!ctx) return NextResponse.json({ success: false, message: "Vendor profile not found" }, { status: 404 });
+
+    const allowed = await vendorHasModule(String((ctx.vendor as any).businessId), String((ctx.vendor as any)._id), "finance-advanced", (ctx.vendor as any).appliedAs);
+    if (!allowed) {
+      return NextResponse.json({ success: false, message: "Expenses is available on the Ultimate plan." }, { status: 403 });
+    }
 
     const body = await req.json();
     const { date, category, description, amount, paymentMode } = body;

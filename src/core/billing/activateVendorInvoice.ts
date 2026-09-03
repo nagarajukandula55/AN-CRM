@@ -32,6 +32,7 @@ import { notifyUser } from "@/services/notification.service";
 import { sendInvoiceEmail } from "@/services/email/resend.service";
 import { findPlan, type OperatingMode } from "@/core/pricing/plans";
 import Business from "@/models/Business";
+import { syncVendorInvoiceToAccounting } from "@/core/billing/syncVendorInvoiceToAccounting";
 
 export async function activateVendorInvoice(
   invoiceId: string,
@@ -119,6 +120,10 @@ export async function activateVendorInvoice(
       ).catch(() => {});
     }
   }
+
+  syncVendorInvoiceToAccounting(claimed, vendor).catch((err) => {
+    notifyAdmins(`⚠️ Accounting sync failed for invoice ${claimed.invoiceNumber}: ${err.message}`).catch(() => {});
+  });
 
   sendVendorAlert(
     String(vendor._id),

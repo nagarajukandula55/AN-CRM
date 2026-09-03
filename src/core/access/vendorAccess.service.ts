@@ -188,6 +188,26 @@ export async function getVendorAvailableModules(
   return result;
 }
 
+/**
+ * Server-side check for a single plan-gated vendor module (e.g.
+ * "finance-advanced" for Ledger/P&L/Expenses -- see core/pricing/plans.ts's
+ * vendorModuleKeys). The vendor-portal NAV already hides these, but the API
+ * routes behind them had no check of their own -- someone hitting the URL
+ * directly could bypass the plan tier entirely. Returns true when the
+ * vendor's current plan includes moduleKey (or when no VendorSubscription
+ * exists yet at all, same permissive-by-default fallback
+ * getVendorAvailableModules already uses everywhere else).
+ */
+export async function vendorHasModule(
+  businessId: string,
+  vendorId: string,
+  moduleKey: string,
+  appliedAs?: string
+): Promise<boolean> {
+  const available = await getVendorAvailableModules(businessId, appliedAs, vendorId);
+  return available.some((m) => m.key === moduleKey);
+}
+
 export function permissionCodesForModules(modules: string[]): string[] {
   const codes: string[] = [];
   for (const moduleKey of modules) {

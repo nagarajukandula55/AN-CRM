@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/mongodb";
 import SalesInvoice from "@/models/SalesInvoice";
 import SalesDocument from "@/models/SalesDocument";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
+import { vendorHasModule } from "@/core/access/vendorAccess.service";
 
 /**
  * GET /api/vendor/ledger?from=&to=&customer= — party-wise ledger, grouped
@@ -26,6 +27,14 @@ export async function GET(req: NextRequest) {
     const ctx = await resolveVendorContext(userId);
     if (!ctx) return NextResponse.json({ success: false, message: "Vendor profile not found" }, { status: 404 });
     const vendorId = (ctx.vendor as any)._id;
+
+    // Ledger Book is an Ultimate-only feature (see core/pricing/plans.ts) --
+    // the vendor-portal nav already hides this page for Pro, but the API
+    // itself had no check, so the URL could be hit directly to bypass it.
+    const allowed = await vendorHasModule(String((ctx.vendor as any).businessId), String(vendorId), "finance-advanced", (ctx.vendor as any).appliedAs);
+    if (!allowed) {
+      return NextResponse.json({ success: false, message: "Ledger Book is available on the Ultimate plan." }, { status: 403 });
+    }
 
     const { searchParams } = new URL(req.url);
     const fromStr = searchParams.get("from");

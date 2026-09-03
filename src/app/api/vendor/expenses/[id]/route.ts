@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import Expense from "@/models/Expense";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
+import { vendorHasModule } from "@/core/access/vendorAccess.service";
 
 // DELETE /api/vendor/expenses/[id] — soft-delete one of the vendor's own
 // expense entries.
@@ -15,6 +16,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     await connectDB();
     const ctx = await resolveVendorContext(userId);
     if (!ctx) return NextResponse.json({ success: false, message: "Vendor profile not found" }, { status: 404 });
+
+    const allowed = await vendorHasModule(String((ctx.vendor as any).businessId), String((ctx.vendor as any)._id), "finance-advanced", (ctx.vendor as any).appliedAs);
+    if (!allowed) {
+      return NextResponse.json({ success: false, message: "Expenses is available on the Ultimate plan." }, { status: 403 });
+    }
 
     const { id } = await params;
     const expense = await Expense.findOne({ _id: id, vendorId: (ctx.vendor as any)._id });

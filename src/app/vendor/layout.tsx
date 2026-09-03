@@ -23,7 +23,6 @@ import {
   FileText,
   User,
   BarChart3,
-  Building2,
   Warehouse,
   Boxes,
   Phone,
@@ -336,9 +335,12 @@ export default async function VendorLayout({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={vendorIdentity.logoUrl} alt="" className="h-8 w-8 rounded-control object-contain border border-border bg-surface" />
             ) : (
-              <div className="h-8 w-8 rounded-control bg-accent-soft border border-accent/20 flex items-center justify-center">
-                <Building2 className="h-4 w-4 text-accent" />
-              </div>
+              // Default to the platform's own logo, not a generic building
+              // icon, until a vendor uploads their own in Settings -- per
+              // explicit direction ("by default show our logo... if user
+              // wants to customize it they can upload from settings").
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/logo-mark.png" alt="My Biz Flow" className="h-8 w-8 rounded-control object-contain border border-border bg-surface p-0.5" />
             )}
             <div className="min-w-0">
               <p className="text-sm font-semibold text-ink truncate max-w-[150px]">

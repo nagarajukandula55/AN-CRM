@@ -5,6 +5,7 @@ import SalesInvoice from "@/models/SalesInvoice";
 import StockLedger from "@/models/StockLedger.js";
 import Expense, { EXPENSE_CATEGORIES } from "@/models/Expense";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
+import { vendorHasModule } from "@/core/access/vendorAccess.service";
 
 /**
  * GET /api/vendor/profit-loss?from=&to= — cash-basis Profit & Loss for the
@@ -39,6 +40,11 @@ export async function GET(req: NextRequest) {
     const ctx = await resolveVendorContext(userId);
     if (!ctx) return NextResponse.json({ success: false, message: "Vendor profile not found" }, { status: 404 });
     const vendorId = (ctx.vendor as any)._id;
+
+    const allowed = await vendorHasModule(String((ctx.vendor as any).businessId), String(vendorId), "finance-advanced", (ctx.vendor as any).appliedAs);
+    if (!allowed) {
+      return NextResponse.json({ success: false, message: "Profit & Loss is available on the Ultimate plan." }, { status: 403 });
+    }
 
     const { searchParams } = new URL(req.url);
     const toStr = searchParams.get("to");

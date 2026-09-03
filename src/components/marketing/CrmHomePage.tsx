@@ -18,6 +18,7 @@ import {
   mbfCard,
 } from './mbfTheme'
 import { PLANS_BY_MODE, currentMonthlyRate, isLaunchPricingActive } from '@/core/pricing/plans'
+import { ComparisonSection } from './ComparisonTable'
 
 /**
  * My Biz Flow (public product name -- AN-CRM is this repo's internal name
@@ -269,6 +270,8 @@ export default function CrmHomePage() {
             Know more <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
+
+        <ComparisonSection />
       </section>
 
       {/* ── Trust strip ───────────────────────────────────────────────── */}
