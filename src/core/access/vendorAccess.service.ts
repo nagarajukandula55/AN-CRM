@@ -62,6 +62,11 @@ export const VENDOR_MODULE_KEYS = [
   // feature list said these were Pro-only while a Starter vendor's own
   // VendorSubscription.modules already technically granted them.
   "finance-extra",
+  // UPI payment QR on printed/shared invoices -- Pro+ only, per explicit
+  // direction to strip it from Starter along with materials/inventory/
+  // brand storage. See core/payments/upiQr.ts's caller in
+  // api/invoice/view/[invoiceNumber]/route.ts.
+  "payment-qr",
   "gst",
   "crm",
   "crm_jobsheets",

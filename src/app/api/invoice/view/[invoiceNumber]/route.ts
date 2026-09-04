@@ -7,6 +7,7 @@ import { connectDB } from "@/lib/mongodb";
 import { getDefaultTemplate } from "@/core/invoiceTemplates/service";
 import { getStateCode } from "@/core/gst/stateCodes";
 import { generateUpiQrDataUrl } from "@/core/payments/upiQr";
+import { vendorHasModule } from "@/core/access/vendorAccess.service";
 import { buildVendorBillingInvoiceView } from "./vendorBillingView";
 
 export const runtime = "nodejs";
@@ -132,7 +133,13 @@ export async function GET(
     // invoices, or worse, another vendor's saved details would show
     // instead. Same overlay pattern as document-templates/resolve/route.ts.
     const upiId = (vendor?.upiId?.trim() || (business as any)?.upiId?.trim());
-    const paymentQrUrl = upiId && invoice.showPaymentQr !== false
+    // "payment-qr" is Pro+ only -- Starter had this stripped per explicit
+    // direction. No vendorId (console/business-level invoice) is never
+    // gated, same permissive default vendorHasModule uses everywhere else.
+    const upiQrAllowed = (invoice as any).vendorId
+      ? await vendorHasModule(String(invoice.businessId), String((invoice as any).vendorId), "payment-qr")
+      : true;
+    const paymentQrUrl = upiId && upiQrAllowed && invoice.showPaymentQr !== false
       ? await generateUpiQrDataUrl({
           vpa: upiId,
           payeeName: vendor?.companyName || (business as any)?.legalName || (business as any)?.name || "Business",

@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import VendorProfile from "@/models/VendorProfile";
-import { resolveOwnerOrManagerVendor } from "@/core/access/vendorAccess.service";
+import { resolveOwnerOrManagerVendor, vendorHasModule } from "@/core/access/vendorAccess.service";
 
 export async function GET() {
   try {
@@ -56,6 +56,16 @@ export async function PATCH(req: NextRequest) {
     if (Array.isArray(body.savedPaymentCollectors)) update.savedPaymentCollectors = body.savedPaymentCollectors;
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ success: false, error: "Nothing to update" }, { status: 400 });
+    }
+
+    // Saving Brand/Model names is Pro+ only -- Starter had this stripped
+    // ("no storage" for brands/device models), per explicit direction.
+    // Payment-collector names are unaffected (not part of that gate).
+    if ((update.savedBrands || update.savedModelsByBrand) && (vendor as any).businessId) {
+      const allowed = await vendorHasModule(String((vendor as any).businessId), String((vendor as any)._id), "brands");
+      if (!allowed) {
+        return NextResponse.json({ success: false, error: "Saving Brands & Device Models is available on the Pro plan and above." }, { status: 403 });
+      }
     }
 
     await VendorProfile.updateOne({ _id: (vendor as any)._id }, { $set: update });

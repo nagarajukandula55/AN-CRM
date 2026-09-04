@@ -73,12 +73,22 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   // dashboard not a separate option"). /vendor/crm still redirects there
   // for any existing link (e.g. the Engineer/CCO login redirect).
   { href: '/vendor/crm/jobsheets', label: 'Workorders', icon: ClipboardList, modules: ['crm_jobsheets', 'crm'], section: 'Workorders' },
-  { href: '/vendor/service-bom', label: 'Service Center BOM', icon: Wrench, modules: ['crm_jobsheets', 'crm'], section: 'Workorders' },
+  // Was gated on ['crm_jobsheets', 'crm'] -- same bug as Brands & Models
+  // above, made every plan (Starter included) able to reach the private
+  // Material/BOM price list regardless of "materials" not being in their
+  // plan's vendorModuleKeys. Starter has this stripped per explicit
+  // direction ("BOM aor material maintenance also remove").
+  { href: '/vendor/service-bom', label: 'Service Center BOM', icon: Wrench, modules: ['materials'], section: 'Workorders' },
   // Migrated from console/sc/masters/{brands,solutions} -- brands/models
   // via the same /api/vendor/saved-catalog the workorder form's quick-add
   // already writes to; solutions via /api/solutions, already vendorId-
   // isolated.
-  { href: '/vendor/masters/brands', label: 'Brands & Models', icon: Tag, modules: ['crm_jobsheets', 'crm'], section: 'Workorders' },
+  // Was gated on ['crm_jobsheets', 'crm'] -- since every plan (Starter
+  // included) grants crm_jobsheets, this page was reachable by everyone
+  // regardless of plan, even after Starter's own console equivalent
+  // ("sc-masters-brands") was correctly plan-gated off. Starter has this
+  // stripped per explicit direction ("no storage" for brands/devices).
+  { href: '/vendor/masters/brands', label: 'Brands & Models', icon: Tag, modules: ['brands'], section: 'Workorders' },
   { href: '/vendor/masters/solutions', label: 'Solutions', icon: Smartphone, modules: ['crm_jobsheets', 'crm'], section: 'Workorders' },
 
   { href: '/vendor/statement', label: 'Financial Statement', icon: BarChart3, modules: ['finance'], section: 'Billing' },

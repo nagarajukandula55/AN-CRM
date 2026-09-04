@@ -30,7 +30,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { logAction } from "@/lib/audit/logAction";
-import { resolveOwnerOrManagerVendor, resolveVendorTeamMembership } from "@/core/access/vendorAccess.service";
+import { resolveOwnerOrManagerVendor, resolveVendorTeamMembership, vendorHasModule } from "@/core/access/vendorAccess.service";
 // Required for .populate("deviceModelId", ...) below -- model must be registered before populate can resolve it.
 // Also used directly in GET to resolve a deviceModelId's own seriesId for the
 // series-tier inclusive filter, and in POST to keep seriesId denormalized in
@@ -244,6 +244,18 @@ export async function POST(req: NextRequest) {
     if (!resolved) {
       return NextResponse.json(
         { success: false, error: "No vendor profile found for this account" },
+        { status: 403 }
+      );
+    }
+
+    // Maintaining a private Material/BOM price list is Pro+ only -- Starter
+    // had this stripped per explicit direction ("BOM aor material
+    // maintenance also remove"). Only applies to an actual vendor-scoped
+    // create; the business-wide Sales/Brand-staff fallback (resolved.vendorId
+    // unset) is never a vendor's own plan concern.
+    if (resolved.vendorId && !(await vendorHasModule(String(resolved.businessId), String(resolved.vendorId), "materials"))) {
+      return NextResponse.json(
+        { success: false, error: "Maintaining the Material/BOM price list is available on the Pro plan and above." },
         { status: 403 }
       );
     }

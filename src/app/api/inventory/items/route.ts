@@ -8,6 +8,7 @@ import { notify } from "@/lib/notify";
 import { logAction } from "@/lib/audit/logAction";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { vendorHasModule } from "@/core/access/vendorAccess.service";
 
 /* =========================================================
  * GET INVENTORY ITEMS
@@ -116,6 +117,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
+      );
+    }
+
+    // Inventory tracking is Pro+ only -- Starter had this stripped per
+    // explicit direction ("no inventory at all").
+    if (scope.vendorId && !(await vendorHasModule(scope.businessId, scope.vendorId, "inventory"))) {
+      return NextResponse.json(
+        { error: "Inventory tracking is available on the Pro plan and above." },
+        { status: 403 }
       );
     }
 

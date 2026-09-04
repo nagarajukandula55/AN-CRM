@@ -143,7 +143,13 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // multi-warehouse Stock Transfers, and the FULL Telegram alert set
       // (Starter gets a basic subset, not zero -- see
       // core/telegram/sendVendorAlert.ts's BASIC_TELEGRAM_ALERT_TYPES;
-      // "we should not abandon them").
+      // "we should not abandon them"). Also stripped, per explicit
+      // direction ("no storing and all" for fault/brand/device types,
+      // remove UPI QR, remove BOM/material maintenance, no inventory at
+      // all): UPI payment QR, the private Material/BOM price list,
+      // Brands & device models storage, and inventory tracking entirely
+      // -- Starter is workorder + invoicing only, with no catalog/master
+      // data of its own to maintain.
       // Deliberately exhaustive, per explicit direction ("ensure to show
       // all these every minute detailed features we need to mention in
       // the list") -- grouped by category in the source for clarity, but
@@ -157,11 +163,6 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Customer-facing repair status tracking page",
         // Billing
         "GST & non-GST invoicing",
-        "UPI payment QR on every invoice",
-        // Inventory
-        "Private Material/BOM price list",
-        "Brands & device models",
-        "Basic inventory tracking (single location)",
         // Communication
         "Basic Telegram alerts (new & closed workorder only)",
         // Trial & Support
@@ -169,12 +170,16 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Email support",
       ],
       moduleKeys: [
-        "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
+        "crm", "crm_jobsheets", "customers", "sales",
         "admin-settings", "admin-plan", "send-feedback",
       ],
-      // No warehouses/stock_transfers (single default location only), no
-      // reports/analytics/fault_codes/solutions -- those are Pro+.
-      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "finance", "customers", "settings", "businesses", "inventory"],
+      // No materials/inventory/warehouses/stock_transfers (no catalog or
+      // stock tracking at all on Starter -- workorder + invoicing only),
+      // no brands/device_models (no Brand/Model master data storage), no
+      // reports/analytics/fault_codes/solutions -- those are Pro+. No
+      // "payment-qr" either (UPI QR generation is Pro+ -- see
+      // core/payments/upiQr.ts's caller in api/invoice/view).
+      vendorModuleKeys: ["crm", "crm_jobsheets", "finance", "customers", "settings", "businesses"],
     },
     {
       // Internal plan key stays "BASIC" (matches PlanKey/VendorSubscription
@@ -251,7 +256,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // "finance-advanced" (Ledger Book/P&L/Expenses) -- those moved to
       // Ultimate-only per explicit direction; Pro keeps plain "finance"
       // (invoicing/documents/statement).
-      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "finance-extra", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "finance-extra", "payment-qr", "brands", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
     },
     {
       key: "ULTIMATE",
@@ -300,7 +305,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // ultimate like ledger book, P&L report, expenses"), since they'd
       // been sharing Pro's "finance" key with plain invoicing (which stays
       // on Pro) -- see vendorAccess.service.ts's VENDOR_MODULE_KEYS.
-      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "finance-advanced", "finance-extra", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "finance-advanced", "finance-extra", "payment-qr", "brands", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
       commsQuota: { whatsappPerMonth: 1000 },
     },
   ],

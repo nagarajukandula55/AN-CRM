@@ -3,33 +3,34 @@
 import Image from "next/image";
 
 /**
- * Real logo mark only -- no wordmark text next to it, per explicit
- * direction ("name not required on top"). The mark itself is the
- * bright blue/orange/green gradient icon, readable on any background,
- * so no separate light/dark variant handling is needed here.
+ * Full logo lockup -- icon + "My Biz Flow" wordmark + tagline, per
+ * explicit direction to show the complete logo, not just the icon mark.
  *
- * public/logo-icon.png is a cropped-tight version of the master mark
- * (brand-assets/01_master_transparent_2048x2048.png): the original
- * logo-mark.png/logo-horizontal.png files are the FULL lockup (icon +
- * "My Biz Flow" wordmark + tagline) on a square canvas with a lot of
- * transparent padding around the icon -- squeezing that whole square
- * into a small nav-bar box via object-contain shrank the actual icon
- * down to near-illegible size ("logo hardly visible"). logo-icon.png
- * is trimmed to just the icon glyph (~512x224, no padding), so a nav
- * logo actually reads as a mark, not a speck.
+ * public/logo-full.png is a tight crop of the master artwork
+ * (brand-assets/01_master_transparent_2048x2048.png) -- the file itself
+ * has a huge transparent margin around the actual art, which is what
+ * made every earlier attempt at "just resize it" still read as a tiny
+ * speck. The wordmark/tagline text is a dark navy that's also illegible
+ * on this app's near-black marketing background (#05060d in
+ * mbfTheme.ts). Rather than reworking the whole page theme, the logo
+ * carries its own small light pill backdrop so the real, full-color
+ * artwork (navy text included) stays legible no matter what page
+ * background it sits on.
  *
  * Public-facing product name is "My Biz Flow" -- AN-CRM is this app's
  * internal/repo name only, never shown to an outside visitor.
  */
 export default function Logo({ className = "" }: { className?: string }) {
   return (
-    <Image
-      src="/logo-icon.png"
-      alt="My Biz Flow"
-      width={512}
-      height={224}
-      className={`h-10 sm:h-12 w-auto object-contain ${className}`}
-      priority
-    />
+    <span className="inline-flex items-center rounded-xl bg-white/95 px-3 py-2 shadow-sm">
+      <Image
+        src="/logo-full.png"
+        alt="My Biz Flow"
+        width={1968}
+        height={1096}
+        className={`h-12 sm:h-14 w-auto object-contain ${className}`}
+        priority
+      />
+    </span>
   );
 }
