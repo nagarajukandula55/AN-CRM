@@ -3,8 +3,9 @@ import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import Business from "@/models/Business";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
-import { PLANS_BY_MODE, BILLING_PERIODS, currentMonthlyRate, priceForPeriod, isLaunchPricingActive, type OperatingMode } from "@/core/pricing/plans";
+import { PLANS_BY_MODE, BILLING_PERIODS, type OperatingMode } from "@/core/pricing/plans";
 import { getEffectivePlan } from "@/core/pricing/planAccess";
+import { currentMonthlyRateAsync, priceForPeriodAsync, isLaunchPricingActiveAsync } from "@/core/pricing/pricingSettingsService";
 
 // GET /api/vendor/plans — the BASIC/PRO/ULTIMATE catalog for THIS vendor's
 // own operating mode (SC/BRAND/POS), for the vendor to pick from on their
@@ -39,8 +40,8 @@ export async function GET(_req: NextRequest) {
           // whichever is active) at MONTHLY billing -- see
           // currentMonthlyRate's own comment. periods[] below covers
           // every other billing-period option and its discounted total.
-          monthlyPriceINR: currentMonthlyRate(effective),
-          periods: BILLING_PERIODS.map((p) => ({ key: p.key, label: p.label, months: p.months, ...priceForPeriod(effective, p.key) })),
+          monthlyPriceINR: await currentMonthlyRateAsync(effective),
+          periods: await Promise.all(BILLING_PERIODS.map(async (p) => ({ key: p.key, label: p.label, months: p.months, ...(await priceForPeriodAsync(effective, p.key)) }))),
           seatLimit: effective.seatLimit,
           features: effective.features,
           highlight: effective.highlight || false,
@@ -48,7 +49,7 @@ export async function GET(_req: NextRequest) {
       })
     );
 
-    return NextResponse.json({ success: true, plans, launchPricingActive: isLaunchPricingActive() });
+    return NextResponse.json({ success: true, plans, launchPricingActive: await isLaunchPricingActiveAsync() });
   } catch (err: any) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }

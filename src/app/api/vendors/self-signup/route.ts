@@ -16,8 +16,9 @@ import { notifyAdmins } from "@/core/telegram/notifyAdmins";
 import { sendWelcomeEmail } from "@/services/email/resend.service";
 import VendorSubscription from "@/models/VendorSubscription";
 import { findPlan, type PlanKey } from "@/core/pricing/plans";
+import { trackEvent } from "@/core/analytics/trackEvent";
 
-const VALID_PLAN_KEYS: PlanKey[] = ["BASIC", "ULTIMATE"];
+const VALID_PLAN_KEYS: PlanKey[] = ["STARTER", "BASIC", "ULTIMATE"];
 
 const TRIAL_DAYS = 15;
 
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const body = await req.json();
-    const { name, companyName, email, phone, password, appliedAs, planKey } = body;
+    const { name, companyName, email, phone, password, appliedAs, planKey, referredByCode } = body;
     const requestedPlanKey: PlanKey = VALID_PLAN_KEYS.includes(planKey) ? planKey : "BASIC";
 
     if (!name?.trim() || !companyName?.trim() || !email?.trim() || !password) {
@@ -136,6 +137,7 @@ export async function POST(req: NextRequest) {
       isApproved: true,
       finalApprovedAt: now,
       trialEndsAt,
+      referredByCode: typeof referredByCode === "string" && referredByCode.trim() ? referredByCode.trim() : undefined,
       earlyAccessAnchor,
     });
 
@@ -163,6 +165,12 @@ export async function POST(req: NextRequest) {
       currentPeriodEnd: trialEndsAt,
       planKey: plan.key,
       planName: plan.name,
+    });
+
+    trackEvent("TRIAL_SIGNUP", {
+      vendorId: vendor._id.toString(),
+      businessId: String(resolvedBusinessId),
+      planKey: plan.key,
     });
 
     logAction({

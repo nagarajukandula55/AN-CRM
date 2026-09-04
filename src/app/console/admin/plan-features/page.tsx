@@ -49,11 +49,32 @@ export default function PlanFeaturesPage() {
   const [pending, setPending] = useState<Record<string, string[]>>({})
   const [vendorPending, setVendorPending] = useState<Record<string, string[]>>({})
   const [pricingDrafts, setPricingDrafts] = useState<Record<string, PricingDraft>>({})
+  const [cutoverDraft, setCutoverDraft] = useState<string | null>(null)
+  const [savingCutover, setSavingCutover] = useState(false)
 
   const plans: PlanRow[] = data?.success ? data.plans : []
   const catalog: { key: string; label: string }[] = data?.success ? data.catalog : []
   const vendorCatalog: { key: string; label: string }[] = data?.success ? data.vendorCatalog : []
   const modesOrder: string[] = data?.success ? data.modesOrder : []
+  const launchCutoverISO: string | undefined = data?.success ? data.launchCutoverISO : undefined
+  const cutoverInputValue = cutoverDraft ?? (launchCutoverISO ? launchCutoverISO.slice(0, 10) : '')
+
+  async function saveCutover() {
+    if (!cutoverInputValue) return
+    setSavingCutover(true)
+    try {
+      await fetch('/api/admin/plan-features', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ launchCutover: new Date(`${cutoverInputValue}T00:00:00+05:30`).toISOString() }),
+      })
+      setCutoverDraft(null)
+      mutate()
+    } finally {
+      setSavingCutover(false)
+    }
+  }
 
   function rowKey(p: { mode: string; plan: string }) {
     return `${p.mode}:${p.plan}`
@@ -123,6 +144,26 @@ export default function PlanFeaturesPage() {
         title="Plan Features"
         description="Which modules and features each plan tier unlocks — only subscribers on a tier that includes a feature can see or use it."
       />
+
+      <Card className="mb-6">
+        <CardBody>
+          <p className="text-sm font-semibold text-ink mb-1">Founding pricing cutover</p>
+          <p className="text-xs text-ink-3 mb-3">
+            New purchases and renewals before this date get each plan&apos;s launch price; on/after this date they get the standard price. Anyone already subscribed keeps their purchased rate for their paid term regardless of this date.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={cutoverInputValue}
+              onChange={(e) => setCutoverDraft(e.target.value)}
+              className="rounded-control border border-border bg-surface px-2 py-1.5 text-sm"
+            />
+            <Button size="sm" variant="secondary" onClick={saveCutover} disabled={!cutoverDraft || savingCutover} icon={savingCutover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}>
+              Save
+            </Button>
+          </div>
+        </CardBody>
+      </Card>
 
       {isLoading ? (
         <LoadingPanel label="Loading plans…" />

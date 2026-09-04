@@ -1,8 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import Link from 'next/link'
-import { Check, ArrowRight, Sparkles, Clock3 } from 'lucide-react'
-import { PLANS_BY_MODE, BILLING_PERIODS, priceForPeriod, isLaunchPricingActive, type BillingPeriod } from '@/core/pricing/plans'
+import { Check, ArrowRight, Sparkles, Clock3, ChevronDown } from 'lucide-react'
+import { PLANS_BY_MODE, BILLING_PERIODS, priceForPeriod, isLaunchPricingActive, type BillingPeriod, type PlanKey } from '@/core/pricing/plans'
 import Logo from '@/components/marketing/Logo'
 import {
   mbfButtonPrimary,
@@ -29,9 +29,33 @@ import { ComparisonSection } from '@/components/marketing/ComparisonTable'
 
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
+interface LiveConfig {
+  launchPricingActive: boolean
+  plans: { key: PlanKey; periods: { key: BillingPeriod; total: number; perMonth: number; discountPct: number }[] }[]
+}
+
 export default function PricingPage() {
   const [period, setPeriod] = useState<BillingPeriod>('YEARLY')
   const PLANS = PLANS_BY_MODE.SC
+
+  // Live, admin-overridable numbers (see api/pricing/config's own comment)
+  // -- falls back to the static plans.ts computation below until this
+  // loads (or if it ever fails), so the page never shows a blank price.
+  const [live, setLive] = useState<LiveConfig | null>(null)
+  useEffect(() => {
+    fetch('/api/pricing/config').then((r) => r.json()).then((d) => { if (d?.success) setLive(d) }).catch(() => {})
+    fetch('/api/analytics/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'PRICING_PAGE_VIEW' }),
+    }).catch(() => {})
+  }, [])
+  const launchActive = live ? live.launchPricingActive : isLaunchPricingActive()
+  function priceFor(plan: (typeof PLANS)[number]) {
+    const livePlan = live?.plans.find((p) => p.key === plan.key)
+    const livePeriod = livePlan?.periods.find((p) => p.key === period)
+    return livePeriod || priceForPeriod(plan, period)
+  }
 
   return (
     <div className={mbfPageBg}>
@@ -59,7 +83,7 @@ export default function PricingPage() {
           <p className="text-gray-400 mt-4 max-w-xl mx-auto">
             Single-login, single-screen workorder shop — pick a billing period below.
           </p>
-          {isLaunchPricingActive() && (
+          {launchActive && (
             <div className="inline-flex items-center gap-1.5 mt-4 rounded-full border border-green-400/30 bg-white/5 text-green-300 text-xs font-medium px-3.5 py-1.5">
               <Sparkles className="h-3.5 w-3.5" /> Launch pricing — limited time, prices will rise soon
             </div>
@@ -93,7 +117,7 @@ export default function PricingPage() {
         {/* Plan cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start max-w-5xl mx-auto">
           {PLANS.map((plan) => {
-            const price = priceForPeriod(plan, period)
+            const price = priceFor(plan)
             const periodLabel = BILLING_PERIODS.find((p) => p.key === period)!
             return (
               <div
@@ -137,6 +161,13 @@ export default function PricingPage() {
 
                 <Link
                   href={`/register?plan=${plan.key.toLowerCase()}&mode=sc`}
+                  onClick={() => {
+                    fetch('/api/analytics/track', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ type: 'PLAN_SELECTED', planKey: plan.key, billingPeriod: period }),
+                    }).catch(() => {})
+                  }}
                   className={
                     plan.highlight
                       ? `${mbfButtonPrimary} mt-6 !py-2.5 !text-sm`
@@ -158,6 +189,43 @@ export default function PricingPage() {
         </p>
 
         <ComparisonSection />
+        <PricingFaq />
+      </div>
+    </div>
+  )
+}
+
+const FAQ_ITEMS: { q: string; a: ReactNode }[] = [
+  { q: 'Is there a free trial?', a: 'Yes — every plan includes a 15-day free trial with full product access, no card required.' },
+  { q: 'Is GST included in these prices?', a: 'No. Every price shown here is exclusive of GST — 18% GST is added at checkout, shown clearly before you pay.' },
+  { q: 'What happens after my trial ends?', a: "Your data is never deleted. Once the trial ends you'll need to choose a plan to keep using the portal — nothing is lost in the meantime." },
+  { q: 'If I subscribe now, will my price change later?', a: "No. Whatever rate you're charged when you subscribe is locked in for that paid term (yearly or 2-yearly). Only a future renewal, purchased after your current term ends, would use whatever the standard rate is at that time." },
+  { q: 'Will founding/launch pricing last forever?', a: 'No — it applies to new subscriptions purchased before the founding period ends. After that, new customers are charged the standard rate. Anyone who already subscribed during the founding period keeps that rate for the term they paid for.' },
+  { q: 'Can I use this for multiple service centers?', a: 'Yes, on the Ultimate plan — unlimited sub-vendor/multi-center hierarchy under one login, with centralized reporting.' },
+  { q: 'Are there per-user or per-seat charges?', a: "No. Pricing is per plan, not per user — Starter and Pro are single-login, Ultimate covers unlimited centers each with their own login, at no extra per-seat cost." },
+  { q: 'Can I cancel or get a refund?', a: <>Yes — see our <Link href="/refund-policy" className="underline hover:text-gray-300">Refund &amp; Cancellation Policy</Link> for the exact terms.</> },
+]
+
+function PricingFaq() {
+  const [open, setOpen] = useState<number | null>(0)
+  return (
+    <div className="mt-24 max-w-3xl mx-auto">
+      <div className="text-center mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Pricing FAQ</h2>
+      </div>
+      <div className="space-y-2">
+        {FAQ_ITEMS.map((item, i) => (
+          <div key={item.q} className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
+            <button
+              onClick={() => setOpen(open === i ? null : i)}
+              className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left text-sm font-medium text-white"
+            >
+              {item.q}
+              <ChevronDown className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${open === i ? 'rotate-180' : ''}`} />
+            </button>
+            {open === i && <p className="px-5 pb-4 text-sm text-gray-400 leading-relaxed">{item.a}</p>}
+          </div>
+        ))}
       </div>
     </div>
   )

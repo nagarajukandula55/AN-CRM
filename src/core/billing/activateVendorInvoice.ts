@@ -33,6 +33,8 @@ import { sendInvoiceEmail } from "@/services/email/resend.service";
 import { findPlan, type OperatingMode } from "@/core/pricing/plans";
 import Business from "@/models/Business";
 import { syncVendorInvoiceToAccounting } from "@/core/billing/syncVendorInvoiceToAccounting";
+import { trackEvent } from "@/core/analytics/trackEvent";
+import { isLaunchPricingActiveAsync } from "@/core/pricing/pricingSettingsService";
 
 export async function activateVendorInvoice(
   invoiceId: string,
@@ -124,6 +126,20 @@ export async function activateVendorInvoice(
   syncVendorInvoiceToAccounting(claimed, vendor).catch((err) => {
     notifyAdmins(`⚠️ Accounting sync failed for invoice ${claimed.invoiceNumber}: ${err.message}`).catch(() => {});
   });
+
+  // validityDays === 0 is the mid-cycle upgrade case (see this file's own
+  // comment above); a prior paid invoice existing means this is a
+  // renewal, not the vendor's first-ever payment.
+  const eventType = validityDays === 0 ? "UPGRADE" : hasPriorPaidInvoice ? "RENEWAL" : "PAYMENT_COMPLETED";
+  isLaunchPricingActiveAsync().then((isFoundingPricing) => {
+    trackEvent(eventType, {
+      vendorId: String(vendor._id),
+      businessId: String(vendor.businessId),
+      planKey: claimed.planKey || undefined,
+      amount: claimed.amount,
+      isFoundingPricing,
+    });
+  }).catch(() => {});
 
   sendVendorAlert(
     String(vendor._id),

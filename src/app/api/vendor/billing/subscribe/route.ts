@@ -9,7 +9,9 @@ import { extendPeriod } from "@/core/billing/billing.service";
 import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
 import { createRazorpayOrder } from "@/core/billing/paymentGateway";
 import { getEffectivePlan } from "@/core/pricing/planAccess";
-import { BILLING_PERIODS, priceForPeriod, type BillingPeriod, type OperatingMode, type PlanKey } from "@/core/pricing/plans";
+import { BILLING_PERIODS, type BillingPeriod, type OperatingMode, type PlanKey } from "@/core/pricing/plans";
+import { priceForPeriodAsync, isLaunchPricingActiveAsync } from "@/core/pricing/pricingSettingsService";
+import { trackEvent } from "@/core/analytics/trackEvent";
 import { GST_RATE } from "@/app/api/invoice/view/[invoiceNumber]/vendorBillingView";
 
 /**
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
     // vendorBillingView.ts's own comment on why invoice.amount must be
     // the GST-INCLUSIVE grand total: it's exactly what createRazorpayOrder
     // charges, with nothing added after the fact.
-    const { total: basePrice } = priceForPeriod(plan, periodKey);
+    const { total: basePrice } = await priceForPeriodAsync(plan, periodKey);
     const price = Math.round(basePrice * (1 + GST_RATE / 100) * 100) / 100;
     const validityDays = periodDef.months * 30;
 
@@ -171,6 +173,15 @@ export async function POST(req: NextRequest) {
 
     invoice.gatewayRef = order.orderId;
     await invoice.save();
+
+    trackEvent("CHECKOUT_STARTED", {
+      vendorId: String(vendor._id),
+      businessId: String(vendor.businessId),
+      planKey: plan.key,
+      billingPeriod: periodKey,
+      amount: price,
+      isFoundingPricing: await isLaunchPricingActiveAsync(),
+    });
 
     return NextResponse.json({
       success: true,

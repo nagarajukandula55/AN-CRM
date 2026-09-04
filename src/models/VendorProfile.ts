@@ -166,6 +166,14 @@ export interface IVendorProfile extends Document {
     pincode?: string;
     country:  string;
   };
+  // Referral/partner attribution -- captured from a "?ref=<code>" query
+  // param at self-signup time (see api/vendors/self-signup/route.ts), so
+  // a future referral program (dealers/consultants/IT providers/local
+  // resellers -- see the partner-signup flow's own scope) has real
+  // attribution data to work from instead of needing a data backfill.
+  // Deliberately NOT a commission system -- just capture, per explicit
+  // direction ("prepare the architecture for referral attribution").
+  referredByCode?: string;
   /**
    * Printed on the Service Record generated after closing a job sheet
    * (see api/crm/jobsheets/[id]/service-record) -- kept editable here
@@ -405,6 +413,7 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
       hours:   { type: String },
       hotline: { type: String },
     },
+    referredByCode: { type: String, trim: true },
     gstRegistered: { type: Boolean, default: false },
     gstNumber:  { type: String },
     agreementId:      { type: Schema.Types.ObjectId, ref: 'Agreement', default: null },

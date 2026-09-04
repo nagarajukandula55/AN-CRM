@@ -47,18 +47,26 @@ hierarchy in violation of Section 8.
 
 ## 3. Subscription Plans, Fees, and Payment
 
-3.1 AN-CRM is offered on Pro / Ultimate tiers, billed Monthly,
-Quarterly, Half-Yearly, or Yearly, as displayed on the Pricing page at
-the time of purchase and in your account's Plan & Billing section.
-Prices are GST-inclusive unless stated otherwise.
+3.1 AN-CRM is offered on Starter / Pro / Ultimate tiers, billed Yearly or
+2-Yearly, as displayed on the Pricing page at the time of purchase and in
+your account's Plan & Billing section. Prices shown are exclusive of GST
+unless stated otherwise; GST is added at checkout.
 
 3.2 Fees are payable in advance via our payment gateway partner
 (Razorpay). All payments are non-refundable except as expressly set out
 in the Refund & Cancellation Policy.
 
-3.3 We may revise pricing prospectively; any revision will not affect a
-billing period already paid for and will apply from your next renewal,
-with at least 15 days' notice by email/in-app notice.
+3.3 **Founding/launch pricing.** From time to time we offer introductory
+"founding" pricing for a limited period. Purchasing a subscription during
+that period locks in the price you paid for the full billing term you
+purchased (yearly or 2-yearly, as applicable) — that price will not
+change mid-term. Once your paid term ends, renewing (or, for a new
+customer, subscribing after the founding period has ended) applies
+whatever the standard price is at that time. Outside of a founding-price
+transition, we may also revise standard pricing prospectively; any such
+revision will not affect a billing period already paid for and will apply
+from your next renewal, with at least 15 days' notice by email/in-app
+notice.
 
 3.4 On successful payment, a tax invoice is automatically generated in
 your account and is available for download at any time — this is your
@@ -69,7 +77,7 @@ renewed before its expiry date, access to the Service is automatically
 suspended (subject to Section 3.6) until renewed. Data is retained per
 Section 9 and is not deleted solely due to suspension.
 
-3.6 **Free trial.** Every new account receives a 7-day free trial with
+3.6 **Free trial.** Every new account receives a 15-day free trial with
 full Ultimate-tier access, from account creation. No payment is collected during the trial; the
 Service is suspended automatically at the end of the trial unless a paid
 plan is purchased.

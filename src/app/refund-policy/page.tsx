@@ -12,7 +12,7 @@ Act, 2019 and the Consumer Protection (E-Commerce) Rules, 2020.
 
 ## 1. Free Trial
 
-Every new account receives a 7-day free trial with full Ultimate-tier
+Every new account receives a 15-day free trial with full Ultimate-tier
 access. No
 payment is collected during the trial and no refund question arises for
 it — simply do not upgrade to a paid plan if you do not wish to continue,
@@ -22,9 +22,8 @@ and access will pause automatically at the end of the trial.
 
 Because AN-CRM is a digital service that is provisioned immediately and
 made fully available on payment, and in line with standard SaaS industry
-practice, **fees paid for a subscription period (Monthly, Quarterly,
-Half-Yearly, or Yearly) are non-refundable once the period has begun**,
-except as set out below.
+practice, **fees paid for a subscription period (Yearly or 2-Yearly) are
+non-refundable once the period has begun**, except as set out below.
 
 ## 3. Exceptions — When a Refund Applies
 
@@ -50,7 +49,7 @@ competent consumer forum/court.
 
 ## 4. Upgrades and Downgrades
 
-4.1 **Upgrading** (e.g., Basic → Pro, or Pro → Ultimate) mid-cycle is
+4.1 **Upgrading** (e.g., Starter → Pro, or Pro → Ultimate) mid-cycle is
 charged pro-rata for the remainder of the current billing period; the new
 tier's features (including any bundled communication quota) apply
 immediately on payment confirmation.

@@ -152,22 +152,52 @@ export default function CrmHomePage() {
             Built for Service Centers.
           </div>
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] text-white">
-            The business platform built for
+            Run your entire service center
             <br />
-            <span className={mbfGradientText}>how you actually operate</span>
+            <span className={mbfGradientText}>from one place</span>
           </h1>
           <p className="mt-6 text-lg text-gray-400 max-w-2xl mx-auto">
-            Single login, single screen — call to close, diagnosis to billing,
-            the entire service center workorder lifecycle in one place.
+            Manage customers, job cards, repairs, inventory, billing, payments and
+            business reports — single login, single screen, start to close.
           </p>
           <div className="mt-10 flex items-center justify-center gap-3 flex-wrap">
             <a href="#signup-types" className={mbfButtonPrimary}>
-              Get Started <ArrowRight className="h-4 w-4" />
+              Start 15-Day Free Trial <ArrowRight className="h-4 w-4" />
+            </a>
+            <a href="#workflow" className={mbfButtonSecondary}>
+              See How It Works
             </a>
             <Link href="/track-workorder" className={mbfButtonSecondary}>
               Track My Repair
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* ── Workflow chain -- the actual product positioning: a purpose-
+          built service-journey platform, not a generic CRM/billing tool. ── */}
+      <section id="workflow" className="w-full px-6 sm:px-12 py-16 scroll-mt-6 border-t border-white/5">
+        <div className="text-center mb-10">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-sky-300">How it works</p>
+          <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            Every step of a repair, in one connected flow
+          </h2>
+          <p className="mt-3 text-gray-400 max-w-xl mx-auto text-sm">
+            Generic billing software stops at the invoice. My Biz Flow connects the whole journey.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-2 max-w-4xl mx-auto">
+          {[
+            'Customer', 'Job Card', 'Diagnosis', 'Estimate', 'Repair',
+            'Parts', 'Billing', 'Payment', 'Delivery', 'Customer Tracking',
+          ].map((step, i, arr) => (
+            <span key={step} className="flex items-center gap-2">
+              <span className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 text-xs font-medium text-gray-200">
+                {step}
+              </span>
+              {i < arr.length - 1 && <ArrowRight className="h-3 w-3 text-gray-600" />}
+            </span>
+          ))}
         </div>
       </section>
 
@@ -234,6 +264,26 @@ export default function CrmHomePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── Trust elements -- only real, already-shipped things, nothing
+          invented (no certifications/customer counts/awards). ── */}
+      <section className="w-full px-6 sm:px-12 py-16">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 max-w-5xl mx-auto">
+          {[
+            { icon: Clock3, label: '15-day free trial' },
+            { icon: ShieldCheck, label: 'Secure cloud software' },
+            { icon: PhoneCall, label: 'GST-ready workflows' },
+            { icon: CheckCircle2, label: 'Customer repair tracking' },
+            { icon: Zap, label: 'Easy onboarding' },
+            { icon: Users, label: 'Real support' },
+          ].map((t) => (
+            <div key={t.label} className="flex flex-col items-center text-center gap-2 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+              <t.icon className="h-5 w-5 text-sky-300" />
+              <span className="text-xs text-gray-300">{t.label}</span>
+            </div>
+          ))}
         </div>
       </section>
 

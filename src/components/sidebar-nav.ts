@@ -134,6 +134,10 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "admin-vendor-billing", label: "Vendor Billing", route: "/console/admin/vendor-billing", icon: "Receipt" },
       { key: "admin-vendor-settlements", label: "Vendor Settlements", route: "/console/admin/vendor-settlements", icon: "Wallet" },
       { key: "admin-vendor-chats", label: "Vendor Chats", route: "/console/admin/vendor-chats", icon: "MessageSquare" },
+      // AN Group's own commercial-funnel supervision (pricing views, trial
+      // signups, conversion) -- distinct from a vendor's own business
+      // analytics, see that page's own comment.
+      { key: "admin-growth-analytics", label: "Growth Analytics", route: "/console/admin/growth-analytics", icon: "TrendingUp" },
     ]},
     { key: "adm-system", label: "System", items: [
       { key: "admin-plan-features", label: "Plan Features", route: "/console/admin/plan-features", icon: "Sparkles" },

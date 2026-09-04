@@ -12,7 +12,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import PlanFeatureConfig from "@/models/PlanFeatureConfig";
-import { ALL_PLANS, PLANS_BY_MODE, type OperatingMode, type PlanKey } from "@/core/pricing/plans";
+import PricingSettings from "@/models/PricingSettings";
+import { ALL_PLANS, PLANS_BY_MODE, LAUNCH_PRICING_CUTOVER, type OperatingMode, type PlanKey } from "@/core/pricing/plans";
 import { STATIC_MODULES } from "@/components/sidebar-nav";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { VENDOR_MODULE_KEYS } from "@/core/access/vendorAccess.service";
@@ -60,7 +61,42 @@ export async function GET() {
     const staticLabelByKey = new Map(STATIC_MODULES.map((m: any) => [m.key, m.label]));
     const vendorCatalog = VENDOR_MODULE_KEYS.map((key) => ({ key, label: staticLabelByKey.get(key) || key }));
 
-    return NextResponse.json({ success: true, plans, catalog, vendorCatalog, modesOrder: Object.keys(PLANS_BY_MODE) });
+    // Global launch->standard cutover -- one shared date, not per-plan
+    // (see PricingSettings' own comment). Falls back to the compiled
+    // default from plans.ts when no override has been saved.
+    const pricingSettings = await PricingSettings.findById("global").select("launchCutover").lean<any>();
+    const launchCutoverISO = (pricingSettings?.launchCutover ? new Date(pricingSettings.launchCutover) : LAUNCH_PRICING_CUTOVER).toISOString();
+
+    return NextResponse.json({ success: true, plans, catalog, vendorCatalog, modesOrder: Object.keys(PLANS_BY_MODE), launchCutoverISO });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ success: false, message }, { status: 500 });
+  }
+}
+
+// POST /api/admin/plan-features — update the GLOBAL launch->standard
+// cutover date (PricingSettings singleton), separate from PUT above
+// (which is always scoped to one mode/plan). Super Admin only.
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getEnrichedSession();
+    if (!session?.isSuperAdmin) {
+      return NextResponse.json({ success: false, message: "Super Admin only" }, { status: 403 });
+    }
+    const body = await req.json();
+    const { launchCutover } = body as { launchCutover?: string };
+    if (!launchCutover || Number.isNaN(new Date(launchCutover).getTime())) {
+      return NextResponse.json({ success: false, message: "A valid launchCutover date is required" }, { status: 400 });
+    }
+
+    await connectDB();
+    await PricingSettings.findByIdAndUpdate(
+      "global",
+      { $set: { launchCutover: new Date(launchCutover), updatedBy: session.user?.id } },
+      { upsert: true }
+    );
+
+    return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ success: false, message }, { status: 500 });
