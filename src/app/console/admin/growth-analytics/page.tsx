@@ -16,6 +16,19 @@ import { LoadingPanel } from '@/components/ui/Spinner'
  * because this is for our supervision not for vendors").
  */
 
+const VENDOR_STATUS_LABELS: Record<string, string> = {
+  APPLIED: 'Applied', PENDING: 'Pending', AGREEMENT_DRAFTED: 'Agreement Drafted',
+  AGREEMENT_SENT: 'Agreement Sent', AGREEMENT_SIGNED: 'Agreement Signed',
+  AGREEMENT_CANCELLED: 'Agreement Cancelled', APPROVED: 'Approved', ACTIVE: 'Active',
+  INACTIVE: 'Inactive', REJECTED: 'Rejected', SUSPENDED: 'Suspended',
+}
+const SUB_STATUS_LABELS: Record<string, string> = {
+  NOT_SET: 'No Plan Configured', UNPAID: 'Unpaid (Invoiced)', ACTIVE: 'Active (Paid)', EXPIRED: 'Expired',
+}
+const PLAN_LABELS: Record<string, string> = {
+  STARTER: 'Starter', BASIC: 'Pro', PRO: 'Pro', ULTIMATE: 'Ultimate',
+}
+
 const EVENT_LABELS: Record<string, string> = {
   PRICING_PAGE_VIEW: 'Pricing Page Views',
   TRIAL_SIGNUP: 'Trial Signups',
@@ -46,12 +59,125 @@ export default function GrowthAnalyticsPage() {
   const foundingRevenue = revenueByFounding.find((r) => r._id === true)?.revenue || 0
   const standardRevenue = revenueByFounding.find((r) => r._id === false)?.revenue || 0
 
+  const snapshot = data.vendorSnapshot || {}
+  const statusCounts: { _id: string; count: number }[] = snapshot.statusCounts || []
+  const subStatusCounts: { _id: string; count: number }[] = snapshot.subscriptionStatusCounts || []
+  const planDistribution: { _id: string | null; count: number }[] = snapshot.planDistribution || []
+  const signupsByMonth: { _id: string; count: number }[] = snapshot.signupsByMonth || []
+  const maxMonthlySignups = Math.max(1, ...signupsByMonth.map((m) => m.count))
+  const activePaidCount = subStatusCounts.find((s) => s._id === 'ACTIVE')?.count || 0
+  const expiredCount = subStatusCounts.find((s) => s._id === 'EXPIRED')?.count || 0
+
   return (
     <div className="min-h-screen bg-bg text-ink p-6 space-y-6">
       <PageHeader
         title="Growth Analytics"
-        description="AN Group's own commercial funnel — pricing traffic, trial signups, and conversion. Not a vendor's own business analytics (see Vendor Analytics for that)."
+        description="AN Group's own commercial funnel and live vendor base — pricing traffic, trial signups, conversion, current plan mix, and churn signals. Not a vendor's own business analytics (see Vendor Analytics for that)."
       />
+
+      <div>
+        <p className="h-section mb-3">Current Vendor Base</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card><CardBody>
+            <p className="text-xs text-ink-3">Total Vendors</p>
+            <p className="text-2xl font-semibold tabular text-ink mt-1">{snapshot.totalVendors ?? 0}</p>
+          </CardBody></Card>
+          <Card><CardBody>
+            <p className="text-xs text-ink-3">New This Month</p>
+            <p className="text-2xl font-semibold tabular text-ink mt-1">{snapshot.newThisMonth ?? 0}</p>
+          </CardBody></Card>
+          <Card><CardBody>
+            <p className="text-xs text-ink-3">Active Paid Subscriptions</p>
+            <p className="text-2xl font-semibold tabular text-success mt-1">{activePaidCount}</p>
+          </CardBody></Card>
+          <Card><CardBody>
+            <p className="text-xs text-ink-3">Lapsed / Expired</p>
+            <p className="text-2xl font-semibold tabular text-danger mt-1">{expiredCount}</p>
+          </CardBody></Card>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardBody>
+            <p className="h-section mb-2">Vendor Status</p>
+            <div className="space-y-1.5">
+              {statusCounts.length === 0 && <p className="text-xs text-ink-3">No vendors yet.</p>}
+              {statusCounts.map((s) => (
+                <div key={s._id} className="flex items-center justify-between text-sm">
+                  <span className="text-ink-2">{VENDOR_STATUS_LABELS[s._id] || s._id}</span>
+                  <span className="tabular font-medium">{s.count}</span>
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody>
+            <p className="h-section mb-2">Billing Status</p>
+            <div className="space-y-1.5">
+              {subStatusCounts.length === 0 && <p className="text-xs text-ink-3">No subscriptions yet.</p>}
+              {subStatusCounts.map((s) => (
+                <div key={s._id} className="flex items-center justify-between text-sm">
+                  <span className="text-ink-2">{SUB_STATUS_LABELS[s._id] || s._id}</span>
+                  <span className="tabular font-medium">{s.count}</span>
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody>
+            <p className="h-section mb-2">Plan Mix (active only)</p>
+            <div className="space-y-1.5">
+              {planDistribution.length === 0 && <p className="text-xs text-ink-3">No active plans yet.</p>}
+              {planDistribution.map((p) => (
+                <div key={String(p._id)} className="flex items-center justify-between text-sm">
+                  <span className="text-ink-2">{p._id ? (PLAN_LABELS[p._id] || p._id) : 'Unset'}</span>
+                  <span className="tabular font-medium">{p.count}</span>
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      <Card>
+        <CardBody>
+          <p className="h-section mb-3">Vendor Signups — Last 6 Months</p>
+          {signupsByMonth.length === 0 ? (
+            <p className="text-xs text-ink-3">No signups in this window.</p>
+          ) : (
+            <div className="space-y-2">
+              {signupsByMonth.map((m) => (
+                <div key={m._id} className="flex items-center gap-3">
+                  <span className="text-xs text-ink-3 w-16 shrink-0 tabular">{m._id}</span>
+                  <div className="flex-1 h-4 bg-surface-2 rounded-control overflow-hidden">
+                    <div className="h-full bg-accent" style={{ width: `${(m.count / maxMonthlySignups) * 100}%` }} />
+                  </div>
+                  <span className="text-xs tabular text-ink-2 w-6 text-right">{m.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card>
+          <CardBody>
+            <p className="h-section mb-2">Churn Signals (last 30 days)</p>
+            <div className="flex items-center justify-between text-sm mb-1">
+              <span className="text-ink-2">Subscriptions that lapsed unpaid</span>
+              <span className="tabular font-medium">{snapshot.recentlyExpiredSubscriptions ?? 0}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-ink-2">Vendors marked Suspended/Inactive/Rejected</span>
+              <span className="tabular font-medium">{snapshot.recentlyLostVendors ?? 0}</span>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {EVENT_ORDER.map((type) => (

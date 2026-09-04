@@ -4,7 +4,7 @@ import useSWR from 'swr'
 import { useState } from 'react'
 import {
   BookOpen, Users, Shield, Plug, LayoutTemplate, BarChart3,
-  ChevronDown, ChevronRight, Lock,
+  ChevronDown, ChevronRight, Lock, KeyRound, CreditCard,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
@@ -114,6 +114,50 @@ const SECTIONS: Section[] = [
       <div className="space-y-2 text-sm text-ink-2">
         <p><b>Report Builder</b> (<code>/console/report-builder</code>) — pick a data source (CRM calls, workorders, invoices, vendors, customers), pick fields, filters, an optional group-by, and a chart type (table, bar, line, pie). Save it, run it any time.</p>
         <p>Allowed data sources and their fields are an explicit allowlist in <code>core/reports/dataSources.ts</code> — extending it to a new data source is the one piece that still needs a code change (by design: it controls exactly what's queryable, not arbitrary raw access).</p>
+      </div>
+    ),
+  },
+  {
+    id: 'growth-analytics',
+    icon: BarChart3,
+    title: 'Tracking growth or decline (Growth Analytics)',
+    body: (
+      <div className="space-y-2 text-sm text-ink-2">
+        <p><code>/console/admin/growth-analytics</code> has two halves: the top ("Current Vendor Base") is a LIVE read of every vendor's actual current state — total count, new signups this month, status breakdown (Applied/Active/Suspended/etc), billing status (No Plan/Unpaid/Active/Expired), plan mix (Starter/Pro/Ultimate, active subscriptions only), a 6-month signup trend bar chart, and two churn signals (subscriptions that lapsed unpaid in the last 30 days, and vendors an admin marked Suspended/Inactive/Rejected in the last 30 days).</p>
+        <p>The bottom half is the commercial-FUNNEL view built from logged <code>AnalyticsEvent</code> records (pricing page views → trial signups → checkout → payment → renewal/upgrade), including the founding-vs-standard pricing split and trial-to-paid conversion rate. This only reflects events that happened AFTER event tracking was added, so a vendor created earlier won't show up here even though they do show up in the live snapshot above.</p>
+        <p>This is AN Group's own supervision view — distinct from a vendor's own business analytics (<code>/vendor/analytics</code>, <code>/console/common/analytics</code>), which is about a VENDOR's revenue/workorders, not the platform's.</p>
+      </div>
+    ),
+  },
+  {
+    id: 'reset-password',
+    icon: KeyRound,
+    title: 'Resetting a vendor\'s password',
+    body: (
+      <div className="space-y-2 text-sm text-ink-2">
+        <p>Passwords are one-way hashed — nobody, including a super admin, can ever look up or recover a vendor's existing password. The only option is to set a NEW one.</p>
+        <ol className="list-decimal pl-5 space-y-1">
+          <li>Go to <code>/console/admin/vendors</code>, search for the vendor by their <b>Vendor ID</b> (e.g. <code>VNDT001</code>) or company name, and open their profile.</li>
+          <li>In the password-reset section of that page, click <b>"Generate temporary password"</b>.</li>
+          <li>The new password is shown <b>once</b>, in that response only — copy it immediately and share it with the vendor securely (it is never logged or shown again, and their next login forces them to set their own).</li>
+        </ol>
+        <p>This calls <code>POST /api/admin/users/[id]/reset-password</code> — super-admin-only, and it always sets <code>mustChangePassword: true</code> so the temp password can't linger as a real one.</p>
+        <p><b>Login ID reminder:</b> a vendor always logs in with their <b>Vendor ID</b> (never their email) — see the "Vendor types, onboarding, and login" section above.</p>
+      </div>
+    ),
+  },
+  {
+    id: 'vendor-plans',
+    icon: CreditCard,
+    title: 'Assigning or changing a vendor\'s plan (Starter / Pro / Ultimate)',
+    body: (
+      <div className="space-y-2 text-sm text-ink-2">
+        <p>A vendor's plan is tracked on their <code>VendorSubscription</code> record, managed at <code>/console/admin/vendor-subscriptions</code> — search/select the vendor, then edit its <b>plan</b> and <b>status</b> (Trial / Pending Payment / Active / Expired / Cancelled) directly. This is the manual override path for testing or support — a real customer's plan otherwise changes itself automatically when their Razorpay payment confirms (see <code>core/billing/activateVendorInvoice.ts</code>).</p>
+        <p>The three SC plans and exactly what each one includes are defined in one place, <code>core/pricing/plans.ts</code> — that file's <code>features</code> array is the literal public marketing copy, and its <code>moduleKeys</code>/<code>vendorModuleKeys</code> arrays are what actually turns pages and API writes on/off for that plan. If the two ever look inconsistent for a vendor, that file is the source of truth to check first.</p>
+        <p><b>Starter</b> is workorder + invoicing only: customer database, single-login workorders, job card/device intake, GST/non-GST invoicing, basic Telegram alerts. No UPI payment QR, no private Material/BOM price list, no saved Brand/Device-Model list (typing a brand/model on a workorder always works — only saving it to a reusable dropdown list is blocked), and no inventory tracking at all.</p>
+        <p><b>Pro</b> adds: Quotations/Credit Notes/Debit Notes/Proforma Invoices/Delivery Challans/Credit Accounts, UPI payment QR, the Material/BOM price list, Brand/Device-Model list storage, Warehouses & Stock Transfers, inventory tracking, fault/symptom/solutions library, Custom Report Builder, Analytics.</p>
+        <p><b>Ultimate</b> adds on top of Pro: Ledger Book, Profit &amp; Loss, Expense tracking (the "finance-advanced" module key), and unlimited sub-vendor/multi-center hierarchy under one login.</p>
+        <p>Every plan-gated feature is enforced twice: once in the nav (so a lower plan simply doesn't see the menu item) and again at the actual API route via <code>vendorHasModule(businessId, vendorId, moduleKey)</code> (<code>core/access/vendorAccess.service.ts</code>) — so a lower-plan vendor can't bypass the boundary by hitting the URL/API directly. If a feature seems wrongly visible or wrongly blocked for a test account, check both the nav item's <code>modules</code> array and whether the relevant route calls <code>vendorHasModule</code>.</p>
       </div>
     ),
   },
