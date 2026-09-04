@@ -55,6 +55,13 @@ export const VENDOR_MODULE_KEYS = [
   // Pro-tier for invoicing/documents/statement) so these three can be
   // gated to Ultimate only. See core/pricing/plans.ts vendorModuleKeys.
   "finance-advanced",
+  // Quotations/Credit Notes/Debit Notes/Proforma Invoices/Delivery
+  // Challans/Credit Accounts -- also split out of "finance" (which stays
+  // Starter-tier for plain GST/non-GST invoicing only), Pro+ only. Was
+  // sharing "finance" with plain invoicing, which meant Starter's public
+  // feature list said these were Pro-only while a Starter vendor's own
+  // VendorSubscription.modules already technically granted them.
+  "finance-extra",
   "gst",
   "crm",
   "crm_jobsheets",

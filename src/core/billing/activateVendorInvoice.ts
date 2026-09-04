@@ -24,6 +24,7 @@
 import VendorBillingInvoice from "@/models/VendorBillingInvoice";
 import VendorSubscription from "@/models/VendorSubscription";
 import VendorProfile from "@/models/VendorProfile";
+import PromoCode from "@/models/PromoCode";
 import CommunicationQuota from "@/models/CommunicationQuota";
 import { extendPeriod } from "@/core/billing/billing.service";
 import { sendVendorAlert } from "@/core/telegram/sendVendorAlert";
@@ -95,6 +96,23 @@ export async function activateVendorInvoice(
   subscription.currentPeriodStart = start;
   subscription.currentPeriodEnd = end;
   await subscription.save();
+
+  // Actually CONSUME the discount this invoice was priced with, now that
+  // payment is confirmed -- see VendorBillingInvoice.pendingDiscountSource's
+  // own comment on why this happens here and not at checkout: an
+  // abandoned/cancelled PENDING invoice never reaches this line, so the
+  // discount stays available for the vendor's next real attempt.
+  if (claimed.pendingDiscountSource === "referral") {
+    // Only clear if it's still the SAME discount this invoice was priced
+    // with -- if the vendor somehow earned a newer referral discount
+    // between checkout and payment, don't clobber that one.
+    if (subscription.pendingReferralDiscountPct === claimed.pendingDiscountPct) {
+      subscription.pendingReferralDiscountPct = undefined;
+      await subscription.save();
+    }
+  } else if (claimed.pendingDiscountSource === "promo" && claimed.pendingPromoCodeId) {
+    await PromoCode.updateOne({ _id: claimed.pendingPromoCodeId }, { $inc: { redeemedCount: 1 } }).catch(() => {});
+  }
 
   // Referral reward -- per explicit direction: the REFERRER benefits once
   // the person they referred makes their FIRST real payment (never on a

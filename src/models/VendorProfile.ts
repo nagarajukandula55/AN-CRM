@@ -291,10 +291,19 @@ export interface IVendorProfile extends Document {
   // for the device BRAND's logo on an Intake Receipt/Workorder print, a
   // completely different purpose).
   logoUrl?: string;
+  // A SEPARATE upload from logoUrl above, specifically for printed
+  // documents -- a vendor's sidebar brand mark and what they want on a
+  // customer-facing Workorder/Estimate/Invoice aren't always the same
+  // image (e.g. a simpler, print-friendly mark vs a colorful app icon).
+  // Falls back to logoUrl when unset, so a vendor who already enabled
+  // documentLogoEnabled before this field existed keeps seeing their
+  // existing logo on documents with no action needed.
+  documentLogoUrl?: string;
   documentSignatureUrl?: string;
-  // Whether logoUrl above prints on Workorder/Estimate/Invoice/Service
-  // Record documents, and where -- default off (see api/vendor/settings
-  // route's own comment on why these live per-vendor here, not Business).
+  // Whether documentLogoUrl (or logoUrl, if that's unset) prints on
+  // Workorder/Estimate/Invoice/Service Record documents, and where --
+  // default off (see api/vendor/settings route's own comment on why these
+  // live per-vendor here, not Business).
   documentLogoEnabled?: boolean;
   documentLogoPosition?: "LEFT" | "CENTER" | "RIGHT";
   // "Digital document — no physical signature required" placeholder text
@@ -460,6 +469,7 @@ const VendorProfileSchema = new Schema<IVendorProfile>(
     defaultLabourCharge: { type: Number, default: 0, min: 0 },
     customerLogoUrl: { type: String, default: '' },
     logoUrl: { type: String, default: '' },
+    documentLogoUrl: { type: String, default: '' },
     documentSignatureUrl: { type: String, default: '' },
     documentLogoEnabled: { type: Boolean, default: false },
     documentLogoPosition: { type: String, enum: ["LEFT", "CENTER", "RIGHT"], default: "LEFT" },

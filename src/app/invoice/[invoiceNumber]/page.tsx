@@ -90,8 +90,14 @@ export default function InvoicePage() {
 {/* COMPANY + INVOICE DETAILS */}
 <div className="header">
 
-  <div className="companyCard">
+  <div className="companyCard" style={data?.company?.logoUrl && data.company.logoPosition !== 'RIGHT' ? { display: 'flex', alignItems: 'center', gap: 12, flexDirection: data.company.logoPosition === 'CENTER' ? 'column' : 'row', textAlign: data.company.logoPosition === 'CENTER' ? 'center' : undefined } : undefined}>
 
+    {data?.company?.logoUrl && data.company.logoPosition !== 'RIGHT' && (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={data.company.logoUrl} alt="" style={{ height: 56, maxWidth: 140, objectFit: 'contain' }} />
+    )}
+
+    <div>
     <div className="companyName">
       {safe(data?.company?.name)}
     </div>
@@ -119,10 +125,16 @@ export default function InvoicePage() {
       {" "}
       {safe(data?.company?.phone)}
     </div>
+    </div>
 
   </div>
 
   <div className="invoiceBox">
+
+    {data?.company?.logoUrl && data.company.logoPosition === 'RIGHT' && (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={data.company.logoUrl} alt="" style={{ height: 48, maxWidth: 120, objectFit: 'contain', marginBottom: 8, marginLeft: 'auto' }} />
+    )}
 
     <div>
       <b>{isPlainBill ? "Bill No:" : "Invoice No:"}</b>

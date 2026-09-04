@@ -110,8 +110,13 @@ export async function POST(req: NextRequest) {
     // Deliberately NOT stacked -- whichever gives the bigger discount
     // wins, so a vendor is never worse off for having both, but the
     // company can't accidentally compound two discounts into something
-    // much steeper than either was meant to be alone. Same "consumed at
-    // checkout, not at confirmed payment" trade-off as before.
+    // much steeper than either was meant to be alone.
+    //
+    // The chosen discount is baked into `price` below and recorded on the
+    // invoice as pendingDiscountSource/Pct/PromoCodeId, but NOT consumed
+    // at the source here -- only activateVendorInvoice.ts does that, once
+    // this invoice is actually confirmed PAID. An abandoned checkout (the
+    // invoice gets CANCELLED, see below) never burns the discount.
     const referralPct = subscription.pendingReferralDiscountPct || 0;
     let promoDoc: any = null;
     if (typeof body.promoCode === "string" && body.promoCode.trim()) {
@@ -127,14 +132,18 @@ export async function POST(req: NextRequest) {
     }
     const promoPct = promoDoc?.discountPct || 0;
 
+    let pendingDiscountSource: "referral" | "promo" | undefined;
+    let pendingDiscountPct: number | undefined;
+    let pendingPromoCodeId: string | undefined;
     if (promoPct > 0 && promoPct >= referralPct) {
       basePrice = Math.round(basePrice * (1 - promoPct / 100) * 100) / 100;
-      promoDoc.redeemedCount += 1;
-      await promoDoc.save();
+      pendingDiscountSource = "promo";
+      pendingDiscountPct = promoPct;
+      pendingPromoCodeId = String(promoDoc._id);
     } else if (referralPct > 0) {
       basePrice = Math.round(basePrice * (1 - referralPct / 100) * 100) / 100;
-      subscription.pendingReferralDiscountPct = undefined;
-      await subscription.save();
+      pendingDiscountSource = "referral";
+      pendingDiscountPct = referralPct;
     }
     const price = Math.round(basePrice * (1 + GST_RATE / 100) * 100) / 100;
     const validityDays = periodDef.months * 30;
@@ -207,6 +216,9 @@ export async function POST(req: NextRequest) {
       periodStart: start,
       periodEnd: end,
       status: "PENDING",
+      pendingDiscountSource,
+      pendingDiscountPct,
+      pendingPromoCodeId,
     });
 
     let order;

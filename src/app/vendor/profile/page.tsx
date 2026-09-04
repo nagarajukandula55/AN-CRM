@@ -143,12 +143,19 @@ export default function VendorProfilePage() {
   // Blank = no logo prints at all.
   const [customerLogoUrl, setCustomerLogoUrl] = useState('')
   const [savingCustomerLogo, setSavingCustomerLogo] = useState(false)
-  // This vendor's own brand logo -- shown in the vendor-portal sidebar and
-  // preferred over the shared platform Business's logo on printed
-  // documents. Distinct from Customer Logo above.
+  // This vendor's own brand logo -- shown in the vendor-portal sidebar
+  // only. Distinct from Customer Logo above and from Document Logo below
+  // (a vendor's app-icon-style sidebar mark and what they want on a
+  // printed GST invoice aren't always the same image).
   const [logoUrl, setLogoUrl] = useState('')
   const [savingLogo, setSavingLogo] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  // A SEPARATE upload specifically for Workorder/Estimate/Invoice/Service
+  // Record documents -- falls back to logoUrl above when unset, gated by
+  // documentLogoEnabled/documentLogoPosition below either way.
+  const [documentLogoUrl, setDocumentLogoUrl] = useState('')
+  const [savingDocumentLogo, setSavingDocumentLogo] = useState(false)
+  const [uploadingDocumentLogo, setUploadingDocumentLogo] = useState(false)
   // Signature -- shown in the "Service Centre Signatory" slot on printed
   // Invoice/Workorder/Service Record documents. Blank = no signature
   // image prints; the document shows a digital-document notice instead.
@@ -204,6 +211,7 @@ export default function VendorProfilePage() {
       setDefaultLabourCharge(String(settingsData.defaultLabourCharge ?? 0))
       setCustomerLogoUrl(settingsData.customerLogoUrl || '')
       setLogoUrl(settingsData.logoUrl || '')
+      setDocumentLogoUrl(settingsData.documentLogoUrl || '')
       setDocumentSignatureUrl(settingsData.documentSignatureUrl || '')
       setDocumentLogoEnabled(Boolean(settingsData.documentLogoEnabled))
       setDocumentLogoPosition(settingsData.documentLogoPosition || 'LEFT')
@@ -359,6 +367,45 @@ export default function VendorProfilePage() {
       setSettingsMessage(err?.message || 'Failed to upload logo')
     } finally {
       setUploadingLogo(false)
+    }
+  }
+
+  async function saveDocumentLogo(url?: string) {
+    setSavingDocumentLogo(true)
+    setSettingsMessage('')
+    try {
+      const res = await fetch('/api/vendor/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentLogoUrl: url ?? documentLogoUrl }),
+      })
+      const d = await res.json()
+      setSettingsMessage(d.success ? 'Saved.' : d.error || 'Failed to save.')
+    } catch {
+      setSettingsMessage('Failed to save.')
+    } finally {
+      setSavingDocumentLogo(false)
+    }
+  }
+
+  async function handleDocumentLogoUpload(file: File) {
+    setUploadingDocumentLogo(true)
+    setSettingsMessage('')
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('name', 'vendor-document-logo')
+      fd.append('category', 'logo')
+      const res = await fetch('/api/assets/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || data.message || 'Failed to upload logo')
+      const uploadedUrl = data.asset?.fileUrl || ''
+      setDocumentLogoUrl(uploadedUrl)
+      await saveDocumentLogo(uploadedUrl)
+    } catch (err: any) {
+      setSettingsMessage(err?.message || 'Failed to upload logo')
+    } finally {
+      setUploadingDocumentLogo(false)
     }
   }
 
@@ -946,9 +993,9 @@ export default function VendorProfilePage() {
           <div className="mt-5 pt-5 border-t border-border">
             <label className="block text-sm font-medium text-ink mb-1">Business Logo</label>
             <p className="text-xs text-ink-3 mb-2">
-              Shown in your vendor-portal sidebar and on printed documents (invoices/workorders) in place of the
-              platform's own logo. Square image, at least 512×512px, PNG with a transparent background works best
-              -- it renders small (sidebar icon) and larger (document header), so avoid a wide/landscape logo.
+              Shown in your vendor-portal sidebar in place of the platform's own logo. For a logo on printed
+              documents (Workorder/Estimate/Invoice/Service Record), use Document Logo below -- they don't have
+              to be the same image. Square image, at least 512×512px, PNG with a transparent background works best.
             </p>
             <div className="flex items-center gap-3">
               {logoUrl ? (
@@ -977,6 +1024,60 @@ export default function VendorProfilePage() {
           </div>
 
           <div className="mt-5 pt-5 border-t border-border">
+            <label className="block text-sm font-medium text-ink mb-1">Document Logo</label>
+            <p className="text-xs text-ink-3 mb-2">
+              A separate logo just for printed Workorder/Estimate/Invoice/Service Record documents -- doesn't
+              have to match your sidebar Business Logo above. Leave blank to fall back to that logo instead.
+            </p>
+            <div className="flex items-center gap-3">
+              {documentLogoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={documentLogoUrl} alt="Document logo preview" className="h-12 w-12 object-contain border border-border rounded-control bg-surface p-1" />
+              ) : (
+                <div className="h-12 w-12 rounded-control border border-dashed border-border bg-surface-2 flex items-center justify-center text-[10px] text-ink-3">None</div>
+              )}
+              <label className="inline-flex">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleDocumentLogoUpload(f) }}
+                />
+                <span className="text-xs px-3 py-2 rounded-control border border-border cursor-pointer hover:border-accent text-ink-2 inline-flex items-center gap-1.5">
+                  {uploadingDocumentLogo ? 'Uploading…' : documentLogoUrl ? 'Replace image' : 'Upload image'}
+                </span>
+              </label>
+              {documentLogoUrl && (
+                <button type="button" onClick={() => { setDocumentLogoUrl(''); saveDocumentLogo('') }} className="text-xs text-danger hover:underline">
+                  Remove
+                </button>
+              )}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={documentLogoEnabled}
+                  onChange={(e) => { setDocumentLogoEnabled(e.target.checked); saveDocDisplaySettings({ documentLogoEnabled: e.target.checked }) }}
+                />
+                Print a logo on Workorder / Estimate / Invoice / Service Record
+              </label>
+              {documentLogoEnabled && (
+                <select
+                  className="rounded-control border border-border bg-surface px-2 py-1 text-sm text-ink"
+                  value={documentLogoPosition}
+                  onChange={(e) => { const v = e.target.value as 'LEFT' | 'CENTER' | 'RIGHT'; setDocumentLogoPosition(v); saveDocDisplaySettings({ documentLogoPosition: v }) }}
+                >
+                  <option value="LEFT">Left</option>
+                  <option value="CENTER">Center</option>
+                  <option value="RIGHT">Right</option>
+                </select>
+              )}
+            </div>
+            <p className="text-xs text-ink-3 mt-1">Off by default -- documents print without a logo until enabled.</p>
+          </div>
+
+          <div className="mt-5 pt-5 border-t border-border">
             <label className="block text-sm font-medium text-ink mb-1">Customer Logo</label>
             <p className="text-xs text-ink-3 mb-2">
               Shown on the Intake Receipt/Workorder print instead of the device brand's own logo -- that
@@ -1000,28 +1101,6 @@ export default function VendorProfilePage() {
                 {savingCustomerLogo ? 'Saving…' : 'Save'}
               </Button>
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-4">
-              <label className="flex items-center gap-2 text-sm text-ink">
-                <input
-                  type="checkbox"
-                  checked={documentLogoEnabled}
-                  onChange={(e) => { setDocumentLogoEnabled(e.target.checked); saveDocDisplaySettings({ documentLogoEnabled: e.target.checked }) }}
-                />
-                Print this logo on Workorder / Estimate / Invoice / Service Record
-              </label>
-              {documentLogoEnabled && (
-                <select
-                  className="rounded-control border border-border bg-surface px-2 py-1 text-sm text-ink"
-                  value={documentLogoPosition}
-                  onChange={(e) => { const v = e.target.value as 'LEFT' | 'CENTER' | 'RIGHT'; setDocumentLogoPosition(v); saveDocDisplaySettings({ documentLogoPosition: v }) }}
-                >
-                  <option value="LEFT">Left</option>
-                  <option value="CENTER">Center</option>
-                  <option value="RIGHT">Right</option>
-                </select>
-              )}
-            </div>
-            <p className="text-xs text-ink-3 mt-1">Off by default -- documents print without a logo until enabled.</p>
           </div>
 
           <div className="mt-5 pt-5 border-t border-border">

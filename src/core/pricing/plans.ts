@@ -251,7 +251,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // "finance-advanced" (Ledger Book/P&L/Expenses) -- those moved to
       // Ultimate-only per explicit direction; Pro keeps plain "finance"
       // (invoicing/documents/statement).
-      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "finance-extra", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
     },
     {
       key: "ULTIMATE",
@@ -300,7 +300,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // ultimate like ledger book, P&L report, expenses"), since they'd
       // been sharing Pro's "finance" key with plain invoicing (which stays
       // on Pro) -- see vendorAccess.service.ts's VENDOR_MODULE_KEYS.
-      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "finance-advanced", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "warehouses", "stock_transfers", "finance", "finance-advanced", "finance-extra", "customers", "settings", "businesses", "reports", "analytics", "fault_codes", "solutions", "inventory"],
       commsQuota: { whatsappPerMonth: 1000 },
     },
   ],

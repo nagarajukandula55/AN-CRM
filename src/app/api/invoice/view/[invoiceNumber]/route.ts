@@ -108,7 +108,7 @@ export async function GET(
     // in (VendorProfile has no separate logo field, for instance).
     const vendor = (invoice as any).vendorId
       ? await VendorProfile.findById((invoice as any).vendorId)
-          .select("companyName phone address gstNumber upiId bankAccountName bankAccountNumber bankIFSC bankName")
+          .select("companyName phone address gstNumber upiId bankAccountName bankAccountNumber bankIFSC bankName documentLogoUrl logoUrl documentLogoEnabled documentLogoPosition")
           .lean<any>()
       : null;
 
@@ -225,12 +225,17 @@ export async function GET(
           process.env.COMPANY_PHONE ||
           "",
 
-        // No per-vendor logo field on VendorProfile -- every vendor under a
-        // shared Business still prints that Business's own logo/branding.
+        // A template-level logo (admin-configured branding) always wins;
+        // a vendor's own logo (documentLogoUrl, falling back to their
+        // sidebar logoUrl) only shows when they've explicitly opted in
+        // via documentLogoEnabled -- same precedence as the block-based
+        // Workorder/Estimate renderer (see documentTemplates/adapters.ts).
         logoUrl:
           savedTemplate?.branding?.logoUrl ||
+          (vendor?.documentLogoEnabled ? (vendor?.documentLogoUrl || vendor?.logoUrl) : "") ||
           (business as any)?.logo ||
           "",
+        logoPosition: vendor?.documentLogoPosition || "RIGHT",
       },
 
       // Signature image -- Owner/Manager-set at Vendor Settings >

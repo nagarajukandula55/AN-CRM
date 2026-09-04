@@ -44,6 +44,60 @@ export const NAV_GROUPS: NavGroup[] = [
     // link works correctly no matter which type is logged in.
     { key: "dashboard",  label: "Dashboard",    route: "/console",            icon: "LayoutDashboard" },
   ]},
+  // Moved to the SECOND position (was last) -- per explicit direction to
+  // review what a Super Admin actually needs: filterModulesByPermission.ts
+  // deliberately shows a Super Admin every group below (including every
+  // tenant's own SC/Sales/Finance/etc. pages, by design -- that's the
+  // support/impersonation escape hatch an admin needs to debug a specific
+  // vendor's stuck workorder or invoice, and removing it would break that
+  // legitimate use). What a Super Admin's OWN job actually consists of --
+  // platform users/vendors/pricing/system config -- lived at the bottom of
+  // a long tenant-operations menu they scroll past on every single login.
+  // Reordering (not removing) puts their real work first without taking
+  // away the tenant-support access underneath.
+  { label: "Admin", subgroups: [
+    { key: "adm-users", label: "Users & Access", items: [
+      { key: "admin-users",  label: "User Management",      route: "/console/admin/users",  icon: "UserCog" },
+      { key: "admin-access", label: "Access Control",       route: "/console/admin/access", icon: "Key" },
+      { key: "admin-an-group-staff", label: "Platform Staff", route: "/console/admin/an-group-staff", icon: "Shield" },
+    ]},
+    { key: "adm-vendors", label: "Vendors", items: [
+      { key: "vendors",    label: "Vendors",      route: "/console/admin/vendors",    icon: "Truck" },
+      { key: "vendor-subscriptions", label: "Vendor Subscriptions", route: "/console/admin/vendor-subscriptions", icon: "CreditCard" },
+      { key: "admin-vendor-billing", label: "Vendor Billing", route: "/console/admin/vendor-billing", icon: "Receipt" },
+      { key: "admin-vendor-settlements", label: "Vendor Settlements", route: "/console/admin/vendor-settlements", icon: "Wallet" },
+      { key: "admin-vendor-chats", label: "Vendor Chats", route: "/console/admin/vendor-chats", icon: "MessageSquare" },
+      // AN Group's own commercial-funnel supervision (pricing views, trial
+      // signups, conversion) -- distinct from a vendor's own business
+      // analytics, see that page's own comment.
+      { key: "admin-growth-analytics", label: "Growth Analytics", route: "/console/admin/growth-analytics", icon: "TrendingUp" },
+    ]},
+    { key: "adm-system", label: "System", items: [
+      { key: "admin-plan-features", label: "Plan Features", route: "/console/admin/plan-features", icon: "Sparkles" },
+      { key: "admin-promo-codes", label: "Promo Codes", route: "/console/admin/promo-codes", icon: "Tag" },
+      { key: "admin-page-columns", label: "Page Columns & Cards", route: "/console/admin/page-columns", icon: "SlidersHorizontal" },
+      { key: "admin-custom-fields", label: "Custom Fields", route: "/console/admin/custom-fields", icon: "Layers" },
+      { key: "admin-option-lists", label: "Option Lists", route: "/console/admin/option-lists", icon: "ListChecks" },
+      { key: "admin-settings", label: "Settings", route: "/console/admin/settings", icon: "Settings" },
+      { key: "admin-plan", label: "Plan & Billing", route: "/console/admin/plan", icon: "Receipt" },
+      // Real gate is inside the page itself (session.isSuperAdmin check),
+      // same as before.
+      { key: "admin-help", label: "Help & System Guide", route: "/console/admin/help", icon: "BookOpen" },
+    ]},
+    { key: "adm-docs", label: "Documents & Billing", items: [
+      { key: "admin-document-templates", label: "Document Templates", route: "/console/admin/document-templates", icon: "FileText" },
+      { key: "admin-invoice-templates", label: "Invoice Branding", route: "/console/admin/invoice-templates", icon: "FileText" },
+      { key: "admin-gst", label: "GST", route: "/console/admin/gst", icon: "FileText" },
+      // Super Admin only.
+      { key: "admin-product-feedback", label: "Product Feedback", route: "/console/admin/product-feedback", icon: "MessageSquare" },
+      { key: "admin-telegram-users", label: "Telegram Users", route: "/console/admin/telegram-users", icon: "Send" },
+      { key: "admin-telegram-log", label: "Telegram Notifications Log", route: "/console/admin/telegram-notifications-log", icon: "Send" },
+      { key: "admin-telegram-ids", label: "Telegram Chat IDs", route: "/console/admin/telegram-ids", icon: "Send" },
+      { key: "admin-telegram-broadcast", label: "Telegram Broadcast", route: "/console/admin/telegram-broadcast", icon: "Send" },
+      { key: "admin-email-templates", label: "Email Templates", route: "/console/admin/email-templates", icon: "Mail" },
+      { key: "admin-tutorial-videos", label: "Tutorial Videos", route: "/console/admin/tutorial-videos", icon: "LifeBuoy" },
+    ]},
+  ]},
   { label: "SC", items: [
     // console/sc/dashboard IS SC's CRM overview (stats, recent activity,
     // ageing workorders) -- also reachable via the generic top-level
@@ -118,52 +172,6 @@ export const NAV_GROUPS: NavGroup[] = [
     // required for this business.
     { key: "support_tickets", label: "Support Tickets", route: "/console/common/support-tickets", icon: "LifeBuoy" },
     { key: "contact-messages", label: "Contact Messages", route: "/console/common/contact-messages", icon: "MessageSquare" },
-  ]},
-  // Only ever visible to a Super Admin / AN Group platform staff — a real
-  // tenant (Brand/SC/POS) never sees this group at all, gated on
-  // platform-level permission codes no tenant role is ever granted.
-  { label: "Admin", subgroups: [
-    { key: "adm-users", label: "Users & Access", items: [
-      { key: "admin-users",  label: "User Management",      route: "/console/admin/users",  icon: "UserCog" },
-      { key: "admin-access", label: "Access Control",       route: "/console/admin/access", icon: "Key" },
-      { key: "admin-an-group-staff", label: "Platform Staff", route: "/console/admin/an-group-staff", icon: "Shield" },
-    ]},
-    { key: "adm-vendors", label: "Vendors", items: [
-      { key: "vendors",    label: "Vendors",      route: "/console/admin/vendors",    icon: "Truck" },
-      { key: "vendor-subscriptions", label: "Vendor Subscriptions", route: "/console/admin/vendor-subscriptions", icon: "CreditCard" },
-      { key: "admin-vendor-billing", label: "Vendor Billing", route: "/console/admin/vendor-billing", icon: "Receipt" },
-      { key: "admin-vendor-settlements", label: "Vendor Settlements", route: "/console/admin/vendor-settlements", icon: "Wallet" },
-      { key: "admin-vendor-chats", label: "Vendor Chats", route: "/console/admin/vendor-chats", icon: "MessageSquare" },
-      // AN Group's own commercial-funnel supervision (pricing views, trial
-      // signups, conversion) -- distinct from a vendor's own business
-      // analytics, see that page's own comment.
-      { key: "admin-growth-analytics", label: "Growth Analytics", route: "/console/admin/growth-analytics", icon: "TrendingUp" },
-    ]},
-    { key: "adm-system", label: "System", items: [
-      { key: "admin-plan-features", label: "Plan Features", route: "/console/admin/plan-features", icon: "Sparkles" },
-      { key: "admin-promo-codes", label: "Promo Codes", route: "/console/admin/promo-codes", icon: "Tag" },
-      { key: "admin-page-columns", label: "Page Columns & Cards", route: "/console/admin/page-columns", icon: "SlidersHorizontal" },
-      { key: "admin-custom-fields", label: "Custom Fields", route: "/console/admin/custom-fields", icon: "Layers" },
-      { key: "admin-option-lists", label: "Option Lists", route: "/console/admin/option-lists", icon: "ListChecks" },
-      { key: "admin-settings", label: "Settings", route: "/console/admin/settings", icon: "Settings" },
-      { key: "admin-plan", label: "Plan & Billing", route: "/console/admin/plan", icon: "Receipt" },
-      // Real gate is inside the page itself (session.isSuperAdmin check),
-      // same as before.
-      { key: "admin-help", label: "Help & System Guide", route: "/console/admin/help", icon: "BookOpen" },
-    ]},
-    { key: "adm-docs", label: "Documents & Billing", items: [
-      { key: "admin-document-templates", label: "Document Templates", route: "/console/admin/document-templates", icon: "FileText" },
-      { key: "admin-invoice-templates", label: "Invoice Branding", route: "/console/admin/invoice-templates", icon: "FileText" },
-      { key: "admin-gst", label: "GST", route: "/console/admin/gst", icon: "FileText" },
-      // Super Admin only.
-      { key: "admin-product-feedback", label: "Product Feedback", route: "/console/admin/product-feedback", icon: "MessageSquare" },
-      { key: "admin-telegram-users", label: "Telegram Users", route: "/console/admin/telegram-users", icon: "Send" },
-      { key: "admin-telegram-log", label: "Telegram Notifications Log", route: "/console/admin/telegram-notifications-log", icon: "Send" },
-      { key: "admin-telegram-ids", label: "Telegram Chat IDs", route: "/console/admin/telegram-ids", icon: "Send" },
-      { key: "admin-telegram-broadcast", label: "Telegram Broadcast", route: "/console/admin/telegram-broadcast", icon: "Send" },
-      { key: "admin-email-templates", label: "Email Templates", route: "/console/admin/email-templates", icon: "Mail" },
-      { key: "admin-tutorial-videos", label: "Tutorial Videos", route: "/console/admin/tutorial-videos", icon: "LifeBuoy" },
-    ]},
   ]},
 ];
 

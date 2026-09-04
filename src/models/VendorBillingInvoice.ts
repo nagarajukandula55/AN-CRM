@@ -30,6 +30,17 @@ export interface IVendorBillingInvoice extends Document {
   gatewayRef: string;
   gatewayPaymentId: string;
   paidAt: Date | null;
+  // Which discount (if any) this invoice's amount already has baked in --
+  // recorded at creation time (api/vendor/billing/subscribe) but only
+  // actually CONSUMED at the source (VendorSubscription.
+  // pendingReferralDiscountPct cleared, or PromoCode.redeemedCount
+  // incremented) once this invoice is confirmed PAID (see
+  // activateVendorInvoice.ts). An abandoned/cancelled PENDING invoice
+  // therefore never burns the discount -- it stays available for the
+  // vendor's next real attempt.
+  pendingDiscountSource?: "referral" | "promo";
+  pendingDiscountPct?: number;
+  pendingPromoCodeId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,6 +66,9 @@ const VendorBillingInvoiceSchema = new Schema<IVendorBillingInvoice>(
     // any money moves) so the two can never be confused with each other.
     gatewayPaymentId: { type: String, default: "" },
     paidAt: { type: Date, default: null },
+    pendingDiscountSource: { type: String, enum: ["referral", "promo", null], default: null },
+    pendingDiscountPct: { type: Number, default: null },
+    pendingPromoCodeId: { type: Schema.Types.ObjectId, ref: "PromoCode", default: null },
   },
   { timestamps: true }
 );

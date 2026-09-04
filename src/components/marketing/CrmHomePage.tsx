@@ -19,6 +19,7 @@ import {
 } from './mbfTheme'
 import { PLANS_BY_MODE, currentMonthlyRate, isLaunchPricingActive } from '@/core/pricing/plans'
 import { ComparisonSection } from './ComparisonTable'
+import { PricingFaq } from './PricingFaq'
 
 /**
  * My Biz Flow (public product name -- AN-CRM is this repo's internal name
@@ -102,6 +103,7 @@ const FOOTER_COLUMNS: { heading: string; links: { label: string; href: string }[
       { label: 'Pricing', href: '/pricing' },
       { label: 'Sign up as Service Center', href: '/partner-signup' },
       { label: 'Track a Repair', href: '/track-workorder' },
+      { label: 'Download / Install App', href: '/downloads' },
     ],
   },
   {
@@ -322,6 +324,7 @@ export default function CrmHomePage() {
         </div>
 
         <ComparisonSection />
+        <PricingFaq />
       </section>
 
       {/* ── Trust strip ───────────────────────────────────────────────── */}
@@ -358,6 +361,9 @@ export default function CrmHomePage() {
           <p className="text-gray-400 text-sm mt-2 max-w-md mx-auto">
             Install My Biz Flow straight from your browser today — "Add to Home Screen" on your phone or tablet, no app store needed.
           </p>
+          <Link href="/downloads" className="inline-flex items-center gap-1.5 mt-3 text-sm text-sky-300 hover:text-sky-200 underline underline-offset-2">
+            See install instructions <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 opacity-60 cursor-not-allowed">

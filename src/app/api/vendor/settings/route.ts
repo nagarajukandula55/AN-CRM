@@ -58,6 +58,7 @@ export async function GET() {
       defaultLabourCharge: Number(v.defaultLabourCharge) || 0,
       customerLogoUrl: v.customerLogoUrl || "",
       logoUrl: v.logoUrl || "",
+      documentLogoUrl: v.documentLogoUrl || "",
       documentSignatureUrl: v.documentSignatureUrl || "",
       documentLogoEnabled: Boolean(v.documentLogoEnabled),
       documentLogoPosition: v.documentLogoPosition || "LEFT",
@@ -97,6 +98,7 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.defaultLabourCharge === "number" && body.defaultLabourCharge >= 0) update.defaultLabourCharge = body.defaultLabourCharge;
     if (typeof body.customerLogoUrl === "string") update.customerLogoUrl = body.customerLogoUrl;
     if (typeof body.logoUrl === "string") update.logoUrl = body.logoUrl;
+    if (typeof body.documentLogoUrl === "string") update.documentLogoUrl = body.documentLogoUrl;
     if (typeof body.documentSignatureUrl === "string") update.documentSignatureUrl = body.documentSignatureUrl;
     if (typeof body.documentLogoEnabled === "boolean") update.documentLogoEnabled = body.documentLogoEnabled;
     if (typeof body.documentLogoPosition === "string" && ["LEFT", "CENTER", "RIGHT"].includes(body.documentLogoPosition)) update.documentLogoPosition = body.documentLogoPosition;

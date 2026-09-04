@@ -8,6 +8,7 @@ import { buildPermissionCode } from "@/core/access/actions";
 import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
 import { logAction } from "@/lib/audit/logAction";
 import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { vendorHasModule } from "@/core/access/vendorAccess.service";
 
 // GET /api/sales-documents?businessId=&docType=&status=&search=&page=&limit=
 export async function GET(req: NextRequest) {
@@ -104,6 +105,14 @@ export async function POST(req: NextRequest) {
 
     if (!businessId || !docType || !SALES_DOCUMENT_TYPES.includes(docType)) {
       return NextResponse.json({ success: false, message: "businessId and a valid docType are required" }, { status: 400 });
+    }
+    // Quotations/Credit/Debit/Proforma/Delivery Challan are Pro+ only --
+    // Starter's public feature list already says so; this is the
+    // server-side enforcement so the URL can't be hit directly to bypass
+    // it. Console/business-level callers (createScope.vendorId unset) are
+    // never plan-gated -- only a VENDOR-scoped caller is.
+    if (createScope?.vendorId && !(await vendorHasModule(businessId, createScope.vendorId, "finance-extra"))) {
+      return NextResponse.json({ success: false, message: "This document type is available on the Pro plan and above." }, { status: 403 });
     }
     if (!party?.name?.trim()) {
       return NextResponse.json({ success: false, message: "party.name is required" }, { status: 400 });

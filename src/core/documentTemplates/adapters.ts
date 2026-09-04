@@ -63,7 +63,11 @@ export function businessToCompany(business: any, warehouse: any, documentType?: 
     address,
     phone,
     gstin: vendor?.gstNumber || business?.gstNumber || undefined,
-    logoUrl: vendor?.logoUrl || resolveCompanyLogo(business, warehouse),
+    // documentLogoUrl is a separate upload from the vendor's sidebar
+    // brand logo (vendor.logoUrl) -- falls back to that if unset, so a
+    // vendor who enabled documentLogoEnabled before this field existed
+    // keeps seeing the same logo on documents with no action needed.
+    logoUrl: vendor?.documentLogoUrl || vendor?.logoUrl || resolveCompanyLogo(business, warehouse),
     termsAndConditions: termsForDocType(business, documentType),
     signatureUrl: vendor?.documentSignatureUrl || business?.documentSignatureUrl || undefined,
     upiId: vendor?.upiId || business?.upiId || undefined,

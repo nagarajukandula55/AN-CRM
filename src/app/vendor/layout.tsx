@@ -91,11 +91,11 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   // Migrated from console/common/documents/* -- SalesDocumentManager is
   // already vendor-scoped (api/sales-documents), no console-only
   // hardcoding, reused as-is.
-  { href: '/vendor/documents/quotations', label: 'Quotations', icon: FileSignature, modules: ['finance'], section: 'Billing' },
-  { href: '/vendor/documents/credit-notes', label: 'Credit Notes', icon: FilePlus2, modules: ['finance'], section: 'Billing' },
-  { href: '/vendor/documents/debit-notes', label: 'Debit Notes', icon: FileMinus2, modules: ['finance'], section: 'Billing' },
-  { href: '/vendor/documents/proforma-invoices', label: 'Proforma Invoices', icon: Receipt, modules: ['finance'], section: 'Billing' },
-  { href: '/vendor/credits', label: 'Credit Accounts', icon: HandCoins, modules: ['finance'], section: 'Billing' },
+  { href: '/vendor/documents/quotations', label: 'Quotations', icon: FileSignature, modules: ['finance-extra'], section: 'Billing' },
+  { href: '/vendor/documents/credit-notes', label: 'Credit Notes', icon: FilePlus2, modules: ['finance-extra'], section: 'Billing' },
+  { href: '/vendor/documents/debit-notes', label: 'Debit Notes', icon: FileMinus2, modules: ['finance-extra'], section: 'Billing' },
+  { href: '/vendor/documents/proforma-invoices', label: 'Proforma Invoices', icon: Receipt, modules: ['finance-extra'], section: 'Billing' },
+  { href: '/vendor/credits', label: 'Credit Accounts', icon: HandCoins, modules: ['finance-extra'], section: 'Billing' },
   // "Invoices & Payments" (the read-only B2B invoice AN Group bills the
   // vendor for module fees -- a different thing from Sales Invoices above)
   // and Sub-Vendors weren't in the requested layout at all -- kept, placed
@@ -110,7 +110,7 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   // vendorId-scoped.
   { href: '/vendor/inventory', label: 'Inventory', icon: Boxes, modules: ['inventory'], section: 'Stock' },
   { href: '/vendor/stock-transfers', label: 'Stock Transfers', icon: ArrowLeftRight, modules: ['stock_transfers'], section: 'Stock' },
-  { href: '/vendor/documents/delivery-challans', label: 'Delivery Challans', icon: Truck, modules: ['finance'], section: 'Stock' },
+  { href: '/vendor/documents/delivery-challans', label: 'Delivery Challans', icon: Truck, modules: ['finance-extra'], section: 'Stock' },
 
   // Migrated from console/common/{analytics,reports,report-builder} --
   // api/analytics/* and api/reports/* are now all vendorId-scoped.
