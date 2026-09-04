@@ -214,6 +214,12 @@ export default function SCJobSheetScreen({
   // savedModels list with no brand relationship at all.
   const savedModelsByBrand: Record<string, string[]> = businessData?.business?.savedModelsByBrand || {}
   const savedPaymentCollectors: string[] = businessData?.business?.savedPaymentCollectors || []
+  // Starter plan: typing a Brand/Model is always allowed (plain text
+  // input below), but saving one to the reusable list is Pro+ only --
+  // see api/vendor/saved-catalog's own comment. undefined (the
+  // console-side /api/businesses/[id] path, which has no such gate) means
+  // "allowed", matching that path's existing unrestricted behavior.
+  const catalogAllowed: boolean = businessData?.business?.catalogAllowed !== false
 
   // Persists a new Brand/Payment-Collector name onto the matching
   // Business.saved* array (deduped) so it shows up as a dropdown
@@ -973,9 +979,11 @@ export default function SCJobSheetScreen({
                       <datalist id="sc-brand-list">
                         {savedBrands.map(b => <option key={b} value={b} />)}
                       </datalist>
-                      <button type="button" title="Add new brand" onClick={() => { setAddListModal('savedBrands'); setAddListValue('') }} className="shrink-0 w-7 h-7 flex items-center justify-center rounded-control border border-border text-ink-3 hover:text-accent hover:border-accent">
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
+                      {catalogAllowed && (
+                        <button type="button" title="Add new brand" onClick={() => { setAddListModal('savedBrands'); setAddListValue('') }} className="shrink-0 w-7 h-7 flex items-center justify-center rounded-control border border-border text-ink-3 hover:text-accent hover:border-accent">
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div>
@@ -985,9 +993,11 @@ export default function SCJobSheetScreen({
                       <datalist id="sc-model-list">
                         {modelsForSelectedBrand.map(m => <option key={m} value={m} />)}
                       </datalist>
-                      <button type="button" title="Add new model" onClick={() => { setAddListModal('savedModels'); setAddListValue(''); setAddModelBrand(intake.brandName || '') }} className="shrink-0 w-7 h-7 flex items-center justify-center rounded-control border border-border text-ink-3 hover:text-accent hover:border-accent">
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
+                      {catalogAllowed && (
+                        <button type="button" title="Add new model" onClick={() => { setAddListModal('savedModels'); setAddListValue(''); setAddModelBrand(intake.brandName || '') }} className="shrink-0 w-7 h-7 flex items-center justify-center rounded-control border border-border text-ink-3 hover:text-accent hover:border-accent">
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

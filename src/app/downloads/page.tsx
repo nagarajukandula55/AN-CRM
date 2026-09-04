@@ -71,6 +71,11 @@ export default function DownloadsPage() {
             desktop, no app store needed. Native Android/iOS store apps aren&apos;t built yet; this is how to install
             what&apos;s available today.
           </p>
+          <p className="text-gray-500 text-sm mt-3 max-w-xl mx-auto">
+            You&apos;ll see the sign-in screen when you open the link below — that&apos;s expected, not an error.
+            The install/&quot;Add to Home Screen&quot; option works from there regardless of whether you&apos;re
+            signed in yet; once installed, opening the app takes you straight to sign-in every time, same as now.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">

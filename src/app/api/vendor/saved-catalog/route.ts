@@ -26,10 +26,22 @@ export async function GET() {
       return NextResponse.json({ success: false, error: "Only a vendor Owner or Manager can view this" }, { status: 403 });
     }
     const v = vendor as any;
+    // Brand/Model list storage is Pro+ only -- Starter has this stripped
+    // ("adding them and store them and getting them as list should not be
+    // supported and only typing is allowed"). Rather than 403 the whole
+    // read (savedPaymentCollectors/defaultLabourCharge still apply to
+    // every plan), just withhold the brand/model lists themselves so the
+    // intake form's datalist has no suggestions to show -- the plain text
+    // input above it keeps working regardless. catalogAllowed tells the
+    // form whether to also show the "add new" (+) button.
+    const catalogAllowed = v.businessId
+      ? await vendorHasModule(String(v.businessId), String(v._id), "brands")
+      : true;
     return NextResponse.json({
       success: true,
-      savedBrands: v.savedBrands || [],
-      savedModelsByBrand: v.savedModelsByBrand || {},
+      catalogAllowed,
+      savedBrands: catalogAllowed ? (v.savedBrands || []) : [],
+      savedModelsByBrand: catalogAllowed ? (v.savedModelsByBrand || {}) : {},
       savedPaymentCollectors: v.savedPaymentCollectors || [],
       defaultLabourCharge: Number(v.defaultLabourCharge) || 0,
     });
