@@ -14,7 +14,7 @@
 import mongoose, { Schema, Model, Document, Types } from "mongoose";
 import { syncRecordToCentralApi, deleteRecordFromCentralApi } from "@/lib/centralApiSync";
 
-export type SubscriptionPlan = "BASIC" | "PRO" | "ULTIMATE";
+export type SubscriptionPlan = "STARTER" | "BASIC" | "PRO" | "ULTIMATE";
 export type BillingPeriod = "MONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "YEARLY";
 export type SubscriptionStatus =
   | "TRIAL"           // within the free trial window, no payment yet
@@ -65,7 +65,7 @@ const SubscriptionSchema = new Schema<ISubscription>(
     subVendorOf: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null, index: true },
     subBusinessOf: { type: Schema.Types.ObjectId, ref: "Business", default: null, index: true },
     mode: { type: String, enum: ["SC"], required: true },
-    plan: { type: String, enum: ["BASIC", "PRO", "ULTIMATE"], required: true },
+    plan: { type: String, enum: ["STARTER", "BASIC", "PRO", "ULTIMATE"], required: true },
     billingPeriod: { type: String, enum: ["MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY"], required: true },
     status: { type: String, enum: ["TRIAL", "PENDING_PAYMENT", "ACTIVE", "EXPIRED", "CANCELLED"], default: "PENDING_PAYMENT", index: true },
     amount: { type: Number, required: true, min: 0 },

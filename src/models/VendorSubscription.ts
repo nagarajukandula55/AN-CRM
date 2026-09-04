@@ -57,7 +57,7 @@ const VendorSubscriptionSchema = new Schema<IVendorSubscription>(
     validityDays: { type: Number, required: true, default: 30 },
     currentPeriodStart: { type: Date, default: null },
     currentPeriodEnd: { type: Date, default: null },
-    planKey: { type: String, enum: ["BASIC", "PRO", "ULTIMATE", null], default: null },
+    planKey: { type: String, enum: ["STARTER", "BASIC", "PRO", "ULTIMATE", null], default: null },
     planName: { type: String, default: null },
     trialReminderLastSentAt: { type: Date, default: null },
   },

@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const planKey = body.planKey as PlanKey;
-    if (!planKey || !["BASIC", "PRO", "ULTIMATE"].includes(planKey)) {
+    if (!planKey || !["STARTER", "BASIC", "PRO", "ULTIMATE"].includes(planKey)) {
       return NextResponse.json({ success: false, message: "A valid planKey is required" }, { status: 400 });
     }
     const periodKey = (body.period as BillingPeriod) || "YEARLY";

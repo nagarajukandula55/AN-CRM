@@ -19,7 +19,7 @@ export interface ISubscriptionInvoice extends Document {
   subVendorOf?: Types.ObjectId;
   subBusinessOf?: Types.ObjectId;
   mode: "BRAND" | "SC" | "POS";
-  plan: "BASIC" | "PRO" | "ULTIMATE";
+  plan: "STARTER" | "BASIC" | "PRO" | "ULTIMATE";
   billingPeriod: "MONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "YEARLY";
   amount: number;
   taxTotal: number;
@@ -40,7 +40,7 @@ const SubscriptionInvoiceSchema = new Schema<ISubscriptionInvoice>(
     subVendorOf: { type: Schema.Types.ObjectId, ref: "VendorProfile", default: null },
     subBusinessOf: { type: Schema.Types.ObjectId, ref: "Business", default: null },
     mode: { type: String, enum: ["BRAND", "SC", "POS"], required: true },
-    plan: { type: String, enum: ["BASIC", "PRO", "ULTIMATE"], required: true },
+    plan: { type: String, enum: ["STARTER", "BASIC", "PRO", "ULTIMATE"], required: true },
     billingPeriod: { type: String, enum: ["MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY"], required: true },
     amount: { type: Number, required: true, min: 0 },
     taxTotal: { type: Number, required: true, default: 0 },

@@ -39,7 +39,7 @@ export interface IPlanFeatureConfig extends Document {
 const PlanFeatureConfigSchema = new Schema<IPlanFeatureConfig>(
   {
     mode: { type: String, enum: ["SC"], required: true },
-    plan: { type: String, enum: ["BASIC", "PRO", "ULTIMATE"], required: true },
+    plan: { type: String, enum: ["STARTER", "BASIC", "PRO", "ULTIMATE"], required: true },
     moduleKeys: { type: [String], default: [] },
     vendorModuleKeys: { type: [String], default: undefined },
     monthlyPriceINR: { type: Number },

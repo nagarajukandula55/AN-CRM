@@ -1,5 +1,5 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Newsreader, JetBrains_Mono } from "next/font/google";
 import SessionGuard from "@/components/session-guard";
 import { ToastProvider } from "@/components/shared/Toast";
@@ -47,6 +47,16 @@ export const metadata: Metadata = {
     "repair shop invoicing software",
   ],
   applicationName: "My Biz Flow",
+  // PWA: installable as a real app on phone/tablet home screens (Android
+  // "Add to app" / iOS "Add to Home Screen") -- manifest.json + the
+  // already-existing registered service worker (public/sw.js, previously
+  // push-only) together satisfy install criteria. Per explicit direction
+  // ("make system ready for PWA and also mention about that too").
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/logo-mark.png",
+    apple: "/logo-mark.png",
+  },
   openGraph: {
     type: "website",
     url: SITE_URL,
@@ -70,6 +80,10 @@ export const metadata: Metadata = {
   verification: {
     google: "UV1RTeTE0gXYUciDC9LtjLmSSBcStdZHGPzZwRsSYe0",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#05060d",
 };
 
 export default function RootLayout({

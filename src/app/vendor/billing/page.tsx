@@ -86,7 +86,7 @@ export default function VendorBillingPage() {
   const launchPricingActive: boolean = plansRes?.success ? !!plansRes.launchPricingActive : false;
   const periodOptions: PeriodPrice[] = plans[0]?.periods || [];
 
-  const PLAN_RANK: Record<string, number> = { BASIC: 0, PRO: 1, ULTIMATE: 2 };
+  const PLAN_RANK: Record<string, number> = { STARTER: 0, BASIC: 1, PRO: 1, ULTIMATE: 2 };
   const currentPlanKeys: string[] = (subscription?.modules || []).map((m: any) => m.key);
   // planKey isn't always on the GET response shape -- infer the rank from
   // whichever known plan's module set the current one most closely
@@ -308,7 +308,7 @@ export default function VendorBillingPage() {
                   ))}
                 </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {plans.map((plan) => {
                   const chosen = plan.periods.find((p) => p.key === period) || plan.periods[0];
                   return (

@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
       businessId: (vendor as any).businessId,
       subVendorOf: vendorId,
       mode: mode && ["BRAND", "SC", "POS"].includes(mode) ? mode : "BRAND",
-      plan: plan && ["BASIC", "PRO", "ULTIMATE"].includes(plan) ? plan : "BASIC",
+      plan: plan && ["STARTER", "BASIC", "PRO", "ULTIMATE"].includes(plan) ? plan : "BASIC",
       billingPeriod: billingPeriod && ["MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY"].includes(billingPeriod) ? billingPeriod : "MONTHLY",
       status: status && ["TRIAL", "PENDING_PAYMENT", "ACTIVE", "EXPIRED", "CANCELLED"].includes(status) ? status : "TRIAL",
       amount: typeof amount === "number" && amount >= 0 ? amount : 0,

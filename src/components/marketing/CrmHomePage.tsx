@@ -251,7 +251,7 @@ export default function CrmHomePage() {
             </div>
           )}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
           {PLANS_BY_MODE.SC.map((plan) => (
             <div key={plan.key} className={`${mbfCard} p-6 text-center ${plan.highlight ? '!border-sky-400/40' : ''}`}>
               <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
@@ -294,14 +294,20 @@ export default function CrmHomePage() {
         </div>
       </section>
 
-      {/* App downloads -- placeholders, per explicit direction ("add
-          placeholders for these applications downloads in home page").
-          Mobile/tablet apps themselves are a separate, not-yet-started
-          build (see PROGRESS.md) -- these links are inert until then. */}
+      {/* App downloads -- native app-store apps are still a separate,
+          not-yet-started build (see PROGRESS.md), so those two stay inert
+          placeholders. Installing the web app itself (PWA) already works
+          today -- manifest.json + a registered service worker (public/
+          sw.js) -- so that one is a real, working install, not a
+          placeholder, per explicit direction ("make system ready for
+          PWA and also mention about that too"). */}
       <section className="w-full px-6 sm:px-12 pb-16">
         <div className="text-center mb-6">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-sky-300">Coming soon</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-sky-300">Take it with you</p>
           <h3 className="mt-1 text-xl font-bold text-white">Take My Biz Flow anywhere</h3>
+          <p className="text-gray-400 text-sm mt-2 max-w-md mx-auto">
+            Install My Biz Flow straight from your browser today — "Add to Home Screen" on your phone or tablet, no app store needed.
+          </p>
         </div>
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 opacity-60 cursor-not-allowed">

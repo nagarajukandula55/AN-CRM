@@ -10,7 +10,13 @@
  */
 
 export type OperatingMode = "SC";
-export type PlanKey = "BASIC" | "PRO" | "ULTIMATE";
+// "STARTER" is the new, genuinely-limited bottom tier added per explicit
+// direction ("basic plan is required because most normal service centre
+// shops not required everything"). "BASIC" stays the PRO-displayed tier's
+// internal key (unchanged, avoids a data migration on every existing
+// Subscription/VendorSubscription row already using it) -- see this
+// file's Plan.name comment on BASIC below.
+export type PlanKey = "STARTER" | "BASIC" | "PRO" | "ULTIMATE";
 export type BillingPeriod = "MONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "YEARLY" | "TWO_YEARLY";
 
 export const OPERATING_MODES: { key: OperatingMode; label: string; blurb: string }[] = [
@@ -54,9 +60,16 @@ export const BILLING_PERIODS: { key: BillingPeriod; label: string; months: numbe
  * per-vendor instead of globally.
  */
 export const LAUNCH_START = new Date("2026-08-25T00:00:00+05:30");
-export const LAUNCH_WINDOW_MONTHS = 6;
-export const LAUNCH_PRICING_CUTOVER = new Date(LAUNCH_START);
-LAUNCH_PRICING_CUTOVER.setMonth(LAUNCH_PRICING_CUTOVER.getMonth() + LAUNCH_WINDOW_MONTHS);
+// Fixed calendar date per explicit direction ("standard pricing from March
+// 1st it should take effect") -- deliberately NOT computed as
+// LAUNCH_START + N months anymore, so the cutover reads as a real business
+// commitment date rather than an arithmetic side effect that shifts if
+// LAUNCH_START is ever edited. Whoever registers and pays before this date
+// keeps their purchased rate for their paid term (see currentMonthlyRate's
+// own comment) -- only a NEW invoice created on/after this date (a first
+// purchase, or a renewal after an earlier paid term expires) prices at
+// monthlyPriceINR automatically, no admin action needed.
+export const LAUNCH_PRICING_CUTOVER = new Date("2027-03-01T00:00:00+05:30");
 
 export function isLaunchPricingActive(now: Date = new Date()): boolean {
   return now.getTime() < LAUNCH_PRICING_CUTOVER.getTime();
@@ -110,6 +123,44 @@ export interface Plan {
 
 export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
   SC: [
+    {
+      key: "STARTER",
+      mode: "SC",
+      name: "Starter",
+      tagline: "For small repair shops just getting started.",
+      // Meaningfully below Pro, priced to stay safely profitable on its
+      // own (not a loss-leader) -- a real, limited product, not a crippled
+      // trial-forever tier. Pro/Ultimate's own numbers are untouched here
+      // (already calibrated: Ultimate's rate specifically covers its
+      // bundled WhatsApp quota's API cost, per that plan's own comment).
+      monthlyPriceINR: 799,
+      launchPriceINR: 349,
+      freeTrialDays: 15,
+      seatLimit: "1 login (single-screen)",
+      // Deliberately NOT exhaustive -- this is the "not everything" tier.
+      // Missing on purpose vs Pro: Quotations/Credit/Debit/Proforma docs,
+      // Delivery Challans, Credit Accounts, Financial Statement, fault/
+      // symptom/solution library, Custom Report Builder, Analytics,
+      // Telegram alerts, multi-warehouse Stock Transfers.
+      features: [
+        "Single-login workorder flow, start to close",
+        "GST & non-GST invoicing",
+        "Private Material/BOM price list",
+        "Brands & device models",
+        "Customer-facing repair status tracking page",
+        "Basic inventory tracking",
+        "UPI payment QR on every invoice",
+        "15-day free trial, full access, no card required",
+        "Email support",
+      ],
+      moduleKeys: [
+        "crm", "crm_jobsheets", "material-catalog", "customers", "sales",
+        "admin-settings", "admin-plan", "send-feedback",
+      ],
+      // No warehouses/stock_transfers (single default location only), no
+      // reports/analytics/fault_codes/solutions -- those are Pro+.
+      vendorModuleKeys: ["crm", "crm_jobsheets", "materials", "finance", "customers", "settings", "businesses", "inventory"],
+    },
     {
       // Internal plan key stays "BASIC" (matches PlanKey/VendorSubscription
       // enum, avoids a data migration) -- but per explicit direction the

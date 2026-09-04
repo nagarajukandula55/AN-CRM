@@ -1,0 +1,16 @@
+{
+  "name": "My Biz Flow — Service Center Management",
+  "short_name": "My Biz Flow",
+  "description": "Run your entire service center from one place — workorders, billing, inventory, and customer repair tracking.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#05060d",
+  "theme_color": "#05060d",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/logo-mark.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/logo-mark.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/logo-mark.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" }
+  ]
+}

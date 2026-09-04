@@ -11,9 +11,9 @@ import { getEffectivePlan } from "@/core/pricing/planAccess";
 import { currentMonthlyRate, type PlanKey } from "@/core/pricing/plans";
 import { GST_RATE } from "@/app/api/invoice/view/[invoiceNumber]/vendorBillingView";
 
-// Basic < Pro < Ultimate -- the only ordering that matters for deciding
-// whether a requested plan is actually an upgrade.
-const PLAN_RANK: Record<PlanKey, number> = { BASIC: 0, PRO: 1, ULTIMATE: 2 };
+// Starter < Basic/Pro < Ultimate -- the only ordering that matters for
+// deciding whether a requested plan is actually an upgrade.
+const PLAN_RANK: Record<PlanKey, number> = { STARTER: 0, BASIC: 1, PRO: 1, ULTIMATE: 2 };
 
 /**
  * POST /api/vendor/billing/upgrade — mid-cycle upgrade to a HIGHER tier,
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const requestedPlanKey = body.planKey as PlanKey;
-    if (!requestedPlanKey || !["BASIC", "PRO", "ULTIMATE"].includes(requestedPlanKey)) {
+    if (!requestedPlanKey || !["STARTER", "BASIC", "PRO", "ULTIMATE"].includes(requestedPlanKey)) {
       return NextResponse.json({ success: false, message: "A valid planKey is required" }, { status: 400 });
     }
 
