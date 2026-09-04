@@ -60,6 +60,7 @@ export default function VendorBillingPage() {
   const router = useRouter();
   const [payingId, setPayingId] = useState<string | null>(null);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState("");
   const [planError, setPlanError] = useState<string | null>(null);
   const [period, setPeriod] = useState("YEARLY");
 
@@ -173,7 +174,7 @@ export default function VendorBillingPage() {
       const res = await fetch("/api/vendor/billing/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planKey, period }),
+        body: JSON.stringify({ planKey, period, promoCode: promoCode.trim() || undefined }),
       });
       const orderData = await res.json();
       if (!orderData.success) throw new Error(orderData.message || "Failed to start payment");
@@ -313,6 +314,15 @@ export default function VendorBillingPage() {
                   ))}
                 </div>
               )}
+              <label className="block max-w-xs">
+                <span className="text-xs text-ink-3 block mb-0.5">Promo code (optional)</span>
+                <input
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. DIWALI25"
+                  className="w-full rounded-control border border-border bg-surface px-2.5 py-1.5 text-sm"
+                />
+              </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {plans.map((plan) => {
                   const chosen = plan.periods.find((p) => p.key === period) || plan.periods[0];

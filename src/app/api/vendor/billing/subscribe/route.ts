@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/mongodb";
 import Business from "@/models/Business";
 import VendorSubscription from "@/models/VendorSubscription";
 import VendorBillingInvoice from "@/models/VendorBillingInvoice";
+import PromoCode from "@/models/PromoCode";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
 import { extendPeriod } from "@/core/billing/billing.service";
 import { generateScopedDocumentNumber } from "@/core/numbering/numberingService";
@@ -99,14 +100,39 @@ export async function POST(req: NextRequest) {
     // the GST-INCLUSIVE grand total: it's exactly what createRazorpayOrder
     // charges, with nothing added after the fact.
     let { total: basePrice } = await priceForPeriodAsync(plan, periodKey);
-    // Referral reward: this vendor earned 10% off their NEXT renewal by
-    // referring someone who paid for a 1-year term (see
-    // activateVendorInvoice.ts). Applied once, then cleared immediately --
-    // an abandoned checkout after this point does forfeit the discount,
-    // same trade-off as a typical one-time coupon being consumed on use
-    // rather than on confirmed payment.
-    if (subscription.pendingReferralDiscountPct) {
-      basePrice = Math.round(basePrice * (1 - subscription.pendingReferralDiscountPct / 100) * 100) / 100;
+
+    // Two independent discount sources can apply here -- a referral
+    // reward earned as a REFERRER (VendorSubscription.pendingReferralDiscountPct,
+    // set automatically, see activateVendorInvoice.ts), and a company-
+    // issued PromoCode the vendor typed in at checkout (per explicit
+    // direction: "another one also... from our company side so if we want
+    // to give any special discounts or offers we can always use that").
+    // Deliberately NOT stacked -- whichever gives the bigger discount
+    // wins, so a vendor is never worse off for having both, but the
+    // company can't accidentally compound two discounts into something
+    // much steeper than either was meant to be alone. Same "consumed at
+    // checkout, not at confirmed payment" trade-off as before.
+    const referralPct = subscription.pendingReferralDiscountPct || 0;
+    let promoDoc: any = null;
+    if (typeof body.promoCode === "string" && body.promoCode.trim()) {
+      const candidate = await PromoCode.findOne({ code: body.promoCode.trim().toUpperCase(), isActive: true });
+      if (candidate) {
+        const notExpired = !candidate.expiresAt || candidate.expiresAt.getTime() > Date.now();
+        const notMaxed = !candidate.maxRedemptions || candidate.redeemedCount < candidate.maxRedemptions;
+        if (notExpired && notMaxed) promoDoc = candidate;
+      }
+    }
+    if (typeof body.promoCode === "string" && body.promoCode.trim() && !promoDoc) {
+      return NextResponse.json({ success: false, message: "That promo code is invalid or has expired" }, { status: 400 });
+    }
+    const promoPct = promoDoc?.discountPct || 0;
+
+    if (promoPct > 0 && promoPct >= referralPct) {
+      basePrice = Math.round(basePrice * (1 - promoPct / 100) * 100) / 100;
+      promoDoc.redeemedCount += 1;
+      await promoDoc.save();
+    } else if (referralPct > 0) {
+      basePrice = Math.round(basePrice * (1 - referralPct / 100) * 100) / 100;
       subscription.pendingReferralDiscountPct = undefined;
       await subscription.save();
     }
