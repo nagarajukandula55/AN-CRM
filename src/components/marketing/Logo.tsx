@@ -17,9 +17,12 @@ export default function Logo({ className = "" }: { className?: string }) {
     <Image
       src="/logo-mark.png"
       alt="My Biz Flow"
-      width={56}
-      height={56}
-      className={`h-14 w-14 object-contain ${className}`}
+      width={88}
+      height={88}
+      // Bumped up from 56px (h-14) -- reported as too small to read
+      // properly at that size. className can still override this for a
+      // caller that genuinely needs it smaller.
+      className={`h-[4.5rem] w-[4.5rem] object-contain ${className}`}
       priority
     />
   );

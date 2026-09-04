@@ -53,8 +53,8 @@ your account's Plan & Billing section. Prices shown are exclusive of GST
 unless stated otherwise; GST is added at checkout.
 
 3.2 Fees are payable in advance via our payment gateway partner
-(Razorpay). All payments are non-refundable except as expressly set out
-in the Refund & Cancellation Policy.
+(Razorpay). All payments are non-refundable — see our Cancellation
+Policy.
 
 3.3 **Founding/launch pricing.** From time to time we offer introductory
 "founding" pricing for a limited period. Purchasing a subscription during

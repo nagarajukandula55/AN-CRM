@@ -116,7 +116,7 @@ const FOOTER_COLUMNS: { heading: string; links: { label: string; href: string }[
     links: [
       { label: 'Terms of Service', href: '/terms' },
       { label: 'Privacy Policy', href: '/privacy' },
-      { label: 'Refund & Cancellation', href: '/refund-policy' },
+      { label: 'Cancellation Policy', href: '/refund-policy' },
       { label: 'Vendor Agreement', href: '/vendor-agreement' },
     ],
   },
@@ -437,7 +437,7 @@ export default function CrmHomePage() {
           <div className="flex items-center gap-4">
             <a href="/terms" className="hover:text-sky-300 transition-colors">Terms</a>
             <a href="/privacy" className="hover:text-sky-300 transition-colors">Privacy</a>
-            <a href="/refund-policy" className="hover:text-sky-300 transition-colors">Refunds</a>
+            <a href="/refund-policy" className="hover:text-sky-300 transition-colors">Cancellation</a>
           </div>
         </div>
       </footer>

@@ -185,7 +185,7 @@ export default function PricingPage() {
           Prices shown are exclusive of GST — 18% GST is added at checkout. By
           subscribing you agree to our{' '}
           <Link href="/terms" className="underline hover:text-gray-300">Terms of Service</Link> and{' '}
-          <Link href="/refund-policy" className="underline hover:text-gray-300">Refund &amp; Cancellation Policy</Link>.
+          <Link href="/refund-policy" className="underline hover:text-gray-300">Cancellation Policy</Link>.
         </p>
 
         <ComparisonSection />
@@ -203,7 +203,7 @@ const FAQ_ITEMS: { q: string; a: ReactNode }[] = [
   { q: 'Will founding/launch pricing last forever?', a: 'No — it applies to new subscriptions purchased before the founding period ends. After that, new customers are charged the standard rate. Anyone who already subscribed during the founding period keeps that rate for the term they paid for.' },
   { q: 'Can I use this for multiple service centers?', a: 'Yes, on the Ultimate plan — unlimited sub-vendor/multi-center hierarchy under one login, with centralized reporting.' },
   { q: 'Are there per-user or per-seat charges?', a: "No. Pricing is per plan, not per user — Starter and Pro are single-login, Ultimate covers unlimited centers each with their own login, at no extra per-seat cost." },
-  { q: 'Can I cancel or get a refund?', a: <>Yes — see our <Link href="/refund-policy" className="underline hover:text-gray-300">Refund &amp; Cancellation Policy</Link> for the exact terms.</> },
+  { q: 'Can I cancel?', a: <>Yes, any time from Plan &amp; Billing — cancellation stops future billing, but subscription fees already paid are non-refundable. See our <Link href="/refund-policy" className="underline hover:text-gray-300">Cancellation Policy</Link> for details.</> },
 ]
 
 function PricingFaq() {

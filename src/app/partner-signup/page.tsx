@@ -116,6 +116,12 @@ function PartnerSignupPageInner() {
   // /vendor/referrals for where an existing vendor gets this link).
   const searchParams = useSearchParams();
   const referredByCode = searchParams.get("ref")?.trim() || undefined;
+  // Plan pre-selected on /pricing (e.g. "?plan=ultimate") -- this used to
+  // be silently dropped: /register (which /pricing actually links through)
+  // didn't forward its query string, and this form never read "plan"
+  // even when it did arrive. Passed straight through to
+  // api/vendors/apply, which already accepts it.
+  const preselectedPlanKey = searchParams.get("plan")?.trim().toUpperCase() || undefined;
 
   const [step, setStep] = useState<Step>(1);
   const [error, setError] = useState("");
@@ -249,6 +255,7 @@ function PartnerSignupPageInner() {
             category: category || undefined,
             appliedAs,
             referredByCode,
+            planKey: preselectedPlanKey,
             address:
               street || city || addrState || pincode
                 ? {

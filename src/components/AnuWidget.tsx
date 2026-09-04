@@ -354,7 +354,7 @@ export default function AnuWidget({ showNotifications = false }: { showNotificat
               <input
                 value={teachTopic}
                 onChange={(e) => setTeachTopic(e.target.value)}
-                placeholder="Topic (e.g. Refund Policy)"
+                placeholder="Topic (e.g. Cancellation Policy)"
                 className="w-full text-xs border border-border-strong rounded-control px-2.5 py-1.5 outline-none focus:border-accent bg-surface text-ink"
               />
               <textarea

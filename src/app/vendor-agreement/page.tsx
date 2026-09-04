@@ -30,7 +30,7 @@ sub-vendor addon charge) as described in the Terms of Service.
 completes payment of the applicable sub-vendor addon charge via
 Razorpay, verified through AN-CRM's payment verification flow. This
 charge is consumed on successful creation of that one Sub-Vendor account
-(see the Refund & Cancellation Policy, Section 6) and must be repurchased
+(see the Cancellation Policy, Section 6) and must be repurchased
 to add another Sub-Vendor.
 
 2.2 The Parent Vendor is responsible for ensuring it has the legal right
@@ -58,7 +58,7 @@ Service.
 
 The Parent Vendor may deactivate a Sub-Vendor account through the
 platform at any time; no refund of the original sub-vendor addon charge
-is issued on deactivation (see Refund & Cancellation Policy, Section 6).
+is issued on deactivation (see Cancellation Policy, Section 6).
 AN-CRM may independently suspend a Sub-Vendor account for breach of the
 Terms of Service regardless of the Parent Vendor's wishes, where required
 for legal compliance or platform integrity.
