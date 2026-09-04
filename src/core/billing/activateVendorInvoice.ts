@@ -27,6 +27,7 @@ import VendorProfile from "@/models/VendorProfile";
 import CommunicationQuota from "@/models/CommunicationQuota";
 import { extendPeriod } from "@/core/billing/billing.service";
 import { sendVendorAlert } from "@/core/telegram/sendVendorAlert";
+import { sendVendorTelegramMessage } from "@/core/telegram/sendVendorTelegramMessage";
 import { notifyAdmins } from "@/core/telegram/notifyAdmins";
 import { notifyUser } from "@/services/notification.service";
 import { sendInvoiceEmail } from "@/services/email/resend.service";
@@ -94,6 +95,49 @@ export async function activateVendorInvoice(
   subscription.currentPeriodStart = start;
   subscription.currentPeriodEnd = end;
   await subscription.save();
+
+  // Referral reward -- per explicit direction: the REFERRER benefits once
+  // the person they referred makes their FIRST real payment (never on a
+  // renewal/upgrade of the referred vendor -- hasPriorPaidInvoice/
+  // validityDays>0 guard the same way the analytics event type above
+  // does). A 2-year purchase gives the referrer +15 days free on their
+  // OWN current plan immediately; a 1-year purchase gives them 10% off
+  // their own NEXT renewal instead (see VendorSubscription.
+  // pendingReferralDiscountPct, applied in api/vendor/billing/subscribe).
+  if (!hasPriorPaidInvoice && validityDays > 0 && (vendor as any).referredByCode) {
+    (async () => {
+      const referrer = await VendorProfile.findOne({
+        vendorId: (vendor as any).referredByCode,
+        isDeleted: { $ne: true },
+      }).select("_id companyName vendorId").lean<any>();
+      if (!referrer) return;
+
+      const referrerSub = await VendorSubscription.findOne({ vendorId: referrer._id });
+      if (!referrerSub) return;
+
+      const isTwoYear = validityDays >= 700; // yearly=~360, 2-yearly=~720 (see subscribe/route.ts's periodDef.months*30)
+      if (isTwoYear) {
+        const base = referrerSub.currentPeriodEnd && referrerSub.currentPeriodEnd.getTime() > Date.now()
+          ? referrerSub.currentPeriodEnd
+          : new Date();
+        referrerSub.currentPeriodEnd = new Date(base.getTime() + 15 * 24 * 60 * 60 * 1000);
+        await referrerSub.save();
+        sendVendorTelegramMessage(
+          String(referrer._id),
+          "GENERAL_ANNOUNCEMENT",
+          `🎉 Referral reward! ${vendor.companyName || vendor.contactPerson} signed up using your referral link and subscribed for 2 years. We've added 15 free days to your current plan.`
+        ).catch(() => {});
+      } else {
+        referrerSub.pendingReferralDiscountPct = 10;
+        await referrerSub.save();
+        sendVendorTelegramMessage(
+          String(referrer._id),
+          "GENERAL_ANNOUNCEMENT",
+          `🎉 Referral reward! ${vendor.companyName || vendor.contactPerson} signed up using your referral link and subscribed for 1 year. You'll get 10% off your next renewal.`
+        ).catch(() => {});
+      }
+    })().catch(() => {});
+  }
 
   if (claimed.planKey) {
     // Sub-vendor / multi-center hierarchy is ULTIMATE-only -- see the

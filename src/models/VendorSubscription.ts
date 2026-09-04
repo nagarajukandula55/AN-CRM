@@ -39,6 +39,15 @@ export interface IVendorSubscription extends Document {
   // sent to this vendor (api/cron/trial-plan-reminders) -- unset once a
   // PAID invoice exists, since that cron only targets never-paid vendors.
   trialReminderLastSentAt: Date | null;
+  // Referral reward for this vendor as the REFERRER (see
+  // api/vendors/apply/route.ts's referredByCode handling and
+  // core/billing/activateVendorInvoice.ts's referral-reward block):
+  // whoever they referred paying for a 1-YEAR term earns them 10% off
+  // their OWN next renewal. Applied once (subscribe/route.ts reads and
+  // clears it when building that renewal's price) then unset again.
+  // A 2-YEAR referred purchase instead extends currentPeriodEnd by 15
+  // days directly -- no field needed for that, it's applied immediately.
+  pendingReferralDiscountPct?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,6 +69,7 @@ const VendorSubscriptionSchema = new Schema<IVendorSubscription>(
     planKey: { type: String, enum: ["STARTER", "BASIC", "PRO", "ULTIMATE", null], default: null },
     planName: { type: String, default: null },
     trialReminderLastSentAt: { type: Date, default: null },
+    pendingReferralDiscountPct: { type: Number, default: null },
   },
   { timestamps: true }
 );

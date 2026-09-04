@@ -11,6 +11,7 @@
 import Subscription from "@/models/Subscription";
 import PlanFeatureConfig from "@/models/PlanFeatureConfig";
 import VendorSubscription from "@/models/VendorSubscription";
+import VendorBillingInvoice from "@/models/VendorBillingInvoice";
 import { computeStatus } from "@/core/billing/billing.service";
 import { findPlan, isLaunchPricingActive, type OperatingMode, type PlanKey, type Plan } from "@/core/pricing/plans";
 
@@ -97,6 +98,31 @@ export async function getVendorPlanKey(vendorId: string): Promise<PlanKey | null
 }
 
 /**
+ * Telegram-notification tier for this vendor -- per explicit direction
+ * ("telegram for both pro+ and also for this trial users as well... but
+ * can have very basic functionality of telegram notifications for basic
+ * users too we should not abandon them"):
+ *  - "NONE" -- no active plan at all (nothing to gate, nothing sends).
+ *  - "FULL" -- every alert type, no restriction. Given to Pro/Ultimate on
+ *    a paid plan, AND to anyone still on trial (no PAID VendorBillingInvoice
+ *    yet) regardless of which plan they picked -- the trial is meant to be
+ *    a full-product experience, not a stripped one.
+ *  - "BASIC" -- a real Starter customer who has actually paid: gets just
+ *    the two "every new/closed workorder" alerts (see
+ *    BASIC_TELEGRAM_ALERT_TYPES in sendVendorAlert.ts), not the full set
+ *    (low stock, settlements, cancellations, etc.) or automated reports.
+ */
+export async function getVendorTelegramTier(vendorId: string): Promise<"NONE" | "BASIC" | "FULL"> {
+  const sub = await VendorSubscription.findOne({ vendorId }).select("planKey currentPeriodEnd modules").lean<any>();
+  if (!sub || computeStatus(sub) !== "ACTIVE") return "NONE";
+
+  const hasPaid = await VendorBillingInvoice.exists({ vendorId, status: "PAID" });
+  if (!hasPaid) return "FULL"; // still on trial -- full experience regardless of plan
+
+  return sub.planKey === "STARTER" ? "BASIC" : "FULL";
+}
+
+/**
  * Whether this specific vendor's own active subscription includes the
  * Automatic Telegram Business Report feature (ULTIMATE-tier-only, see
  * plans.ts). Checks the self-serve planKey first; falls back to an admin
@@ -104,18 +130,22 @@ export async function getVendorPlanKey(vendorId: string): Promise<PlanKey | null
  * console/admin/vendor-billing (that path sets no planKey at all -- see
  * VendorSubscription.planKey's own comment) so both assignment paths work.
  *
- * During the launch window (isLaunchPricingActive, first 6 months from
- * LAUNCH_START -- same window that drives launch pricing), Telegram
- * notifications/reports are given free to every plan tier EXCEPT Starter
- * ("just like pricing" per explicit direction, later narrowed: "telegram
- * messaging and all from pro only not for starter") -- any vendor on Pro
- * or Ultimate with an active subscription (trial or paid) qualifies
- * during launch, not just Ultimate; Starter never qualifies, launch
- * window or not.
+ * Anyone still on TRIAL (no PAID VendorBillingInvoice yet) gets the full
+ * experience including reports regardless of which plan they picked --
+ * same "full trial, not a stripped one" reasoning as
+ * getVendorTelegramTier above. Once a vendor has actually paid, a real
+ * Starter customer never qualifies for reports (that stays a Pro+
+ * differentiator); during the launch window every PAID Pro/Ultimate
+ * vendor qualifies (not just Ultimate), per the pricing launch's own
+ * "give everything away during launch" reasoning.
  */
 export async function vendorHasTelegramReportsPlan(vendorId: string): Promise<boolean> {
   const sub = await VendorSubscription.findOne({ vendorId }).select("planKey currentPeriodEnd modules").lean<any>();
   if (!sub || computeStatus(sub) !== "ACTIVE") return false;
+
+  const hasPaid = await VendorBillingInvoice.exists({ vendorId, status: "PAID" });
+  if (!hasPaid) return true; // full trial experience, any plan
+
   if (sub.planKey === "STARTER") return false;
   if (isLaunchPricingActive()) return true;
   if (sub.planKey === "ULTIMATE") return true;

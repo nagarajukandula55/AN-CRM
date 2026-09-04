@@ -36,7 +36,7 @@ export default function VendorReferralsPage() {
     <div className="min-h-screen bg-bg text-ink p-6 space-y-6">
       <PageHeader
         title="Refer a Service Center"
-        description="Share your link — anyone who signs up through it gets 10 bonus trial days."
+        description="Share your link — they get 10 bonus trial days. When they subscribe, you get rewarded too: 15 free days added to your plan for a 2-year subscription, or 10% off your next renewal for a 1-year subscription."
       />
 
       <Card>

@@ -243,6 +243,11 @@ export default function VendorBillingPage() {
                   : "Not yet paid"}
               </span>
             </div>
+            {!!subscription.pendingReferralDiscountPct && (
+              <p className="text-xs text-success bg-success-soft rounded-control px-3 py-2">
+                🎉 You have a {subscription.pendingReferralDiscountPct}% referral discount ready for your next renewal.
+              </p>
+            )}
           </>
         )}
       </Card>

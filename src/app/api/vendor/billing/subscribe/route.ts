@@ -76,6 +76,21 @@ export async function POST(req: NextRequest) {
     const plan = await getEffectivePlan(mode, planKey);
     if (!plan) return NextResponse.json({ success: false, message: "Plan not found or no longer available" }, { status: 404 });
 
+    // Fetched here (rather than further down, where this lookup used to
+    // sit) so a referral discount earned as a REFERRER (see
+    // activateVendorInvoice.ts's referral-reward block) can be applied to
+    // the price BEFORE the Razorpay order is created -- the amount is
+    // fixed at order-creation time, so this has to happen first.
+    let subscription = await VendorSubscription.findOne({ vendorId: vendor._id });
+    if (!subscription) {
+      subscription = await VendorSubscription.create({
+        vendorId: vendor._id,
+        businessId: vendor.businessId,
+        modules: [],
+        validityDays: periodDef.months * 30,
+      });
+    }
+
     // The pricing page / plan picker show the GST-EXCLUSIVE base rate --
     // whichever of launch/standard is currently active, see
     // priceForPeriod's own comment. What actually gets CHARGED (and what
@@ -83,7 +98,18 @@ export async function POST(req: NextRequest) {
     // vendorBillingView.ts's own comment on why invoice.amount must be
     // the GST-INCLUSIVE grand total: it's exactly what createRazorpayOrder
     // charges, with nothing added after the fact.
-    const { total: basePrice } = await priceForPeriodAsync(plan, periodKey);
+    let { total: basePrice } = await priceForPeriodAsync(plan, periodKey);
+    // Referral reward: this vendor earned 10% off their NEXT renewal by
+    // referring someone who paid for a 1-year term (see
+    // activateVendorInvoice.ts). Applied once, then cleared immediately --
+    // an abandoned checkout after this point does forfeit the discount,
+    // same trade-off as a typical one-time coupon being consumed on use
+    // rather than on confirmed payment.
+    if (subscription.pendingReferralDiscountPct) {
+      basePrice = Math.round(basePrice * (1 - subscription.pendingReferralDiscountPct / 100) * 100) / 100;
+      subscription.pendingReferralDiscountPct = undefined;
+      await subscription.save();
+    }
     const price = Math.round(basePrice * (1 + GST_RATE / 100) * 100) / 100;
     const validityDays = periodDef.months * 30;
 
@@ -117,15 +143,8 @@ export async function POST(req: NextRequest) {
     // abandoning checkout. The plan snapshot below travels on the INVOICE
     // instead; api/vendor/billing/invoices/[invoiceId]/confirm applies it
     // to the subscription only after verifying a real Razorpay payment.
-    let subscription = await VendorSubscription.findOne({ vendorId: vendor._id });
-    if (!subscription) {
-      subscription = await VendorSubscription.create({
-        vendorId: vendor._id,
-        businessId: vendor.businessId,
-        modules: [],
-        validityDays: validityDays,
-      });
-    }
+    // (subscription itself was already fetched/created above, before the
+    // price computation.)
 
     // Cancel any of this vendor's own still-PENDING invoices before
     // starting a fresh one -- a vendor re-picking a plan (or picking a

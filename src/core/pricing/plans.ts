@@ -137,11 +137,13 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       launchPriceINR: 349,
       freeTrialDays: 15,
       seatLimit: "1 login (single-screen)",
-      // Deliberately NOT exhaustive -- this is the "not everything" tier.
       // Missing on purpose vs Pro: Quotations/Credit/Debit/Proforma docs,
       // Delivery Challans, Credit Accounts, Financial Statement, fault/
       // symptom/solution library, Custom Report Builder, Analytics,
-      // Telegram alerts, multi-warehouse Stock Transfers.
+      // multi-warehouse Stock Transfers, and the FULL Telegram alert set
+      // (Starter gets a basic subset, not zero -- see
+      // core/telegram/sendVendorAlert.ts's BASIC_TELEGRAM_ALERT_TYPES;
+      // "we should not abandon them").
       // Deliberately exhaustive, per explicit direction ("ensure to show
       // all these every minute detailed features we need to mention in
       // the list") -- grouped by category in the source for clarity, but
@@ -160,8 +162,10 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "Private Material/BOM price list",
         "Brands & device models",
         "Basic inventory tracking (single location)",
+        // Communication
+        "Basic Telegram alerts (new & closed workorder only)",
         // Trial & Support
-        "15-day free trial, full access, no card required",
+        "15-day free trial, full Ultimate-tier access, no card required",
         "Email support",
       ],
       moduleKeys: [
