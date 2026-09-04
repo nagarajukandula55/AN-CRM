@@ -142,14 +142,25 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // Delivery Challans, Credit Accounts, Financial Statement, fault/
       // symptom/solution library, Custom Report Builder, Analytics,
       // Telegram alerts, multi-warehouse Stock Transfers.
+      // Deliberately exhaustive, per explicit direction ("ensure to show
+      // all these every minute detailed features we need to mention in
+      // the list") -- grouped by category in the source for clarity, but
+      // still one flat list (every plan card renders features as a plain
+      // bullet list, no category headers).
       features: [
+        // Service Management
+        "Customer database & customer history",
         "Single-login workorder flow, start to close",
+        "Job card / device intake with device & fault details",
+        "Customer-facing repair status tracking page",
+        // Billing
         "GST & non-GST invoicing",
+        "UPI payment QR on every invoice",
+        // Inventory
         "Private Material/BOM price list",
         "Brands & device models",
-        "Customer-facing repair status tracking page",
-        "Basic inventory tracking",
-        "UPI payment QR on every invoice",
+        "Basic inventory tracking (single location)",
+        // Trial & Support
         "15-day free trial, full access, no card required",
         "Email support",
       ],
@@ -193,22 +204,33 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // next to the comparison table. Kept in the same order a shop owner
       // would actually use these day to day.
       features: [
+        // Service Management
+        "Customer database & full customer history",
         "Single-login workorder flow, start to close",
-        "GST & non-GST invoicing",
-        "Quotations, Credit Notes, Debit Notes & Proforma Invoices",
-        "Private Material/BOM price list",
-        "Brands, device models & solution library",
-        "Fault code / symptom code library (private)",
+        "Job cards / device intake with device, fault & warranty details",
+        "Fault code / symptom code / solution library (private)",
+        "Technician assignment & repair-stage tracking",
         "Customer-facing repair status tracking page",
-        "Warehouses, Inventory & Stock Transfers",
+        // Billing
+        "GST & non-GST invoicing",
+        "Quotations",
+        "Proforma Invoices",
+        "Credit Notes & Debit Notes",
         "Delivery Challans",
         "Credit Accounts for repeat customers",
-        "Financial Statement — your full running account",
-        "Telegram alerts for every new/closed workorder",
-        "Custom Report Builder (build your own reports & charts)",
-        "Analytics dashboard",
         "UPI payment QR on every invoice",
         "Invoice ZIP export, ready for GST filing",
+        // Inventory
+        "Private Material/BOM price list",
+        "Brands & device models",
+        "Warehouses, Inventory & Stock Transfers",
+        // Business Management
+        "Financial Statement — your full running account",
+        "Custom Report Builder (build your own reports & charts)",
+        "Analytics dashboard",
+        // Communication
+        "Telegram alerts for every new/closed workorder",
+        // Trial & Support
         "15-day free trial, full access, no card required",
         "Priority support",
       ],
@@ -246,11 +268,18 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // public plan surfaces for now.
       features: [
         "Everything in Pro",
+        // Business Management
         "Ledger Book — party-wise running balance",
         "Profit & Loss reports",
         "Expense tracking",
+        "Advanced financial reporting across every center",
+        // Multi-Center
         "Unlimited sub-vendor / multi-center hierarchy under one login",
+        "Centralized reporting across every center",
+        "Centralized business controls & oversight",
+        // Communication
         "Automated Telegram business reports (daily/weekly/monthly/yearly, with charts)",
+        // Support
         "Dedicated onboarding",
         "SLA-backed priority support",
       ],

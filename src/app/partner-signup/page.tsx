@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Eye,
   EyeOff,
@@ -111,6 +112,11 @@ export default function PartnerSignupPage() {
 }
 
 function PartnerSignupPageInner() {
+  // Referral -- a vendor's own vendorId shared as "?ref=VND0002" (see
+  // /vendor/referrals for where an existing vendor gets this link).
+  const searchParams = useSearchParams();
+  const referredByCode = searchParams.get("ref")?.trim() || undefined;
+
   const [step, setStep] = useState<Step>(1);
   const [error, setError] = useState("");
   const [state, setState] = useState<SubmitState>({ kind: "idle" });
@@ -242,6 +248,7 @@ function PartnerSignupPageInner() {
             panNumber: panNumber.trim() ? panNumber.trim().toUpperCase() : undefined,
             category: category || undefined,
             appliedAs,
+            referredByCode,
             address:
               street || city || addrState || pincode
                 ? {
@@ -483,6 +490,12 @@ function PartnerSignupPageInner() {
             </div>
 
             <form onSubmit={handleSubmit} className={`${neonCard} p-6 sm:p-8`}>
+              {referredByCode && (
+                <div className="mb-4 flex items-center gap-2 rounded-card border border-success bg-success-soft px-4 py-3 text-sm text-success">
+                  <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                  You were referred by {referredByCode} — you&apos;ll get 10 bonus trial days on sign-up.
+                </div>
+              )}
               {error && (
                 <div className="mb-4 flex items-center gap-2 rounded-card border border-danger bg-danger-soft px-4 py-3 text-sm text-danger">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />

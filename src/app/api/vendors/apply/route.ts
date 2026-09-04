@@ -14,7 +14,7 @@ import { getVendorOnboardingConfig, getPlatformBusinessId } from "@/lib/centralA
 import { sendTelegramMessage, formatVendorOnboardedMessage } from "@/lib/telegram";
 import type { PlanKey } from "@/core/pricing/plans";
 
-const VALID_PLAN_KEYS: PlanKey[] = ["BASIC", "ULTIMATE"];
+const VALID_PLAN_KEYS: PlanKey[] = ["STARTER", "BASIC", "ULTIMATE"];
 
 /**
  * POST /api/vendors/apply — PUBLIC vendor signup request.
@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       documents,
       notes,
       planKey,
+      referredByCode,
     } = body;
 
     if (!companyName || !contactPerson || !email || !phone) {
@@ -217,11 +218,27 @@ export async function POST(req: NextRequest) {
       vendorId = generated.value;
     }
 
+    // Referral -- a vendor's own vendorId (e.g. "VND0002", already a
+    // unique, human-readable code every vendor has) doubles as their
+    // referral code, no separate code generation needed. Only stored if
+    // it actually resolves to a real, non-deleted vendor -- an
+    // unrecognized/typo'd code is silently dropped rather than stored as
+    // garbage. The referred person's trial bonus (see
+    // activateVendorWithTrial's bonusTrialDays) is applied below once the
+    // vendor record exists.
+    let referrer: { _id: unknown } | null = null;
+    if (typeof referredByCode === "string" && referredByCode.trim()) {
+      referrer = await VendorProfile.findOne({ vendorId: referredByCode.trim(), isDeleted: { $ne: true } })
+        .select("_id")
+        .lean();
+    }
+
     const vendor = await VendorProfile.create({
       businessId: business ? new Types.ObjectId(resolvedBusinessId) : null,
       userId: (applicantUser as any)._id,
       vendorId,
       requestNumber,
+      referredByCode: referrer ? String(referredByCode).trim() : undefined,
       companyName: String(companyName).trim(),
       contactPerson: String(contactPerson).trim(),
       email: String(email).toLowerCase().trim(),
@@ -299,7 +316,14 @@ export async function POST(req: NextRequest) {
     if (skipApproval) {
       try {
         const requestedPlanKey: PlanKey | undefined = VALID_PLAN_KEYS.includes(planKey) ? planKey : undefined;
-        const result = await activateVendorWithTrial(vendor as any, String(resolvedBusinessId), { skipAgreement: true, planKey: requestedPlanKey });
+        // +10 bonus trial days for a referred signup (15 -> 25 days) --
+        // the referral program's incentive for the REFERRED person, per
+        // explicit direction to implement one.
+        const result = await activateVendorWithTrial(vendor as any, String(resolvedBusinessId), {
+          skipAgreement: true,
+          planKey: requestedPlanKey,
+          bonusTrialDays: referrer ? 10 : undefined,
+        });
         trialActivated = result.ok;
         if (!result.ok) {
           console.error("Instant vendor trial activation failed:", result.error);

@@ -106,13 +106,17 @@ export async function getVendorPlanKey(vendorId: string): Promise<PlanKey | null
  *
  * During the launch window (isLaunchPricingActive, first 6 months from
  * LAUNCH_START -- same window that drives launch pricing), Telegram
- * notifications/reports are given free to every plan tier ("just like
- * pricing" per explicit direction) -- any vendor with an active
- * subscription (trial or paid, any tier) qualifies, not just Ultimate.
+ * notifications/reports are given free to every plan tier EXCEPT Starter
+ * ("just like pricing" per explicit direction, later narrowed: "telegram
+ * messaging and all from pro only not for starter") -- any vendor on Pro
+ * or Ultimate with an active subscription (trial or paid) qualifies
+ * during launch, not just Ultimate; Starter never qualifies, launch
+ * window or not.
  */
 export async function vendorHasTelegramReportsPlan(vendorId: string): Promise<boolean> {
   const sub = await VendorSubscription.findOne({ vendorId }).select("planKey currentPeriodEnd modules").lean<any>();
   if (!sub || computeStatus(sub) !== "ACTIVE") return false;
+  if (sub.planKey === "STARTER") return false;
   if (isLaunchPricingActive()) return true;
   if (sub.planKey === "ULTIMATE") return true;
   return (sub.modules || []).some((m: any) => m.key === "telegram-reports");

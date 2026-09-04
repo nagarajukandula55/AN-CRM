@@ -33,6 +33,7 @@ import {
   HandCoins,
   Store,
   Send,
+  Share2,
   LifeBuoy,
   FileSignature,
   Truck,
@@ -131,6 +132,7 @@ const navItems: { href: string; label: string; icon: any; modules: string[] | nu
   { href: '/vendor/profile', label: 'My Profile / Settings', icon: User, modules: null, section: 'Account' },
   { href: '/vendor/billing', label: 'Billing & Plan', icon: CreditCard, modules: null, section: 'Account' },
   { href: '/vendor/telegram', label: 'Telegram Alerts', icon: Send, modules: null, section: 'Account' },
+  { href: '/vendor/referrals', label: 'Refer a Service Center', icon: Share2, modules: null, section: 'Account' },
   // Migrated from console/common/sub-vendors -- already fully vendor-
   // scoped (own component reads /api/vendor/type-context for the
   // caller's vendorId). Not module-gated -- gated instead by an admin-set

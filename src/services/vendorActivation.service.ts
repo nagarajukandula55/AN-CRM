@@ -253,7 +253,7 @@ export async function activateVendorAfterAgreement(
 export async function activateVendorWithTrial(
   vendor: IVendorProfile,
   businessId: string,
-  opts?: { skipAgreement?: boolean; planKey?: PlanKey }
+  opts?: { skipAgreement?: boolean; planKey?: PlanKey; bonusTrialDays?: number }
 ): Promise<
   | { ok: true; vendor: IVendorProfile; tempPassword: string | null }
   | { ok: false; error: string }
@@ -355,7 +355,10 @@ By signing below, both parties agree to the terms above.`;
     await vendor.save();
 
     const now = new Date();
-    const trialEnd = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
+    // bonusTrialDays -- the referral program's incentive for the REFERRED
+    // person (see api/vendors/apply/route.ts's referredByCode handling):
+    // extra trial days on top of the standard 15, at zero cost to us.
+    const trialEnd = new Date(now.getTime() + (15 + (opts?.bonusTrialDays || 0)) * 24 * 60 * 60 * 1000);
     // SC is the only mode this platform supports now (Brand/POS removed,
     // confirmed zero production usage before deletion) -- vendor.appliedAs
     // is always "SC" in practice, but the "BRAND" fallback literal this
@@ -402,7 +405,7 @@ By signing below, both parties agree to the terms above.`;
       vendorId: vendor._id,
       businessId,
       modules: plan.vendorModuleKeys.map((key) => ({ key, rate: 0 })),
-      validityDays: 15,
+      validityDays: 15 + (opts?.bonusTrialDays || 0),
       currentPeriodStart: now,
       currentPeriodEnd: trialEnd,
       planKey: plan.key,
