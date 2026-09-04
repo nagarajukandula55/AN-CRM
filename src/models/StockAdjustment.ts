@@ -59,7 +59,14 @@ const StockAdjustmentSchema = new Schema<IStockAdjustment>(
 
 // adjustmentNumber was GLOBALLY unique -- same cross-business collision
 // risk as PurchaseOrder.poNumber: scoped per-business instead.
-StockAdjustmentSchema.index({ businessId: 1, adjustmentNumber: 1 }, { unique: true, sparse: true });
+//
+// Further scoped to vendorId: api/stock/adjustments/route.ts generates the
+// number via generateScopedDocumentNumber(createScope?.vendorId ||
+// businessId, ...), i.e. the counter resets PER VENDOR when the adjustment
+// has one -- so a businessId-only unique index let two vendors under the
+// same business collide on an identical adjustmentNumber (same bug as
+// SalesInvoice.invoiceNumber, see that model's comment).
+StockAdjustmentSchema.index({ businessId: 1, vendorId: 1, adjustmentNumber: 1 }, { unique: true, sparse: true });
 
 const StockAdjustment: Model<IStockAdjustment> =
   (mongoose.models.StockAdjustment as Model<IStockAdjustment>) ||

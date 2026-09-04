@@ -39,11 +39,11 @@ const VendorBillingInvoiceSchema = new Schema<IVendorBillingInvoice>(
     vendorId: { type: Schema.Types.ObjectId, ref: "VendorProfile", required: true },
     businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true },
     subscriptionId: { type: Schema.Types.ObjectId, ref: "VendorSubscription", required: true },
-    invoiceNumber: { type: String, required: true, unique: true },
+    invoiceNumber: { type: String, required: true },
     modules: [{ key: String, rate: Number, _id: false }],
     amount: { type: Number, required: true, min: 0 },
     validityDays: { type: Number, default: 30 },
-    planKey: { type: String, enum: ["BASIC", "PRO", "ULTIMATE", null], default: null },
+    planKey: { type: String, enum: ["STARTER", "BASIC", "PRO", "ULTIMATE", null], default: null },
     planName: { type: String, default: null },
     periodStart: { type: Date, required: true },
     periodEnd: { type: Date, required: true },
@@ -61,6 +61,16 @@ const VendorBillingInvoiceSchema = new Schema<IVendorBillingInvoice>(
 
 VendorBillingInvoiceSchema.index({ vendorId: 1, createdAt: -1 });
 VendorBillingInvoiceSchema.index({ businessId: 1, status: 1 });
+
+// invoiceNumber used to carry a bare schema-level `unique: true` -- a
+// GLOBAL constraint across every vendor on the platform. The number is
+// generated via generateScopedDocumentNumber(vendorId, ...) (see
+// api/admin/vendor-billing/[vendorId]/invoice/route.ts), whose counter
+// resets PER VENDOR -- so any two vendors' first billing invoice both
+// produce the same number and the second vendor's invoice creation
+// hard-fails on a duplicate-key error. Scoped to vendorId here instead
+// (same bug/fix as SalesInvoice.invoiceNumber).
+VendorBillingInvoiceSchema.index({ vendorId: 1, invoiceNumber: 1 }, { unique: true });
 
 const VendorBillingInvoice: Model<IVendorBillingInvoice> =
   mongoose.models.VendorBillingInvoice ||

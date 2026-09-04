@@ -118,7 +118,14 @@ const SalesDocumentSchema = new Schema<ISalesDocument>(
   { timestamps: true }
 );
 
-SalesDocumentSchema.index({ businessId: 1, docType: 1, docNumber: 1 }, { unique: true });
+// Further scoped to vendorId: api/sales-documents/route.ts generates
+// docNumber via generateScopedDocumentNumber(createScope?.vendorId ||
+// businessId, ...), i.e. the counter resets PER VENDOR when the document
+// has one -- so a businessId+docType-only unique index let two vendors
+// under the same business collide on an identical docNumber for the same
+// docType (same bug as SalesInvoice.invoiceNumber, see that model's
+// comment).
+SalesDocumentSchema.index({ businessId: 1, vendorId: 1, docType: 1, docNumber: 1 }, { unique: true, sparse: true });
 SalesDocumentSchema.index({ businessId: 1, docType: 1, isDeleted: 1, createdAt: -1 });
 
 const SalesDocument: Model<ISalesDocument> =

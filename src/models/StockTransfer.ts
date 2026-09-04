@@ -62,7 +62,14 @@ const StockTransferSchema = new Schema<IStockTransfer>(
 
 // transferNumber was GLOBALLY unique -- same cross-business collision risk
 // as PurchaseOrder.poNumber: scoped per-business instead.
-StockTransferSchema.index({ businessId: 1, transferNumber: 1 }, { unique: true });
+//
+// Further scoped to vendorId: api/stock/transfers/route.ts generates the
+// number via generateScopedDocumentNumber(createScope?.vendorId ||
+// businessId, ...), i.e. the counter resets PER VENDOR when the transfer
+// has one -- so a businessId-only unique index let two vendors under the
+// same business collide on an identical transferNumber (same bug as
+// SalesInvoice.invoiceNumber, see that model's comment).
+StockTransferSchema.index({ businessId: 1, vendorId: 1, transferNumber: 1 }, { unique: true, sparse: true });
 
 const StockTransfer: Model<IStockTransfer> =
   (mongoose.models.StockTransfer as Model<IStockTransfer>) ||

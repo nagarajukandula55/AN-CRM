@@ -315,7 +315,19 @@ InvoiceSchema.index({ businessId: 1, isDeleted: 1 });
 // would hard-fail on a duplicate-key error. Scoped to per-business here;
 // sparse because invoiceNumber can be unset on drafts and businessId is
 // optional on this schema (see its own field comment).
-InvoiceSchema.index({ businessId: 1, invoiceNumber: 1 }, { unique: true, sparse: true });
+//
+// Further scoped to vendorId: the numbering counter itself
+// (generateScopedDocumentNumber, see app/api/crm/jobsheets/[id]/close and
+// app/api/sales/invoices) resets PER VENDOR when a jobsheet/invoice has a
+// vendorId, not per business -- so two vendors under the same business
+// legitimately produce identical invoiceNumbers (e.g. both vendors' first
+// BILL of the day = "BILL-2627-0013"). A businessId+invoiceNumber-only
+// index made that a duplicate-key hard-failure at close time instead of
+// two perfectly valid, independently-numbered invoices. Compound sparse
+// indexes only exclude docs missing ALL indexed fields, so invoices with
+// no vendorId (single-tenant businesses) still get businessId+invoiceNumber
+// uniqueness as before.
+InvoiceSchema.index({ businessId: 1, vendorId: 1, invoiceNumber: 1 }, { unique: true, sparse: true });
 
 const SalesInvoice: Model<ISalesInvoice> =
   (mongoose.models.SalesInvoice as Model<ISalesInvoice>) ||
