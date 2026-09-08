@@ -13,7 +13,7 @@ import User from '@/models/User'
 import { logAction } from '@/lib/audit/logAction'
 
 const SALT_ROUNDS = 12
-const MIN_LENGTH = 6
+const MIN_LENGTH = 8 // matches register/reset-password's minimum -- was 6 here, a weaker bar than everywhere else a password gets set
 
 export async function POST(req: Request) {
   try {

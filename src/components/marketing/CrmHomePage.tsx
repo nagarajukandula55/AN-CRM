@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   PhoneCall, ClipboardList, ShieldCheck, Zap, BarChart3,
@@ -124,7 +125,27 @@ const FOOTER_COLUMNS: { heading: string; links: { label: string; href: string }[
   },
 ]
 
+interface LivePricing {
+  launchPricingActive: boolean
+  plans: { key: string; monthlyPriceINR: number }[]
+}
+
 export default function CrmHomePage() {
+  // Live, admin-overridable numbers (see api/pricing/config's own comment)
+  // -- falls back to the static plans.ts rate below until this loads (or
+  // if it ever fails), same pattern as /pricing/page.tsx. Without this,
+  // a Super Admin price override applied everywhere else (checkout,
+  // /pricing) would silently keep showing the old rate here.
+  const [livePricing, setLivePricing] = useState<LivePricing | null>(null)
+  useEffect(() => {
+    fetch('/api/pricing/config').then((r) => r.json()).then((d) => { if (d?.success) setLivePricing(d) }).catch(() => {})
+  }, [])
+  function monthlyRateFor(plan: (typeof PLANS_BY_MODE.SC)[number]) {
+    const live = livePricing?.plans.find((p) => p.key === plan.key)
+    return live ? live.monthlyPriceINR : currentMonthlyRate(plan)
+  }
+  const launchActive = livePricing ? livePricing.launchPricingActive : isLaunchPricingActive()
+
   return (
     <div className={mbfPageBg}>
       {/* ── Hero ─────────────────────────────────────────────────────── */}
@@ -291,13 +312,14 @@ export default function CrmHomePage() {
 
       {/* ── Pricing snapshot -- a quick glance at rates, "Know more" links
           through to the full /pricing page for the actual comparison
-          table/billing-period toggle. Reads from the same core/pricing/
-          plans.ts source of truth as /pricing, so it can never drift. ── */}
+          table/billing-period toggle. Uses the same live /api/pricing/
+          config numbers as /pricing and actual checkout, so an admin price
+          override never goes stale here. ── */}
       <section className="w-full px-6 sm:px-12 py-20 border-t border-white/5">
         <div className="text-center mb-10">
           <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-orange-300">Pricing</p>
           <h2 className="mt-2 text-3xl font-bold tracking-tight text-white">Simple, transparent rates</h2>
-          {isLaunchPricingActive() && (
+          {launchActive && (
             <div className="inline-flex items-center gap-1.5 mt-4 rounded-full border border-green-400/30 bg-white/5 text-green-300 text-xs font-medium px-3.5 py-1.5">
               <Sparkles className="h-3.5 w-3.5" /> Launch pricing — limited time
             </div>
@@ -308,7 +330,7 @@ export default function CrmHomePage() {
             <div key={plan.key} className={`${mbfCard} p-6 text-center ${plan.highlight ? '!border-sky-400/40' : ''}`}>
               <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
               <div className="mt-3 flex items-baseline justify-center gap-1">
-                <span className="text-3xl font-semibold tabular-nums text-white">₹{currentMonthlyRate(plan).toLocaleString('en-IN')}</span>
+                <span className="text-3xl font-semibold tabular-nums text-white">₹{monthlyRateFor(plan).toLocaleString('en-IN')}</span>
                 <span className="text-gray-500 text-sm">/month + GST</span>
               </div>
               {plan.freeTrialDays && (

@@ -75,9 +75,11 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "adm-system", label: "System", items: [
       { key: "admin-plan-features", label: "Plan Features", route: "/console/admin/plan-features", icon: "Sparkles" },
       { key: "admin-promo-codes", label: "Promo Codes", route: "/console/admin/promo-codes", icon: "Tag" },
-      { key: "admin-page-columns", label: "Page Columns & Cards", route: "/console/admin/page-columns", icon: "SlidersHorizontal" },
-      { key: "admin-custom-fields", label: "Custom Fields", route: "/console/admin/custom-fields", icon: "Layers" },
-      { key: "admin-option-lists", label: "Option Lists", route: "/console/admin/option-lists", icon: "ListChecks" },
+      // Page Columns & Cards / Custom Fields / Option Lists -- merged into
+      // one tabbed page per explicit direction, rather than three separate
+      // nav entries for what are all "one-time setup config" tools. The
+      // old three routes now redirect here.
+      { key: "admin-system-config", label: "System Configuration", route: "/console/admin/system-config", icon: "SlidersHorizontal" },
       { key: "admin-settings", label: "Settings", route: "/console/admin/settings", icon: "Settings" },
       { key: "admin-plan", label: "Plan & Billing", route: "/console/admin/plan", icon: "Receipt" },
       // Real gate is inside the page itself (session.isSuperAdmin check),
@@ -87,13 +89,15 @@ export const NAV_GROUPS: NavGroup[] = [
     { key: "adm-docs", label: "Documents & Billing", items: [
       { key: "admin-document-templates", label: "Document Templates", route: "/console/admin/document-templates", icon: "FileText" },
       { key: "admin-invoice-templates", label: "Invoice Branding", route: "/console/admin/invoice-templates", icon: "FileText" },
-      { key: "admin-gst", label: "GST", route: "/console/admin/gst", icon: "FileText" },
+      // GST admin page removed from nav per explicit direction -- GST is
+      // now managed from the separate accounting system, not here. Page
+      // itself untouched, just not linked.
       // Super Admin only.
       { key: "admin-product-feedback", label: "Product Feedback", route: "/console/admin/product-feedback", icon: "MessageSquare" },
-      { key: "admin-telegram-users", label: "Telegram Users", route: "/console/admin/telegram-users", icon: "Send" },
-      { key: "admin-telegram-log", label: "Telegram Notifications Log", route: "/console/admin/telegram-notifications-log", icon: "Send" },
-      { key: "admin-telegram-ids", label: "Telegram Chat IDs", route: "/console/admin/telegram-ids", icon: "Send" },
-      { key: "admin-telegram-broadcast", label: "Telegram Broadcast", route: "/console/admin/telegram-broadcast", icon: "Send" },
+      // Telegram Users / Notifications Log / Chat IDs / Broadcast --
+      // merged into one tabbed page (same "merge related tools" direction
+      // as System Configuration above). Old four routes now redirect here.
+      { key: "admin-telegram", label: "Telegram", route: "/console/admin/telegram", icon: "Send" },
       { key: "admin-email-templates", label: "Email Templates", route: "/console/admin/email-templates", icon: "Mail" },
       { key: "admin-tutorial-videos", label: "Tutorial Videos", route: "/console/admin/tutorial-videos", icon: "LifeBuoy" },
     ]},

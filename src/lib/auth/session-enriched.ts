@@ -107,23 +107,19 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
     getOrCreateANGroupBusinessId().catch(() => null),
   ]);
 
-  // Single active session enforcement -- DISABLED for now, per explicit
-  // direction ("allow multiple sessions don't restrict to single
-  // session"). A token issued by an earlier login (still unexpired, held
-  // by a different device/browser) used to get rejected here the moment
-  // a newer login bumped User.sessionVersion. sessionVersion is still
-  // bumped on every login (buildAuthSession.ts) and still carried on the
-  // token/header, so this can be turned back on later by restoring the
-  // check below -- multi-device is intentionally allowed in the
-  // meantime, not a bug.
-  // if (
-  //   user &&
-  //   tokenSessionVersionHeader !== null &&
-  //   Number(tokenSessionVersionHeader) !== ((user as any).sessionVersion || 0)
-  // ) {
-  //   return null;
-  // }
-  void tokenSessionVersionHeader;
+  // Single active session enforcement -- re-enabled per explicit direction
+  // (only one active session per user; logging in elsewhere logs the
+  // earlier session out). sessionVersion is bumped on every login
+  // (buildAuthSession.ts) and carried on the token/header; a token whose
+  // sessionVersion no longer matches the live User doc was issued by an
+  // earlier login that has since been superseded, so it's rejected here.
+  if (
+    user &&
+    tokenSessionVersionHeader !== null &&
+    Number(tokenSessionVersionHeader) !== ((user as any).sessionVersion || 0)
+  ) {
+    return null;
+  }
 
   const activeBusinessIdHeader = headersList.get("x-active-business-id");
 

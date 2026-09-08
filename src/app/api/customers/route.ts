@@ -7,6 +7,23 @@ import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { logAction } from "@/lib/audit/logAction";
 import { resolveAuthorizedVendorScope } from "@/lib/auth/resolveAuthorizedBusinessId";
+import { vendorHasCustomerDatabaseAccess } from "@/core/pricing/planAccess";
+
+// Starter has no standalone customer database (removed per explicit
+// direction -- see planAccess.ts's vendorHasCustomerDatabaseAccess doc
+// comment). Nav hiding alone doesn't stop a direct API call, so every
+// customers.* route resolving to a real vendor is gated here too.
+async function assertCustomerDatabaseAccess(vendorId: string | null | undefined, isSuperAdmin: boolean) {
+  if (!vendorId || isSuperAdmin) return null;
+  const allowed = await vendorHasCustomerDatabaseAccess(vendorId);
+  if (!allowed) {
+    return NextResponse.json(
+      { success: false, error: "Customer database is not included in your current plan. Upgrade to access it." },
+      { status: 403 }
+    );
+  }
+  return null;
+}
 
 function permissionErrorResponse(err: any) {
   return NextResponse.json(
@@ -50,6 +67,9 @@ export async function GET(req: NextRequest) {
       session.business?.businessId || null
     );
     const businessId = scope?.businessId || null;
+
+    const denied = await assertCustomerDatabaseAccess(scope?.vendorId || null, session.isSuperAdmin);
+    if (denied) return denied;
 
     // Reads from this app's own MongoDB, not central-api -- this is the
     // real write target for every capture path (captureCustomer(), the
@@ -123,6 +143,9 @@ export async function POST(req: NextRequest) {
       session.business?.businessId || null
     );
     const businessId = scope?.businessId || null;
+
+    const denied = await assertCustomerDatabaseAccess(scope?.vendorId || null, session.isSuperAdmin);
+    if (denied) return denied;
 
     const customer = await Customer.create({
       businessId: businessId && Types.ObjectId.isValid(businessId) ? new Types.ObjectId(businessId) : null,

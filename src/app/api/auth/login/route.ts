@@ -4,6 +4,15 @@ import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { buildAuthSession } from "@/lib/auth/buildAuthSession";
 import { SUPER_ADMIN_ONLY_HOSTS } from "@/lib/auth/superAdminHosts";
+import { checkRateLimit } from "@/lib/security/rateLimit";
+
+// Unthrottled login was a brute-force gap -- reset-password already rate-
+// limits by email+IP (see that route's own comment), login had nothing.
+// Same generous-but-real caps: slows a credential-stuffing loop without
+// needing shared infra.
+const LOGIN_ATTEMPT_LIMIT = 10;
+const LOGIN_IP_LIMIT = 30;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(req: Request) {
   try {
@@ -12,10 +21,25 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { email, username, password } = body ?? {};
 
-    if ((!email && !username) || !password) {
+    if ((!email && !username) || !password || typeof password !== "string") {
       return NextResponse.json(
         { success: false, message: "Credentials required" },
         { status: 400 }
+      );
+    }
+
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+    const loginKey = String(email || username).toLowerCase().trim();
+    if (
+      !checkRateLimit(`login:acct:${loginKey}`, LOGIN_ATTEMPT_LIMIT, LOGIN_WINDOW_MS) ||
+      !checkRateLimit(`login:ip:${ip}`, LOGIN_IP_LIMIT, LOGIN_WINDOW_MS)
+    ) {
+      return NextResponse.json(
+        { success: false, message: "Too many login attempts. Please try again in a few minutes." },
+        { status: 429 }
       );
     }
 

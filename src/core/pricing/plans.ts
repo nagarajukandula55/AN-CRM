@@ -157,7 +157,7 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // bullet list, no category headers).
       features: [
         // Service Management
-        "Customer database & customer history",
+        "Repair/order history per customer (no standalone customer database)",
         "Single-login workorder flow, start to close",
         "Job card / device intake with device & fault details",
         "Customer-facing repair status tracking page",
@@ -169,8 +169,17 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
         "15-day free trial, full Ultimate-tier access, no card required",
         "Email support",
       ],
+      // No standalone "customers" module on Starter, per explicit
+      // direction ("customer database and customer data remove from
+      // starter pack they should not have any database they can check
+      // history but customer data separately should not visible") --
+      // Starter still sees customer name/contact attached to each of ITS
+      // OWN job cards/invoices (that data lives on the order/jobsheet
+      // document itself), just not the standalone searchable/exportable
+      // customer directory. See api/customers/route.ts's matching
+      // plan-tier gate.
       moduleKeys: [
-        "crm", "crm_jobsheets", "customers", "sales",
+        "crm", "crm_jobsheets", "sales",
         "admin-settings", "admin-plan", "send-feedback",
       ],
       // No materials/inventory/warehouses/stock_transfers (no catalog or
@@ -178,8 +187,10 @@ export const PLANS_BY_MODE: Record<OperatingMode, Plan[]> = {
       // no brands/device_models (no Brand/Model master data storage), no
       // reports/analytics/fault_codes/solutions -- those are Pro+. No
       // "payment-qr" either (UPI QR generation is Pro+ -- see
-      // core/payments/upiQr.ts's caller in api/invoice/view).
-      vendorModuleKeys: ["crm", "crm_jobsheets", "finance", "customers", "settings", "businesses"],
+      // core/payments/upiQr.ts's caller in api/invoice/view). No
+      // "customers" either as of the Starter customer-database removal
+      // above.
+      vendorModuleKeys: ["crm", "crm_jobsheets", "finance", "settings", "businesses"],
     },
     {
       // Internal plan key stays "BASIC" (matches PlanKey/VendorSubscription

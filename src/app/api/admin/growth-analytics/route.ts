@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/mongodb";
 import AnalyticsEvent from "@/models/AnalyticsEvent";
 import VendorProfile from "@/models/VendorProfile";
 import VendorSubscription from "@/models/VendorSubscription";
+import Subscription from "@/models/Subscription";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 
 /**
@@ -33,8 +34,9 @@ export async function GET() {
 
     const [
       counts, byPlan, foundingVsStandard, revenueByFounding, recent,
-      vendorStatusCounts, subscriptionStatusCounts, planDistribution,
+      vendorStatusCounts, vendorSubscriptions, planDistribution,
       signupsByMonth, totalVendors, newThisMonth, recentlyExpired, recentlyLost,
+      activeTrials,
     ] = await Promise.all([
       AnalyticsEvent.aggregate([{ $group: { _id: "$type", count: { $sum: 1 } } }]),
       AnalyticsEvent.aggregate([
@@ -58,26 +60,10 @@ export async function GET() {
         { $match: { isDeleted: { $ne: true } } },
         { $group: { _id: "$status", count: { $sum: 1 } } },
       ]),
-      // Billing status per vendor, replicating computeStatus() in
-      // billing.service.ts (NOT_SET/UNPAID/ACTIVE/EXPIRED) via aggregation
-      // so this is one query instead of loading every subscription into JS.
-      VendorSubscription.aggregate([
-        {
-          $addFields: {
-            _computedStatus: {
-              $switch: {
-                branches: [
-                  { case: { $eq: [{ $size: { $ifNull: ["$modules", []] } }, 0] }, then: "NOT_SET" },
-                  { case: { $eq: ["$currentPeriodEnd", null] }, then: "UNPAID" },
-                  { case: { $gt: ["$currentPeriodEnd", now] }, then: "ACTIVE" },
-                ],
-                default: "EXPIRED",
-              },
-            },
-          },
-        },
-        { $group: { _id: "$_computedStatus", count: { $sum: 1 } } },
-      ]),
+      // Every vendor's own VendorSubscription row (not pre-aggregated --
+      // see the TRIAL reconciliation right after this Promise.all, which
+      // needs the raw per-vendor rows, not just counts).
+      VendorSubscription.find().select("vendorId modules currentPeriodEnd").lean(),
       // Plan distribution among currently-ACTIVE (paid-through-today)
       // subscriptions only -- an expired Pro vendor shouldn't inflate
       // Pro's live headcount.
@@ -105,7 +91,59 @@ export async function GET() {
         status: { $in: ["SUSPENDED", "INACTIVE", "REJECTED"] },
         updatedAt: { $gte: thirtyDaysAgo },
       }),
+      // Instant-trial vendors currently mid-trial haven't paid yet, so
+      // VendorSubscription.modules is still empty for them (see
+      // vendor/billing/subscribe/route.ts's own comment: modules are only
+      // written once a real payment confirms) -- computeStatus() alone
+      // would bucket every one of these as "NOT_SET" ("No Plan
+      // Configured"), which reads as "hasn't picked a plan" when they're
+      // actually live on a real trial right now. Trial state instead lives
+      // on this separate legacy Subscription row (same one
+      // admin/vendor-billing/route.ts reconciles against for the same
+      // reason -- see that route's own comment on the drift this causes).
+      Subscription.find({ subVendorOf: { $ne: null }, status: "TRIAL" })
+        .select("subVendorOf trialEndsAt expiryDate")
+        .lean(),
     ]);
+
+    // Reconciles VendorSubscription's billing status with the live trial
+    // state above so "Billing Status" reads correctly for vendors who are
+    // real, active, trialing customers that simply haven't been charged
+    // yet -- distinct from a vendor who never even started a trial.
+    const activeTrialVendorIds = new Set(
+      (activeTrials as any[])
+        .filter((s) => {
+          const end = s.trialEndsAt || s.expiryDate;
+          return end && new Date(end).getTime() > now.getTime();
+        })
+        .map((s) => String(s.subVendorOf))
+    );
+    const subStatusMap: Record<string, number> = {};
+    for (const sub of vendorSubscriptions as any[]) {
+      const isTrialing = activeTrialVendorIds.has(String(sub.vendorId));
+      let status: string;
+      if (!sub.modules?.length) {
+        status = isTrialing ? "TRIAL" : "NOT_SET";
+      } else if (!sub.currentPeriodEnd) {
+        status = isTrialing ? "TRIAL" : "UNPAID";
+      } else if (new Date(sub.currentPeriodEnd).getTime() > now.getTime()) {
+        status = "ACTIVE";
+      } else {
+        status = "EXPIRED";
+      }
+      subStatusMap[status] = (subStatusMap[status] || 0) + 1;
+    }
+    // A vendor who never got a VendorSubscription row at all (e.g. applied
+    // but never even started onboarding) still needs to be visible here --
+    // otherwise the four buckets above silently undercount against
+    // totalVendors, which was exactly the "not showing exact data" gap
+    // being fixed.
+    const vendorIdsWithSubRow = new Set((vendorSubscriptions as any[]).map((s) => String(s.vendorId)));
+    const trialingWithNoSubRow = [...activeTrialVendorIds].filter((id) => !vendorIdsWithSubRow.has(id)).length;
+    if (trialingWithNoSubRow > 0) {
+      subStatusMap.TRIAL = (subStatusMap.TRIAL || 0) + trialingWithNoSubRow;
+    }
+    const subscriptionStatusCounts = Object.entries(subStatusMap).map(([_id, count]) => ({ _id, count }));
 
     const countsByType: Record<string, number> = {};
     for (const c of counts) countsByType[c._id] = c.count;

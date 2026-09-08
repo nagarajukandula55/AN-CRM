@@ -1,5 +1,7 @@
 'use client'
+import { useRef, useState } from 'react'
 import useSWR from 'swr'
+import { X } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -14,6 +16,15 @@ import { LoadingPanel } from '@/components/ui/Spinner'
  * upgrades, renewals, and the founding-vs-standard pricing split. Per
  * explicit direction ("this analytics page is different from vendors
  * because this is for our supervision not for vendors").
+ *
+ * Every card/row here is clickable, per explicit direction ("if i click
+ * on anywhere it should show the that data") -- Card's own href/onClick
+ * props (see components/ui/Card.tsx) give the hover/focus affordance for
+ * free. Cards tied to a real record set (vendor status, billing status,
+ * plan mix, churn) link to the admin page that owns that data; the
+ * funnel-event cards and the founding/standard rows instead filter the
+ * Recent Events table further down this same page, since those numbers
+ * ARE that table, just aggregated.
  */
 
 const VENDOR_STATUS_LABELS: Record<string, string> = {
@@ -24,6 +35,12 @@ const VENDOR_STATUS_LABELS: Record<string, string> = {
 }
 const SUB_STATUS_LABELS: Record<string, string> = {
   NOT_SET: 'No Plan Configured', UNPAID: 'Unpaid (Invoiced)', ACTIVE: 'Active (Paid)', EXPIRED: 'Expired',
+  // Vendor is on a live instant-trial and simply hasn't paid yet -- was
+  // previously indistinguishable from NOT_SET ("hasn't picked a plan"),
+  // which misreported real active-trial vendors as having no plan at all.
+  // See the API route's own comment for how this is reconciled against
+  // the legacy Subscription trial record.
+  TRIAL: 'On Trial (Unpaid)',
 }
 const PLAN_LABELS: Record<string, string> = {
   STARTER: 'Starter', BASIC: 'Pro', PRO: 'Pro', ULTIMATE: 'Ultimate',
@@ -43,8 +60,14 @@ const EVENT_ORDER = ['PRICING_PAGE_VIEW', 'TRIAL_SIGNUP', 'PLAN_SELECTED', 'CHEC
 
 const fmtINR = (n: number) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`
 
+// A click on a funnel-event card or a founding/standard row filters the
+// Recent Events table below instead of navigating away.
+type EventFilter = { kind: 'type'; value: string } | { kind: 'founding'; value: boolean } | null
+
 export default function GrowthAnalyticsPage() {
   const { data, isLoading } = useSWR('/api/admin/growth-analytics')
+  const [eventFilter, setEventFilter] = useState<EventFilter>(null)
+  const recentEventsRef = useRef<HTMLDivElement>(null)
 
   if (isLoading) return <div className="p-6"><LoadingPanel label="Loading growth analytics…" /></div>
   if (!data?.success) return <div className="p-6"><Card><CardBody>Couldn&apos;t load growth analytics.</CardBody></Card></div>
@@ -53,6 +76,16 @@ export default function GrowthAnalyticsPage() {
   const foundingVsStandard: { _id: boolean | null; count: number }[] = data.foundingVsStandard || []
   const revenueByFounding: { _id: boolean | null; revenue: number }[] = data.revenueByFounding || []
   const recent: any[] = data.recent || []
+  const filteredRecent = !eventFilter
+    ? recent
+    : eventFilter.kind === 'type'
+      ? recent.filter((r) => r.type === eventFilter.value)
+      : recent.filter((r) => r.isFoundingPricing === eventFilter.value)
+
+  function applyFilter(f: EventFilter) {
+    setEventFilter(f)
+    recentEventsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const foundingCount = foundingVsStandard.find((r) => r._id === true)?.count || 0
   const standardCount = foundingVsStandard.find((r) => r._id === false)?.count || 0
@@ -72,33 +105,41 @@ export default function GrowthAnalyticsPage() {
     <div className="min-h-screen bg-bg text-ink p-6 space-y-6">
       <PageHeader
         title="Growth Analytics"
-        description="AN Group's own commercial funnel and live vendor base — pricing traffic, trial signups, conversion, current plan mix, and churn signals. Not a vendor's own business analytics (see Vendor Analytics for that)."
+        description="AN Group's own commercial funnel and live vendor base — pricing traffic, trial signups, conversion, current plan mix, and churn signals. Not a vendor's own business analytics (see Vendor Analytics for that). Every card here is clickable through to the underlying data."
       />
 
       <div>
         <p className="h-section mb-3">Current Vendor Base</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Card><CardBody>
-            <p className="text-xs text-ink-3">Total Vendors</p>
-            <p className="text-2xl font-semibold tabular text-ink mt-1">{snapshot.totalVendors ?? 0}</p>
-          </CardBody></Card>
-          <Card><CardBody>
-            <p className="text-xs text-ink-3">New This Month</p>
-            <p className="text-2xl font-semibold tabular text-ink mt-1">{snapshot.newThisMonth ?? 0}</p>
-          </CardBody></Card>
-          <Card><CardBody>
-            <p className="text-xs text-ink-3">Active Paid Subscriptions</p>
-            <p className="text-2xl font-semibold tabular text-success mt-1">{activePaidCount}</p>
-          </CardBody></Card>
-          <Card><CardBody>
-            <p className="text-xs text-ink-3">Lapsed / Expired</p>
-            <p className="text-2xl font-semibold tabular text-danger mt-1">{expiredCount}</p>
-          </CardBody></Card>
+          <Card href="/console/admin/vendors">
+            <CardBody>
+              <p className="text-xs text-ink-3">Total Vendors</p>
+              <p className="text-2xl font-semibold tabular text-ink mt-1">{snapshot.totalVendors ?? 0}</p>
+            </CardBody>
+          </Card>
+          <Card href="/console/admin/vendors">
+            <CardBody>
+              <p className="text-xs text-ink-3">New This Month</p>
+              <p className="text-2xl font-semibold tabular text-ink mt-1">{snapshot.newThisMonth ?? 0}</p>
+            </CardBody>
+          </Card>
+          <Card href="/console/admin/vendor-billing">
+            <CardBody>
+              <p className="text-xs text-ink-3">Active Paid Subscriptions</p>
+              <p className="text-2xl font-semibold tabular text-success mt-1">{activePaidCount}</p>
+            </CardBody>
+          </Card>
+          <Card href="/console/admin/vendor-billing">
+            <CardBody>
+              <p className="text-xs text-ink-3">Lapsed / Expired</p>
+              <p className="text-2xl font-semibold tabular text-danger mt-1">{expiredCount}</p>
+            </CardBody>
+          </Card>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
+        <Card href="/console/admin/vendors">
           <CardBody>
             <p className="h-section mb-2">Vendor Status</p>
             <div className="space-y-1.5">
@@ -112,7 +153,7 @@ export default function GrowthAnalyticsPage() {
             </div>
           </CardBody>
         </Card>
-        <Card>
+        <Card href="/console/admin/vendor-billing">
           <CardBody>
             <p className="h-section mb-2">Billing Status</p>
             <div className="space-y-1.5">
@@ -126,7 +167,7 @@ export default function GrowthAnalyticsPage() {
             </div>
           </CardBody>
         </Card>
-        <Card>
+        <Card href="/console/admin/vendor-billing">
           <CardBody>
             <p className="h-section mb-2">Plan Mix (active only)</p>
             <div className="space-y-1.5">
@@ -164,7 +205,7 @@ export default function GrowthAnalyticsPage() {
       </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card>
+        <Card href="/console/admin/vendor-billing">
           <CardBody>
             <p className="h-section mb-2">Churn Signals (last 30 days)</p>
             <div className="flex items-center justify-between text-sm mb-1">
@@ -181,7 +222,7 @@ export default function GrowthAnalyticsPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {EVENT_ORDER.map((type) => (
-          <Card key={type}>
+          <Card key={type} onClick={() => applyFilter({ kind: 'type', value: type })}>
             <CardBody>
               <p className="text-xs text-ink-3">{EVENT_LABELS[type]}</p>
               <p className="text-2xl font-semibold tabular text-ink mt-1">{countsByType[type] || 0}</p>
@@ -203,53 +244,78 @@ export default function GrowthAnalyticsPage() {
         <Card>
           <CardBody>
             <p className="h-section mb-2">Founding vs Standard Customers</p>
-            <div className="flex items-center justify-between text-sm mb-1">
+            <button
+              type="button"
+              onClick={() => applyFilter({ kind: 'founding', value: true })}
+              className="flex items-center justify-between text-sm mb-1 w-full rounded-control -mx-2 px-2 py-1 transition hover:bg-surface-2"
+            >
               <span className="text-ink-2">Founding pricing</span>
               <span className="tabular font-medium">{foundingCount} paid · {fmtINR(foundingRevenue)}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
+            </button>
+            <button
+              type="button"
+              onClick={() => applyFilter({ kind: 'founding', value: false })}
+              className="flex items-center justify-between text-sm w-full rounded-control -mx-2 px-2 py-1 transition hover:bg-surface-2"
+            >
               <span className="text-ink-2">Standard pricing</span>
               <span className="tabular font-medium">{standardCount} paid · {fmtINR(standardRevenue)}</span>
-            </div>
+            </button>
           </CardBody>
         </Card>
       </div>
 
-      <Card className="overflow-hidden">
-        <CardBody>
-          <p className="h-section mb-3">Recent Events</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-ink-3 text-xs eyebrow">
-                <tr>
-                  <th className="text-left py-2">Event</th>
-                  <th className="text-left py-2">Plan</th>
-                  <th className="text-left py-2">Period</th>
-                  <th className="text-left py-2">Amount</th>
-                  <th className="text-left py-2">Pricing</th>
-                  <th className="text-left py-2">When</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((r, i) => (
-                  <tr key={i} className="border-t border-border">
-                    <td className="py-2">{EVENT_LABELS[r.type] || r.type}</td>
-                    <td className="py-2 text-ink-2">{r.planKey || '—'}</td>
-                    <td className="py-2 text-ink-2">{r.billingPeriod || '—'}</td>
-                    <td className="py-2 tabular text-ink-2">{r.amount ? fmtINR(r.amount) : '—'}</td>
-                    <td className="py-2">
-                      {r.isFoundingPricing === true && <Badge tone="success">Founding</Badge>}
-                      {r.isFoundingPricing === false && <Badge tone="neutral">Standard</Badge>}
-                      {r.isFoundingPricing == null && '—'}
-                    </td>
-                    <td className="py-2 text-ink-3">{new Date(r.createdAt).toLocaleString('en-IN')}</td>
+      <div ref={recentEventsRef}>
+        <Card className="overflow-hidden">
+          <CardBody>
+            <div className="flex items-center justify-between mb-3">
+              <p className="h-section">Recent Events</p>
+              {eventFilter && (
+                <button
+                  type="button"
+                  onClick={() => setEventFilter(null)}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Clear filter: {eventFilter.kind === 'type' ? EVENT_LABELS[eventFilter.value] : (eventFilter.value ? 'Founding pricing' : 'Standard pricing')}
+                </button>
+              )}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-ink-3 text-xs eyebrow">
+                  <tr>
+                    <th className="text-left py-2">Event</th>
+                    <th className="text-left py-2">Plan</th>
+                    <th className="text-left py-2">Period</th>
+                    <th className="text-left py-2">Amount</th>
+                    <th className="text-left py-2">Pricing</th>
+                    <th className="text-left py-2">When</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardBody>
-      </Card>
+                </thead>
+                <tbody>
+                  {filteredRecent.length === 0 && (
+                    <tr><td colSpan={6} className="py-6 text-center text-ink-3">No events match this filter.</td></tr>
+                  )}
+                  {filteredRecent.map((r, i) => (
+                    <tr key={i} className="border-t border-border">
+                      <td className="py-2">{EVENT_LABELS[r.type] || r.type}</td>
+                      <td className="py-2 text-ink-2">{r.planKey || '—'}</td>
+                      <td className="py-2 text-ink-2">{r.billingPeriod || '—'}</td>
+                      <td className="py-2 tabular text-ink-2">{r.amount ? fmtINR(r.amount) : '—'}</td>
+                      <td className="py-2">
+                        {r.isFoundingPricing === true && <Badge tone="success">Founding</Badge>}
+                        {r.isFoundingPricing === false && <Badge tone="neutral">Standard</Badge>}
+                        {r.isFoundingPricing == null && '—'}
+                      </td>
+                      <td className="py-2 text-ink-3">{new Date(r.createdAt).toLocaleString('en-IN')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
     </div>
   )
 }

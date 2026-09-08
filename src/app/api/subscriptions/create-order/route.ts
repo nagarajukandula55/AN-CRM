@@ -19,8 +19,11 @@ import Subscription from "@/models/Subscription";
 import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { getRazorpayClient } from "@/core/subscriptions/razorpayClient";
 import Business from "@/models/Business";
-import { priceForPeriod, type PlanKey, type BillingPeriod, type OperatingMode } from "@/core/pricing/plans";
+import { priceForPeriod, ALL_PLANS, BILLING_PERIODS, type PlanKey, type BillingPeriod, type OperatingMode } from "@/core/pricing/plans";
 import { getEffectivePlan } from "@/core/pricing/planAccess";
+
+const VALID_PLAN_KEYS = new Set(ALL_PLANS.map((p) => p.key));
+const VALID_BILLING_PERIODS = new Set(BILLING_PERIODS.map((p) => p.key));
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,6 +42,23 @@ export async function POST(req: NextRequest) {
       subVendorOf?: string;
       subBusinessOf?: string;
     };
+
+    // Was only enforced via a TS type assertion (no runtime check) --
+    // an invalid value fell through to priceForPeriod with no explicit
+    // rejection. Real money path (mints a Razorpay order), so reject
+    // outright rather than trusting downstream code to catch it.
+    if (!plan || !VALID_PLAN_KEYS.has(plan)) {
+      return NextResponse.json({ success: false, message: "A valid plan is required" }, { status: 400 });
+    }
+    if (!billingPeriod || !VALID_BILLING_PERIODS.has(billingPeriod)) {
+      return NextResponse.json({ success: false, message: "A valid billing period is required" }, { status: 400 });
+    }
+    if (subVendorOf !== undefined && (typeof subVendorOf !== "string" || !mongoose.Types.ObjectId.isValid(subVendorOf))) {
+      return NextResponse.json({ success: false, message: "Invalid subVendorOf" }, { status: 400 });
+    }
+    if (subBusinessOf !== undefined && (typeof subBusinessOf !== "string" || !mongoose.Types.ObjectId.isValid(subBusinessOf))) {
+      return NextResponse.json({ success: false, message: "Invalid subBusinessOf" }, { status: 400 });
+    }
 
     await connectDB();
 

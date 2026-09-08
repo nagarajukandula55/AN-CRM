@@ -4,7 +4,7 @@ import useSWR from 'swr'
 import { useState } from 'react'
 import {
   BookOpen, Users, Shield, Plug, LayoutTemplate, BarChart3,
-  ChevronDown, ChevronRight, Lock, KeyRound, CreditCard,
+  ChevronDown, ChevronRight, Lock, KeyRound, CreditCard, Menu,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
@@ -158,6 +158,73 @@ const SECTIONS: Section[] = [
         <p><b>Pro</b> adds: Quotations/Credit Notes/Debit Notes/Proforma Invoices/Delivery Challans/Credit Accounts, UPI payment QR, the Material/BOM price list, Brand/Device-Model list storage, Warehouses & Stock Transfers, inventory tracking, fault/symptom/solutions library, Custom Report Builder, Analytics.</p>
         <p><b>Ultimate</b> adds on top of Pro: Ledger Book, Profit &amp; Loss, Expense tracking (the "finance-advanced" module key), and unlimited sub-vendor/multi-center hierarchy under one login.</p>
         <p>Every plan-gated feature is enforced twice: once in the nav (so a lower plan simply doesn't see the menu item) and again at the actual API route via <code>vendorHasModule(businessId, vendorId, moduleKey)</code> (<code>core/access/vendorAccess.service.ts</code>) — so a lower-plan vendor can't bypass the boundary by hitting the URL/API directly. If a feature seems wrongly visible or wrongly blocked for a test account, check both the nav item's <code>modules</code> array and whether the relevant route calls <code>vendorHasModule</code>.</p>
+      </div>
+    ),
+  },
+  {
+    id: 'admin-nav-guide',
+    icon: Menu,
+    title: 'Admin menu — every page and what it does',
+    body: (
+      <div className="space-y-3 text-sm text-ink-2">
+        <p>Trimmed for live operation (some setup-time-only tools were hidden or merged into tabs on other pages, per explicit direction) — this is the full current Admin menu, group by group.</p>
+        <div>
+          <p className="font-semibold text-ink mb-1">Users &amp; Access</p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li><b>User Management</b> — create/edit/deactivate login accounts (admins, employees, vendors, customers) and assign their role.</li>
+            <li><b>Access Control</b> — the role/permission matrix: which role can view/create/edit/delete/export/approve/manage-settings on which module.</li>
+            <li><b>Platform Staff</b> — AN Group's own internal staff accounts (not vendor staff), with platform-wide roles.</li>
+          </ul>
+        </div>
+        <div>
+          <p className="font-semibold text-ink mb-1">Vendors</p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li><b>Vendors</b> — every vendor's profile, approval status, business link.</li>
+            <li><b>Vendor Subscriptions</b> — each vendor's plan (Starter/Pro/Ultimate) and subscription status; manual override path for support (see "Assigning or changing a vendor's plan" above).</li>
+            <li><b>Vendor Billing</b> — cross-business billing overview, and per-vendor manual module/pricing override (bypasses the plan catalog for one vendor specifically).</li>
+            <li><b>Vendor Settlements</b> — payout/settlement tracking between AN Group and vendors.</li>
+            <li><b>Vendor Chats</b> — support conversation threads with vendors.</li>
+            <li><b>Growth Analytics</b> — AN Group's own commercial funnel: pricing-page views, trial signups, conversion — distinct from a vendor's own business analytics.</li>
+          </ul>
+        </div>
+        <div>
+          <p className="font-semibold text-ink mb-1">System</p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li><b>Plan Features</b> — live override of a plan's price/seat limit/trial length/module list without a code deploy. Changing a price here updates <code>/pricing</code>, the vendor billing page, and actual checkout immediately (not yet the home page's quick-glance snapshot — see that page's own note). Note: setting a price here collapses the "launch" and "standard" rate into one number for that plan, bypassing the automatic 2027 price hike until edited again.</li>
+            <li><b>Promo Codes</b> — discount codes vendors can enter at checkout (percentage off, expiry, redemption cap).</li>
+            <li><b>System Configuration</b> — merged tabbed page (Columns &amp; Cards / Custom Fields / Option Lists):
+              <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                <li><i>Columns &amp; Cards</i> — rename/hide/reorder table columns, dashboard stat cards, the sidebar menu itself, and the Sales/Invoices CSV export columns.</li>
+                <li><i>Custom Fields</i> — add extra fields onto existing forms (job sheets, customers, etc.) without a code change.</li>
+                <li><i>Option Lists</i> — edit the global dropdown values for Appointment Type / Request Type / Warranty Status / Device Appearance.</li>
+              </ul>
+            </li>
+            <li><b>Settings</b> — platform-wide settings (branding, business defaults, etc.).</li>
+            <li><b>Plan &amp; Billing</b> — AN Group's own view of platform billing configuration.</li>
+            <li><b>Help &amp; System Guide</b> — this page.</li>
+          </ul>
+        </div>
+        <div>
+          <p className="font-semibold text-ink mb-1">Documents &amp; Billing</p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li><b>Document Templates</b> — layout/branding for quotations, delivery challans, credit/debit notes, proforma invoices, agreements.</li>
+            <li><b>Invoice Branding</b> — logo, colors, footer text on generated GST/non-GST invoices.</li>
+            <li><b>Product Feedback</b> — feedback submitted from inside the app.</li>
+            <li><b>Telegram</b> — merged tabbed page (Users &amp; Groups / Chat IDs / Notifications Log / Broadcast):
+              <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                <li><i>Users &amp; Groups</i> — every chat that has ever messaged the bot.</li>
+                <li><i>Chat IDs</i> — bulk view/edit every vendor's Group/Personal Telegram chat ID, plus bot webhook connectivity diagnostics.</li>
+                <li><i>Notifications Log</i> — audit trail of every automated Telegram/WhatsApp alert the system attempted to send.</li>
+                <li><i>Broadcast</i> — one-click reminder email to every vendor who hasn't connected Telegram yet.</li>
+              </ul>
+            </li>
+            <li><b>Email Templates</b> — wording for system emails (credentials, password reset, reminders, etc.).</li>
+            <li><b>Tutorial Videos</b> — links shown to vendors on the tutorial page.</li>
+          </ul>
+        </div>
+        <p className="pt-1 border-t border-border mt-2 text-ink-3">
+          <b>GST</b> was removed from this menu — GST is now managed from the separate accounting system, not from here. The page itself still exists at <code>/console/admin/gst</code> if it's ever needed again, it's just not linked.
+        </p>
       </div>
     ),
   },

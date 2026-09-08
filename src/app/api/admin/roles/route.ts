@@ -6,6 +6,28 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission, requireAnyPermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { generateDocumentNumber } from "@/core/numbering/numberingService";
+import { STANDARD_ACTIONS } from "@/core/access/actions";
+
+// "MODULE.ACTION" where ACTION is one of the fixed standard actions --
+// modules themselves are open-ended (system + admin-defined custom ones,
+// see actions.ts's own comment), so this can't check the module half
+// against a fixed list, but a malformed/forged permission code (wrong
+// shape, unknown action) is rejected outright rather than silently stored
+// and potentially misread by a downstream access check.
+const ACTION_KEYS = new Set(STANDARD_ACTIONS.map((a) => a.key.toUpperCase()));
+function isValidPermissionCode(code: unknown): boolean {
+  if (typeof code !== "string") return false;
+  const parts = code.split(".");
+  if (parts.length !== 2) return false;
+  const [moduleKey, actionKey] = parts;
+  return moduleKey.length > 0 && ACTION_KEYS.has(actionKey);
+}
+function invalidPermissions(permissions: unknown): string | null {
+  if (permissions === undefined) return null;
+  if (!Array.isArray(permissions)) return "permissions must be an array";
+  const bad = permissions.find((p) => !isValidPermissionCode(p));
+  return bad !== undefined ? `Invalid permission code: ${String(bad)}` : null;
+}
 
 function permissionErrorResponse(err: any) {
   return NextResponse.json(
@@ -103,6 +125,10 @@ export async function POST(request: NextRequest) {
     if (!name || !code) {
       return NextResponse.json({ error: 'Name and code are required' }, { status: 400 });
     }
+    const permError = invalidPermissions(permissions);
+    if (permError) {
+      return NextResponse.json({ error: permError }, { status: 400 });
+    }
     // Per explicit direction: roles are managed per business individually
     // from now on -- a businessId-less ("platform-wide") custom role is no
     // longer created through this endpoint (SUPER_ADMIN/AN_STAFF remain the
@@ -178,6 +204,10 @@ export async function PUT(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json({ error: 'Role ID is required' }, { status: 400 });
+    }
+    const permError = invalidPermissions(permissions);
+    if (permError) {
+      return NextResponse.json({ error: permError }, { status: 400 });
     }
 
     const role = await Role.findByIdAndUpdate(

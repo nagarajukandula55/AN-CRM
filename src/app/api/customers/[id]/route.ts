@@ -6,6 +6,21 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { logAction } from "@/lib/audit/logAction";
+import { vendorHasCustomerDatabaseAccess } from "@/core/pricing/planAccess";
+
+// See api/customers/route.ts's matching gate -- Starter has no standalone
+// customer database.
+async function assertCustomerDatabaseAccess(vendorId: string | null | undefined, isSuperAdmin: boolean) {
+  if (!vendorId || isSuperAdmin) return null;
+  const allowed = await vendorHasCustomerDatabaseAccess(vendorId);
+  if (!allowed) {
+    return NextResponse.json(
+      { success: false, error: "Customer database is not included in your current plan. Upgrade to access it." },
+      { status: 403 }
+    );
+  }
+  return null;
+}
 
 function permissionErrorResponse(err: any) {
   return NextResponse.json(
@@ -25,6 +40,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     } catch (err: any) {
       return permissionErrorResponse(err);
     }
+    const denied = await assertCustomerDatabaseAccess((session as any).business?.vendorId || null, session.isSuperAdmin);
+    if (denied) return denied;
 
     const { id } = await params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -64,6 +81,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     } catch (err: any) {
       return permissionErrorResponse(err);
     }
+    const denied = await assertCustomerDatabaseAccess((session as any).business?.vendorId || null, session.isSuperAdmin);
+    if (denied) return denied;
 
     const { id } = await params;
     if (!mongoose.Types.ObjectId.isValid(id)) {

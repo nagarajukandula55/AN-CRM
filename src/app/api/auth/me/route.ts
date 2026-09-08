@@ -12,6 +12,7 @@ export async function GET(req: Request) {
   try {
     const userId      = req.headers.get("x-user-id");
     const isSuperAdmin = req.headers.get("x-is-super-admin") === "true";
+    const tokenSessionVersionHeader = req.headers.get("x-session-version");
     let activeBusinessId = req.headers.get("x-active-business-id");
 
     if (!userId) {
@@ -35,22 +36,21 @@ export async function GET(req: Request) {
       );
     }
 
-    // Single active session enforcement -- DISABLED here too, same as
-    // lib/auth/session-enriched.ts, per explicit direction to allow
-    // multiple concurrent sessions for now. This was a SEPARATE check
-    // from that file's (this endpoint is what the frontend polls to
+    // Single active session enforcement -- re-enabled alongside
+    // lib/auth/session-enriched.ts's matching check. This is a SEPARATE
+    // check from that file's (this endpoint is what the frontend polls to
     // confirm "am I still logged in", independent of getEnrichedSession),
-    // so disabling one without the other left this one still silently
-    // logging out a second device.
-    // if (
-    //   tokenSessionVersionHeader !== null &&
-    //   Number(tokenSessionVersionHeader) !== (user.sessionVersion || 0)
-    // ) {
-    //   return NextResponse.json(
-    //     { success: false, message: "Logged in elsewhere. Please log in again.", sessionExpired: true },
-    //     { status: 401 }
-    //   );
-    // }
+    // so both must be enabled together or a second device stays silently
+    // logged in on one path while being rejected on the other.
+    if (
+      tokenSessionVersionHeader !== null &&
+      Number(tokenSessionVersionHeader) !== (user.sessionVersion || 0)
+    ) {
+      return NextResponse.json(
+        { success: false, message: "Logged in elsewhere. Please log in again.", sessionExpired: true },
+        { status: 401 }
+      );
+    }
 
     // A vendor Owner has no BusinessMember row (see buildAuthSession.ts's
     // matching comment) -- the x-active-business-id header comes from the

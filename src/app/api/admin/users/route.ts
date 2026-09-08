@@ -183,6 +183,12 @@ export async function POST(request: NextRequest) {
     if (!name || !email || !password || !role) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+    // Was completely unchecked here -- register/reset-password/
+    // change-password all enforce an 8-character minimum, this admin-
+    // facing account-creation route enforced nothing at all.
+    if (typeof password !== 'string' || password.length < 8) {
+      return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
+    }
 
     const requestedRole = String(role).toUpperCase();
     if (requestedRole === 'SUPER_ADMIN') {

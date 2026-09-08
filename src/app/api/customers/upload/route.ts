@@ -6,6 +6,7 @@ import { getEnrichedSession } from "@/lib/auth/session-enriched";
 import { requirePermission } from "@/middleware/permission.guard";
 import { buildPermissionCode } from "@/core/access/actions";
 import { logAction } from "@/lib/audit/logAction";
+import { vendorHasCustomerDatabaseAccess } from "@/core/pricing/planAccess";
 
 /**
  * POST /api/customers/upload -- CSV bulk import (multipart/form-data,
@@ -45,6 +46,18 @@ export async function POST(req: NextRequest) {
       requirePermission(session as any, buildPermissionCode("customers", "create"));
     } catch (err: any) {
       return permissionErrorResponse(err);
+    }
+    // See api/customers/route.ts's matching gate -- Starter has no
+    // standalone customer database (bulk import included).
+    const vendorId = (session as any).business?.vendorId || null;
+    if (vendorId && !session.isSuperAdmin) {
+      const allowed = await vendorHasCustomerDatabaseAccess(vendorId);
+      if (!allowed) {
+        return NextResponse.json(
+          { success: false, error: "Customer database is not included in your current plan. Upgrade to access it." },
+          { status: 403 }
+        );
+      }
     }
 
     const formData = await req.formData();

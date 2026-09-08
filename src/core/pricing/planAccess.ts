@@ -139,6 +139,30 @@ export async function getVendorTelegramTier(vendorId: string): Promise<"NONE" | 
  * vendor qualifies (not just Ultimate), per the pricing launch's own
  * "give everything away during launch" reasoning.
  */
+/**
+ * Whether this vendor's own active subscription includes the standalone
+ * Customer Database directory (searchable/exportable customer list) --
+ * removed from STARTER per explicit direction ("customer database and
+ * customer data remove from starter pack they should not have any
+ * database they can check history but customer data separately should
+ * not visible"). A paid Starter vendor still sees each customer's name/
+ * contact attached to THEIR OWN job cards/invoices (that data lives on
+ * the order/jobsheet document itself, not gated here) -- this only gates
+ * the standalone directory (api/customers). Same "full trial experience"
+ * exception as getVendorTelegramTier/vendorHasTelegramReportsPlan above:
+ * anyone still on trial (no PAID VendorBillingInvoice yet) gets it
+ * regardless of which plan they picked.
+ */
+export async function vendorHasCustomerDatabaseAccess(vendorId: string): Promise<boolean> {
+  const sub = await VendorSubscription.findOne({ vendorId }).select("planKey currentPeriodEnd modules").lean<any>();
+  if (!sub || computeStatus(sub) !== "ACTIVE") return false;
+
+  const hasPaid = await VendorBillingInvoice.exists({ vendorId, status: "PAID" });
+  if (!hasPaid) return true; // full trial experience, any plan
+
+  return sub.planKey !== "STARTER";
+}
+
 export async function vendorHasTelegramReportsPlan(vendorId: string): Promise<boolean> {
   const sub = await VendorSubscription.findOne({ vendorId }).select("planKey currentPeriodEnd modules").lean<any>();
   if (!sub || computeStatus(sub) !== "ACTIVE") return false;
