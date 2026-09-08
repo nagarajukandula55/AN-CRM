@@ -90,6 +90,7 @@ interface JobSheet {
   deviceModelId?: { name?: string } | string
   status: string; createdAt: string; lineItems: LineItem[]; taxApplyEnabled?: boolean
   remark?: string; ccoName?: string; invoiceNumber?: string; invoiceId?: string; cancelReason?: string
+  workPerformed?: string
   estimateGenerated?: boolean
   engineerAssignedAt?: string; repairInProgressAt?: string; partPendingAt?: string; repairResumedAt?: string
   completedAt?: string; handedOverAt?: string
@@ -564,6 +565,7 @@ export default function SCJobSheetScreen({
       setLineItems(job.lineItems?.length ? job.lineItems : [])
       setTaxApplyEnabled(job.taxApplyEnabled !== false)
       setRemark(job.remark || '')
+      setEngineerRemark(job.workPerformed || '')
       setSolutionId(typeof job.solutionId === 'object' ? '' : (job.solutionId as string) || '')
     }
   }, [job?._id])
