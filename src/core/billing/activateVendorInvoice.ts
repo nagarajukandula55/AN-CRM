@@ -186,6 +186,18 @@ export async function activateVendorInvoice(
   }
 
   syncVendorInvoiceToAccounting(claimed, vendor).catch((err) => {
+    // Final failure after retries inside syncVendorInvoiceToAccounting --
+    // log with enough context to find and manually re-push this invoice
+    // later, and alert admins. Never block/fail invoice activation on
+    // this (see this function's own comment above the call).
+    console.error("[activateVendorInvoice] Accounting sync failed permanently", {
+      vendorInvoiceId: String(claimed._id),
+      invoiceNumber: claimed.invoiceNumber,
+      vendorId: String(vendor._id),
+      amount: claimed.amount,
+      timestamp: new Date().toISOString(),
+      error: err instanceof Error ? err.message : String(err),
+    });
     notifyAdmins(`⚠️ Accounting sync failed for invoice ${claimed.invoiceNumber}: ${err.message}`).catch(() => {});
   });
 
