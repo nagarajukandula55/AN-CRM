@@ -98,13 +98,20 @@ export async function GET(req: NextRequest, context: RouteContext) {
       await cacheIntoCentralApi(fallback);
     }
 
-    return NextResponse.json({
-      success: true,
-      found: true,
-      state: entry.state,
-      district: entry.district,
-      city: entry.city,
-    });
+    // A pincode's state/district/city is effectively immutable -- safe to
+    // let the browser/CDN cache it long-term instead of hitting central-api
+    // (or the India Post fallback) again on every autofill lookup for the
+    // same pincode.
+    return NextResponse.json(
+      {
+        success: true,
+        found: true,
+        state: entry.state,
+        district: entry.district,
+        city: entry.city,
+      },
+      { headers: { "Cache-Control": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000" } }
+    );
   } catch (err: any) {
     return NextResponse.json(
       { success: false, message: err?.message || "Lookup failed" },

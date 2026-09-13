@@ -77,7 +77,8 @@ export async function GET(req: NextRequest) {
     const logs = await AuditLog.find(query)
       .sort({ createdAt: -1 })
       .limit(200)
-      .populate("businessId", "name businessCode");
+      .populate("businessId", "name businessCode")
+      .lean();
 
     return NextResponse.json({
       success: true,

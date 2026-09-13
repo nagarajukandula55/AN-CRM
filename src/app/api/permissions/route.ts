@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
       module: 1,
       group: 1,
       code: 1,
-    });
+    }).lean();
 
     /**
      * Group permissions for UI (Role matrix friendly)

@@ -10,9 +10,21 @@
 import PricingSettings from "@/models/PricingSettings";
 import { LAUNCH_PRICING_CUTOVER, BILLING_PERIODS, type Plan, type BillingPeriod } from "@/core/pricing/plans";
 
+// A single request computing plan pricing for every tier x billing period
+// (see api/vendor/plans) calls this same "global" document lookup a dozen+
+// times -- it's one admin-controlled document that changes essentially
+// never, so a short TTL collapses all of those into one real DB read.
+const CUTOVER_CACHE_TTL_MS = 30_000;
+let cutoverCache: { value: Date; expiresAt: number } | null = null;
+
 export async function getEffectiveLaunchCutover(): Promise<Date> {
+  const now = Date.now();
+  if (cutoverCache && cutoverCache.expiresAt > now) return cutoverCache.value;
+
   const settings = await PricingSettings.findById("global").select("launchCutover").lean<any>();
-  return settings?.launchCutover ? new Date(settings.launchCutover) : LAUNCH_PRICING_CUTOVER;
+  const value = settings?.launchCutover ? new Date(settings.launchCutover) : LAUNCH_PRICING_CUTOVER;
+  cutoverCache = { value, expiresAt: now + CUTOVER_CACHE_TTL_MS };
+  return value;
 }
 
 export async function isLaunchPricingActiveAsync(now: Date = new Date()): Promise<boolean> {

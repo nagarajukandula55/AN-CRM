@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingPanel } from '@/components/ui/Spinner'
 import { getAuthMe } from '@/lib/authMeCache'
 
-interface Invoice { _id: string; invoiceNumber: string; customerName: string; totalAmount: number; status: string; createdAt: string }
+interface Invoice { _id: string; invoiceNumber: string; customerName: string; grandTotal: number; status: string; createdAt: string }
 type OperatingMode = 'SC' | ''
 
 type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral'
@@ -46,6 +46,8 @@ const QUICK_ACTIONS: { href: string; icon: React.ElementType; label: string; des
 export default function AdminDashboard() {
   const router = useRouter()
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [totalRevenue, setTotalRevenue] = useState(0)
+  const [pendingAmount, setPendingAmount] = useState(0)
   const [openWorkorders, setOpenWorkorders] = useState<number | null>(null)
   const [operatingMode, setOperatingMode] = useState<OperatingMode>('')
   const [userName, setUserName] = useState('')
@@ -71,16 +73,31 @@ export default function AdminDashboard() {
           return
         }
 
-        const invRes = await fetch('/api/sales/invoices')
+        // Totals/pending/open-workorder counts now come from
+        // /api/analytics/overview's DB-side aggregation over ALL matching
+        // records -- this used to hand-reduce over /api/sales/invoices
+        // (capped at 50 by that route's own default) in the browser, which
+        // silently under-counted revenue for any business with more than
+        // 50 invoices. It also read `i.totalAmount`, a field that doesn't
+        // exist on SalesInvoice (the real field is `grandTotal`), so both
+        // totals were actually always zero regardless of the cap. Recent
+        // Invoices only needs the 5 latest rows, fetched directly instead
+        // of pulling a whole page just to sort/slice it client-side.
+        const [overviewRes, invRes] = await Promise.all([
+          fetch('/api/analytics/overview'),
+          fetch('/api/sales/invoices?limit=5'),
+        ])
+        if (overviewRes.ok) {
+          const data = await overviewRes.json()
+          if (data?.success) {
+            setTotalRevenue(data.revenue?.total || 0)
+            setPendingAmount(data.revenue?.pending || 0)
+            setOpenWorkorders(data.operations?.openWorkorders ?? 0)
+          }
+        }
         if (invRes.ok) {
           const data = await invRes.json()
           setInvoices(Array.isArray(data) ? data : (data.invoices ?? []))
-        }
-        const jsRes = await fetch('/api/crm/jobsheets')
-        if (jsRes.ok) {
-          const data = await jsRes.json()
-          const list = data?.jobSheets ?? []
-          setOpenWorkorders(Array.isArray(list) ? list.filter((j: any) => !['CLOSED', 'CANCELLED'].includes(j.status)).length : 0)
         }
       } catch { setError('Failed to load dashboard data') }
       finally { setLoading(false) }
@@ -88,9 +105,10 @@ export default function AdminDashboard() {
     fetchAll()
   }, [])
 
-  const totalRevenue  = invoices.filter(i => i.status === 'PAID').reduce((s, i) => s + (i.totalAmount ?? 0), 0)
-  const pendingAmount = invoices.filter(i => ['SENT','OVERDUE','DRAFT'].includes(i.status)).reduce((s, i) => s + (i.totalAmount ?? 0), 0)
-  const recentInvoices = [...invoices].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5)
+  // invoices is already just the latest 5 (fetched with limit=5, default
+  // sort is createdAt desc -- see api/sales/invoices), so no further
+  // client-side sort/slice or reduce is needed.
+  const recentInvoices = invoices
 
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
   const fmt   = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n)
@@ -143,7 +161,7 @@ export default function AdminDashboard() {
                     <p className="text-xs text-ink-3">{inv.customerName}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="tabular text-sm font-medium text-ink">{fmt(inv.totalAmount)}</span>
+                    <span className="tabular text-sm font-medium text-ink">{fmt(inv.grandTotal)}</span>
                     <Badge tone={STATUS_TONE[inv.status] ?? 'neutral'}>{inv.status}</Badge>
                   </div>
                 </div>

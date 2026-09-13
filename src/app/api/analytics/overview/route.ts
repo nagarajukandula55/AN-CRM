@@ -81,6 +81,10 @@ export async function GET(req: NextRequest) {
             { $match: { status: "PAID", createdAt: { $gte: monthStart } } },
             { $group: { _id: null, sum: { $sum: "$grandTotal" }, count: { $sum: 1 } } },
           ],
+          pending: [
+            { $match: { status: { $in: ["SENT", "OVERDUE", "DRAFT"] } } },
+            { $group: { _id: null, sum: { $sum: "$grandTotal" }, count: { $sum: 1 } } },
+          ],
           bySource: [
             {
               $group: {
@@ -175,6 +179,7 @@ export async function GET(req: NextRequest) {
         totalInvoicesAllStatuses,
         thisMonth: invoiceAgg?.thisMonth?.[0]?.sum || 0,
         thisMonthInvoices: invoiceAgg?.thisMonth?.[0]?.count || 0,
+        pending: invoiceAgg?.pending?.[0]?.sum || 0,
       },
       bySource: (invoiceAgg?.bySource || []).map((s: any) => ({ source: s._id, revenue: s.sum, count: s.count })),
       statusBreakdown: (invoiceAgg?.statusBreakdown || []).map((s: any) => ({ status: s._id, count: s.count })),

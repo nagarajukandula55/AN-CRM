@@ -46,7 +46,10 @@ export async function GET(req: NextRequest) {
     if (materialId) query.materialId = new Types.ObjectId(materialId);
     if (warehouseId) query.warehouseId = new Types.ObjectId(warehouseId);
 
-    const movements = await InventoryMovement.find(query).sort({ createdAt: -1 });
+    // Read-only, JSON-serialized response -- .lean() skips Mongoose document
+    // hydration, and .limit() caps this from an ever-growing ledger table
+    // that had no bound at all before.
+    const movements = await InventoryMovement.find(query).sort({ createdAt: -1 }).limit(500).lean();
 
     return NextResponse.json({ success: true, data: movements });
   } catch (error: any) {

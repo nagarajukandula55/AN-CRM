@@ -90,12 +90,17 @@ export async function GET(request: NextRequest) {
 
     const roles = await Role.find(query).lean();
 
-    const rolesWithCounts = await Promise.all(
-      roles.map(async (role: Record<string, unknown>) => {
-        const userCount = await UserRole.countDocuments({ roleId: role._id });
-        return { ...role, userCount };
-      })
-    );
+    // Was one countDocuments() call PER role -- a single aggregate grouped
+    // by roleId gets every count in one round trip instead.
+    const counts = await UserRole.aggregate([
+      { $match: { roleId: { $in: roles.map((r: Record<string, unknown>) => r._id) } } },
+      { $group: { _id: '$roleId', count: { $sum: 1 } } },
+    ]);
+    const countByRoleId = new Map<string, number>(counts.map((c: any) => [String(c._id), c.count]));
+    const rolesWithCounts = roles.map((role: Record<string, unknown>) => ({
+      ...role,
+      userCount: countByRoleId.get(String(role._id)) || 0,
+    }));
 
     return NextResponse.json({ roles: rolesWithCounts });
   } catch (error) {

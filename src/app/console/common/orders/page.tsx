@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -62,6 +62,8 @@ const fmtDate = (d: string) =>
 export default function OrdersPage() {
   const router = useRouter()
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -74,8 +76,26 @@ export default function OrdersPage() {
   })
   const [items, setItems] = useState<OrderItem[]>([{ description: '', qty: 1, price: 0 }])
 
-  const { data: ordersData, isLoading: loading, error: fetchErr, mutate: fetchOrders } = useSWR('/api/sales/orders')
+  // Reset to page 1 whenever the filter or page size changes -- staying on
+  // e.g. page 3 after switching status/page-size would show stale rows or
+  // "no orders found" even though matches exist on page 1.
+  useEffect(() => { setPage(1) }, [statusFilter, pageSize])
+
+  const ordersParams = (() => {
+    const params = new URLSearchParams()
+    if (statusFilter !== 'ALL') params.set('status', statusFilter)
+    params.set('page', String(page))
+    params.set('limit', String(pageSize))
+    return params.toString()
+  })()
+  const { data: ordersData, isLoading: loading, error: fetchErr, mutate: fetchOrders } = useSWR(
+    `/api/sales/orders?${ordersParams}`,
+    { keepPreviousData: true }
+  )
   const orders: Order[] = ordersData ? (Array.isArray(ordersData) ? ordersData : (ordersData.orders ?? [])) : []
+  const totalOrders: number = ordersData?.total ?? orders.length
+  const totalPages: number = Math.max(1, Math.ceil(totalOrders / pageSize))
+  const statusCounts: Record<string, number> = ordersData?.statusCounts ?? {}
   const error = fetchErr ? 'Failed to load orders' : null
 
   async function updateStatus(id: string, newStatus: string) {
@@ -133,13 +153,19 @@ export default function OrdersPage() {
     }
   }
 
-  const total = orders.length
-  const processing = orders.filter((o) => o.status === 'PROCESSING').length
-  const shipped = orders.filter((o) => o.status === 'SHIPPED').length
-  const delivered = orders.filter((o) => o.status === 'DELIVERED').length
-  const cancelled = orders.filter((o) => o.status === 'CANCELLED').length
+  // Counted server-side across ALL matching orders (not just the current
+  // page) via api/sales/orders' statusCounts aggregate -- these used to be
+  // derived from the full unpaginated `orders` array, which broke the
+  // moment the list itself became paginated.
+  const processing = statusCounts.PROCESSING ?? 0
+  const shipped = statusCounts.SHIPPED ?? 0
+  const delivered = statusCounts.DELIVERED ?? 0
+  const cancelled = statusCounts.CANCELLED ?? 0
+  const total = Object.values(statusCounts).reduce((sum, c) => sum + c, 0)
 
-  const filtered = orders.filter((o) => statusFilter === 'ALL' || o.status === statusFilter)
+  // Status filtering now happens server-side (see ordersParams above) --
+  // `orders` is already just this page's slice of the filtered set.
+  const filtered = orders
 
   const nextStatus: Record<string, string> = {
     DRAFT: 'CONFIRMED',
@@ -261,6 +287,39 @@ export default function OrdersPage() {
             </table>
           </div>
         </Card>
+
+        <div className="flex items-center justify-between mt-3 text-sm text-ink-3">
+          <div className="flex items-center gap-2">
+            <span>Rows per page</span>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="rounded-control border border-border bg-surface px-2 py-1 text-ink"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <span>{totalOrders === 0 ? '0' : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalOrders)}`} of {totalOrders}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="rounded-control border border-border px-3 py-1.5 disabled:opacity-40 hover:bg-surface-2"
+            >
+              Previous
+            </button>
+            <span>Page {page} of {totalPages}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="rounded-control border border-border px-3 py-1.5 disabled:opacity-40 hover:bg-surface-2"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Create / Edit Modal: New Order */}

@@ -104,9 +104,15 @@ export async function GET(req: NextRequest) {
     }
 
     const page = Math.max(1, parseInt(req.nextUrl.searchParams.get("page") || "1"));
-    const limit = Math.min(100, parseInt(req.nextUrl.searchParams.get("limit") || "50"));
+    const limit = Math.min(100, parseInt(req.nextUrl.searchParams.get("limit") || "20"));
 
-    const [jobSheets, total] = await Promise.all([
+    // Status counts (for KPI cards) computed over the full matching set
+    // WITHOUT the status filter applied, so cards stay accurate regardless
+    // of which status tab/page is currently selected -- the jobsheets list
+    // page used to derive these from the full unpaginated array, which
+    // only worked because nothing enforced a real page size before.
+    const { status: _status, ...countsFilter } = filter;
+    const [jobSheets, total, statusCountsAgg] = await Promise.all([
       CrmJobSheet.find(filter)
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
@@ -117,7 +123,15 @@ export async function GET(req: NextRequest) {
         .populate("solutionId", "code description")
         .lean(),
       CrmJobSheet.countDocuments(filter),
+      CrmJobSheet.aggregate([
+        { $match: countsFilter },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
     ]);
+    const statusCounts: Record<string, number> = {};
+    for (const row of statusCountsAgg as { _id: string; count: number }[]) {
+      statusCounts[row._id] = row.count;
+    }
 
     return NextResponse.json({
       success: true,
@@ -125,6 +139,7 @@ export async function GET(req: NextRequest) {
       total,
       page,
       totalPages: Math.ceil(total / limit),
+      statusCounts,
     });
   } catch (err: any) {
     console.error("CRM jobsheets GET error:", err);

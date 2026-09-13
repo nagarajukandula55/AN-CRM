@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Check, CheckCheck, Trash2, Info, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { getAuthMe } from "@/lib/authMeCache";
 
 interface NotificationItem {
   _id: string;
@@ -49,8 +50,7 @@ export default function NotificationBell() {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
+    getAuthMe()
       .then((d) => setBusinessId(d.user?.activeBusinessId ?? d.businesses?.[0]?._id ?? null))
       .catch(() => {});
   }, []);

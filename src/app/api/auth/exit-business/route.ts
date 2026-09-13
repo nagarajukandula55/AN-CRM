@@ -38,6 +38,7 @@ export async function POST(req: Request) {
       businessIds:      payload.businessIds,
       activeBusinessId: undefined,
       organizationId:   payload.organizationId,
+      sessionId:        payload.sessionId,
     });
 
     const res = NextResponse.json({

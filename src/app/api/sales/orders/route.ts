@@ -71,20 +71,36 @@ export async function GET(req: Request) {
     // Paginate — previously this returned EVERY order ever created, which
     // grows unboundedly and is a primary "page takes forever to load" cause.
     const page  = Math.max(1, parseInt(url.searchParams.get('page')  || '1'))
-    const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get('limit') || '50')))
+    const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get('limit') || '20')))
+    // Status filter now applied server-side (the list page used to filter
+    // the full unpaginated array client-side) -- with real pagination that
+    // would only ever filter whatever happened to be on the current page.
+    const status = url.searchParams.get('status')
+    const listFilter = { ...filter, ...(status && status !== 'ALL' ? { status } : {}) }
 
-    const [orders, total, revenueAgg] = await Promise.all([
-      SalesOrder.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
-      SalesOrder.countDocuments(filter),
+    const [orders, total, revenueAgg, statusCountsAgg] = await Promise.all([
+      SalesOrder.find(listFilter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      SalesOrder.countDocuments(listFilter),
       // Revenue computed in the DB across ALL matching orders, so the stat
       // stays correct even though the list is paginated.
       SalesOrder.aggregate([
         { $match: { ...filter, status: 'DELIVERED' } },
         { $group: { _id: null, total: { $sum: '$totalAmount' } } },
       ]),
+      // KPI counts by status, over the FULL matching set (not just the
+      // status filter or the current page) -- so the status cards stay
+      // accurate no matter which page/filter is currently applied.
+      SalesOrder.aggregate([
+        { $match: filter },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]),
     ])
     const totalRevenue = revenueAgg[0]?.total || 0
-    return NextResponse.json({ success: true, orders, totalRevenue, total, page, limit })
+    const statusCounts: Record<string, number> = {}
+    for (const row of statusCountsAgg as { _id: string; count: number }[]) {
+      statusCounts[row._id] = row.count
+    }
+    return NextResponse.json({ success: true, orders, totalRevenue, total, page, limit, statusCounts })
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 })
   }

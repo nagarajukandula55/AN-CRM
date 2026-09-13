@@ -29,7 +29,7 @@ interface JWTPayload {
   activeVendorId?: string;
   organizationId?: string;
   mustChangePassword?: boolean;
-  sessionVersion?: number;
+  sessionId?: string;
   centralRole?: string | null;
 }
 
@@ -375,11 +375,12 @@ export async function middleware(req: NextRequest) {
   // their actual granted permissions -- see api/auth/login's
   // isPlatformStaff computation and api/auth/me's mirror of it).
   requestHeaders.set("x-is-platform-staff", payload.isPlatformStaff ? "true" : "false");
-  // Single active session -- carried through so getEnrichedSession (Node
-  // runtime, does a real DB lookup already) can reject a token issued by a
-  // previous login elsewhere. Can't be checked here at the Edge (no DB).
-  if (payload.sessionVersion !== undefined) {
-    requestHeaders.set("x-session-version", String(payload.sessionVersion));
+  // Up to 5 concurrent sessions -- carried through so getEnrichedSession
+  // (Node runtime, does a real DB lookup already) can reject a token whose
+  // sessionId has since been logged out or evicted by a 6th login
+  // elsewhere. Can't be checked here at the Edge (no DB).
+  if (payload.sessionId) {
+    requestHeaders.set("x-session-id", payload.sessionId);
   }
 
   if (payload.organizationId)   requestHeaders.set("x-organization-id",   payload.organizationId);

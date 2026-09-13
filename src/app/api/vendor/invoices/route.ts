@@ -39,22 +39,43 @@ export async function GET(req: NextRequest) {
     };
     if (status) filter.status = status;
 
-    const invoices = await SalesInvoice.find(filter)
-      .sort({ createdAt: -1 })
-      .limit(500)
-      .lean();
+    // Was hardcoded to fetch (and hydrate) up to 500 full invoices on every
+    // load, with `summary` derived from that same capped array -- both the
+    // list and the money totals silently went wrong for any vendor with
+    // more than 500 invoices. Paginates the list (default 20/page) and
+    // computes summary via a DB aggregate over the FULL filtered set, so
+    // the totals stay correct regardless of page size.
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20));
 
-    const summary = invoices.reduce(
-      (acc, inv: any) => {
-        acc.totalInvoiced += inv.grandTotal || 0;
-        if (inv.status === "PAID") acc.totalPaid += inv.grandTotal || 0;
-        else if (inv.status !== "CANCELLED") acc.outstanding += inv.grandTotal || 0;
-        return acc;
-      },
-      { totalInvoiced: 0, totalPaid: 0, outstanding: 0 }
-    );
+    const [invoices, total, summaryAgg] = await Promise.all([
+      SalesInvoice.find(filter)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      SalesInvoice.countDocuments(filter),
+      SalesInvoice.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            totalInvoiced: { $sum: "$grandTotal" },
+            totalPaid: { $sum: { $cond: [{ $eq: ["$status", "PAID"] }, "$grandTotal", 0] } },
+            outstanding: {
+              $sum: {
+                $cond: [{ $and: [{ $ne: ["$status", "PAID"] }, { $ne: ["$status", "CANCELLED"] }] }, "$grandTotal", 0],
+              },
+            },
+          },
+        },
+      ]),
+    ]);
+    const summary = summaryAgg[0]
+      ? { totalInvoiced: summaryAgg[0].totalInvoiced || 0, totalPaid: summaryAgg[0].totalPaid || 0, outstanding: summaryAgg[0].outstanding || 0 }
+      : { totalInvoiced: 0, totalPaid: 0, outstanding: 0 };
 
-    return NextResponse.json({ success: true, invoices, summary });
+    return NextResponse.json({ success: true, invoices, summary, total, page, totalPages: Math.ceil(total / limit) });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }

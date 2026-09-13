@@ -14,7 +14,8 @@ export async function GET() {
 
     const materials = await Material.find()
       .populate("categoryId")
-      .sort({ materialName: 1 });
+      .sort({ materialName: 1 })
+      .lean();
 
     return NextResponse.json({
       success: true,

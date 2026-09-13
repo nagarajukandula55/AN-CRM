@@ -87,11 +87,12 @@ export interface IUser extends Document {
    * first-ever account creation) — forces the change-password gate before
    * any other request succeeds. Cleared by /api/auth/change-password. */
   mustChangePassword: boolean;
-  /** Bumped on every successful login; embedded in the issued JWT and
-   * checked on every request (see session-enriched.ts). A mismatch means
-   * this token is from a previous login elsewhere -- single active
-   * session per user. */
+  /** @deprecated superseded by `activeSessions` (up to 5 concurrent logins). */
   sessionVersion: number;
+  /** Up to 5 concurrent login sessionIds, newest last; a token is valid
+   * only while its sessionId is still in this array (see
+   * session-enriched.ts / api/auth/me). */
+  activeSessions: string[];
   /** sha256 hash of the raw reset token (see api/auth/reset-password/request) — never the raw token itself. */
   resetPasswordTokenHash?: string;
   resetPasswordExpires?: Date;
@@ -268,6 +269,19 @@ const UserSchema = new Schema<IUser>(
     sessionVersion: {
       type: Number,
       default: 0,
+    },
+
+    // Up to 5 concurrent logins per account. Each login appends its own
+    // sessionId here (buildAuthSession.ts), capped to the newest 5 via an
+    // atomic $push+$slice -- a 6th login silently evicts the oldest
+    // session rather than rejecting the new one. A request's token is only
+    // valid while its sessionId is still present here (session-enriched.ts
+    // / api/auth/me), so logout / eviction take effect on the very next
+    // request. Replaces the previous single-session (sessionVersion
+    // counter) enforcement.
+    activeSessions: {
+      type: [String],
+      default: [],
     },
 
     // Was missing entirely -- api/auth/reset-password/request+confirm set

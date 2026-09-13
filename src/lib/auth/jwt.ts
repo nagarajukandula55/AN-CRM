@@ -53,11 +53,17 @@ export interface JWTPayload {
    * for this business" -- sidebar filtering treats that as unrestricted,
    * same as an untagged business or an empty allowedPages list. */
   centralRole?: string | null;
-  /** User.sessionVersion at the time this token was issued -- bumped on
-   * every login so an older, still-unexpired token from a previous device
-   * fails the sessionVersion check in getEnrichedSession (single active
-   * session enforcement). See api/auth/login/route.ts. */
+  /** @deprecated superseded by `sessionId` + User.activeSessions (up to 5
+   * concurrent logins). Left in the payload type only so older, still-
+   * unexpired tokens signed before this change decode without error. */
   sessionVersion?: number;
+  /** Unique id for this specific login, generated in buildAuthSession.ts
+   * and appended to User.activeSessions (capped at 5 -- a 6th login evicts
+   * the oldest). A token is only valid while its sessionId is still in
+   * that array; logging out, or being evicted by a 6th concurrent login,
+   * removes it and the token stops working on its very next request. See
+   * getEnrichedSession() and api/auth/me/route.ts. */
+  sessionId?: string;
   iat?: number;
   exp?: number;
 }

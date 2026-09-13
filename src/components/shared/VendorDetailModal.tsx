@@ -27,6 +27,7 @@
  */
 import { useState, useEffect } from "react";
 import { X, Loader2, FileText, CheckCircle, XCircle, Building2 } from "lucide-react";
+import { getAuthMe } from "@/lib/authMeCache";
 
 export interface VendorDetailData {
   _id: string;
@@ -149,8 +150,7 @@ export function VendorDetailModal({ vendor, onClose, onUpdated }: VendorDetailMo
   const [savingFacility, setSavingFacility] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
+    getAuthMe()
       .then((d) => {
         setIsSuperAdmin(!!d.user?.isSuperAdmin);
         if (needsBusinessAssignment) setBusinessOptions(d.businesses || []);

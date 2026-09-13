@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, Suspense } from 'react'
+import { useState, useMemo, useEffect, Suspense } from 'react'
 import useSWR from 'swr'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Search, Download, Eye, Printer, FileText, FilePlus2, Receipt } from 'lucide-react'
@@ -158,14 +158,48 @@ function JobSheetsListPageInner({ basePath }: { basePath: string }) {
     const r = searchParams.get('range')
     return r && RANGE_VALUES.has(r) ? r : null
   })
+  // "Open" and "Part Pending" aren't single CrmJobSheet statuses (Open
+  // spans CREATED/REPAIR_STARTED/REPAIR_IN_PROGRESS/REPAIR_COMPLETED/
+  // PART_PENDING), so their cards clear the server-side status filter and
+  // filter client-side instead; Closed maps directly to one real status.
+  const [quickFilter, setQuickFilter] = useState<'ALL' | 'OPEN' | 'CLOSED_THIS_MONTH' | 'PART_PENDING'>(() => {
+    const q = searchParams.get('quick')
+    return q && QUICK_FILTER_VALUES.has(q) ? (q as 'ALL' | 'OPEN' | 'CLOSED_THIS_MONTH' | 'PART_PENDING') : 'ALL'
+  })
+
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+
+  // The quick-filter cards (Open/Closed this month/Part Pending) and the
+  // dashboard's ?range= deep link are resolved CLIENT-SIDE below (their
+  // conditions don't map onto a single `status` value the API understands),
+  // so real pagination can't be applied on top of them without hiding real
+  // matches on other pages -- when one of those is active this keeps the
+  // previous behavior of fetching the (backend-capped) top 100 rather than
+  // paging. The default browsing view (no quick filter, no range) is the
+  // common case and gets real pagination at a fast, deliberately small
+  // page size instead.
+  const usingClientSideFilter = quickFilter !== 'ALL' || !!range
+
+  // Reset to page 1 whenever a filter or the page size changes -- staying
+  // on a later page after narrowing the result set would show stale rows.
+  useEffect(() => { setPage(1) }, [status, search, pageSize])
 
   const params = new URLSearchParams()
   if (businessId) params.set('businessId', businessId)
   if (status !== 'ALL') params.set('status', status)
   if (search.trim()) params.set('search', search.trim())
-  params.set('limit', '100')
+  if (usingClientSideFilter) {
+    params.set('limit', '100')
+  } else {
+    params.set('page', String(page))
+    params.set('limit', String(pageSize))
+  }
 
-  const { data, isLoading, mutate } = useSWR(businessId ? `/api/crm/jobsheets?${params.toString()}` : null)
+  const { data, isLoading, mutate } = useSWR(
+    businessId ? `/api/crm/jobsheets?${params.toString()}` : null,
+    { keepPreviousData: true }
+  )
 
   async function handleGenerateEstimate(job: JobSheetRow) {
     if ((job.lineItems?.length ?? 0) === 0) {
@@ -182,28 +216,33 @@ function JobSheetsListPageInner({ basePath }: { basePath: string }) {
     openPrintPopup(`/print/jobsheets/${job._id}?doc=estimate`)
   }
   const jobSheets: JobSheetRow[] = data?.jobSheets || data?.data || []
+  const total: number = data?.total ?? jobSheets.length
+  const totalPages: number = data?.totalPages ?? 1
+  const statusCounts: Record<string, number> = data?.statusCounts ?? {}
 
   const kpis = useMemo(() => {
     const now = new Date()
-    const total = jobSheets.length
-    const open = jobSheets.filter((j) => OPEN_STATUSES.has(j.status)).length
+    // total/open/partPending come from the API's statusCounts, computed
+    // over EVERY matching job sheet (not just the current page) -- these
+    // used to be derived from the fetched array alone, which was already
+    // silently wrong for any business with more than the old 100-row cap.
+    const open = Object.entries(statusCounts).reduce(
+      (sum, [status, count]) => (OPEN_STATUSES.has(status) ? sum + count : sum),
+      0
+    )
+    const partPending = statusCounts.PART_PENDING ?? 0
+    // Closed-this-month has no server-side equivalent yet -- kept as a
+    // client-side count over whatever page is currently loaded (same
+    // pre-existing limitation as before pagination was added, just no
+    // longer masked by a hidden 100-row cap).
     const closedThisMonth = jobSheets.filter((j) => {
       if (j.status !== 'CLOSED') return false
       const d = new Date(j.createdAt)
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
     }).length
-    const partPending = jobSheets.filter((j) => j.status === 'PART_PENDING').length
     return { total, open, closedThisMonth, partPending }
-  }, [jobSheets])
+  }, [jobSheets, statusCounts, total])
 
-  // "Open" and "Part Pending" aren't single CrmJobSheet statuses (Open
-  // spans CREATED/REPAIR_STARTED/REPAIR_IN_PROGRESS/REPAIR_COMPLETED/
-  // PART_PENDING), so their cards clear the server-side status filter and
-  // filter client-side instead; Closed maps directly to one real status.
-  const [quickFilter, setQuickFilter] = useState<'ALL' | 'OPEN' | 'CLOSED_THIS_MONTH' | 'PART_PENDING'>(() => {
-    const q = searchParams.get('quick')
-    return q && QUICK_FILTER_VALUES.has(q) ? (q as 'ALL' | 'OPEN' | 'CLOSED_THIS_MONTH' | 'PART_PENDING') : 'ALL'
-  })
   const displayedJobSheets = useMemo(() => {
     const now = new Date()
     let rows: JobSheetRow[]
@@ -424,6 +463,41 @@ function JobSheetsListPageInner({ basePath }: { basePath: string }) {
             </table>
           </div>
         </Card>
+      )}
+
+      {!usingClientSideFilter && (
+        <div className="flex items-center justify-between mt-3 text-sm text-ink-3">
+          <div className="flex items-center gap-2">
+            <span>Rows per page</span>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="rounded-control border border-border bg-surface px-2 py-1 text-ink"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <span>{total === 0 ? '0' : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)}`} of {total}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="rounded-control border border-border px-3 py-1.5 disabled:opacity-40 hover:bg-surface-2"
+            >
+              Previous
+            </button>
+            <span>Page {page} of {Math.max(1, totalPages)}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="rounded-control border border-border px-3 py-1.5 disabled:opacity-40 hover:bg-surface-2"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )

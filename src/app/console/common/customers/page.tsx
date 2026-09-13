@@ -53,6 +53,8 @@ export default function CustomersPage() {
   const columns = useColumnConfig('customers', CUSTOMERS_DEFAULT_COLUMNS).filter((c) => c.visible)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -68,9 +70,16 @@ export default function CustomersPage() {
     return () => clearTimeout(t)
   }, [search])
 
+  // Reset to page 1 whenever the search term or page size changes -- staying
+  // on e.g. page 4 of a new, much shorter search result would just show "no
+  // customers found" even though matches exist on page 1.
+  useEffect(() => { setPage(1) }, [debouncedSearch, pageSize])
+
   const customersParams = (() => {
     const params = new URLSearchParams()
     if (debouncedSearch) params.set('search', debouncedSearch)
+    params.set('page', String(page))
+    params.set('limit', String(pageSize))
     return params.toString()
   })()
   const { data: customersData, isLoading: loading, mutate: fetchCustomers } = useSWR(
@@ -78,6 +87,8 @@ export default function CustomersPage() {
     { keepPreviousData: true }
   )
   const customers: Customer[] = customersData?.success ? (customersData.customers || []) : []
+  const totalCustomers: number = customersData?.success ? (customersData.total ?? customers.length) : 0
+  const totalPages: number = customersData?.success ? (customersData.totalPages ?? 1) : 1
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -252,6 +263,39 @@ export default function CustomersPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex items-center justify-between mt-3 text-sm text-ink-3">
+          <div className="flex items-center gap-2">
+            <span>Rows per page</span>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="rounded-control border border-border bg-surface px-2 py-1 text-ink"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <span>{totalCustomers === 0 ? '0' : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalCustomers)}`} of {totalCustomers}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="rounded-control border border-border px-3 py-1.5 disabled:opacity-40 hover:bg-surface-2"
+            >
+              Previous
+            </button>
+            <span>Page {page} of {Math.max(1, totalPages)}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="rounded-control border border-border px-3 py-1.5 disabled:opacity-40 hover:bg-surface-2"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 

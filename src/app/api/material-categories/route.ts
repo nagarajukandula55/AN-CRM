@@ -61,7 +61,8 @@ export async function GET(req: NextRequest) {
       isDeleted: false,
     })
       .populate("parentCategory", "name code")
-      .sort({ name: 1 });
+      .sort({ name: 1 })
+      .lean();
 
     return NextResponse.json({ success: true, data: categories });
   } catch (error: any) {

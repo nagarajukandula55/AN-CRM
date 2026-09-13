@@ -33,7 +33,9 @@ export async function GET(req: NextRequest) {
   const data = await StockLedger.find(filter)
     .populate("materialId")
     .populate("warehouseId")
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .limit(500)
+    .lean();
 
   return NextResponse.json({ success: true, data });
 }

@@ -86,47 +86,73 @@ export async function GET(request: NextRequest) {
 
     const total = await User.countDocuments(query);
 
-    // Enrich with roles and profiles
-    const enrichedUsers = await Promise.all(
-      users.map(async (user: Record<string, unknown>) => {
-        const userId = user._id as mongoose.Types.ObjectId;
-        const userRoles = await UserRole.find({ userId }).populate('roleId').lean();
-        const roles = userRoles.map((ur: Record<string, unknown>) => ur.roleId).filter(Boolean);
+    // Enrich with roles and profiles -- was one round trip PER user for
+    // each of UserRole/EmployeeProfile/VendorProfile/BusinessMember (up to
+    // 4 x `limit` queries for a single page of the admin users list).
+    // Batched into one query per collection via $in, then joined in memory.
+    const userIds = users.map((u: Record<string, unknown>) => u._id as mongoose.Types.ObjectId);
 
-        const employeeProfile = await EmployeeProfile.findOne({
-          userId,
-          isDeleted: { $ne: true },
-        }).lean();
+    const [allUserRoles, allEmployeeProfiles, allVendorProfiles, fallbackMemberships] = await Promise.all([
+      UserRole.find({ userId: { $in: userIds } }).populate('roleId').lean(),
+      EmployeeProfile.find({ userId: { $in: userIds }, isDeleted: { $ne: true } }).lean(),
+      VendorProfile.find({ userId: { $in: userIds }, isDeleted: { $ne: true } }).lean(),
+      BusinessMember.find({ userId: { $in: userIds }, vendorId: { $ne: null }, status: 'ACTIVE' }).lean(),
+    ]);
 
-        let vendorProfile = await VendorProfile.findOne({
-          userId,
-          isDeleted: { $ne: true },
-        }).lean();
+    const rolesByUserId = new Map<string, Record<string, unknown>[]>();
+    for (const ur of allUserRoles as Record<string, unknown>[]) {
+      const key = String(ur.userId);
+      if (!rolesByUserId.has(key)) rolesByUserId.set(key, []);
+      if (ur.roleId) rolesByUserId.get(key)!.push(ur.roleId as Record<string, unknown>);
+    }
 
-        // A user tagged into one of a vendor's 5 staff slots (see
-        // /api/admin/vendor-staff-slots/[id]/activate) never gets
-        // VendorProfile.userId set -- that field is 1:1 and reserved for
-        // whoever can log in AS the vendor account itself, while multiple
-        // staff can be tagged to the same vendor's different slots. The
-        // list page's "Vendor ID" badge (admin/users/page.tsx) reads
-        // vendorProfile?.vendorId though, so without this fallback a
-        // successfully-tagged staff member always showed no vendor ID at
-        // all -- the save "succeeded" (BusinessMember was created) but
-        // nothing ever appeared to prove it.
-        if (!vendorProfile) {
-          const membership = await BusinessMember.findOne({
-            userId,
-            vendorId: { $ne: null },
-            status: 'ACTIVE',
-          }).lean();
-          if ((membership as any)?.vendorId) {
-            vendorProfile = await VendorProfile.findById((membership as any).vendorId).lean();
-          }
-        }
+    const employeeProfileByUserId = new Map<string, Record<string, unknown>>();
+    for (const ep of allEmployeeProfiles as Record<string, unknown>[]) {
+      employeeProfileByUserId.set(String(ep.userId), ep);
+    }
 
-        return { ...user, roles, employeeProfile, vendorProfile };
-      })
-    );
+    const vendorProfileByUserId = new Map<string, Record<string, unknown>>();
+    for (const vp of allVendorProfiles as Record<string, unknown>[]) {
+      vendorProfileByUserId.set(String(vp.userId), vp);
+    }
+
+    // A user tagged into one of a vendor's 5 staff slots (see
+    // /api/admin/vendor-staff-slots/[id]/activate) never gets
+    // VendorProfile.userId set -- that field is 1:1 and reserved for
+    // whoever can log in AS the vendor account itself, while multiple
+    // staff can be tagged to the same vendor's different slots. The
+    // list page's "Vendor ID" badge (admin/users/page.tsx) reads
+    // vendorProfile?.vendorId though, so without this fallback a
+    // successfully-tagged staff member always showed no vendor ID at
+    // all -- the save "succeeded" (BusinessMember was created) but
+    // nothing ever appeared to prove it.
+    const fallbackVendorIdByUserId = new Map<string, mongoose.Types.ObjectId>();
+    for (const m of fallbackMemberships as Record<string, unknown>[]) {
+      const key = String(m.userId);
+      if (!vendorProfileByUserId.has(key) && m.vendorId && !fallbackVendorIdByUserId.has(key)) {
+        fallbackVendorIdByUserId.set(key, m.vendorId as mongoose.Types.ObjectId);
+      }
+    }
+    const fallbackVendorIds = Array.from(new Set(Array.from(fallbackVendorIdByUserId.values()).map(String)));
+    const fallbackVendorProfiles = fallbackVendorIds.length
+      ? await VendorProfile.find({ _id: { $in: fallbackVendorIds } }).lean()
+      : [];
+    const fallbackVendorProfileById = new Map<string, Record<string, unknown>>();
+    for (const vp of fallbackVendorProfiles as Record<string, unknown>[]) {
+      fallbackVendorProfileById.set(String((vp as any)._id), vp);
+    }
+
+    const enrichedUsers = users.map((user: Record<string, unknown>) => {
+      const userId = String(user._id);
+      const roles = rolesByUserId.get(userId) || [];
+      const employeeProfile = employeeProfileByUserId.get(userId) || null;
+      let vendorProfile = vendorProfileByUserId.get(userId) || null;
+      if (!vendorProfile) {
+        const fallbackVendorId = fallbackVendorIdByUserId.get(userId);
+        if (fallbackVendorId) vendorProfile = fallbackVendorProfileById.get(String(fallbackVendorId)) || null;
+      }
+      return { ...user, roles, employeeProfile, vendorProfile };
+    });
 
     // Filter by role if specified
     let filteredUsers = enrichedUsers;

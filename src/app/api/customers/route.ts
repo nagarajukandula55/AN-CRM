@@ -49,6 +49,13 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search");
+    // Was hardcoded to 500 with no way to page through more or ask for
+    // fewer -- every load of the customer directory pulled up to 500 full
+    // records regardless of how many the UI actually renders at once.
+    // Defaults to 20 (page 1) like the rest of the app's list endpoints;
+    // a caller that genuinely needs more can still pass a larger limit.
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20));
 
     await connectDB();
 
@@ -102,9 +109,16 @@ export async function GET(req: NextRequest) {
       filter.$or = [{ name: re }, { phone: re }, { email: re }, { gstin: re }, { imeiOrSerialNumbers: re }];
     }
 
-    const customers = await Customer.find(filter).sort({ createdAt: -1 }).limit(500).lean();
+    const [customers, total] = await Promise.all([
+      Customer.find(filter)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Customer.countDocuments(filter),
+    ]);
 
-    return NextResponse.json({ success: true, customers, total: customers.length });
+    return NextResponse.json({ success: true, customers, total, page, totalPages: Math.ceil(total / limit) });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ success: false, error: message }, { status: 500 });

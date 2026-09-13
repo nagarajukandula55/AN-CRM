@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const payments = await Payment.find({
       businessId: new Types.ObjectId(session.business.businessId),
       isDeleted: false,
-    }).sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 }).lean();
 
     return NextResponse.json({
       success: true,

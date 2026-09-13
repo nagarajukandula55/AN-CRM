@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
     const limit = Math.min(
       200,
-      Math.max(1, parseInt(searchParams.get("limit") || "100"))
+      Math.max(1, parseInt(searchParams.get("limit") || "20"))
     );
 
     const [vendors, total] = await Promise.all([

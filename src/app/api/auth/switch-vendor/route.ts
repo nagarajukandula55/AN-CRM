@@ -82,6 +82,7 @@ export async function POST(req: Request) {
       activeBusinessId: payload.activeBusinessId,
       activeVendorId:   vendorId === ownVendorId ? undefined : vendorId,
       organizationId:   payload.organizationId,
+      sessionId:        payload.sessionId,
       centralRole:      payload.centralRole,
     });
 

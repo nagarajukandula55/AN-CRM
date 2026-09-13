@@ -96,3 +96,29 @@ export async function getDaysOverdue(accountId: string): Promise<number> {
   const overdueMs = Date.now() - new Date(oldest.dueDate).getTime();
   return overdueMs > 0 ? Math.floor(overdueMs / (24 * 60 * 60 * 1000)) : 0;
 }
+
+/** Same as getDaysOverdue(), batched across many accounts in one query
+ * instead of one findOne() per account (see api/vendor/credit-accounts,
+ * which used to call getDaysOverdue() once per row in the account list). */
+export async function getDaysOverdueForAccounts(accountIds: string[]): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  if (accountIds.length === 0) return result;
+
+  const openInvoices = await CreditTransaction.find({
+    accountId: { $in: accountIds },
+    type: "INVOICE",
+    outstandingAmount: { $gt: 0 },
+    dueDate: { $ne: null },
+  })
+    .sort({ dueDate: 1 })
+    .lean();
+
+  const now = Date.now();
+  for (const inv of openInvoices as any[]) {
+    const key = String(inv.accountId);
+    if (result.has(key)) continue; // sorted ascending -- first hit per account is the oldest
+    const overdueMs = now - new Date(inv.dueDate).getTime();
+    result.set(key, overdueMs > 0 ? Math.floor(overdueMs / (24 * 60 * 60 * 1000)) : 0);
+  }
+  return result;
+}

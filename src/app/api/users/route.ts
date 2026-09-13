@@ -49,7 +49,7 @@ export async function GET(req: Request) {
     const isActive = searchParams.get('isActive')
     const userRole = searchParams.get('role')
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const limit = parseInt(searchParams.get('limit') || '20')
 
     const query: any = { isDeleted: false }
     if (isActive !== null && isActive !== undefined && isActive !== '') {

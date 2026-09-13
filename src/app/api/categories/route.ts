@@ -53,14 +53,19 @@ export async function GET(req: NextRequest) {
       .sort({ name: 1 })
       .lean();
 
-    return NextResponse.json({
-      success: true,
-      categories: categories.map((c) => ({
-        id: String(c._id),
-        name: c.name,
-        slug: slugify(c.name),
-      })),
-    });
+    // Public, admin-managed, rarely-changing list -- safe to let CDN/browser
+    // cache briefly instead of hitting Mongo on every storefront visitor.
+    return NextResponse.json(
+      {
+        success: true,
+        categories: categories.map((c) => ({
+          id: String(c._id),
+          name: c.name,
+          slug: slugify(c.name),
+        })),
+      },
+      { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" } }
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";
     return NextResponse.json({ success: false, message }, { status: 500 });

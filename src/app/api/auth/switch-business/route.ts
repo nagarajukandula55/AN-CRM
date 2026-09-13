@@ -85,6 +85,7 @@ export async function POST(req: Request) {
       businessIds,
       activeBusinessId: businessId,
       organizationId:   payload.organizationId,
+      sessionId:        payload.sessionId,
       centralRole,
     });
 

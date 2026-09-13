@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   try {
     const userId      = req.headers.get("x-user-id");
     const isSuperAdmin = req.headers.get("x-is-super-admin") === "true";
-    const tokenSessionVersionHeader = req.headers.get("x-session-version");
+    const tokenSessionId = req.headers.get("x-session-id");
     let activeBusinessId = req.headers.get("x-active-business-id");
 
     if (!userId) {
@@ -36,18 +36,18 @@ export async function GET(req: Request) {
       );
     }
 
-    // Single active session enforcement -- re-enabled alongside
-    // lib/auth/session-enriched.ts's matching check. This is a SEPARATE
-    // check from that file's (this endpoint is what the frontend polls to
-    // confirm "am I still logged in", independent of getEnrichedSession),
-    // so both must be enabled together or a second device stays silently
-    // logged in on one path while being rejected on the other.
+    // Up to 5 concurrent sessions -- mirrors lib/auth/session-enriched.ts's
+    // matching check. This is a SEPARATE check from that file's (this
+    // endpoint is what the frontend polls to confirm "am I still logged
+    // in", independent of getEnrichedSession), so both must stay in sync
+    // or a session evicted on one path stays silently logged in on the
+    // other.
     if (
-      tokenSessionVersionHeader !== null &&
-      Number(tokenSessionVersionHeader) !== (user.sessionVersion || 0)
+      tokenSessionId !== null &&
+      !((user.activeSessions || []) as string[]).includes(tokenSessionId)
     ) {
       return NextResponse.json(
-        { success: false, message: "Logged in elsewhere. Please log in again.", sessionExpired: true },
+        { success: false, message: "Logged out from this device. Please log in again.", sessionExpired: true },
         { status: 401 }
       );
     }

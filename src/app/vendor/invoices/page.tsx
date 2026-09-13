@@ -66,10 +66,17 @@ const STATUS_TONE: Record<string, Tone> = {
 
 export default function VendorInvoicesPage() {
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
 
-  const { data: json, error: fetchError, isLoading: loading } = useSWR('/api/vendor/invoices')
+  const { data: json, error: fetchError, isLoading: loading } = useSWR(
+    `/api/vendor/invoices?page=${page}&limit=${pageSize}`,
+    { keepPreviousData: true }
+  )
   const invoices: Invoice[] = json?.success ? json.invoices || [] : []
   const summary: Summary | null = json?.success ? json.summary || null : null
+  const total: number = json?.success ? (json.total ?? invoices.length) : 0
+  const totalPages: number = json?.success ? (json.totalPages ?? 1) : 1
   const error: string = fetchError
     ? 'Failed to load invoices'
     : (json && !json.success ? (json.message || 'Failed to load invoices') : '')
@@ -172,6 +179,41 @@ export default function VendorInvoicesPage() {
             </div>
           )}
         </Card>
+
+        {invoices.length > 0 && (
+          <div className="flex items-center justify-between mt-3 text-sm text-ink-3">
+            <div className="flex items-center gap-2">
+              <span>Rows per page</span>
+              <select
+                value={pageSize}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}
+                className="rounded-control border border-border bg-surface px-2 py-1 text-ink"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+              <span>{total === 0 ? '0' : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)}`} of {total}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="rounded-control border border-border px-3 py-1.5 disabled:opacity-40 hover:bg-surface-2"
+              >
+                Previous
+              </button>
+              <span>Page {page} of {Math.max(1, totalPages)}</span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="rounded-control border border-border px-3 py-1.5 disabled:opacity-40 hover:bg-surface-2"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

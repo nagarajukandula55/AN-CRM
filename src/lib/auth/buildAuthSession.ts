@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import BusinessMember from "@/models/BusinessMember";
 import Business from "@/models/Business";
 import UserRole from "@/models/UserRole";
@@ -133,9 +134,18 @@ export async function buildAuthSession(
     !isSuperAdmin &&
     !pendingVendorApplication;
 
-  const sessionVersion = (user.sessionVersion || 0) + 1;
+  // Up to 5 concurrent logins per account (explicit direction -- was
+  // previously a single active session, enforced via a sessionVersion
+  // counter that invalidated every other login on each new one). $push
+  // with $slice: -5 is atomic and keeps only the newest 5 ids even under
+  // concurrent logins, so this account can never end up with more than 5
+  // valid sessions regardless of race conditions.
+  const sessionId = randomUUID();
   const User = (await import("@/models/User")).default;
-  await User.updateOne({ _id: user._id }, { $set: { sessionVersion } });
+  await User.updateOne(
+    { _id: user._id },
+    { $push: { activeSessions: { $each: [sessionId], $slice: -5 } } }
+  );
 
   const token = signToken({
     id: user._id.toString(),
@@ -148,7 +158,7 @@ export async function buildAuthSession(
     activeBusinessId,
     organizationId: user.organizationId?.toString(),
     mustChangePassword: !!user.mustChangePassword,
-    sessionVersion,
+    sessionId,
     centralRole,
   });
 

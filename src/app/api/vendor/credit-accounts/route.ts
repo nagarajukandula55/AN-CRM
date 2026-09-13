@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import CreditAccount from "@/models/CreditAccount";
 import { resolveVendorContext } from "@/lib/auth/vendorContext";
-import { getDaysOverdue } from "@/core/credit/creditLedger";
+import { getDaysOverdueForAccounts } from "@/core/credit/creditLedger";
 
 // GET /api/vendor/credit-accounts — this vendor's Distributor/Retailer
 // credit accounts (including PENDING self-signups awaiting approval), for
@@ -20,9 +20,8 @@ export async function GET() {
     const vendor = ctx.vendor as any;
 
     const accounts = await CreditAccount.find({ vendorId: vendor._id }).sort({ name: 1 }).lean();
-    const withAging = await Promise.all(
-      accounts.map(async (a: any) => ({ ...a, daysOverdue: await getDaysOverdue(String(a._id)) }))
-    );
+    const overdueByAccountId = await getDaysOverdueForAccounts(accounts.map((a: any) => String(a._id)));
+    const withAging = accounts.map((a: any) => ({ ...a, daysOverdue: overdueByAccountId.get(String(a._id)) || 0 }));
     return NextResponse.json({ success: true, data: withAging });
   } catch (err: any) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });

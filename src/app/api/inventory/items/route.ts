@@ -62,7 +62,9 @@ export async function GET(req: NextRequest) {
     };
     if (scope.vendorId) filter.vendorId = new Types.ObjectId(scope.vendorId);
 
-    const items = await InventoryItem.find(filter).sort({ createdAt: -1 });
+    // Read-only, JSON-serialized response -- .lean() skips Mongoose document
+    // hydration/change-tracking that this route never needed.
+    const items = await InventoryItem.find(filter).sort({ createdAt: -1 }).lean();
 
     return NextResponse.json({
       success: true,

@@ -15,8 +15,28 @@ const CENTRAL_API_URL = process.env.CENTRAL_API_URL;
 const CENTRAL_API_KEY = process.env.CENTRAL_API_KEY;
 const APP_NAME = "an-crm";
 
+// The reports page fires one of these per data source (see DATA_SOURCES
+// below) on every single load, each an uncached ("no-store") round trip to
+// central-api -- admin field-visibility overrides change rarely, so a
+// short in-memory TTL collapses repeated page loads/report-builder opens
+// into one real fetch per data source per business.
+const OVERRIDES_TTL_MS = 60_000;
+const overridesCache = new Map<string, { value: { disabledFieldKeys: string[]; labelOverrides: Record<string, string> }; expiresAt: number }>();
+
 async function getFieldOverrides(dataSource: string, businessId?: string) {
   if (!CENTRAL_API_URL) return { disabledFieldKeys: [] as string[], labelOverrides: {} as Record<string, string> };
+
+  const cacheKey = `${dataSource}|${businessId || ""}`;
+  const now = Date.now();
+  const cached = overridesCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) return cached.value;
+
+  const result = await fetchFieldOverrides(dataSource, businessId);
+  overridesCache.set(cacheKey, { value: result, expiresAt: now + OVERRIDES_TTL_MS });
+  return result;
+}
+
+async function fetchFieldOverrides(dataSource: string, businessId?: string) {
   try {
     const centralBusinessId = businessId ? await resolveCentralBusinessId(businessId) : null;
     const qs = centralBusinessId ? `?businessId=${encodeURIComponent(centralBusinessId)}` : "";

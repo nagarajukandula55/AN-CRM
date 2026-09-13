@@ -230,12 +230,18 @@ export default function VendorsPage() {
   // business to match it.
   const seesAllBusinesses = !!(meData?.user?.isSuperAdmin || meData?.user?.isPlatformStaff)
 
+  // This page renders vendors nested under their parent (topLevelVendors
+  // below excludes sub-vendors from the top-level rows, expecting the full
+  // set to be present) and has no pagination UI of its own -- explicitly
+  // requesting the max page size here keeps its previous behavior even
+  // though api/vendors' own DEFAULT (for callers that don't specify one)
+  // was lowered to 20 for faster loads elsewhere.
   const vendorsKey = !meData
     ? null
     : seesAllBusinesses
-    ? '/api/vendors?businessId=ALL'
+    ? '/api/vendors?businessId=ALL&limit=200'
     : businessId
-    ? `/api/vendors?businessId=${businessId}`
+    ? `/api/vendors?businessId=${businessId}&limit=200`
     : null
   const { data: vendorsRes, isLoading: loading, error: vendorsErrorObj, mutate: mutateVendors } = useSWR(vendorsKey)
   const vendors: Vendor[] = vendorsRes ? (Array.isArray(vendorsRes) ? vendorsRes : (vendorsRes.vendors ?? [])) : []

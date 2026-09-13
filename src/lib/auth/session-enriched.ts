@@ -60,6 +60,27 @@ export interface IEnrichedSession {
   subscriptionBlocked: boolean;
 }
 
+// This function runs on nearly every authenticated request (often several
+// times per page load, e.g. sidebar + page API + widgets all resolving
+// their own session independently) and does 10+ sequential DB round-trips
+// internally (see comments below). A single page load can multiply that
+// into dozens of round-trips system-wide, which is the dominant cause of
+// "everything feels laggy" under real traffic. Cached here for a very
+// short TTL (5s) keyed by everything the result actually depends on
+// (user, session version, active business, active vendor) -- short enough
+// that a role/permission change or business switch is visible within one
+// request cycle, long enough to collapse the N near-simultaneous calls a
+// single page load makes into one real computation.
+const ENRICHED_SESSION_TTL_MS = 5000;
+const enrichedSessionCache = new Map<string, { value: IEnrichedSession | null; expiresAt: number }>();
+
+function pruneEnrichedSessionCache(now: number) {
+  if (enrichedSessionCache.size < 500) return;
+  for (const [key, entry] of enrichedSessionCache) {
+    if (entry.expiresAt <= now) enrichedSessionCache.delete(key);
+  }
+}
+
 /**
  * Build full enriched session from JWT middleware headers.
  * Falls back to DB lookup for roles/permissions if business context exists.
@@ -75,6 +96,39 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
 
   // Not authenticated — middleware didn't inject headers
   if (!userId || !userEmail) return null;
+
+  const cacheKey = [
+    userId,
+    headersList.get("x-session-id") || "",
+    headersList.get("x-active-business-id") || "",
+    headersList.get("x-active-vendor-id") || "",
+    isSuperAdmin ? "1" : "0",
+  ].join("|");
+
+  const now = Date.now();
+  const cached = enrichedSessionCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  const result = await computeEnrichedSession(headersList, { userId, userEmail, userName, userRole, isSuperAdmin });
+
+  pruneEnrichedSessionCache(now);
+  enrichedSessionCache.set(cacheKey, { value: result, expiresAt: now + ENRICHED_SESSION_TTL_MS });
+
+  return result;
+}
+
+async function computeEnrichedSession(
+  headersList: Awaited<ReturnType<typeof headers>>,
+  {
+    userId,
+    userEmail,
+    userName,
+    userRole,
+    isSuperAdmin,
+  }: { userId: string; userEmail: string; userName: string; userRole: string; isSuperAdmin: boolean }
+): Promise<IEnrichedSession | null> {
 
   // This function runs its own Mongoose queries (User.findOne, UserRole.find,
   // etc. below) but never established a connection itself -- every call site
@@ -92,7 +146,7 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
   // calling it here on every request is cheap once actually connected.
   await connectDB();
 
-  const tokenSessionVersionHeader = headersList.get("x-session-version");
+  const tokenSessionId = headersList.get("x-session-id");
 
   // This function runs on nearly every authenticated request, so trimming
   // its round-trips to MongoDB matters app-wide, not just here. It used to
@@ -107,16 +161,16 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
     getOrCreateANGroupBusinessId().catch(() => null),
   ]);
 
-  // Single active session enforcement -- re-enabled per explicit direction
-  // (only one active session per user; logging in elsewhere logs the
-  // earlier session out). sessionVersion is bumped on every login
-  // (buildAuthSession.ts) and carried on the token/header; a token whose
-  // sessionVersion no longer matches the live User doc was issued by an
-  // earlier login that has since been superseded, so it's rejected here.
+  // Up to 5 concurrent sessions per user (explicit direction -- previously
+  // a single active session via a sessionVersion counter). Each login
+  // appends its own sessionId to User.activeSessions, capped at the newest
+  // 5 (buildAuthSession.ts). A token whose sessionId is no longer in that
+  // array was either logged out, or evicted by a 6th login elsewhere, so
+  // it's rejected here.
   if (
     user &&
-    tokenSessionVersionHeader !== null &&
-    Number(tokenSessionVersionHeader) !== ((user as any).sessionVersion || 0)
+    tokenSessionId !== null &&
+    !((user as any).activeSessions || []).includes(tokenSessionId)
   ) {
     return null;
   }
@@ -232,18 +286,20 @@ export async function getEnrichedSession(): Promise<IEnrichedSession | null> {
         const vendorStructuralRoles = rolesDocs.filter((r: any) =>
           typeof r.code === "string" && (r.code.startsWith("VENDOR_OWNER") || r.code.startsWith("VENDOR_MANAGER")) && r.vendorId
         );
-        const liveVendorPermissions: string[] = [];
-        for (const roleDoc of vendorStructuralRoles) {
-          const vendorForRole = await VendorProfile.findById((roleDoc as any).vendorId)
-            .select("appliedAs")
-            .lean<any>()
-            .catch(() => null);
-          const available = await getVendorAvailableModules(
-            String((roleDoc as any).businessId),
-            vendorForRole?.appliedAs
-          ).catch(() => []);
-          liveVendorPermissions.push(...permissionCodesForModules(available.map((m) => m.key)));
-        }
+        const vendorRolePermissionLists = await Promise.all(
+          vendorStructuralRoles.map(async (roleDoc: any) => {
+            const vendorForRole = await VendorProfile.findById(roleDoc.vendorId)
+              .select("appliedAs")
+              .lean<any>()
+              .catch(() => null);
+            const available = await getVendorAvailableModules(
+              String(roleDoc.businessId),
+              vendorForRole?.appliedAs
+            ).catch(() => []);
+            return permissionCodesForModules(available.map((m) => m.key));
+          })
+        );
+        const liveVendorPermissions: string[] = vendorRolePermissionLists.flat();
 
         const rolePermissions = await RolePermission.find({
           roleId: { $in: rolesDocs.map((r: any) => r._id) },
