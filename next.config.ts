@@ -6,6 +6,21 @@ const nextConfig: NextConfig = {
   // paths. The live, maintained versions all live under /admin/*.
   async redirects() {
     return [
+      // AN-CRM's public acquisition/auth surface (home, sign in, sign up,
+      // pricing) now points to My Biz Flow -- the live product going
+      // forward, per explicit direction. /signup, /register, and
+      // /vendor-apply already redirect internally to /partner-signup (see
+      // those files' own history), so redirecting /partner-signup itself
+      // covers all of them without editing each one separately.
+      // Deliberately NOT redirected: /console, /vendor, and every other
+      // operational route -- vendors not yet migrated to My Biz Flow still
+      // run their real business through this app, and redirecting those
+      // away would lock them out entirely. permanent:false (not a 301) so
+      // this can still be adjusted without a client/CDN caching it forever.
+      { source: "/", destination: "https://mybizflow.in", permanent: false },
+      { source: "/login", destination: "https://mybizflow.in/login", permanent: false },
+      { source: "/partner-signup", destination: "https://mybizflow.in/signup", permanent: false },
+      { source: "/pricing", destination: "https://mybizflow.in/pricing", permanent: false },
       { source: "/ai", destination: "/admin/ai", permanent: false },
       { source: "/logistics", destination: "/admin/logistics", permanent: false },
       { source: "/analytics", destination: "/admin/analytics", permanent: false },
